@@ -1,0 +1,22 @@
+{
+  "name": "@kaleido-io/workflow-engine-sdk",
+  "version": "0.0.1",
+  "description": "Kaleido Typescript SDK",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm t"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaleido-io/kaleido-sdk-typescript.git"
+  },
+  "keywords": [
+    "kaleido"
+  ],
+  "author": "support@kaleido.io",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/kaleido-io/kaleido-sdk-typescript/issues"
+  },
+  "homepage": "https://github.com/kaleido-io/kaleido-sdk-typescript#readme"
+}
