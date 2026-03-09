@@ -33,8 +33,7 @@ jest.mock('./engine_client', () => ({
 import { HandlerRuntime, HandlerRuntimeConfig, HandlerRuntimeMode } from './handler_runtime';
 import { EngineClient } from './engine_client';
 import { EventProcessor, EventSource, TransactionHandler } from '../interfaces/handlers';
-import { WSMessageType } from '@kaleido-io/workflow-engine-sdk';
-import { WSEventProcessorBatchRequest } from '../types/core';
+import { WSEventProcessorBatchRequest, WSMessageType } from '../types/core';
 
 const handlerRuntimeConfig: HandlerRuntimeConfig = {
     providerName: 'test-provider',

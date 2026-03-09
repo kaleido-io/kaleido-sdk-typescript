@@ -123,7 +123,6 @@ export class StageDirectorHelper {
         const failureStage = stageDirector.failureStage;
         if (!failureStage && !customStage) {
           log.error(`Transaction ${transaction.transactionId} cannot be transitioned due to missing failureStage`);
-          result = EvalResult.FIXABLE_ERROR;
           if (!error) {
             error = newError(SDKErrors.MsgSDKDirectorFailureStageMissing);
           }

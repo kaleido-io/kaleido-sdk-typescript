@@ -1,3 +1,4 @@
+import { fixupPluginRules } from "@eslint/compat";
 import globals from "globals";
 import pluginJs from "@eslint/js";
 import tseslint from "typescript-eslint";
@@ -46,7 +47,7 @@ export default [
   {
     files: ["**/*.{js,mjs,cjs,ts}"],
     plugins: {
-      notice: noticePlugin,
+      notice: fixupPluginRules(noticePlugin),
     },
     rules: {
       // Copyright header enforcement

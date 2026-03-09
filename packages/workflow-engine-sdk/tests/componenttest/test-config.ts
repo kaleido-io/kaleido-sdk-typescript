@@ -37,18 +37,18 @@ import { WorkflowEngineConfig } from '../../src/config/config';
  */
 export function loadTestConfig(): WorkflowEngineConfig {
   const configPath = path.join(__dirname, 'test-config.yaml');
-  
+
   try {
     const configFile = fs.readFileSync(configPath, 'utf8');
     const config = yaml.load(configFile) as WorkflowEngineConfig;
-    
+
     if (!config.workflowEngine) {
       throw new Error('Configuration missing workflowEngine section');
     }
-    
+
     return config;
   } catch (error) {
-    throw new Error(`Failed to load test config from ${configPath}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Failed to load test config from ${configPath}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   }
 }
 

@@ -79,17 +79,16 @@ describe('WebSocket Heartbeat Logic', () => {
     const PONG_TIMEOUT = 10000;
 
     // Simulate ping sent and pong timeout started
-    let pongTimeout: NodeJS.Timeout | undefined = setTimeout(() => {
+    const pongTimeout: NodeJS.Timeout | undefined = setTimeout(() => {
       mockTerminate();
     }, PONG_TIMEOUT);
 
     // Simulate pong received after 5 seconds
     jest.advanceTimersByTime(5000);
-    
+
     // Clear timeout (simulating pong received)
     if (pongTimeout) {
       clearTimeout(pongTimeout);
-      pongTimeout = undefined;
     }
 
     // Advance past original timeout
@@ -110,7 +109,7 @@ describe('WebSocket Heartbeat Logic', () => {
     // Setup ping interval
     const pingInterval = setInterval(() => {
       mockPing();
-      
+
       // Start pong timeout
       pongTimeout = setTimeout(() => {
         // Connection dead
@@ -138,7 +137,6 @@ describe('WebSocket Heartbeat Logic', () => {
     jest.advanceTimersByTime(2000);
     if (pongTimeout) {
       clearTimeout(pongTimeout);
-      pongTimeout = undefined;
     }
     mockPong();
     expect(mockPong).toHaveBeenCalledTimes(2);
@@ -160,17 +158,17 @@ describe('WebSocket Heartbeat Logic', () => {
 
     // Advance 5 seconds
     jest.advanceTimersByTime(5000);
-    
+
     // Cleanup (simulating connection close) BEFORE timeout fires at 10s
     clearInterval(pingInterval);
     clearTimeout(pongTimeout);
 
     // Advance past when ping and timeout would have fired
     jest.advanceTimersByTime(60000);
-    
+
     // No pings because interval was cleared before first ping (at 30s)
     expect(mockPing).not.toHaveBeenCalled();
-    
+
     // No terminate because timeout was cleared before firing (at 10s)
     expect(mockTerminate).not.toHaveBeenCalled();
   });
@@ -182,7 +180,7 @@ describe('WebSocket Heartbeat Logic', () => {
 
     expect(PING_INTERVAL_MS).toBe(30000);
     expect(PONG_TIMEOUT_MS).toBe(10000);
-    
+
     // Worst case detection time
     const WORST_CASE_DETECTION = PING_INTERVAL_MS + PONG_TIMEOUT_MS;
     expect(WORST_CASE_DETECTION).toBe(40000); // 40 seconds

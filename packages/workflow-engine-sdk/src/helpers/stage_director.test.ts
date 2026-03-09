@@ -892,6 +892,7 @@ describe('StageDirectorHelper', () => {
         expect(result.stage).toBe('failure-stage');
         expect(result.stateUpdates).toBeDefined();
         expect(result.stateUpdates?.some(update => update.path === '/error')).toBe(true);
+        expect(result.stateUpdates?.some(update => update.value === error.message)).toBe(true);
     })
 
     it('should map HARD_FAILURE result without failureStage', () => {
