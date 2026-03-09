@@ -1,0 +1,73 @@
+operations:
+- name: visit
+  type: asynchronous
+  stage: enter
+  inputSchema: {
+    "type": "object",
+    "properties": {
+      "ticketNumber": {"type": "integer"},
+      "visitor": {"type": "string"}
+    },
+    "required": ["ticketNumber", "visitor"],
+    "additionalProperties": false
+  }
+stages:
+- name: enter
+  type: pending
+  handler: handler1
+  inputMap:
+    jsonata: |
+      {
+        "action": "enter",
+        "nextStage": "one",
+        "failureStage": "fail",
+        "outputPath": "/enter",
+        "visitor": state.input.visitor,
+        "circuits": state.circuits
+      }
+- name: one
+  type: pending
+  handler: handler1
+  inputMap:
+    jsonata: |
+      {
+        "action": "one",
+        "nextStage": "two",
+        "failureStage": "fail",
+        "outputPath": "/one",
+        "visitor": state.input.visitor,
+        "circuits": state.circuits
+      }
+- name: two
+  type: pending
+  handler: handler1
+  inputMap:
+    jsonata: |
+      {
+        "action": "two",
+        "nextStage": "three",
+        "failureStage": "fail",
+        "outputPath": "/two",
+        "visitor": state.input.visitor,
+        "circuits": state.circuits
+      }
+- name: three
+  type: pending
+  handler: handler1
+  inputMap:
+    jsonata: |
+      {
+        "action": "three",
+        "failureStage": "fail",
+        "outputPath": "/three",
+        "visitor": state.input.visitor,
+        "circuits": state.circuits
+      }
+- name: exit
+  type: success
+- name: fail
+  type: failure
+handlerBindings:
+  handler1:
+    provider: pythons
+    providerHandler: handler1

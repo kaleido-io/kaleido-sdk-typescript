@@ -1,0 +1,36 @@
+{
+    "name": "{{PROVIDER_NAME}}",
+    "version": "0.0.1",
+    "scripts": {
+        "prebuild": "npm run clean",
+        "build": "tsc",
+        "clean": "rm -rf dist",
+        "start": "node dist/src/connect.js",
+        "start:dev": "tsx ./src/connect.ts",
+        "create-workflow": "tsx ./src/utils/post-workflow.ts",
+        "create-transaction": "tsx ./src/utils/post-transaction.ts",
+        "create-stream": "tsx ./src/utils/post-stream.ts",
+        "test": "vitest run",
+        "test:watch": "vitest watch",
+        "test:coverage": "vitest run --coverage"
+    },
+    "private": true,
+    "devDependencies": {
+        "@vitest/coverage-v8": "^4.0.16",
+        "tsx": "^4.21.0",
+        "typescript": "^5.9.3",
+        "vitest": "^4.0.16"
+    },
+    "type": "module",
+    "main": "dist/src/connect.js",
+    "files": [
+        "dist/src",
+        "README.md"
+    ],
+    "dependencies": {
+        "@kaleido-io/workflow-engine-sdk": "^1.0.0",
+        "dotenv": "^17.2.3",
+        "web3": "^4.16.0",
+        "ws": "^8.18.0"
+    }
+}

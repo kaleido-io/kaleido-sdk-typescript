@@ -1,0 +1,13 @@
+# Component Test Configuration
+# Uses the standard WorkflowEngineConfig format from the SDK
+
+workflowEngine:
+  url: http://localhost:5503
+  auth:
+    type: token
+    token: dev-token-123
+    header: X-Kld-Authz
+    scheme: "" # Empty for raw token, "Bearer" for Bearer token
+  # maxRetries: undefined = infinite reconnection attempts
+  retryDelay: 2s
+

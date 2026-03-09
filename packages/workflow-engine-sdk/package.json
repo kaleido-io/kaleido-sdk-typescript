@@ -1,0 +1,90 @@
+{
+  "name": "@kaleido-io/workflow-engine-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for Kaleido Workflow Engine",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "module": "dist-esm/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "repository": {
+      "type": "git",
+      "url": "git+https://github.com/kaleido-io/kaleido-sdk-typescript.git"
+  },
+  "scripts": {
+    "prebuild": "npm run clean && npm run lint",
+    "build": "tsc && npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc && cp cjs-package-template.json dist/package.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "postbuild": "tsc-esm-fix --target='dist-esm'",
+    "clean": "rm -rf dist && rm -rf dist-esm",
+    "dev": "tsc --watch",
+    "test": "jest --testPathIgnorePatterns=tests/componenttest --coverage",
+    "test:unit": "jest tests/unit",
+    "test:component": "jest tests/componenttest",
+    "test:all": "jest --coverage",
+    "lint": "eslint . --config eslint.config.mjs",
+    "lint:fix": "eslint . --fix --config eslint.config.mjs"
+  },
+  "keywords": [
+    "kaleido",
+    "sdk",
+    "typescript",
+    "workflows",
+    "workflow-engine",
+    "handlers",
+    "providers"
+  ],
+  "author": "Kaleido",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "exponential-backoff": "^3.1.1",
+    "fast-json-patch": "^3.1.1",
+    "js-yaml": "^4.1.1",
+    "uuid": "^13.0.0",
+    "ws": "^8.14.0"
+  },
+  "devDependencies": {
+    "@eslint/compat": "^2.0.0",
+    "@eslint/js": "^10.0.0",
+    "@jest/globals": "^30.2.0",
+    "@types/jest": "^30.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.2.1",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.5.0",
+    "eslint": "^10.0.0",
+    "eslint-plugin-notice": "^1.0.0",
+    "find-root": "^1.1.0",
+    "globals": "^17.3.0",
+    "jest": "^30.2.0",
+    "lodash": "^4.17.21",
+    "metric-lcs": "^1.0.3",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.2",
+    "tsc-esm-fix": "^3.1.2",
+    "typescript": "^5.2.0",
+    "typescript-eslint": "^8.56.0"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "bin": {
+    "wesdk": "./bin/wesdk.js"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-esm/**/*",
+    "bin/**/*",
+    "template/**/*",
+    "!template/node_modules/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist-esm/src/index.js",
+      "require": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    }
+  }
+}

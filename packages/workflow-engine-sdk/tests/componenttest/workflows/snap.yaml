@@ -1,0 +1,60 @@
+operations:
+- name: play
+  type: asynchronous
+  stage: set-trap
+  inputSchema: {
+    "type": "object",
+    "properties": {
+      "suit": {"type": "string"},
+      "rank": {"type": "string"}
+    },
+    "required": ["suit", "rank"],
+    "additionalProperties": false
+  }
+stages:
+- name: set-trap
+  type: pending
+  handler: watcher
+  inputMap:
+    jsonata: |
+      {
+        "action": "set-trap",
+        "nextStage": "trap-set",
+        "failureStage": "fail",
+        "suit": state.input.suit,
+        "rank": state.input.rank
+      }
+- name: trap-set
+  type: pending
+  handler: watcher
+  inputMap:
+    jsonata: |
+      {
+        "action": "trap-set",
+        "nextStage": "success",
+        "failureStage": "fail",
+        "suit": state.input.suit,
+        "rank": state.input.rank
+      }
+- name: snap
+  type: success
+- name: fail
+  type: failure
+events:
+- name: played
+  topicMatch: suit\.(.*)\.rank\.(.*)
+  handler: watcher
+  inputMap:
+    jsonata: |
+      {
+        "action": "trap-fired",
+        "nextStage": "snap",
+        "failureStage": "fail",
+        "outputPath": "/data",
+        "suit": state.input.suit,
+        "rank": state.input.rank
+      }
+handlerBindings:
+  watcher:
+    provider: provider1
+    providerHandler: watcher
