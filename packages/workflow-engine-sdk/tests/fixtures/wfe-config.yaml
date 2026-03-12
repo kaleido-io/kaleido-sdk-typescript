@@ -1,0 +1,10 @@
+# Fixture for loadClientConfigFromFile tests (workflow-engine root key, Go shape)
+workflow-engine:
+  providerName: test-provider
+  url: http://localhost:5503
+  auth:
+    type: token
+    token: dev-token-123
+    header: X-Kld-Authz
+    scheme: ""
+  retryDelay: 2s

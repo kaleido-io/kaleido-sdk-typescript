@@ -14,45 +14,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
+import * as fs from "fs";
 import {
   newDirectedTransactionHandler,
   WorkflowEngineClient,
-} from '@kaleido-io/workflow-engine-sdk';
-import dotenv from 'dotenv';
+  NewWorkflowEngineClient,
+  HandlerSetFor,
+} from "@kaleido-io/workflow-engine-sdk";
+import dotenv from "dotenv";
 
-import provider from './provider.js';
+import provider from "./provider.js";
 
-import { actionMap as helloActionMap } from './samples/hello/handlers.js';
-import { actionMap as httpInvokeActionMap } from './samples/http-invoke/handlers.js';
-import { eventSource } from './samples/event-source/event-source.js';
-import { actionMap as snapActionMap } from './samples/snap/snap-handler.js';
-import { echoEventProcessor } from './samples/event-source/event-processor.js';
-import { eventSource as dealerEventSource } from './samples/snap/event-source.js';
+import { actionMap as helloActionMap } from "./samples/hello/handlers.js";
+import { actionMap as httpInvokeActionMap } from "./samples/http-invoke/handlers.js";
+import { eventSource } from "./samples/event-source/event-source.js";
+import { actionMap as snapActionMap } from "./samples/snap/snap-handler.js";
+import { echoEventProcessor } from "./samples/event-source/event-processor.js";
+import { eventSource as dealerEventSource } from "./samples/snap/event-source.js";
 
 dotenv.config();
-const wsUrl = `wss://${process.env.ACCOUNT}/endpoint/${process.env.ENVIRONMENT}/${process.env.WORKFLOW_ENGINE}/rest/ws`;
-const client = new WorkflowEngineClient({
-  url: wsUrl,
-  authHeaderName: 'Authorization',
-  authToken: `basic ${Buffer.from(`${process.env.KEY_NAME}:${process.env.KEY_VALUE}`).toString("base64")}`,
-  providerName: provider.name,
-  providerMetadata: provider.metadata ?? {},
-  reconnectDelay: 2000,
-});
 
-const helloHandler = newDirectedTransactionHandler('hello', helloActionMap);
-client.registerTransactionHandler('hello', helloHandler);
+const helloHandler = newDirectedTransactionHandler("hello", helloActionMap);
+const httpInvokeHandler = newDirectedTransactionHandler(
+  "http-invoke",
+  httpInvokeActionMap,
+);
+const snapHandler = newDirectedTransactionHandler(
+  "snap-watcher",
+  snapActionMap,
+);
 
-const httpInvokeHandler = newDirectedTransactionHandler('http-invoke', httpInvokeActionMap);
-client.registerTransactionHandler('http-invoke', httpInvokeHandler);
+let client: WorkflowEngineClient;
 
-client.registerEventProcessor('echo', echoEventProcessor);
-client.registerEventSource('my-listener', eventSource);
+client = await NewWorkflowEngineClient(
+  HandlerSetFor(
+    helloHandler,
+    httpInvokeHandler,
+    echoEventProcessor,
+    eventSource,
+    snapHandler,
+    dealerEventSource,
+  ),
+);
 
-const snapHandler = newDirectedTransactionHandler('snap-watcher', snapActionMap);
-client.registerTransactionHandler('snap-watcher', snapHandler);
-
-client.registerEventSource('snap-dealer', dealerEventSource);
-
-await client.connect();
+process.on("SIGINT", () => client.disconnect());
+process.on("SIGTERM", () => client.disconnect());
