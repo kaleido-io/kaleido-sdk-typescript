@@ -1,0 +1,13 @@
+# Workflow engine connection config (SDK contract; same shape as Go/generator for pods).
+# Set WFE_CONFIG_FILE to this file or pass configFile to NewWorkflowEngineClient.
+workflow-engine:
+  providerName: example-provider
+  # optional: providerMetadata: { displayName: "Example provider" }
+  url: https://my-account.my-tenant.com/endpoint/my-environment/my-workflow-engine/rest
+  auth:
+    type: token
+    token: your-api-token
+    header: Authorization
+    scheme: "" # empty = raw token; use "Bearer" for Bearer token
+  # retryDelay: 2s
+  # maxRetries: 5   # omit for infinite retries

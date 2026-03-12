@@ -1,0 +1,9 @@
+# Fixture for loadClientConfigFromFile tests (workflowEngine root key, backward compat)
+workflowEngine:
+  providerName: my-service
+  url: https://example.com/rest
+  auth:
+    type: token
+    token: bearer-token
+    header: Authorization
+    scheme: Bearer

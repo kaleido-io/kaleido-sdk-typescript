@@ -14,53 +14,86 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as fs from "fs";
+import * as path from "path";
+import yaml from "js-yaml";
+import {
+  BasicStageDirector,
+  DirectedActionConfig,
+  EvalResult,
+  InvocationMode,
+  WithStageDirector,
+} from "@kaleido-io/workflow-engine-sdk";
 
-import { BasicStageDirector, DirectedActionConfig, EvalResult, InvocationMode, WithStageDirector } from "@kaleido-io/workflow-engine-sdk";
-
-class HTTPInvokeHandlerInput implements WithStageDirector {
-    public stageDirector: BasicStageDirector;
-    public action1?: { inputA: string };
-    public action2?: { inputB: string };
-    public customData?: any;
-
-    constructor(data: any) {
-        this.stageDirector = new BasicStageDirector(
-            data.action || 'http-invoke',
-            data.outputPath || '/output',
-            data.nextStage || 'end',
-            data.failureStage || 'failed'
-        );
-        this.customData = data.customData;
-    }
-
-    getStageDirector(): BasicStageDirector {
-        return this.stageDirector;
-    }
-
-    name(): string {
-        return 'hello';
-    }
+export interface HTTPInvokeConfig {
+  url: string;
+  invocationMode: keyof typeof InvocationMode;
+  apiKeyHeader: string;
 }
 
-const url = 'https://httpbin.org/get';
+function loadAppConfig(): { httpInvoke?: HTTPInvokeConfig } {
+  const configPath =
+    process.env.CONFIG_FILE ??
+    path.join(process.cwd(), "config", "config.yaml");
+  const raw = fs.readFileSync(configPath, "utf8");
+  return yaml.load(raw) as { httpInvoke?: HTTPInvokeConfig };
+}
+
+class HTTPInvokeHandlerInput implements WithStageDirector {
+  public stageDirector: BasicStageDirector;
+  public action1?: { inputA: string };
+  public action2?: { inputB: string };
+  public customData?: any;
+
+  constructor(data: any) {
+    this.stageDirector = new BasicStageDirector(
+      data.action || "http-invoke",
+      data.outputPath || "/output",
+      data.nextStage || "end",
+      data.failureStage || "failed",
+    );
+    this.customData = data.customData;
+  }
+
+  getStageDirector(): BasicStageDirector {
+    return this.stageDirector;
+  }
+
+  name(): string {
+    return "hello";
+  }
+}
+
+const appConfig = loadAppConfig();
+const httpInvoke = appConfig.httpInvoke ?? {
+  url: "https://httpbin.org/get",
+  invocationMode: "PARALLEL" as const,
+  apiKeyHeader: "X-API-KEY",
+};
+
 const map: Map<string, DirectedActionConfig<HTTPInvokeHandlerInput>> = new Map([
-    ["http-invoke", {
-        invocationMode: InvocationMode.PARALLEL, handler: async () => {
-            const response = await fetch(url, {
-                headers: {
-                    'X-API-KEY': process.env.API_KEY ?? '',
-                },
-            });
-            const body = await response.json();
-            return {
-                result: EvalResult.COMPLETE,
-                output: {
-                    body,
-                    status: response.status,
-                },
-            }
-        }
-    }],
+  [
+    "http-invoke",
+    {
+      invocationMode:
+        InvocationMode[httpInvoke.invocationMode] ?? InvocationMode.PARALLEL,
+      handler: async () => {
+        const response = await fetch(httpInvoke.url, {
+          headers: {
+            [httpInvoke.apiKeyHeader]: process.env.API_KEY ?? "",
+          },
+        });
+        const body = await response.json();
+        return {
+          result: EvalResult.COMPLETE,
+          output: {
+            body,
+            status: response.status,
+          },
+        };
+      },
+    },
+  ],
 ]);
 
 export const actionMap = map;
