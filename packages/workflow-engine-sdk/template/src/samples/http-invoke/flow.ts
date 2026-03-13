@@ -17,47 +17,47 @@
 
 import provider from '../../provider.js';
 export const flow = {
-  "name": "http-invoke-flow",
-  "description": "",
-  "labels": {},
-  "handlerBindings": {
-    "http-invoke": {
-      "provider": provider.name,
-      "providerHandler": "http-invoke"
+  'name': 'http-invoke-flow',
+  'description': '',
+  'labels': {},
+  'handlerBindings': {
+    'http-invoke': {
+      'provider': provider.name,
+      'providerHandler': 'http-invoke'
     }
   },
-  "version": "1.0.0",
-  "operations": [
+  'version': '1.0.0',
+  'operations': [
     {
-      "name": "http-invoke",
-      "description": "HTTP Invoke",
-      "type": "asynchronous",
-      "stage": "start",
-      "inputSchema": {
-        "type": "object",
-        "additionalProperties": true
+      'name': 'http-invoke',
+      'description': 'HTTP Invoke',
+      'type': 'asynchronous',
+      'stage': 'start',
+      'inputSchema': {
+        'type': 'object',
+        'additionalProperties': true
       }
     }
   ],
-  "stages": [
+  'stages': [
     {
-      "name": "start",
-      "type": "pending",
-      "handler": "http-invoke",
-      "inputMap": {
-        "jsonata": "{\n    \"action\": \"http-invoke\",\n    \"invoke\": {\n      \"input\": state.input\n    },\n    \"nextStage\": \"end\",\n    \"failureStage\": \"failure\",\n    \"outputPath\": \"/output\"\n}\n"
+      'name': 'start',
+      'type': 'pending',
+      'handler': 'http-invoke',
+      'inputMap': {
+        'jsonata': '{\n    "action": "http-invoke",\n    "invoke": {\n      "input": state.input\n    },\n    "nextStage": "end",\n    "failureStage": "failure",\n    "outputPath": "/output"\n}\n'
       },
-      "fullState": true
+      'fullState': true
     },
     {
-      "name": "end",
-      "type": "success",
-      "handler": ""
+      'name': 'end',
+      'type': 'success',
+      'handler': ''
     },
     {
-      "name": "failure",
-      "type": "failure",
-      "handler": ""
+      'name': 'failure',
+      'type': 'failure',
+      'handler': ''
     }
   ]
 }

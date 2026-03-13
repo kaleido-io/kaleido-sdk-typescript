@@ -16,7 +16,7 @@
 
 
 export const transaction = {
-    "input": {},
-    "operation": "http-invoke",
-    "workflow": "http-invoke-flow"
+    'input': {},
+    'operation': 'http-invoke',
+    'workflow': 'http-invoke-flow'
 }

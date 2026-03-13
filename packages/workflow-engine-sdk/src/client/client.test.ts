@@ -14,11 +14,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { WorkflowEngineClient, WorkflowEngineClientConfig } from './client';
 import { HandlerRuntime } from '../runtime/handler_runtime';
-import { TransactionHandler, EventSource, EventProcessor } from '../interfaces/handlers';
+import {
+  TransactionHandler,
+  EventSource,
+  EventProcessor,
+} from '../interfaces/handlers';
 
 jest.mock('../runtime/handler_runtime');
 
@@ -54,7 +57,9 @@ describe('WorkflowEngineClient', () => {
     } as any as jest.Mocked<HandlerRuntime>;
 
     // Mock the HandlerRuntime constructor
-    (HandlerRuntime as jest.MockedClass<typeof HandlerRuntime>).mockImplementation(() => {
+    (
+      HandlerRuntime as jest.MockedClass<typeof HandlerRuntime>
+    ).mockImplementation(() => {
       return mockRuntime;
     });
   });
@@ -155,7 +160,10 @@ describe('WorkflowEngineClient', () => {
       client.registerTransactionHandler('handler-name', mockHandler);
 
       expect(mockRegisterTransactionHandler).toHaveBeenCalledTimes(1);
-      expect(mockRegisterTransactionHandler).toHaveBeenCalledWith('handler-name', mockHandler);
+      expect(mockRegisterTransactionHandler).toHaveBeenCalledWith(
+        'handler-name',
+        mockHandler,
+      );
     });
 
     it('should allow registering multiple handlers', () => {
@@ -180,8 +188,16 @@ describe('WorkflowEngineClient', () => {
       client.registerTransactionHandler('handler2', handler2);
 
       expect(mockRegisterTransactionHandler).toHaveBeenCalledTimes(2);
-      expect(mockRegisterTransactionHandler).toHaveBeenNthCalledWith(1, 'handler1', handler1);
-      expect(mockRegisterTransactionHandler).toHaveBeenNthCalledWith(2, 'handler2', handler2);
+      expect(mockRegisterTransactionHandler).toHaveBeenNthCalledWith(
+        1,
+        'handler1',
+        handler1,
+      );
+      expect(mockRegisterTransactionHandler).toHaveBeenNthCalledWith(
+        2,
+        'handler2',
+        handler2,
+      );
     });
   });
 
@@ -204,7 +220,10 @@ describe('WorkflowEngineClient', () => {
       client.registerEventSource('source-name', mockEventSource);
 
       expect(mockRegisterEventSource).toHaveBeenCalledTimes(1);
-      expect(mockRegisterEventSource).toHaveBeenCalledWith('source-name', mockEventSource);
+      expect(mockRegisterEventSource).toHaveBeenCalledWith(
+        'source-name',
+        mockEventSource,
+      );
     });
 
     it('should allow registering multiple event sources', () => {
@@ -235,8 +254,16 @@ describe('WorkflowEngineClient', () => {
       client.registerEventSource('source2', source2);
 
       expect(mockRegisterEventSource).toHaveBeenCalledTimes(2);
-      expect(mockRegisterEventSource).toHaveBeenNthCalledWith(1, 'source1', source1);
-      expect(mockRegisterEventSource).toHaveBeenNthCalledWith(2, 'source2', source2);
+      expect(mockRegisterEventSource).toHaveBeenNthCalledWith(
+        1,
+        'source1',
+        source1,
+      );
+      expect(mockRegisterEventSource).toHaveBeenNthCalledWith(
+        2,
+        'source2',
+        source2,
+      );
     });
   });
 
@@ -257,7 +284,10 @@ describe('WorkflowEngineClient', () => {
       client.registerEventProcessor('test-processor', mockEventProcessor);
 
       expect(mockRegisterEventProcessor).toHaveBeenCalledTimes(1);
-      expect(mockRegisterEventProcessor).toHaveBeenCalledWith('test-processor', mockEventProcessor);
+      expect(mockRegisterEventProcessor).toHaveBeenCalledWith(
+        'test-processor',
+        mockEventProcessor,
+      );
     });
 
     it('should allow registering multiple event processors', () => {
@@ -284,8 +314,16 @@ describe('WorkflowEngineClient', () => {
       client.registerEventProcessor('processor2', processor2);
 
       expect(mockRegisterEventProcessor).toHaveBeenCalledTimes(2);
-      expect(mockRegisterEventProcessor).toHaveBeenNthCalledWith(1, 'processor1', processor1);
-      expect(mockRegisterEventProcessor).toHaveBeenNthCalledWith(2, 'processor2', processor2);
+      expect(mockRegisterEventProcessor).toHaveBeenNthCalledWith(
+        1,
+        'processor1',
+        processor1,
+      );
+      expect(mockRegisterEventProcessor).toHaveBeenNthCalledWith(
+        2,
+        'processor2',
+        processor2,
+      );
     });
   });
 
@@ -455,8 +493,14 @@ describe('WorkflowEngineClient', () => {
       expect(mockStop).toHaveBeenCalledTimes(1);
 
       // Verify all interactions
-      expect(mockRegisterTransactionHandler).toHaveBeenCalledWith('handler', handler);
-      expect(mockRegisterEventSource).toHaveBeenCalledWith('source', eventSource);
+      expect(mockRegisterTransactionHandler).toHaveBeenCalledWith(
+        'handler',
+        handler,
+      );
+      expect(mockRegisterEventSource).toHaveBeenCalledWith(
+        'source',
+        eventSource,
+      );
     });
 
     it('should handle reconnection scenario', async () => {

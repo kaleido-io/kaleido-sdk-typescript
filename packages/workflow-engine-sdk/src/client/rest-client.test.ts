@@ -14,7 +14,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   WorkflowEngineRestClient,
@@ -84,39 +83,45 @@ describe('WorkflowEngineRestClient', () => {
         url: 'wss://test.example.com/rest/ws',
         providerName: 'test-provider',
         authToken: 'test-token',
-        authHeaderName: 'Authorization'
+        authHeaderName: 'Authorization',
       };
 
       client = new WorkflowEngineRestClient(config);
 
       expect(client).toBeInstanceOf(WorkflowEngineRestClient);
-      expect(client.getWorkflowsEndpoint()).toBe('https://test.example.com/rest/api/v1/workflows');
+      expect(client.getWorkflowsEndpoint()).toBe(
+        'https://test.example.com/rest/api/v1/workflows',
+      );
     });
     it('should handle non-SSL URLs', () => {
       const config: WorkflowEngineClientConfig = {
         url: 'ws://test.example.com/rest/ws',
         providerName: 'test-provider',
         authToken: 'test-token',
-        authHeaderName: 'Authorization'
+        authHeaderName: 'Authorization',
       };
 
       client = new WorkflowEngineRestClient(config);
 
       expect(client).toBeInstanceOf(WorkflowEngineRestClient);
-      expect(client.getWorkflowsEndpoint()).toBe('http://test.example.com/rest/api/v1/workflows');
+      expect(client.getWorkflowsEndpoint()).toBe(
+        'http://test.example.com/rest/api/v1/workflows',
+      );
     });
     it('should handle missing rest segments', () => {
       const config: WorkflowEngineClientConfig = {
         url: 'http://test.example.com',
         providerName: 'test-provider',
         authToken: 'test-token',
-        authHeaderName: 'Authorization'
+        authHeaderName: 'Authorization',
       };
 
       client = new WorkflowEngineRestClient(config);
 
       expect(client).toBeInstanceOf(WorkflowEngineRestClient);
-      expect(client.getWorkflowsEndpoint()).toBe('http://test.example.com/rest/api/v1/workflows');
+      expect(client.getWorkflowsEndpoint()).toBe(
+        'http://test.example.com/rest/api/v1/workflows',
+      );
     });
 
     it('should create client from environment variables', () => {
@@ -151,7 +156,9 @@ describe('WorkflowEngineRestClient', () => {
 
       expect(() => {
         new WorkflowEngineRestClient();
-      }).toThrow('KA140634: WORKFLOW_ENGINE is not set and no baseUrl provided');
+      }).toThrow(
+        'KA140634: WORKFLOW_ENGINE is not set and no baseUrl provided',
+      );
     });
 
     it('should prefer explicit config over environment variables', () => {
@@ -165,7 +172,7 @@ describe('WorkflowEngineRestClient', () => {
         url: 'wss://explicit.example.com/rest/ws',
         providerName: 'test-provider',
         authToken: 'test-token',
-        authHeaderName: 'Authorization'
+        authHeaderName: 'Authorization',
       };
 
       client = new WorkflowEngineRestClient(config);
@@ -199,7 +206,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 201,
           json: async () => mockResponse,
-        })
+        }),
       );
 
       const result = await client.createWorkflow(workflowRequest);
@@ -210,11 +217,11 @@ describe('WorkflowEngineRestClient', () => {
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
-            'accept': 'application/json',
+            accept: 'application/json',
             'Content-Type': 'application/json',
           }),
           body: JSON.stringify(workflowRequest),
-        })
+        }),
       );
       expect(result).toEqual(mockResponse);
     });
@@ -229,7 +236,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 201,
           json: async () => ({ id: 'workflow-123' }),
-        })
+        }),
       );
 
       await client.createWorkflow(workflowRequest, 60);
@@ -240,7 +247,7 @@ describe('WorkflowEngineRestClient', () => {
           headers: expect.objectContaining({
             'Request-Timeout': '60m0s',
           }),
-        })
+        }),
       );
     });
 
@@ -249,7 +256,7 @@ describe('WorkflowEngineRestClient', () => {
         url: 'wss://test.example.com/rest/ws',
         providerName: 'test-provider',
         authToken: 'test-token',
-        authHeaderName: 'Authorization'
+        authHeaderName: 'Authorization',
       });
 
       const workflowRequest: CreateWorkflowRequest = {
@@ -261,7 +268,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 201,
           json: async () => ({ id: 'workflow-123' }),
-        })
+        }),
       );
 
       await client.createWorkflow(workflowRequest);
@@ -270,9 +277,9 @@ describe('WorkflowEngineRestClient', () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Authorization': 'test-token',
+            Authorization: 'test-token',
           }),
-        })
+        }),
       );
     });
 
@@ -287,11 +294,11 @@ describe('WorkflowEngineRestClient', () => {
           status: 400,
           statusText: 'Bad Request',
           text: async () => 'Invalid workflow definition',
-        })
+        }),
       );
 
       await expect(client.createWorkflow(workflowRequest)).rejects.toThrow(
-        'Failed to POST'
+        'Failed to POST',
       );
     });
   });
@@ -310,7 +317,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 204,
           json: async () => undefined,
-        })
+        }),
       );
 
       await client.deleteWorkflow('workflow-123');
@@ -320,7 +327,7 @@ describe('WorkflowEngineRestClient', () => {
         'https://test.example.com/rest/api/v1/workflows/workflow-123',
         expect.objectContaining({
           method: 'DELETE',
-        })
+        }),
       );
     });
 
@@ -330,14 +337,14 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 204,
           json: async () => undefined,
-        })
+        }),
       );
 
       await client.deleteWorkflow('workflow with spaces');
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://test.example.com/rest/api/v1/workflows/workflow%20with%20spaces',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -348,11 +355,11 @@ describe('WorkflowEngineRestClient', () => {
           status: 404,
           statusText: 'Not Found',
           text: async () => 'Workflow not found',
-        })
+        }),
       );
 
       await expect(client.deleteWorkflow('nonexistent')).rejects.toThrow(
-        'Failed to DELETE'
+        'Failed to DELETE',
       );
     });
   });
@@ -385,7 +392,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 200,
           json: async () => mockResponse,
-        })
+        }),
       );
 
       const result = await client.createTransaction(transactionRequest);
@@ -396,7 +403,7 @@ describe('WorkflowEngineRestClient', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify(transactionRequest),
-        })
+        }),
       );
       expect(result).toEqual(mockResponse);
     });
@@ -412,7 +419,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 200,
           json: async () => ({ idempotencyKey: 'key-123' }),
-        })
+        }),
       );
 
       await client.createTransaction(transactionRequest, 180);
@@ -423,7 +430,7 @@ describe('WorkflowEngineRestClient', () => {
           headers: expect.objectContaining({
             'Request-Timeout': '180m0s',
           }),
-        })
+        }),
       );
     });
 
@@ -439,12 +446,12 @@ describe('WorkflowEngineRestClient', () => {
           status: 404,
           statusText: 'Not Found',
           text: async () => 'Workflow not found',
-        })
+        }),
       );
 
-      await expect(client.createTransaction(transactionRequest)).rejects.toThrow(
-        'Failed to POST'
-      );
+      await expect(
+        client.createTransaction(transactionRequest),
+      ).rejects.toThrow('Failed to POST');
     });
   });
 
@@ -462,7 +469,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 204,
           json: async () => undefined,
-        })
+        }),
       );
 
       await client.deleteTransaction('transaction-123');
@@ -472,7 +479,7 @@ describe('WorkflowEngineRestClient', () => {
         'https://test.example.com/rest/api/v1/transactions/transaction-123',
         expect.objectContaining({
           method: 'DELETE',
-        })
+        }),
       );
     });
 
@@ -482,14 +489,14 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 204,
           json: async () => undefined,
-        })
+        }),
       );
 
       await client.deleteTransaction('key with spaces');
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://test.example.com/rest/api/v1/transactions/key%20with%20spaces',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -500,11 +507,11 @@ describe('WorkflowEngineRestClient', () => {
           status: 404,
           statusText: 'Not Found',
           text: async () => 'Transaction not found',
-        })
+        }),
       );
 
       await expect(client.deleteTransaction('nonexistent')).rejects.toThrow(
-        'Failed to DELETE'
+        'Failed to DELETE',
       );
     });
   });
@@ -537,7 +544,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 201,
           json: async () => mockResponse,
-        })
+        }),
       );
 
       const result = await client.createStream(streamRequest);
@@ -548,7 +555,7 @@ describe('WorkflowEngineRestClient', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify(streamRequest),
-        })
+        }),
       );
       expect(result).toEqual(mockResponse);
     });
@@ -564,7 +571,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 201,
           json: async () => ({ id: 'stream-123' }),
-        })
+        }),
       );
 
       await client.createStream(streamRequest);
@@ -573,7 +580,7 @@ describe('WorkflowEngineRestClient', () => {
         expect.any(String),
         expect.objectContaining({
           body: JSON.stringify(streamRequest),
-        })
+        }),
       );
     });
 
@@ -592,7 +599,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 201,
           json: async () => ({ id: 'stream-123' }),
-        })
+        }),
       );
 
       await client.createStream(streamRequest);
@@ -601,7 +608,7 @@ describe('WorkflowEngineRestClient', () => {
         expect.any(String),
         expect.objectContaining({
           body: JSON.stringify(streamRequest),
-        })
+        }),
       );
     });
 
@@ -617,11 +624,11 @@ describe('WorkflowEngineRestClient', () => {
           status: 400,
           statusText: 'Bad Request',
           text: async () => 'Invalid stream configuration',
-        })
+        }),
       );
 
       await expect(client.createStream(streamRequest)).rejects.toThrow(
-        'Failed to POST'
+        'Failed to POST',
       );
     });
   });
@@ -640,7 +647,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 204,
           json: async () => undefined,
-        })
+        }),
       );
 
       await client.deleteStream('stream-123');
@@ -650,7 +657,7 @@ describe('WorkflowEngineRestClient', () => {
         'https://test.example.com/rest/api/v1/streams/stream-123',
         expect.objectContaining({
           method: 'DELETE',
-        })
+        }),
       );
     });
 
@@ -660,14 +667,14 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 204,
           json: async () => undefined,
-        })
+        }),
       );
 
       await client.deleteStream('stream-123', true);
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://test.example.com/rest/api/v1/streams/stream-123?force=true',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -677,14 +684,14 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 204,
           json: async () => undefined,
-        })
+        }),
       );
 
       await client.deleteStream('stream with spaces');
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://test.example.com/rest/api/v1/streams/stream%20with%20spaces',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -695,11 +702,11 @@ describe('WorkflowEngineRestClient', () => {
           status: 404,
           statusText: 'Not Found',
           text: async () => 'Stream not found',
-        })
+        }),
       );
 
       await expect(client.deleteStream('nonexistent')).rejects.toThrow(
-        'Failed to DELETE'
+        'Failed to DELETE',
       );
     });
   });
@@ -724,7 +731,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 200,
           json: async () => mockResponse,
-        })
+        }),
       );
 
       const result = await client.startStream('stream-123');
@@ -735,7 +742,7 @@ describe('WorkflowEngineRestClient', () => {
         expect.objectContaining({
           method: 'PATCH',
           body: JSON.stringify({ started: true }),
-        })
+        }),
       );
       expect(result).toEqual(mockResponse);
     });
@@ -746,7 +753,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 200,
           json: async () => ({ id: 'stream-123', started: true }),
-        })
+        }),
       );
 
       await client.startStream('stream-123', 60);
@@ -757,7 +764,7 @@ describe('WorkflowEngineRestClient', () => {
           headers: expect.objectContaining({
             'Request-Timeout': '60m0s',
           }),
-        })
+        }),
       );
     });
 
@@ -768,11 +775,11 @@ describe('WorkflowEngineRestClient', () => {
           status: 404,
           statusText: 'Not Found',
           text: async () => 'Stream not found',
-        })
+        }),
       );
 
       await expect(client.startStream('nonexistent')).rejects.toThrow(
-        'Failed to PATCH'
+        'Failed to PATCH',
       );
     });
   });
@@ -797,7 +804,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 200,
           json: async () => mockResponse,
-        })
+        }),
       );
 
       const result = await client.stopStream('stream-123');
@@ -808,7 +815,7 @@ describe('WorkflowEngineRestClient', () => {
         expect.objectContaining({
           method: 'PATCH',
           body: JSON.stringify({ started: false }),
-        })
+        }),
       );
       expect(result).toEqual(mockResponse);
     });
@@ -819,7 +826,7 @@ describe('WorkflowEngineRestClient', () => {
           ok: true,
           status: 200,
           json: async () => ({ id: 'stream-123', started: false }),
-        })
+        }),
       );
 
       await client.stopStream('stream-123', 60);
@@ -830,7 +837,7 @@ describe('WorkflowEngineRestClient', () => {
           headers: expect.objectContaining({
             'Request-Timeout': '60m0s',
           }),
-        })
+        }),
       );
     });
 
@@ -841,11 +848,11 @@ describe('WorkflowEngineRestClient', () => {
           status: 404,
           statusText: 'Not Found',
           text: async () => 'Stream not found',
-        })
+        }),
       );
 
       await expect(client.stopStream('nonexistent')).rejects.toThrow(
-        'Failed to PATCH'
+        'Failed to PATCH',
       );
     });
   });
@@ -856,7 +863,7 @@ describe('WorkflowEngineRestClient', () => {
         url: 'wss://test.example.com/rest/ws',
         providerName: 'test-provider',
         authToken: 'test-token',
-        authHeaderName: 'Authorization'
+        authHeaderName: 'Authorization',
       });
     });
 
@@ -872,14 +879,14 @@ describe('WorkflowEngineRestClient', () => {
             ok: true,
             status: 201,
             json: async () => ({ id: 'workflow-123', name: 'test-workflow' }),
-          })
+          }),
         )
         .mockResolvedValueOnce(
           createMockResponse({
             ok: true,
             status: 204,
             json: async () => undefined,
-          })
+          }),
         );
 
       const created = await client.createWorkflow(workflowRequest);
@@ -902,29 +909,33 @@ describe('WorkflowEngineRestClient', () => {
           createMockResponse({
             ok: true,
             status: 201,
-            json: async () => ({ id: 'stream-123', name: 'test-stream', started: false }),
-          })
+            json: async () => ({
+              id: 'stream-123',
+              name: 'test-stream',
+              started: false,
+            }),
+          }),
         )
         .mockResolvedValueOnce(
           createMockResponse({
             ok: true,
             status: 200,
             json: async () => ({ id: 'stream-123', started: true }),
-          })
+          }),
         )
         .mockResolvedValueOnce(
           createMockResponse({
             ok: true,
             status: 200,
             json: async () => ({ id: 'stream-123', started: false }),
-          })
+          }),
         )
         .mockResolvedValueOnce(
           createMockResponse({
             ok: true,
             status: 204,
             json: async () => undefined,
-          })
+          }),
         );
 
       const created = await client.createStream(streamRequest);
@@ -959,14 +970,14 @@ describe('WorkflowEngineRestClient', () => {
               id: 'transaction-123',
               idempotencyKey: 'test-key-123',
             }),
-          })
+          }),
         )
         .mockResolvedValueOnce(
           createMockResponse({
             ok: true,
             status: 204,
             json: async () => undefined,
-          })
+          }),
         );
 
       const created = await client.createTransaction(transactionRequest);

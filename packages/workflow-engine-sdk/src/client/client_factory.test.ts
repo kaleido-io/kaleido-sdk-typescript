@@ -15,13 +15,13 @@
 // limitations under the License.
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  HandlerSetFor,
-  NewWorkflowEngineClient,
-  type HandlerSet,
-} from './client_factory';
+import { HandlerSetFor, NewWorkflowEngineClient } from './client_factory';
 import { WorkflowEngineClient, WorkflowEngineClientConfig } from './client';
-import { TransactionHandler, EventSource, EventProcessor } from '../interfaces/handlers';
+import {
+  TransactionHandler,
+  EventSource,
+  EventProcessor,
+} from '../interfaces/handlers';
 
 jest.mock('./client');
 jest.mock('../config/config', () => ({
@@ -88,9 +88,9 @@ describe('client_factory', () => {
       connect: mockConnect,
     } as unknown as jest.Mocked<WorkflowEngineClient>;
 
-    (WorkflowEngineClient as jest.MockedClass<typeof WorkflowEngineClient>).mockImplementation(
-      () => mockClient
-    );
+    (
+      WorkflowEngineClient as jest.MockedClass<typeof WorkflowEngineClient>
+    ).mockImplementation(() => mockClient);
     ConfigLoader.loadClientConfigFromFile.mockReturnValue(mockClientConfig);
   });
 
@@ -123,7 +123,9 @@ describe('client_factory', () => {
 
       const client = await NewWorkflowEngineClient(set, '/path/to/wfe.yaml');
 
-      expect(ConfigLoader.loadClientConfigFromFile).toHaveBeenCalledWith('/path/to/wfe.yaml');
+      expect(ConfigLoader.loadClientConfigFromFile).toHaveBeenCalledWith(
+        '/path/to/wfe.yaml',
+      );
       expect(WorkflowEngineClient).toHaveBeenCalledWith(mockClientConfig);
       expect(mockRegisterTransactionHandler).toHaveBeenCalledWith('my-tx', tx);
       expect(mockConnect).toHaveBeenCalledTimes(1);
@@ -171,7 +173,9 @@ describe('client_factory', () => {
 
       await NewWorkflowEngineClient(set);
 
-      expect(ConfigLoader.loadClientConfigFromFile).toHaveBeenCalledWith(undefined);
+      expect(ConfigLoader.loadClientConfigFromFile).toHaveBeenCalledWith(
+        undefined,
+      );
     });
 
     it('should throw when handler is not transaction, event source, or event processor', async () => {
@@ -183,7 +187,7 @@ describe('client_factory', () => {
       const set = HandlerSetFor(invalidHandler as any);
 
       await expect(NewWorkflowEngineClient(set, '/wfe.yaml')).rejects.toThrow(
-        /Handler "invalid" does not implement TransactionHandler/
+        /Handler "invalid" does not implement TransactionHandler/,
       );
     });
 
@@ -193,9 +197,9 @@ describe('client_factory', () => {
       });
       const set = HandlerSetFor(createMockTransactionHandler('tx'));
 
-      await expect(NewWorkflowEngineClient(set, '/missing.yaml')).rejects.toThrow(
-        'Config file not found'
-      );
+      await expect(
+        NewWorkflowEngineClient(set, '/missing.yaml'),
+      ).rejects.toThrow('Config file not found');
       expect(WorkflowEngineClient).not.toHaveBeenCalled();
     });
   });

@@ -50,7 +50,7 @@ class MyHandlerInput implements WithStageDirector {
 }
 
 const actionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-    ["hello", {
+    ['hello', {
         invocationMode: InvocationMode.PARALLEL, handler: async (transaction: WSEvaluateTransaction) => {
             if (transaction.state?.input?.name === undefined) {
                 return {
@@ -127,7 +127,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle transactions with plain object input (without getStageDirector)', async () => {
         const plainActionMap: Map<string, DirectedActionConfig<any>> = new Map([
-            ["plain-action", {
+            ['plain-action', {
                 invocationMode: InvocationMode.PARALLEL,
                 handler: async (_transaction: WSEvaluateTransaction) => {
                     return {
@@ -262,7 +262,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle BATCH invocation mode', async () => {
         const batchActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["batch-action", {
+            ['batch-action', {
                 invocationMode: InvocationMode.BATCH,
                 batchHandler: async (batchIn) => {
                     return batchIn.map((req, i) => ({
@@ -310,7 +310,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle missing batch handler configuration', async () => {
         const noBatchHandlerActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["no-batch-handler-action", {
+            ['no-batch-handler-action', {
                 invocationMode: InvocationMode.BATCH,
                 // batchHandler is intentionally undefined
             }],
@@ -353,7 +353,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle batch handler result count mismatch', async () => {
         const mismatchBatchActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["mismatch-batch-action", {
+            ['mismatch-batch-action', {
                 invocationMode: InvocationMode.BATCH,
                 batchHandler: async (batchIn) => {
                     // Intentionally return fewer results than transactions to trigger line 373
@@ -403,7 +403,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle handler execution errors', async () => {
         const errorActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["error-action", {
+            ['error-action', {
                 invocationMode: InvocationMode.PARALLEL,
                 handler: async (_transaction: WSEvaluateTransaction) => {
                     throw new Error('Handler execution failed');
@@ -443,7 +443,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle missing handler configuration', async () => {
         const noHandlerActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["no-handler-action", {
+            ['no-handler-action', {
                 invocationMode: InvocationMode.PARALLEL,
                 // handler is intentionally undefined to trigger line 327
             }],
@@ -482,7 +482,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle HARD_FAILURE result', async () => {
         const failureActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["failure-action", {
+            ['failure-action', {
                 invocationMode: InvocationMode.PARALLEL,
                 handler: async (_transaction: WSEvaluateTransaction) => {
                     return {
@@ -527,7 +527,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle WAITING result', async () => {
         const waitingActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["waiting-action", {
+            ['waiting-action', {
                 invocationMode: InvocationMode.PARALLEL,
                 handler: async (_transaction: WSEvaluateTransaction) => {
                     return {
@@ -569,7 +569,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle FIXABLE_ERROR result', async () => {
         const fixableErrorActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["fixable-error-action", {
+            ['fixable-error-action', {
                 invocationMode: InvocationMode.PARALLEL,
                 handler: async (_transaction: WSEvaluateTransaction) => {
                     return {
@@ -612,7 +612,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle TRANSIENT_ERROR result', async () => {
         const transientErrorActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["transient-error-action", {
+            ['transient-error-action', {
                 invocationMode: InvocationMode.PARALLEL,
                 handler: async (_transaction: WSEvaluateTransaction) => {
                     return {
@@ -655,7 +655,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle custom stage', async () => {
         const customStageActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["custom-stage-action", {
+            ['custom-stage-action', {
                 invocationMode: InvocationMode.PARALLEL,
                 handler: async (_transaction: WSEvaluateTransaction) => {
                     return {
@@ -699,7 +699,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle triggers', async () => {
         const triggerActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["trigger-action", {
+            ['trigger-action', {
                 invocationMode: InvocationMode.PARALLEL,
                 handler: async (_transaction: WSEvaluateTransaction) => {
                     return {
@@ -749,7 +749,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle extra state updates', async () => {
         const extraUpdatesActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["extra-updates-action", {
+            ['extra-updates-action', {
                 invocationMode: InvocationMode.PARALLEL,
                 handler: async (_transaction: WSEvaluateTransaction) => {
                     return {
@@ -798,7 +798,7 @@ describe('BasicStageDirector', () => {
 
     it('should handle extra state updates even with no given output', async () => {
         const extraUpdatesActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-            ["extra-updates-action", {
+            ['extra-updates-action', {
                 invocationMode: InvocationMode.PARALLEL,
                 handler: async (_transaction: WSEvaluateTransaction) => {
                     return {

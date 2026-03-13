@@ -14,25 +14,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as fs from "fs";
-import * as yaml from "js-yaml";
-import { WorkflowEngineClientConfig } from "../client/client";
-import { newLogger } from "../log/logger";
-import { SDKErrors, newError } from "../i18n/errors";
+import * as fs from 'fs';
+import * as yaml from 'js-yaml';
+import { WorkflowEngineClientConfig } from '../client/client';
+import { newLogger } from '../log/logger';
+import { SDKErrors, newError } from '../i18n/errors';
 
 /**
  * Environment variable name for the workflow engine config file path.
  */
-export const WFE_CONFIG_FILE = "WFE_CONFIG_FILE";
+export const WFE_CONFIG_FILE = 'WFE_CONFIG_FILE';
 
-const log = newLogger("config");
+const log = newLogger('config');
 
 /**
  * Authentication type enum
  */
 export enum AuthType {
-  BASIC = "basic",
-  TOKEN = "token",
+  BASIC = 'basic',
+  TOKEN = 'token',
 }
 
 /**
@@ -95,17 +95,17 @@ export class ConfigLoader {
     // Use discriminated union to handle different auth types
     switch (auth.type) {
       case AuthType.BASIC: {
-        headerName = "Authorization";
+        headerName = 'Authorization';
         const credentials = Buffer.from(
           `${auth.username}:${auth.password}`,
-        ).toString("base64");
+        ).toString('base64');
         authValue = `Basic ${credentials}`;
         break;
       }
 
       case AuthType.TOKEN: {
-        headerName = auth.header || "Authorization";
-        const scheme = auth.scheme || "";
+        headerName = auth.header || 'Authorization';
+        const scheme = auth.scheme || '';
         authValue = scheme ? `${scheme} ${auth.token}` : auth.token;
         break;
       }
@@ -122,14 +122,14 @@ export class ConfigLoader {
 
     // Convert HTTP(S) URL to WebSocket URL with /ws path
     let wsUrl = config.workflowEngine.url;
-    if (wsUrl.startsWith("http://")) {
-      wsUrl = "ws://" + wsUrl.substring(7);
-    } else if (wsUrl.startsWith("https://")) {
-      wsUrl = "wss://" + wsUrl.substring(8);
+    if (wsUrl.startsWith('http://')) {
+      wsUrl = 'ws://' + wsUrl.substring(7);
+    } else if (wsUrl.startsWith('https://')) {
+      wsUrl = 'wss://' + wsUrl.substring(8);
     }
     // Add /ws path if not already present
-    if (!wsUrl.endsWith("/ws")) {
-      wsUrl = wsUrl.replace(/\/$/, "") + "/ws";
+    if (!wsUrl.endsWith('/ws')) {
+      wsUrl = wsUrl.replace(/\/$/, '') + '/ws';
     }
 
     return {
@@ -142,7 +142,7 @@ export class ConfigLoader {
       },
       maxAttempts: config.workflowEngine.maxRetries, // undefined = infinite retries
       reconnectDelay: config.workflowEngine.retryDelay
-        ? parseInt(config.workflowEngine.retryDelay.replace("s", "")) * 1000
+        ? parseInt(config.workflowEngine.retryDelay.replace('s', '')) * 1000
         : 2000,
     };
   }
@@ -155,33 +155,33 @@ export class ConfigLoader {
   static loadClientConfigFromFile(
     configFilePath?: string,
   ): WorkflowEngineClientConfig {
-    const path = (configFilePath ?? process.env[WFE_CONFIG_FILE] ?? "").trim();
+    const path = (configFilePath ?? process.env[WFE_CONFIG_FILE] ?? '').trim();
     if (!path) {
       throw newError(SDKErrors.MsgSDKConfigFileNotSet, WFE_CONFIG_FILE);
     }
-    const raw = fs.readFileSync(path, "utf8");
+    const raw = fs.readFileSync(path, 'utf8');
     const parsed = yaml.load(raw) as Record<string, unknown> | undefined;
-    if (!parsed || typeof parsed !== "object") {
+    if (!parsed || typeof parsed !== 'object') {
       throw newError(SDKErrors.MsgSDKConfigFileInvalid, path);
     }
-    const section = (parsed["workflow-engine"] ?? parsed["workflowEngine"]) as
+    const section = (parsed['workflow-engine'] ?? parsed['workflowEngine']) as
       | Record<string, unknown>
       | undefined;
-    if (!section || typeof section !== "object") {
+    if (!section || typeof section !== 'object') {
       throw newError(SDKErrors.MsgSDKConfigSectionMissing, path);
     }
     const providerName =
-      typeof section.providerName === "string"
+      typeof section.providerName === 'string'
         ? section.providerName.trim()
-        : "";
+        : '';
     if (!providerName) {
       throw newError(SDKErrors.MsgSDKProviderNameNotSet);
     }
-    const url = typeof section.url === "string" ? section.url : undefined;
+    const url = typeof section.url === 'string' ? section.url : undefined;
     const auth = section.auth as
-      | WorkflowEngineConfig["workflowEngine"]["auth"]
+      | WorkflowEngineConfig['workflowEngine']['auth']
       | undefined;
-    if (!url || !auth || typeof auth !== "object") {
+    if (!url || !auth || typeof auth !== 'object') {
       throw newError(SDKErrors.MsgSDKConfigUrlAuthMissing, path);
     }
     const engineConfig: WorkflowEngineConfig = {
@@ -189,11 +189,11 @@ export class ConfigLoader {
         url,
         auth,
         maxRetries:
-          typeof section.maxRetries === "number"
+          typeof section.maxRetries === 'number'
             ? section.maxRetries
             : undefined,
         retryDelay:
-          typeof section.retryDelay === "string"
+          typeof section.retryDelay === 'string'
             ? section.retryDelay
             : undefined,
       },
@@ -204,12 +204,12 @@ export class ConfigLoader {
     );
     if (
       section.providerMetadata != null &&
-      typeof section.providerMetadata === "object" &&
+      typeof section.providerMetadata === 'object' &&
       !Array.isArray(section.providerMetadata)
     ) {
       const meta: Record<string, string> = {};
       for (const [k, v] of Object.entries(section.providerMetadata)) {
-        if (typeof v === "string") meta[k] = v;
+        if (typeof v === 'string') meta[k] = v;
       }
       if (Object.keys(meta).length > 0) {
         clientConfig.providerMetadata = meta;
@@ -222,7 +222,7 @@ export class ConfigLoader {
    * Log configuration summary (without sensitive data)
    */
   static logConfigSummary(config: WorkflowEngineConfig): void {
-    log.info("Configuration loaded:");
+    log.info('Configuration loaded:');
     log.info(`  Workflow Engine: ${config.workflowEngine.url}`);
 
     const auth = config.workflowEngine.auth;
@@ -233,7 +233,7 @@ export class ConfigLoader {
         break;
       case AuthType.TOKEN:
         log.info(`  Auth Type: ${AuthType.TOKEN}`);
-        log.info(`  Auth Header: ${auth.header || "Authorization"}`);
+        log.info(`  Auth Header: ${auth.header || 'Authorization'}`);
         if (auth.scheme) {
           log.info(`  Auth Scheme: ${auth.scheme}`);
         }

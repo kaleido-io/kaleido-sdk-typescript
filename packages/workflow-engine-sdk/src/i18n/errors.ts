@@ -45,7 +45,7 @@ export const SDKErrors = {
   MsgSDKObservedPanic: fe('KA140600', 'Observed panic: %s'),
   MsgSDKUnknownHandler: fe('KA140601', "Unknown handler '%s'"),
   MsgSDKUnknownNoListenerConfig: fe('KA140602', "Listener config for stream '%s' not supplied by workflow engine"),
-  MsgSDKOutputSerializationError: fe('KA140603', "Unable to serialize output to %s"),
+  MsgSDKOutputSerializationError: fe('KA140603', 'Unable to serialize output to %s'),
   MsgSDKDirectorNextStageMissing: fe('KA140604', "Handler called with 'nextStage' missing from input"),
   MsgSDKDirectorOutputPathMissing: fe('KA140605', "Handler called with 'outputPath' missing from input"),
   MsgSDKDirectorFailureStageMissing: fe('KA140606', "Handler resulted in a failure, but 'failureStage' missing from input"),
@@ -60,8 +60,8 @@ export const SDKErrors = {
   MsgSDKEventSourceDataInvalid: fe('KA140613', "Event source data could not be serialized for handler '%s'"),
 
   // Engine API errors
-  MsgSDKEngineReplyInvalidData: fe('KA140614', "Engine API reply for transaction %s invalid: %s"),
-  MsgSDKEngineReplyInvalidType: fe('KA140615', "Engine API reply type for transaction %s invalid: %s"),
+  MsgSDKEngineReplyInvalidData: fe('KA140614', 'Engine API reply for transaction %s invalid: %s'),
+  MsgSDKEngineReplyInvalidType: fe('KA140615', 'Engine API reply type for transaction %s invalid: %s'),
   MsgSDKEngineReqNoActiveRequest: fe('KA140616', 'No engine handler is active on the supplied context'),
   MsgSDKEngineFailMarshalEngineRequest: fe('KA140617', 'Failed to marshal engine transaction data'),
   MsgSDKEngineFailSendEngineRequest: fe('KA140618', 'Failed to send engine transaction'),

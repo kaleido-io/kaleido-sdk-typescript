@@ -33,39 +33,39 @@ export enum InvocationMode {
 }
 
 export enum WSMessageType {
-  PROTOCOL_ERROR = "protocol_error",
-  REGISTER_PROVIDER = "register_provider",
-  REGISTER_HANDLER = "register_handler",
-  EVALUATE = "evaluate",
-  EVALUATE_RESULT = "evaluate_result",
-  HANDLE_TRANSACTIONS = "handle_transactions",
-  HANDLE_TRANSACTIONS_RESULT = "handle_transactions_result",
-  EVENT_SOURCE_CONFIG = "event_source_config",
-  EVENT_SOURCE_POLL = "event_source_poll",
-  EVENT_SOURCE_POLL_RESULT = "event_source_poll_result",
-  EVENT_SOURCE_VALIDATE_CONFIG = "event_source_validate_config",
-  EVENT_SOURCE_VALIDATE_CONFIG_RESULT = "event_source_validate_config_result",
-  EVENT_SOURCE_DELETE = "event_source_delete",
-  EVENT_SOURCE_DELETE_RESULT = "event_source_delete_result",
-  EVENT_PROCESSOR_BATCH = "event_processor_batch",
-  EVENT_PROCESSOR_BATCH_RESULT = "event_processor_batch_result",
-  ENGINE_API_SUBMIT_TRANSACTIONS = "engineapi_submit_transactions",
-  ENGINE_API_SUBMIT_TRANSACTIONS_RESULT = "engineapi_submit_transactions_result",
+  PROTOCOL_ERROR = 'protocol_error',
+  REGISTER_PROVIDER = 'register_provider',
+  REGISTER_HANDLER = 'register_handler',
+  EVALUATE = 'evaluate',
+  EVALUATE_RESULT = 'evaluate_result',
+  HANDLE_TRANSACTIONS = 'handle_transactions',
+  HANDLE_TRANSACTIONS_RESULT = 'handle_transactions_result',
+  EVENT_SOURCE_CONFIG = 'event_source_config',
+  EVENT_SOURCE_POLL = 'event_source_poll',
+  EVENT_SOURCE_POLL_RESULT = 'event_source_poll_result',
+  EVENT_SOURCE_VALIDATE_CONFIG = 'event_source_validate_config',
+  EVENT_SOURCE_VALIDATE_CONFIG_RESULT = 'event_source_validate_config_result',
+  EVENT_SOURCE_DELETE = 'event_source_delete',
+  EVENT_SOURCE_DELETE_RESULT = 'event_source_delete_result',
+  EVENT_PROCESSOR_BATCH = 'event_processor_batch',
+  EVENT_PROCESSOR_BATCH_RESULT = 'event_processor_batch_result',
+  ENGINE_API_SUBMIT_TRANSACTIONS = 'engineapi_submit_transactions',
+  ENGINE_API_SUBMIT_TRANSACTIONS_RESULT = 'engineapi_submit_transactions_result',
 }
 
 export enum WSHandlerType {
-  TRANSACTION_HANDLER = "transaction_handler",
-  EVENT_PROCESSOR = "event_processor",
-  EVENT_SOURCE = "event_source",
+  TRANSACTION_HANDLER = 'transaction_handler',
+  EVENT_PROCESSOR = 'event_processor',
+  EVENT_SOURCE = 'event_source',
 }
 
 export enum PatchOpType {
-  ADD = "add",
-  REMOVE = "remove",
-  REPLACE = "replace",
-  MOVE = "move",
-  COPY = "copy",
-  TEST = "test",
+  ADD = 'add',
+  REMOVE = 'remove',
+  REPLACE = 'replace',
+  MOVE = 'move',
+  COPY = 'copy',
+  TEST = 'test',
 }
 
 /**

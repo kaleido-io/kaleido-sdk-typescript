@@ -15,8 +15,8 @@
 // limitations under the License.
 
 
-import * as fastJsonPatch from "fast-json-patch";
-import { PatchOp, PatchOpType, Patch } from "../types/core";
+import * as fastJsonPatch from 'fast-json-patch';
+import { PatchOp, PatchOpType, Patch } from '../types/core';
 
 const { applyPatch } = fastJsonPatch;
 

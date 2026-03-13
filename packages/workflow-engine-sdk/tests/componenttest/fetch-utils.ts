@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { newLogger } from "../../src/log/logger";
+import { newLogger } from '../../src/log/logger';
 
 const logger = newLogger('FetchWithRetry');
 /**
