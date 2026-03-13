@@ -14,9 +14,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-import { HandlerRuntime, HandlerRuntimeConfig } from '../runtime/handler_runtime';
-import { TransactionHandler, EventSource, EventProcessor } from '../interfaces/handlers';
+import {
+  HandlerRuntime,
+  HandlerRuntimeConfig,
+} from '../runtime/handler_runtime';
+import {
+  TransactionHandler,
+  EventSource,
+  EventProcessor,
+} from '../interfaces/handlers';
 
 export interface WorkflowEngineClientConfig {
   url?: string;
@@ -77,4 +83,3 @@ export class WorkflowEngineClient {
     return this.runtime.isWebSocketConnected();
   }
 }
-

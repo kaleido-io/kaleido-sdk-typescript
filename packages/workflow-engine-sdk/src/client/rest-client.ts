@@ -14,10 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 /**
  * REST Client for Workflow Engine API
- * 
+ *
  * Provides methods to interact with the workflow engine REST API including:
  * - Workflow management (create, delete)
  * - Transaction management (create, delete)
@@ -69,13 +68,16 @@ export interface CreateWorkflowRequest {
   description?: string;
   currentVersion?: string;
   constants?: Record<string, Record<string, unknown>>;
-  configProfileBindings?: Record<string, {
-    configProfile?: string;
-    configProfileId?: string;
-    dynamicMapping?: {
-      namePrefix?: string;
-    };
-  }>;
+  configProfileBindings?: Record<
+    string,
+    {
+      configProfile?: string;
+      configProfileId?: string;
+      dynamicMapping?: {
+        namePrefix?: string;
+      };
+    }
+  >;
   events?: Array<{
     configProfile?: {
       name?: string;
@@ -250,10 +252,10 @@ export class WorkflowEngineRestClient {
     url: string,
     method: string,
     body?: unknown,
-    timeout?: number
+    timeout?: number,
   ): Promise<T> {
     const headers: Record<string, string> = {
-      'accept': 'application/json',
+      accept: 'application/json',
       'Content-Type': 'application/json',
       ...this.headers,
     };
@@ -276,7 +278,7 @@ export class WorkflowEngineRestClient {
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(
-        `Failed to ${method} ${url}: ${response.status} ${response.statusText}\n${errorText}`
+        `Failed to ${method} ${url}: ${response.status} ${response.statusText}\n${errorText}`,
       );
     }
 
@@ -294,29 +296,34 @@ export class WorkflowEngineRestClient {
 
   /**
    * Creates a new workflow
-   * 
+   *
    * @param workflow - The workflow definition
    * @param timeout - Optional timeout in seconds (default: 120)
    * @returns Promise resolving to the created workflow
    */
   async createWorkflow(
     workflow: CreateWorkflowRequest,
-    timeout?: number
+    timeout?: number,
   ): Promise<CreateWorkflowResponse> {
     const endpoint = this.getWorkflowsEndpoint();
-    return this.makeRequest<CreateWorkflowResponse>(endpoint, 'POST', workflow, timeout);
+    return this.makeRequest<CreateWorkflowResponse>(
+      endpoint,
+      'POST',
+      workflow,
+      timeout,
+    );
   }
 
   /**
    * Deletes a workflow by name or ID
-   * 
+   *
    * @param workflowNameOrId - The name or ID of the workflow to delete
    * @param timeout - Optional timeout in seconds (default: 120)
    * @returns Promise that resolves when the workflow is deleted
    */
   async deleteWorkflow(
     workflowNameOrId: string,
-    timeout?: number
+    timeout?: number,
   ): Promise<void> {
     const endpoint = this.getWorkflowEndpoint(workflowNameOrId);
     return this.makeRequest<void>(endpoint, 'DELETE', undefined, timeout);
@@ -328,29 +335,34 @@ export class WorkflowEngineRestClient {
 
   /**
    * Creates a new transaction
-   * 
+   *
    * @param transaction - The transaction request
    * @param timeout - Optional timeout in seconds (default: 120)
    * @returns Promise resolving to the transaction response
    */
   async createTransaction(
     transaction: CreateTransactionRequest,
-    timeout?: number
+    timeout?: number,
   ): Promise<CreateTransactionResponse> {
     const endpoint = this.getTransactionsEndpoint();
-    return this.makeRequest<CreateTransactionResponse>(endpoint, 'POST', transaction, timeout);
+    return this.makeRequest<CreateTransactionResponse>(
+      endpoint,
+      'POST',
+      transaction,
+      timeout,
+    );
   }
 
   /**
    * Deletes a transaction by idempotency key or ID
-   * 
+   *
    * @param idempotencyKeyOrId - The idempotency key or ID of the transaction to delete
    * @param timeout - Optional timeout in seconds (default: 120)
    * @returns Promise that resolves when the transaction is deleted
    */
   async deleteTransaction(
     idempotencyKeyOrId: string,
-    timeout?: number
+    timeout?: number,
   ): Promise<void> {
     const endpoint = this.getTransactionEndpoint(idempotencyKeyOrId);
     return this.makeRequest<void>(endpoint, 'DELETE', undefined, timeout);
@@ -362,22 +374,27 @@ export class WorkflowEngineRestClient {
 
   /**
    * Creates a new stream
-   * 
+   *
    * @param stream - The stream definition
    * @param timeout - Optional timeout in seconds (default: 120)
    * @returns Promise resolving to the created stream
    */
   async createStream(
     stream: CreateStreamRequest,
-    timeout?: number
+    timeout?: number,
   ): Promise<CreateStreamResponse> {
     const endpoint = this.getStreamsEndpoint();
-    return this.makeRequest<CreateStreamResponse>(endpoint, 'POST', stream, timeout);
+    return this.makeRequest<CreateStreamResponse>(
+      endpoint,
+      'POST',
+      stream,
+      timeout,
+    );
   }
 
   /**
    * Deletes a stream by name or ID
-   * 
+   *
    * @param streamNameOrId - The name or ID of the stream to delete
    * @param force - Optional flag to force delete without waiting for handler cleanup
    * @param timeout - Optional timeout in seconds (default: 120)
@@ -386,7 +403,7 @@ export class WorkflowEngineRestClient {
   async deleteStream(
     streamNameOrId: string,
     force?: boolean,
-    timeout?: number
+    timeout?: number,
   ): Promise<void> {
     let endpoint = this.getStreamEndpoint(streamNameOrId);
     if (force) {
@@ -397,33 +414,43 @@ export class WorkflowEngineRestClient {
 
   /**
    * Starts a stream by updating its started status to true
-   * 
+   *
    * @param streamNameOrId - The name or ID of the stream to start
    * @param timeout - Optional timeout in seconds (default: 120)
    * @returns Promise resolving to the updated stream
    */
   async startStream(
     streamNameOrId: string,
-    timeout?: number
+    timeout?: number,
   ): Promise<CreateStreamResponse> {
     const endpoint = this.getStreamEndpoint(streamNameOrId);
     const update: UpdateStreamRequest = { started: true };
-    return this.makeRequest<CreateStreamResponse>(endpoint, 'PATCH', update, timeout);
+    return this.makeRequest<CreateStreamResponse>(
+      endpoint,
+      'PATCH',
+      update,
+      timeout,
+    );
   }
 
   /**
    * Stops a stream by updating its started status to false
-   * 
+   *
    * @param streamNameOrId - The name or ID of the stream to stop
    * @param timeout - Optional timeout in seconds (default: 120)
    * @returns Promise resolving to the updated stream
    */
   async stopStream(
     streamNameOrId: string,
-    timeout?: number
+    timeout?: number,
   ): Promise<CreateStreamResponse> {
     const endpoint = this.getStreamEndpoint(streamNameOrId);
     const update: UpdateStreamRequest = { started: false };
-    return this.makeRequest<CreateStreamResponse>(endpoint, 'PATCH', update, timeout);
+    return this.makeRequest<CreateStreamResponse>(
+      endpoint,
+      'PATCH',
+      update,
+      timeout,
+    );
   }
 }

@@ -1,0 +1,12 @@
+# Application-owned config (consumer-defined). Load with CONFIG_FILE or -f.
+# Used by the app for app-specific settings.
+name: example-provider
+metadata:
+  displayName: Example provider
+  description: An example provider for the Kaleido Workflow Engine
+
+# Example: HTTP invoke handler (used by template/src/samples/http-invoke/handlers.ts)
+httpInvoke:
+  url: https://httpbin.org/get
+  invocationMode: PARALLEL
+  apiKeyHeader: X-API-KEY  # header name; value from env API_KEY

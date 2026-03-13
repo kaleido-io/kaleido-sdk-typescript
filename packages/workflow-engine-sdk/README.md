@@ -23,43 +23,48 @@ This will create a new project in a directory named for project-name, and in a f
 ### Integrating into an existing project
 
 ```typescript
-import { 
-  WorkflowEngineClient, 
+import {
+  WorkflowEngineClient,
   ConfigLoader,
   WorkflowEngineConfig,
   newDirectedTransactionHandler,
   InvocationMode,
-  EvalResult 
-} from '@kaleido-io/workflow-engine-sdk';
-import * as fs from 'fs';
-import * as yaml from 'js-yaml';
+  EvalResult,
+} from "@kaleido-io/workflow-engine-sdk";
+import * as fs from "fs";
+import * as yaml from "js-yaml";
 
 // 1. Load configuration (your application handles file loading)
-const configFile = fs.readFileSync('./config.yaml', 'utf8');
-const config: WorkflowEngineConfig = yaml.load(configFile) as WorkflowEngineConfig;
+const configFile = fs.readFileSync("./config.yaml", "utf8");
+const config: WorkflowEngineConfig = yaml.load(
+  configFile,
+) as WorkflowEngineConfig;
 
 // 2. Use SDK's ConfigLoader to create client config with your provider name
 //    The SDK handles authentication header setup and URL conversion automatically
-const clientConfig = ConfigLoader.createClientConfig(config, 'my-service');
+const clientConfig = ConfigLoader.createClientConfig(config, "my-service");
 
 // 3. Create client
 const client = new WorkflowEngineClient(clientConfig);
 
 // 4. Create and register transaction handler
 const actionMap = new Map([
-  ['myAction', {
-    invocationMode: InvocationMode.PARALLEL,
-    handler: async (transaction, input) => {
-      return {
-        result: EvalResult.COMPLETE,
-        output: { success: true }
-      };
-    }
-  }]
+  [
+    "myAction",
+    {
+      invocationMode: InvocationMode.PARALLEL,
+      handler: async (transaction, input) => {
+        return {
+          result: EvalResult.COMPLETE,
+          output: { success: true },
+        };
+      },
+    },
+  ],
 ]);
 
-const handler = newDirectedTransactionHandler('my-handler', actionMap);
-client.registerTransactionHandler('my-handler', handler);
+const handler = newDirectedTransactionHandler("my-handler", actionMap);
+client.registerTransactionHandler("my-handler", handler);
 
 // 5. Connect
 await client.connect();
@@ -70,6 +75,7 @@ await client.connect();
 ### WorkflowEngineClient
 
 The main entry point that manages:
+
 - Handler registration (transaction handlers and event sources)
 - WebSocket connection lifecycle
 - Automatic reconnection and re-registration
@@ -77,24 +83,24 @@ The main entry point that manages:
 
 ```typescript
 const client = new WorkflowEngineClient({
-  url: 'ws://localhost:5503/ws',
-  providerName: 'my-service',
-  authToken: 'your-token',
-  authHeaderName: 'X-Kld-Authz',  // Optional, defaults to X-Kld-Authz
-  reconnectDelay: 2000,            // Optional, ms between reconnect attempts
-  maxAttempts: undefined           // Optional, undefined = infinite retries (recommended)
+  url: "ws://localhost:5503/ws",
+  providerName: "my-service",
+  authToken: "your-token",
+  authHeaderName: "X-Kld-Authz", // Optional, defaults to X-Kld-Authz
+  reconnectDelay: 2000, // Optional, ms between reconnect attempts
+  maxAttempts: undefined, // Optional, undefined = infinite retries (recommended)
 });
 
 // Register handlers
-client.registerTransactionHandler('handler-name', transactionHandler);
-client.registerEventSource('source-name', eventSource);
+client.registerTransactionHandler("handler-name", transactionHandler);
+client.registerEventSource("source-name", eventSource);
 
 // Connect
 await client.connect();
 
 // Check connection status
 if (client.isConnected()) {
-  console.log('Connected!');
+  console.log("Connected!");
 }
 
 // Disconnect
@@ -131,8 +137,8 @@ workflowEngine:
   auth:
     type: token
     token: dev-token-123
-    header: X-Kld-Authz      # Optional, defaults to Authorization
-    scheme: ""               # Optional, e.g. "Bearer" for "Bearer <token>"
+    header: X-Kld-Authz # Optional, defaults to Authorization
+    scheme: "" # Optional, e.g. "Bearer" for "Bearer <token>"
   # maxRetries: undefined = infinite reconnection (recommended for long-running services)
   retryDelay: 2s
 ```
@@ -140,20 +146,22 @@ workflowEngine:
 Load and use configuration:
 
 ```typescript
-import { 
-  ConfigLoader, 
-  WorkflowEngineConfig 
-} from '@kaleido-io/workflow-engine-sdk';
-import * as fs from 'fs';
-import * as yaml from 'js-yaml';
+import {
+  ConfigLoader,
+  WorkflowEngineConfig,
+} from "@kaleido-io/workflow-engine-sdk";
+import * as fs from "fs";
+import * as yaml from "js-yaml";
 
 // Your application loads configuration (the SDK doesn't load files)
-const configFile = fs.readFileSync('./config.yaml', 'utf8');
-const config: WorkflowEngineConfig = yaml.load(configFile) as WorkflowEngineConfig;
+const configFile = fs.readFileSync("./config.yaml", "utf8");
+const config: WorkflowEngineConfig = yaml.load(
+  configFile,
+) as WorkflowEngineConfig;
 
 // Use SDK's ConfigLoader to create client config with provider name (REQUIRED)
 // Note: SDK automatically converts http:// to ws:// and adds /ws path
-const clientConfig = ConfigLoader.createClientConfig(config, 'my-service');
+const clientConfig = ConfigLoader.createClientConfig(config, "my-service");
 
 // Optionally log summary (without sensitive data)
 ConfigLoader.logConfigSummary(config);
@@ -163,25 +171,70 @@ const client = new WorkflowEngineClient(clientConfig);
 ```
 
 **URL Handling:**
+
 - Config file uses HTTP URL: `http://localhost:5503` or `https://example.com`
 - SDK automatically converts to WebSocket: `ws://localhost:5503/ws` or `wss://example.com/ws`
 - `/ws` path is automatically added if not present
+
+### Use configuration files setup
+
+Two config files are required for this setup:
+
+1. **WFE config (SDK contract)** — Workflow engine connection and identity. Path from `WFE_CONFIG_FILE` or pass `configFile` to `NewWorkflowEngineClient`. Root key in YAML: `workflow-engine` or `workflowEngine`. Contains `providerName`, optional `providerMetadata`, `url`, `auth`, and optional retry settings.
+2. **Provider config (application-owned)** — App-specific settings. Path from `CONFIG_FILE` or `-f`; your app loads and uses it (e.g. to build handlers). The SDK does not read or define its schema.
+
+Example run:
+
+```bash
+CONFIG_FILE=./config.yaml WFE_CONFIG_FILE=./wfe-config.yaml node connect.js
+```
+
+### New workflow engine client using config file
+
+To initialize a Workflow Engine Client with using single function, use `NewWorkflowEngineClient` and `HandlerSetFor`:
+
+```typescript
+import {
+  NewWorkflowEngineClient,
+  HandlerSetFor,
+  WFE_CONFIG_FILE,
+} from "@kaleido-io/workflow-engine-sdk";
+
+// Build your handlers (e.g. from provider config in app code)
+const handler = newEventProcessorFromConfig(providerConfig);
+const txHandler = newDirectedTransactionHandler("my-handler", actionMap);
+
+// Create and start runtime (loads WFE config from file, registers handlers, connects)
+const runtime = await NewWorkflowEngineClient(
+  { configFile: process.env[WFE_CONFIG_FILE] ?? "./wfe-config.yaml" },
+  HandlerSetFor(handler, txHandler),
+);
+// runtime is already connected
+// On shutdown:
+runtime.disconnect();
+```
+
+- **HandlerRuntimeConfig**: `configFile?` (path to WFE config; if empty, `WFE_CONFIG_FILE` env is used) or `clientConfig?` for in-memory config (e.g. tests).
+- **HandlerSetFor(...handlers)**: Builds a handler set from one or more transaction handlers, event sources, or event processors.
+- **NewWorkflowEngineClient(config, handlerSet)**: Loads WFE config from file (when `configFile` or `WFE_CONFIG_FILE` is set), creates the client, registers all handlers, connects, and returns the client. Uses `ConfigLoader.loadClientConfigFromFile` under the hood.
+
+To load client config from a WFE config file without using `NewWorkflowEngineClient` (e.g. for custom startup), use `ConfigLoader.loadClientConfigFromFile(configFilePath?)`. If `configFilePath` is omitted, `process.env[WFE_CONFIG_FILE]` is used. The file must use root key `workflow-engine` or `workflowEngine`, and must include `providerName`, `url`, and `auth`.
 
 ### Configuration Schema
 
 ```typescript
 interface WorkflowEngineConfig {
   workflowEngine: {
-    mode?: HandlerRuntimeMode;      // Defaults to outbound
-    port?: number;                  // port used for the web socket server in inbound mode
-    url?: string;                   // Workflow engine URL
-    auth?: AuthConfig;              // Authentication (see below)
-    timeout?: string;               // Request timeout (e.g. "30s")
-    maxRetries?: number;            // Max reconnection attempts (undefined = infinite)
-    retryDelay?: string;            // Delay between retries (e.g. "2s")
-    batchSize?: number;             // Batch size for handlers
-    batchTimeout?: string;          // Batch timeout (e.g. "500ms")
-    pollDuration?: string;          // Event source poll duration
+    mode?: HandlerRuntimeMode; // Defaults to outbound
+    port?: number; // port used for the web socket server in inbound mode
+    url?: string; // Workflow engine URL
+    auth?: AuthConfig; // Authentication (see below)
+    timeout?: string; // Request timeout (e.g. "30s")
+    maxRetries?: number; // Max reconnection attempts (undefined = infinite)
+    retryDelay?: string; // Delay between retries (e.g. "2s")
+    batchSize?: number; // Batch size for handlers
+    batchTimeout?: string; // Batch timeout (e.g. "500ms")
+    pollDuration?: string; // Event source poll duration
   };
 }
 
@@ -189,22 +242,23 @@ interface WorkflowEngineConfig {
 type AuthConfig = BasicAuth | TokenAuth;
 
 interface BasicAuth {
-  type: 'basic';                    // Must be 'basic'
-  username: string;                 // Username
-  password: string;                 // Password
+  type: "basic"; // Must be 'basic'
+  username: string; // Username
+  password: string; // Password
 }
 
 interface TokenAuth {
-  type: 'token';                    // Must be 'token'
-  token: string;                    // API token
-  header?: string;                  // Header name (default: 'Authorization')
-  scheme?: string;                  // Scheme (e.g. 'Bearer', default: '')
+  type: "token"; // Must be 'token'
+  token: string; // API token
+  header?: string; // Header name (default: 'Authorization')
+  scheme?: string; // Scheme (e.g. 'Bearer', default: '')
 }
 ```
 
 ### Configuration examples
 
 **Outbound, basic auth:**
+
 ```yaml
 workflowEngine:
   url: http://localhost:5503
@@ -215,6 +269,7 @@ workflowEngine:
 ```
 
 **Outbound, token auth (raw token):**
+
 ```yaml
 workflowEngine:
   url: http://localhost:5503
@@ -222,22 +277,24 @@ workflowEngine:
     type: token
     token: dev-token-123
     header: X-Kld-Authz
-    scheme: ""  # Empty string = raw token
+    scheme: "" # Empty string = raw token
 ```
 
 **Outbound, token auth (bearer token):**
+
 ```yaml
 workflowEngine:
   url: http://localhost:5503
   auth:
     type: token
     token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-    scheme: Bearer  # Sends "Bearer <token>"
+    scheme: Bearer # Sends "Bearer <token>"
 ```
 
 **Inbound:**
 
 The client will wait for an inbound connection from the workflow engine
+
 ```yaml
 workflowEngine:
   mode: inbound
@@ -245,14 +302,20 @@ workflowEngine:
 ```
 
 **With environment variable overrides:**
+
 ```typescript
-import * as fs from 'fs';
-import * as yaml from 'js-yaml';
-import { ConfigLoader, WorkflowEngineConfig } from '@kaleido-io/workflow-engine-sdk';
+import * as fs from "fs";
+import * as yaml from "js-yaml";
+import {
+  ConfigLoader,
+  WorkflowEngineConfig,
+} from "@kaleido-io/workflow-engine-sdk";
 
 // Your application loads and merges config with env vars
-const configFile = fs.readFileSync('./config.yaml', 'utf8');
-const config: WorkflowEngineConfig = yaml.load(configFile) as WorkflowEngineConfig;
+const configFile = fs.readFileSync("./config.yaml", "utf8");
+const config: WorkflowEngineConfig = yaml.load(
+  configFile,
+) as WorkflowEngineConfig;
 
 // Override URL from environment
 if (process.env.WORKFLOW_ENGINE_URL) {
@@ -260,13 +323,15 @@ if (process.env.WORKFLOW_ENGINE_URL) {
 }
 
 // Override token from environment
-if (process.env.WORKFLOW_ENGINE_TOKEN && 
-    config.workflowEngine.auth.type === 'token') {
+if (
+  process.env.WORKFLOW_ENGINE_TOKEN &&
+  config.workflowEngine.auth.type === "token"
+) {
   config.workflowEngine.auth.token = process.env.WORKFLOW_ENGINE_TOKEN;
 }
 
 // SDK transforms config into client config
-const clientConfig = ConfigLoader.createClientConfig(config, 'my-service');
+const clientConfig = ConfigLoader.createClientConfig(config, "my-service");
 ```
 
 ## Transaction handlers
@@ -276,12 +341,12 @@ const clientConfig = ConfigLoader.createClientConfig(config, 'my-service');
 The recommended approach for building transaction handlers:
 
 ```typescript
-import { 
+import {
   newDirectedTransactionHandler,
   InvocationMode,
   EvalResult,
-  Patch
-} from '@kaleido-io/workflow-engine-sdk';
+  Patch,
+} from "@kaleido-io/workflow-engine-sdk";
 
 // Define your input type
 interface MyInput {
@@ -291,53 +356,58 @@ interface MyInput {
 
 // Create action map
 const actionMap = new Map([
-  ['processData', {
-    invocationMode: InvocationMode.PARALLEL,
-    handler: async (transaction, input: MyInput) => {
-      // Process the data
-      const result = processData(input.data);
-      
-      return {
-        result: EvalResult.COMPLETE,
-        output: { processed: result },
-        extraUpdates: [
-          Patch.add('/processedData', result)
-        ]
-      };
-    }
-  }],
-  
-  ['batchProcess', {
-    invocationMode: InvocationMode.BATCH,
-    batchHandler: async (transactions) => {
-      // Process all transactions together
-      const results = await processBatch(transactions.map(r => r.value));
-      
-      return results.map(result => ({
-        result: EvalResult.COMPLETE,
-        output: result
-      }));
-    }
-  }]
+  [
+    "processData",
+    {
+      invocationMode: InvocationMode.PARALLEL,
+      handler: async (transaction, input: MyInput) => {
+        // Process the data
+        const result = processData(input.data);
+
+        return {
+          result: EvalResult.COMPLETE,
+          output: { processed: result },
+          extraUpdates: [Patch.add("/processedData", result)],
+        };
+      },
+    },
+  ],
+
+  [
+    "batchProcess",
+    {
+      invocationMode: InvocationMode.BATCH,
+      batchHandler: async (transactions) => {
+        // Process all transactions together
+        const results = await processBatch(transactions.map((r) => r.value));
+
+        return results.map((result) => ({
+          result: EvalResult.COMPLETE,
+          output: result,
+        }));
+      },
+    },
+  ],
 ]);
 
 // Create handler
-const handler = newDirectedTransactionHandler('my-handler', actionMap)
+const handler = newDirectedTransactionHandler("my-handler", actionMap)
   .withInitFn(async (engAPI) => {
     // Initialize resources
-    console.log('Handler initialized');
+    console.log("Handler initialized");
   })
   .withCloseFn(() => {
     // Cleanup resources
-    console.log('Handler closed');
+    console.log("Handler closed");
   });
 
-client.registerTransactionHandler('my-handler', handler);
+client.registerTransactionHandler("my-handler", handler);
 ```
 
 ### Invocation modes
 
 **PARALLEL**: Each transaction processed independently in parallel
+
 ```typescript
 {
   invocationMode: InvocationMode.PARALLEL,
@@ -349,6 +419,7 @@ client.registerTransactionHandler('my-handler', handler);
 ```
 
 **BATCH**: All transactions in batch processed together
+
 ```typescript
 {
   invocationMode: InvocationMode.BATCH,
@@ -375,16 +446,16 @@ Return appropriate result based on outcome:
 Use JSON Patch operations to update workflow state:
 
 ```typescript
-import { Patch } from '@kaleido-io/workflow-engine-sdk';
+import { Patch } from "@kaleido-io/workflow-engine-sdk";
 
 return {
   result: EvalResult.COMPLETE,
   stateUpdates: [
-    Patch.add('/newField', 'value'),
-    Patch.replace('/existingField', 'newValue'),
-    Patch.remove('/oldField'),
-    Patch.add('/array/-', 'append to array')
-  ]
+    Patch.add("/newField", "value"),
+    Patch.replace("/existingField", "newValue"),
+    Patch.remove("/oldField"),
+    Patch.add("/array/-", "append to array"),
+  ],
 };
 ```
 
@@ -395,8 +466,8 @@ Override the default next stage:
 ```typescript
 return {
   result: EvalResult.COMPLETE,
-  customStage: 'custom-next-stage',  // Override default nextStage
-  output: { data: 'result' }
+  customStage: "custom-next-stage", // Override default nextStage
+  output: { data: "result" },
 };
 ```
 
@@ -408,9 +479,9 @@ Emit events to trigger other workflows:
 return {
   result: EvalResult.COMPLETE,
   triggers: [
-    { topic: 'user.created' },
-    { topic: 'notification.send', ephemeral: true }
-  ]
+    { topic: "user.created" },
+    { topic: "notification.send", ephemeral: true },
+  ],
 };
 ```
 
@@ -421,9 +492,7 @@ Emit events directly from handlers:
 ```typescript
 return {
   result: EvalResult.COMPLETE,
-  events: [
-    { topic: 'something-happened', data: {} }
-  ]
+  events: [{ topic: "something-happened", data: {} }],
 };
 ```
 
@@ -434,7 +503,7 @@ Event sources poll external systems and emit events to the workflow engine.
 ### Creating an Event Source
 
 ```typescript
-import { newEventSource } from '@kaleido-io/workflow-engine-sdk';
+import { newEventSource } from "@kaleido-io/workflow-engine-sdk";
 
 // Define your types
 interface MyCheckpoint {
@@ -453,54 +522,54 @@ interface MyEventData {
 
 // Create event source
 const eventSource = newEventSource<MyCheckpoint, MyConfig, MyEventData>(
-  'my-event-source',
+  "my-event-source",
   async (config, checkpointIn) => {
     // Poll for events
     const events = await fetchNewEvents(
       config.config.topic,
-      checkpointIn?.lastId || 0
+      checkpointIn?.lastId || 0,
     );
-    
+
     // Return checkpoint and events
     return {
-      checkpointOut: { 
-        lastId: events[events.length - 1]?.id || checkpointIn?.lastId || 0 
+      checkpointOut: {
+        lastId: events[events.length - 1]?.id || checkpointIn?.lastId || 0,
       },
-      events: events.map(e => ({
+      events: events.map((e) => ({
         idempotencyKey: `event-${e.id}`,
         topic: config.config.topic,
-        data: e
-      }))
+        data: e,
+      })),
     };
-  }
+  },
 )
-.withInitialCheckpoint(async (config) => {
-  // Build initial checkpoint
-  return { lastId: 0 };
-})
-.withConfigParser(async (info, configData) => {
-  // Parse and validate config
-  const config = configData as MyConfig;
-  if (!config.topic) {
-    throw new Error('topic is required');
-  }
-  return config;
-})
-.withDeleteFn(async (info) => {
-  // Cleanup on deletion
-  console.log(`Deleting event source: ${info.streamName}`);
-})
-.withInitFn(async (engAPI) => {
-  // Initialize resources
-  console.log('Event source initialized');
-})
-.withCloseFn(() => {
-  // Cleanup resources
-  console.log('Event source closed');
-});
+  .withInitialCheckpoint(async (config) => {
+    // Build initial checkpoint
+    return { lastId: 0 };
+  })
+  .withConfigParser(async (info, configData) => {
+    // Parse and validate config
+    const config = configData as MyConfig;
+    if (!config.topic) {
+      throw new Error("topic is required");
+    }
+    return config;
+  })
+  .withDeleteFn(async (info) => {
+    // Cleanup on deletion
+    console.log(`Deleting event source: ${info.streamName}`);
+  })
+  .withInitFn(async (engAPI) => {
+    // Initialize resources
+    console.log("Event source initialized");
+  })
+  .withCloseFn(() => {
+    // Cleanup resources
+    console.log("Event source closed");
+  });
 
 // Register event source
-client.registerEventSource('my-event-source', eventSource);
+client.registerEventSource("my-event-source", eventSource);
 ```
 
 ### Event source lifecycle
@@ -534,52 +603,52 @@ const stellarBlocks = newEventSource<
   StellarBlockCheckpoint,
   StellarBlockConfig,
   MinimalLedger
->(
-  'stellarBlocks',
-  async (config, checkpointIn) => {
-    const startLedger = checkpointIn ? checkpointIn.lastLedger + 1 : await getLatestLedger();
-    const batchSize = config.config.batchSize || 10;
-    
-    const events = [];
-    let newCheckpoint = startLedger - 1;
-    
-    for (let i = 0; i < batchSize; i++) {
-      try {
-        const ledger = await fetchLedger(startLedger + i);
-        events.push({
-          idempotencyKey: ledger.hash,
-          topic: config.config.topic,
-          data: {
-            sequence: ledger.sequence,
-            hash: ledger.hash,
-            closedAt: ledger.closed_at
-          }
-        });
-        newCheckpoint = ledger.sequence;
-      } catch (error) {
-        break; // Ledger not yet available
-      }
+>("stellarBlocks", async (config, checkpointIn) => {
+  const startLedger = checkpointIn
+    ? checkpointIn.lastLedger + 1
+    : await getLatestLedger();
+  const batchSize = config.config.batchSize || 10;
+
+  const events = [];
+  let newCheckpoint = startLedger - 1;
+
+  for (let i = 0; i < batchSize; i++) {
+    try {
+      const ledger = await fetchLedger(startLedger + i);
+      events.push({
+        idempotencyKey: ledger.hash,
+        topic: config.config.topic,
+        data: {
+          sequence: ledger.sequence,
+          hash: ledger.hash,
+          closedAt: ledger.closed_at,
+        },
+      });
+      newCheckpoint = ledger.sequence;
+    } catch (error) {
+      break; // Ledger not yet available
     }
-    
-    return {
-      checkpointOut: { lastLedger: newCheckpoint },
-      events
-    };
   }
-)
-.withInitialCheckpoint(async (config) => {
-  const ledgerNum = config.fromLedger === 'latest' 
-    ? await getLatestLedger()
-    : parseInt(config.fromLedger || '0', 10);
-  return { lastLedger: ledgerNum };
+
+  return {
+    checkpointOut: { lastLedger: newCheckpoint },
+    events,
+  };
 })
-.withConfigParser(async (info, configData) => {
-  const config = configData as StellarBlockConfig;
-  if (!config.topic) {
-    throw new Error('topic is required');
-  }
-  return config;
-});
+  .withInitialCheckpoint(async (config) => {
+    const ledgerNum =
+      config.fromLedger === "latest"
+        ? await getLatestLedger()
+        : parseInt(config.fromLedger || "0", 10);
+    return { lastLedger: ledgerNum };
+  })
+  .withConfigParser(async (info, configData) => {
+    const config = configData as StellarBlockConfig;
+    if (!config.topic) {
+      throw new Error("topic is required");
+    }
+    return config;
+  });
 ```
 
 ### Creating event streams
@@ -612,20 +681,17 @@ The `EngineAPI` interface allows handlers to make synchronous API calls back to 
 ```typescript
 async function myHandler(transaction, input, engAPI: EngineAPI) {
   // Submit transactions to the engine
-  const results = await engAPI.submitAsyncTransactions(
-    transaction.authRef,
-    [
-      {
-        workflowId: 'flw:abc123',
-        operation: 'process',
-        input: { data: 'value' }
-      }
-    ]
-  );
-  
+  const results = await engAPI.submitAsyncTransactions(transaction.authRef, [
+    {
+      workflowId: "flw:abc123",
+      operation: "process",
+      input: { data: "value" },
+    },
+  ]);
+
   return {
     result: EvalResult.COMPLETE,
-    output: { submittedTxs: results }
+    output: { submittedTxs: results },
   };
 }
 ```
@@ -635,7 +701,10 @@ async function myHandler(transaction, input, engAPI: EngineAPI) {
 For workflows with action-based routing and automatic stage transitions:
 
 ```typescript
-import { BasicStageDirector, WithStageDirector } from '@kaleido-io/workflow-engine-sdk';
+import {
+  BasicStageDirector,
+  WithStageDirector,
+} from "@kaleido-io/workflow-engine-sdk";
 
 interface MyInput extends WithStageDirector {
   data: string;
@@ -647,10 +716,10 @@ class MyInputImpl implements MyInput {
 
   constructor(input: any) {
     this.stageDirector = new BasicStageDirector(
-      input.action,        // Action to execute
-      input.outputPath,    // Where to store output
-      input.nextStage,     // Stage on success
-      input.failureStage   // Stage on failure
+      input.action, // Action to execute
+      input.outputPath, // Where to store output
+      input.nextStage, // Stage on success
+      input.failureStage, // Stage on failure
     );
     this.data = input.data;
   }
@@ -663,16 +732,19 @@ class MyInputImpl implements MyInput {
 // The SDK automatically wraps plain JSON objects from the engine
 // with a getStageDirector() method, so you can also use plain objects:
 const actionMap = new Map([
-  ['myAction', {
-    invocationMode: InvocationMode.PARALLEL,
-    handler: async (transaction, input: any) => {
-      // input.action, input.outputPath, input.nextStage are available
-      return {
-        result: EvalResult.COMPLETE,
-        output: { processed: input.data }
-      };
-    }
-  }]
+  [
+    "myAction",
+    {
+      invocationMode: InvocationMode.PARALLEL,
+      handler: async (transaction, input: any) => {
+        // input.action, input.outputPath, input.nextStage are available
+        return {
+          result: EvalResult.COMPLETE,
+          output: { processed: input.data },
+        };
+      },
+    },
+  ],
 ]);
 ```
 
@@ -688,27 +760,28 @@ handler: async (transaction, input) => {
     const result = await riskyOperation(input);
     return {
       result: EvalResult.COMPLETE,
-      output: result
+      output: result,
     };
   } catch (error) {
     if (isTransient(error)) {
       return {
         result: EvalResult.TRANSIENT_ERROR,
-        error: error as Error
+        error: error as Error,
       };
     } else {
       return {
         result: EvalResult.HARD_FAILURE,
-        error: error as Error
+        error: error as Error,
       };
     }
   }
-}
+};
 ```
 
 ### Connection errors
 
 The client automatically handles:
+
 - WebSocket disconnections
 - Automatic reconnection with exponential backoff
 - Handler re-registration on reconnect
@@ -720,7 +793,7 @@ Monitor connection events:
 // The SDK logs connection events automatically
 // Check connection status programmatically:
 if (!client.isConnected()) {
-  console.warn('Client disconnected, will auto-reconnect');
+  console.warn("Client disconnected, will auto-reconnect");
 }
 ```
 
@@ -729,14 +802,14 @@ if (!client.isConnected()) {
 The SDK uses a structured logger:
 
 ```typescript
-import { newLogger } from '@kaleido-io/workflow-engine-sdk';
+import { newLogger } from "@kaleido-io/workflow-engine-sdk";
 
-const log = newLogger('my-component');
+const log = newLogger("my-component");
 
-log.debug('Debug message', { metadata: 'value' });
-log.info('Info message', { userId: 123 });
-log.warn('Warning message', { reason: 'low memory' });
-log.error('Error message', { error: err.message });
+log.debug("Debug message", { metadata: "value" });
+log.info("Info message", { userId: 123 });
+log.warn("Warning message", { reason: "low memory" });
+log.error("Error message", { error: err.message });
 ```
 
 ## Testing
@@ -746,18 +819,18 @@ log.error('Error message', { error: err.message });
 Mock the EngineAPI and test handlers in isolation:
 
 ```typescript
-import { jest } from '@jest/globals';
+import { jest } from "@jest/globals";
 
-describe('MyHandler', () => {
-  it('should process data correctly', async () => {
+describe("MyHandler", () => {
+  it("should process data correctly", async () => {
     const mockEngAPI = {
-      submitAsyncTransactions: jest.fn().mockResolvedValue([])
+      submitAsyncTransactions: jest.fn().mockResolvedValue([]),
     };
 
     const transaction = {
-      transactionId: 'ftx:test123',
-      workflowId: 'flw:test',
-      input: { action: 'process', data: 'test' }
+      transactionId: "ftx:test123",
+      workflowId: "flw:test",
+      input: { action: "process", data: "test" },
     };
 
     const result = await myHandler(transaction, transaction.input, mockEngAPI);
@@ -773,37 +846,42 @@ describe('MyHandler', () => {
 Test with a running workflow engine:
 
 ```typescript
-import { 
-  WorkflowEngineClient, 
+import {
+  WorkflowEngineClient,
   ConfigLoader,
-  WorkflowEngineConfig 
-} from '@kaleido-io/workflow-engine-sdk';
-import * as fs from 'fs';
-import * as yaml from 'js-yaml';
+  WorkflowEngineConfig,
+} from "@kaleido-io/workflow-engine-sdk";
+import * as fs from "fs";
+import * as yaml from "js-yaml";
 
 // Helper to load test config (your test infrastructure)
 function loadTestConfig(): WorkflowEngineConfig {
-  const configFile = fs.readFileSync('./test-config.yaml', 'utf8');
-  const config: WorkflowEngineConfig = yaml.load(configFile) as WorkflowEngineConfig;
-  
+  const configFile = fs.readFileSync("./test-config.yaml", "utf8");
+  const config: WorkflowEngineConfig = yaml.load(
+    configFile,
+  ) as WorkflowEngineConfig;
+
   // Override with environment variables if present
   if (process.env.WORKFLOW_ENGINE_URL) {
     config.workflowEngine.url = process.env.WORKFLOW_ENGINE_URL;
   }
-  
+
   return config;
 }
 
-describe('Component Test', () => {
+describe("Component Test", () => {
   let client: WorkflowEngineClient;
   const testConfig = loadTestConfig();
 
   beforeAll(async () => {
     // Use SDK's ConfigLoader to transform config
-    const clientConfig = ConfigLoader.createClientConfig(testConfig, 'test-provider');
+    const clientConfig = ConfigLoader.createClientConfig(
+      testConfig,
+      "test-provider",
+    );
     client = new WorkflowEngineClient(clientConfig);
 
-    client.registerTransactionHandler('my-handler', handler);
+    client.registerTransactionHandler("my-handler", handler);
     await client.connect();
   });
 
@@ -811,25 +889,31 @@ describe('Component Test', () => {
     client.disconnect();
   });
 
-  it('should process workflow end-to-end', async () => {
+  it("should process workflow end-to-end", async () => {
     // For REST API calls, extract auth headers from SDK config
     function getAuthHeaders(): Record<string, string> {
-      const clientConfig = ConfigLoader.createClientConfig(testConfig, 'test-client');
+      const clientConfig = ConfigLoader.createClientConfig(
+        testConfig,
+        "test-client",
+      );
       return clientConfig.options?.headers || {};
     }
 
     const authHeaders = getAuthHeaders();
-    
+
     // Create workflow
-    const workflowResponse = await fetch('http://localhost:5503/api/v1/workflows', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-yaml',
-        ...authHeaders  // SDK handles auth automatically
+    const workflowResponse = await fetch(
+      "http://localhost:5503/api/v1/workflows",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-yaml",
+          ...authHeaders, // SDK handles auth automatically
+        },
+        body: workflowYAML,
       },
-      body: workflowYAML
-    });
-    
+    );
+
     // Wait for completion and verify results
   });
 });
@@ -847,10 +931,10 @@ import {
   InvocationMode,
   EvalResult,
   Patch,
-  ConfigLoader
-} from '@kaleido-io/workflow-engine-sdk';
-import * as fs from 'fs';
-import * as yaml from 'js-yaml';
+  ConfigLoader,
+} from "@kaleido-io/workflow-engine-sdk";
+import * as fs from "fs";
+import * as yaml from "js-yaml";
 
 interface ProcessInput {
   action: string;
@@ -860,67 +944,79 @@ interface ProcessInput {
 
 async function main() {
   // Load config (your application handles file loading)
-  const configFile = fs.readFileSync('./config.yaml', 'utf8');
-  const config: WorkflowEngineConfig = yaml.load(configFile) as WorkflowEngineConfig;
-  
+  const configFile = fs.readFileSync("./config.yaml", "utf8");
+  const config: WorkflowEngineConfig = yaml.load(
+    configFile,
+  ) as WorkflowEngineConfig;
+
   // SDK transforms config
-  const clientConfig = ConfigLoader.createClientConfig(config, 'payment-service');
+  const clientConfig = ConfigLoader.createClientConfig(
+    config,
+    "payment-service",
+  );
 
   // Create client
   const client = new WorkflowEngineClient(clientConfig);
 
   // Define actions
   const actionMap = new Map([
-    ['validatePayment', {
-      invocationMode: InvocationMode.PARALLEL,
-      handler: async (transaction, input: ProcessInput) => {
-        if (input.amount <= 0) {
-          return {
-            result: EvalResult.HARD_FAILURE,
-            error: new Error('Invalid amount')
-          };
-        }
-        
-        return {
-          result: EvalResult.COMPLETE,
-          output: { validated: true },
-          extraUpdates: [
-            Patch.add('/validation', { valid: true, timestamp: new Date() })
-          ]
-        };
-      }
-    }],
+    [
+      "validatePayment",
+      {
+        invocationMode: InvocationMode.PARALLEL,
+        handler: async (transaction, input: ProcessInput) => {
+          if (input.amount <= 0) {
+            return {
+              result: EvalResult.HARD_FAILURE,
+              error: new Error("Invalid amount"),
+            };
+          }
 
-    ['processPayment', {
-      invocationMode: InvocationMode.PARALLEL,
-      handler: async (transaction, input: ProcessInput) => {
-        const paymentResult = await processPayment(input.userId, input.amount);
-        
-        return {
-          result: EvalResult.COMPLETE,
-          output: paymentResult,
-          triggers: [
-            { topic: 'payment.completed' }
-          ]
-        };
-      }
-    }]
+          return {
+            result: EvalResult.COMPLETE,
+            output: { validated: true },
+            extraUpdates: [
+              Patch.add("/validation", { valid: true, timestamp: new Date() }),
+            ],
+          };
+        },
+      },
+    ],
+
+    [
+      "processPayment",
+      {
+        invocationMode: InvocationMode.PARALLEL,
+        handler: async (transaction, input: ProcessInput) => {
+          const paymentResult = await processPayment(
+            input.userId,
+            input.amount,
+          );
+
+          return {
+            result: EvalResult.COMPLETE,
+            output: paymentResult,
+            triggers: [{ topic: "payment.completed" }],
+          };
+        },
+      },
+    ],
   ]);
 
   // Create handler
-  const handler = newDirectedTransactionHandler('payment-handler', actionMap)
+  const handler = newDirectedTransactionHandler("payment-handler", actionMap)
     .withInitFn(async (engAPI) => {
-      console.log('Payment handler initialized');
+      console.log("Payment handler initialized");
     })
     .withCloseFn(() => {
-      console.log('Payment handler closed');
+      console.log("Payment handler closed");
     });
 
   // Register and connect
-  client.registerTransactionHandler('payment-handler', handler);
+  client.registerTransactionHandler("payment-handler", handler);
   await client.connect();
 
-  console.log('Payment service ready');
+  console.log("Payment service ready");
 }
 
 main().catch(console.error);
@@ -973,13 +1069,13 @@ Workflow Engine
 
 ```typescript
 const client = new WorkflowEngineClient({
-  url: 'ws://localhost:5503/ws',
-  providerName: 'my-service',
+  url: "ws://localhost:5503/ws",
+  providerName: "my-service",
   options: {
     headers: {
-      'Authorization': `Bearer ${process.env.AUTH_TOKEN}`
-    }
-  }
+      Authorization: `Bearer ${process.env.AUTH_TOKEN}`,
+    },
+  },
 });
 ```
 
@@ -987,10 +1083,10 @@ const client = new WorkflowEngineClient({
 
 ```typescript
 // Register multiple handlers
-client.registerTransactionHandler('handler1', handler1);
-client.registerTransactionHandler('handler2', handler2);
-client.registerEventSource('source1', source1);
-client.registerEventSource('source2', source2);
+client.registerTransactionHandler("handler1", handler1);
+client.registerTransactionHandler("handler2", handler2);
+client.registerEventSource("source1", source1);
+client.registerEventSource("source2", source2);
 
 // All handlers use the same WebSocket connection
 await client.connect();
@@ -999,30 +1095,35 @@ await client.connect();
 ### Configuration validation
 
 ```typescript
-import { ConfigLoader, WorkflowEngineConfig } from '@kaleido-io/workflow-engine-sdk';
-import * as fs from 'fs';
-import * as yaml from 'js-yaml';
+import {
+  ConfigLoader,
+  WorkflowEngineConfig,
+} from "@kaleido-io/workflow-engine-sdk";
+import * as fs from "fs";
+import * as yaml from "js-yaml";
 
 try {
   // Your application loads config
-  const configFile = fs.readFileSync('./config.yaml', 'utf8');
-  const config: WorkflowEngineConfig = yaml.load(configFile) as WorkflowEngineConfig;
-  
+  const configFile = fs.readFileSync("./config.yaml", "utf8");
+  const config: WorkflowEngineConfig = yaml.load(
+    configFile,
+  ) as WorkflowEngineConfig;
+
   // Validate required fields
   if (!config.workflowEngine) {
-    throw new Error('Missing workflowEngine configuration');
+    throw new Error("Missing workflowEngine configuration");
   }
   if (!config.workflowEngine.url) {
-    throw new Error('Missing workflowEngine.url');
+    throw new Error("Missing workflowEngine.url");
   }
   if (!config.workflowEngine.auth) {
-    throw new Error('Missing workflowEngine.auth');
+    throw new Error("Missing workflowEngine.auth");
   }
-  
+
   // SDK logs summary (without sensitive data)
   ConfigLoader.logConfigSummary(config);
 } catch (error) {
-  console.error('Invalid configuration:', error.message);
+  console.error("Invalid configuration:", error.message);
   process.exit(1);
 }
 ```
@@ -1048,7 +1149,7 @@ try {
 
 ```typescript
 // Register BEFORE submitting workflows
-client.registerTransactionHandler('my-handler', handler);
+client.registerTransactionHandler("my-handler", handler);
 await client.connect();
 // Now workflows can use this handler
 ```
@@ -1061,18 +1162,19 @@ await client.connect();
 
 ```typescript
 // Verify URL format (should include ws:// or wss://)
-url: 'ws://localhost:5503/ws'  // ✓ Correct
-url: 'localhost:5503'           // ✗ Wrong
+url: "ws://localhost:5503/ws"; // ✓ Correct
+url: "localhost:5503"; // ✗ Wrong
 
 // Check authentication
-authToken: process.env.AUTH_TOKEN  // Ensure token is valid
+authToken: process.env.AUTH_TOKEN; // Ensure token is valid
 ```
 
 ### Event source not polling
 
 **Problem**: Event stream created but no events emitted
 
-**Solution**: 
+**Solution**:
+
 1. Check stream is started: `"started": true`
 2. Verify handler name matches: `listenerHandler: 'my-event-source'`
 3. Check provider name matches: `listenerHandlerProvider: 'my-service'`

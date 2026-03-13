@@ -14,10 +14,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
+import * as fs from 'fs';
+import * as yaml from 'js-yaml';
 import { WorkflowEngineClientConfig } from '../client/client';
 import { newLogger } from '../log/logger';
 import { SDKErrors, newError } from '../i18n/errors';
+
+/**
+ * Environment variable name for the workflow engine config file path.
+ */
+export const WFE_CONFIG_FILE = 'WFE_CONFIG_FILE';
 
 const log = newLogger('config');
 
@@ -26,7 +32,7 @@ const log = newLogger('config');
  */
 export enum AuthType {
   BASIC = 'basic',
-  TOKEN = 'token'
+  TOKEN = 'token',
 }
 
 /**
@@ -44,8 +50,8 @@ export interface BasicAuth {
 export interface TokenAuth {
   type: AuthType.TOKEN;
   token: string;
-  header?: string;  // Header name (default: Authorization)
-  scheme?: string;  // Auth scheme: Bearer, Basic, or empty for raw token
+  header?: string; // Header name (default: Authorization)
+  scheme?: string; // Auth scheme: Bearer, Basic, or empty for raw token
 }
 
 /**
@@ -55,7 +61,7 @@ export type AuthConfig = BasicAuth | TokenAuth;
 
 /**
  * Standard configuration structure for workflow engine connectors
- * 
+ *
  * This configuration should be provided by the application using the SDK.
  * The SDK does not load configuration from files - it receives it from the caller.
  */
@@ -70,46 +76,50 @@ export interface WorkflowEngineConfig {
 
 /**
  * Configuration utility for transforming WorkflowEngineConfig into client config
- * 
+ *
  * The SDK receives configuration objects - it does not load from files.
  * Applications using this SDK should load configuration themselves and pass it in.
  */
 export class ConfigLoader {
-
   /**
    * Create WorkflowEngineClientConfig from WorkflowEngineConfig
    */
   static createClientConfig(
     config: WorkflowEngineConfig,
-    providerName: string
+    providerName: string,
   ): WorkflowEngineClientConfig {
     const auth = config.workflowEngine.auth;
     let headerName: string;
     let authValue: string;
-    
+
     // Use discriminated union to handle different auth types
     switch (auth.type) {
       case AuthType.BASIC: {
         headerName = 'Authorization';
-        const credentials = Buffer.from(`${auth.username}:${auth.password}`).toString('base64');
+        const credentials = Buffer.from(
+          `${auth.username}:${auth.password}`,
+        ).toString('base64');
         authValue = `Basic ${credentials}`;
         break;
       }
-        
+
       case AuthType.TOKEN: {
         headerName = auth.header || 'Authorization';
         const scheme = auth.scheme || '';
         authValue = scheme ? `${scheme} ${auth.token}` : auth.token;
         break;
       }
-        
+
       default: {
         // TypeScript ensures this is unreachable if all cases are handled
         const _exhaustive: never = auth;
-        throw newError(SDKErrors.MsgSDKConfigUnknownAuthType, (_exhaustive as any).type);
+        throw newError(
+          SDKErrors.MsgSDKConfigUnknownAuthType,
+          (_exhaustive as any).type,
+        );
       }
     }
-    
+
     // Convert HTTP(S) URL to WebSocket URL with /ws path
     let wsUrl = config.workflowEngine.url;
     if (wsUrl.startsWith('http://')) {
@@ -121,18 +131,91 @@ export class ConfigLoader {
     if (!wsUrl.endsWith('/ws')) {
       wsUrl = wsUrl.replace(/\/$/, '') + '/ws';
     }
-    
+
     return {
       url: wsUrl,
       providerName,
       options: {
         headers: {
-          [headerName]: authValue
-        }
+          [headerName]: authValue,
+        },
       },
       maxAttempts: config.workflowEngine.maxRetries, // undefined = infinite retries
-      reconnectDelay: config.workflowEngine.retryDelay ? parseInt(config.workflowEngine.retryDelay.replace('s', '')) * 1000 : 2000
+      reconnectDelay: config.workflowEngine.retryDelay
+        ? parseInt(config.workflowEngine.retryDelay.replace('s', '')) * 1000
+        : 2000,
     };
+  }
+
+  /**
+   * Load WorkflowEngineClientConfig from a YAML file.
+   * Uses WFE_CONFIG_FILE env if configFilePath is not provided.
+   * Accepts root key "workflow-engine" or "workflowEngine".
+   */
+  static loadClientConfigFromFile(
+    configFilePath?: string,
+  ): WorkflowEngineClientConfig {
+    const path = (configFilePath ?? process.env[WFE_CONFIG_FILE] ?? '').trim();
+    if (!path) {
+      throw newError(SDKErrors.MsgSDKConfigFileNotSet, WFE_CONFIG_FILE);
+    }
+    const raw = fs.readFileSync(path, 'utf8');
+    const parsed = yaml.load(raw) as Record<string, unknown> | undefined;
+    if (!parsed || typeof parsed !== 'object') {
+      throw newError(SDKErrors.MsgSDKConfigFileInvalid, path);
+    }
+    const section = (parsed['workflow-engine'] ?? parsed['workflowEngine']) as
+      | Record<string, unknown>
+      | undefined;
+    if (!section || typeof section !== 'object') {
+      throw newError(SDKErrors.MsgSDKConfigSectionMissing, path);
+    }
+    const providerName =
+      typeof section.providerName === 'string'
+        ? section.providerName.trim()
+        : '';
+    if (!providerName) {
+      throw newError(SDKErrors.MsgSDKProviderNameNotSet);
+    }
+    const url = typeof section.url === 'string' ? section.url : undefined;
+    const auth = section.auth as
+      | WorkflowEngineConfig['workflowEngine']['auth']
+      | undefined;
+    if (!url || !auth || typeof auth !== 'object') {
+      throw newError(SDKErrors.MsgSDKConfigUrlAuthMissing, path);
+    }
+    const engineConfig: WorkflowEngineConfig = {
+      workflowEngine: {
+        url,
+        auth,
+        maxRetries:
+          typeof section.maxRetries === 'number'
+            ? section.maxRetries
+            : undefined,
+        retryDelay:
+          typeof section.retryDelay === 'string'
+            ? section.retryDelay
+            : undefined,
+      },
+    };
+    const clientConfig = ConfigLoader.createClientConfig(
+      engineConfig,
+      providerName,
+    );
+    if (
+      section.providerMetadata != null &&
+      typeof section.providerMetadata === 'object' &&
+      !Array.isArray(section.providerMetadata)
+    ) {
+      const meta: Record<string, string> = {};
+      for (const [k, v] of Object.entries(section.providerMetadata)) {
+        if (typeof v === 'string') meta[k] = v;
+      }
+      if (Object.keys(meta).length > 0) {
+        clientConfig.providerMetadata = meta;
+      }
+    }
+    return clientConfig;
   }
 
   /**
@@ -141,7 +224,7 @@ export class ConfigLoader {
   static logConfigSummary(config: WorkflowEngineConfig): void {
     log.info('Configuration loaded:');
     log.info(`  Workflow Engine: ${config.workflowEngine.url}`);
-    
+
     const auth = config.workflowEngine.auth;
     switch (auth.type) {
       case AuthType.BASIC:
@@ -155,15 +238,14 @@ export class ConfigLoader {
           log.info(`  Auth Scheme: ${auth.scheme}`);
         }
         break;
-      }
-      
-      if (config.workflowEngine.maxRetries) {
-        log.info(`  Max Retries: ${config.workflowEngine.maxRetries}`);
-      }
-    
-      if (config.workflowEngine.retryDelay) {
-        log.info(`  Retry Delay: ${config.workflowEngine.retryDelay}`);
-      }
+    }
+
+    if (config.workflowEngine.maxRetries) {
+      log.info(`  Max Retries: ${config.workflowEngine.maxRetries}`);
+    }
+
+    if (config.workflowEngine.retryDelay) {
+      log.info(`  Retry Delay: ${config.workflowEngine.retryDelay}`);
+    }
   }
 }
-

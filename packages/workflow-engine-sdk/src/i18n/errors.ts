@@ -45,7 +45,7 @@ export const SDKErrors = {
   MsgSDKObservedPanic: fe('KA140600', 'Observed panic: %s'),
   MsgSDKUnknownHandler: fe('KA140601', "Unknown handler '%s'"),
   MsgSDKUnknownNoListenerConfig: fe('KA140602', "Listener config for stream '%s' not supplied by workflow engine"),
-  MsgSDKOutputSerializationError: fe('KA140603', "Unable to serialize output to %s"),
+  MsgSDKOutputSerializationError: fe('KA140603', 'Unable to serialize output to %s'),
   MsgSDKDirectorNextStageMissing: fe('KA140604', "Handler called with 'nextStage' missing from input"),
   MsgSDKDirectorOutputPathMissing: fe('KA140605', "Handler called with 'outputPath' missing from input"),
   MsgSDKDirectorFailureStageMissing: fe('KA140606', "Handler resulted in a failure, but 'failureStage' missing from input"),
@@ -60,8 +60,8 @@ export const SDKErrors = {
   MsgSDKEventSourceDataInvalid: fe('KA140613', "Event source data could not be serialized for handler '%s'"),
 
   // Engine API errors
-  MsgSDKEngineReplyInvalidData: fe('KA140614', "Engine API reply for transaction %s invalid: %s"),
-  MsgSDKEngineReplyInvalidType: fe('KA140615', "Engine API reply type for transaction %s invalid: %s"),
+  MsgSDKEngineReplyInvalidData: fe('KA140614', 'Engine API reply for transaction %s invalid: %s'),
+  MsgSDKEngineReplyInvalidType: fe('KA140615', 'Engine API reply type for transaction %s invalid: %s'),
   MsgSDKEngineReqNoActiveRequest: fe('KA140616', 'No engine handler is active on the supplied context'),
   MsgSDKEngineFailMarshalEngineRequest: fe('KA140617', 'Failed to marshal engine transaction data'),
   MsgSDKEngineFailSendEngineRequest: fe('KA140618', 'Failed to send engine transaction'),
@@ -84,6 +84,11 @@ export const SDKErrors = {
 
   // Configuration validation errors
   MsgSDKConfigUnknownAuthType: fe('KA140626', 'Unknown auth type: %s'),
+  MsgSDKConfigFileNotSet: fe('KA140635', 'Workflow engine config file not set: pass a config file or set %s'),
+  MsgSDKConfigFileInvalid: fe('KA140636', 'Invalid workflow engine config file: %s'),
+  MsgSDKConfigSectionMissing: fe('KA140637', 'Missing "workflow-engine" or "workflowEngine" section in %s'),
+  MsgSDKConfigUrlAuthMissing: fe('KA140638', 'Missing url or auth in workflow-engine section in %s'),
+  MsgSDKHandlerInvalidType: fe('KA140639', 'Handler "%s" does not implement TransactionHandler, EventSource, or EventProcessor'),
 
   // Engine connection errors
   MsgSDKEngineNotConnected: fe('KA140627', 'WebSocket is not connected. Cannot submit async transactions'),

@@ -16,9 +16,9 @@
 
 
 export const transaction = {
-    "input": {
-      "name": "workflow engine developer"
+    'input': {
+      'name': 'workflow engine developer'
     },
-    "operation": "hello",
-    "workflow": "hello-flow"
+    'operation': 'hello',
+    'workflow': 'hello-flow'
   }

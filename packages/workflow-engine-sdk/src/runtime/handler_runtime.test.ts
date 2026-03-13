@@ -295,7 +295,7 @@ describe('HandlerRuntime', () => {
         connectedSocket?.send(JSON.stringify({ messageType: 'unknown' }));
         handlerRuntime.stop();
         await new Promise(resolve => setTimeout(resolve, 100));
-        expect(mockLogger.warn).toHaveBeenCalledWith("Unknown message type", { "messageType": "unknown" });
+        expect(mockLogger.warn).toHaveBeenCalledWith('Unknown message type', { 'messageType': 'unknown' });
     })
     it('should handle a protocol error message', async () => {
         handlerRuntime = new HandlerRuntime(handlerRuntimeConfig);
@@ -437,7 +437,7 @@ describe('HandlerRuntime', () => {
         connectedSocket?.send(JSON.stringify({ messageType: WSMessageType.HANDLE_TRANSACTIONS, id: 'test-request-id', handler: 'test-transaction-handler', transactions: [{ id: 'test-transaction-id', operation: 'test-operation' }] }));
         handlerRuntime.stop();
         await new Promise(resolve => setTimeout(resolve, 100));
-        expect(mockLogger.error).toHaveBeenCalledWith("No transaction handler registered: test-transaction-handler");
+        expect(mockLogger.error).toHaveBeenCalledWith('No transaction handler registered: test-transaction-handler');
     })
     it('should handle an error when handler is undefined', async () => {
         handlerRuntime = new HandlerRuntime(handlerRuntimeConfig);
@@ -448,7 +448,7 @@ describe('HandlerRuntime', () => {
         connectedSocket?.send(JSON.stringify({ messageType: WSMessageType.HANDLE_TRANSACTIONS, id: 'test-request-id', transactions: [{ id: 'test-transaction-id', operation: 'test-operation' }] }));
         handlerRuntime.stop();
         await new Promise(resolve => setTimeout(resolve, 100));
-        expect(mockLogger.error).toHaveBeenCalledWith("Handler not set in transactions message");
+        expect(mockLogger.error).toHaveBeenCalledWith('Handler not set in transactions message');
     })
     it('should handle an error from a transaction handler', async () => {
         handlerRuntime = new HandlerRuntime(handlerRuntimeConfig);
@@ -928,7 +928,7 @@ describe('HandlerRuntime', () => {
 
             // Verify that the pong timeout warning was NOT called
             // (because the pong event should have cleared the timeout)
-            expect(mockLogger.warn).not.toHaveBeenCalledWith("Pong timeout - connection appears dead, reconnecting");
+            expect(mockLogger.warn).not.toHaveBeenCalledWith('Pong timeout - connection appears dead, reconnecting');
 
             // Verify connection is still alive
             expect(handlerRuntime.isWebSocketConnected()).toBe(true);
@@ -1021,7 +1021,7 @@ describe('HandlerRuntime', () => {
 
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            expect(mockLogger.warn).toHaveBeenCalledWith("Pong timeout - connection appears dead, reconnecting");
+            expect(mockLogger.warn).toHaveBeenCalledWith('Pong timeout - connection appears dead, reconnecting');
         });
         it('should handle multiple ping-pong cycles', async () => {
             handlerRuntime = new HandlerRuntime(heartbeatConfig);
