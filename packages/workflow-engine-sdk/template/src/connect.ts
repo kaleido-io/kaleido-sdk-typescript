@@ -14,16 +14,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as fs from "fs";
 import {
   newDirectedTransactionHandler,
-  WorkflowEngineClient,
   NewWorkflowEngineClient,
   HandlerSetFor,
 } from "@kaleido-io/workflow-engine-sdk";
 import dotenv from "dotenv";
-
-import provider from "./provider.js";
 
 import { actionMap as helloActionMap } from "./samples/hello/handlers.js";
 import { actionMap as httpInvokeActionMap } from "./samples/http-invoke/handlers.js";
@@ -44,9 +40,7 @@ const snapHandler = newDirectedTransactionHandler(
   snapActionMap,
 );
 
-let client: WorkflowEngineClient;
-
-client = await NewWorkflowEngineClient(
+const client = await NewWorkflowEngineClient(
   HandlerSetFor(
     helloHandler,
     httpInvokeHandler,

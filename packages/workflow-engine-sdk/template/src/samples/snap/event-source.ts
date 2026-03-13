@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { EventSourceConf, newEventSource, newLogger, WSEventStreamInfo } from "@kaleido-io/workflow-engine-sdk";
+import { EventSourceConf, newEventSource, newLogger, WSEventStreamInfo } from '@kaleido-io/workflow-engine-sdk';
 
 const log = newLogger('dealer-event-source');
 

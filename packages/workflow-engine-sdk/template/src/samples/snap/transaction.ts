@@ -14,13 +14,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { suits, ranks } from "./event-source.js";
+import { suits, ranks } from './event-source.js';
 
 export const transaction = {
-    "input": {
-        "suit": suits[Math.floor(Math.random() * suits.length)],
-        "rank": ranks[Math.floor(Math.random() * ranks.length)]
+    'input': {
+        'suit': suits[Math.floor(Math.random() * suits.length)],
+        'rank': ranks[Math.floor(Math.random() * ranks.length)]
     },
-    "operation": "play",
-    "workflow": "snap-flow"
+    'operation': 'play',
+    'workflow': 'snap-flow'
 }

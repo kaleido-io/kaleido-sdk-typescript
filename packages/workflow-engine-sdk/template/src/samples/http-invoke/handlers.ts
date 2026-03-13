@@ -14,16 +14,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as fs from "fs";
-import * as path from "path";
-import yaml from "js-yaml";
+import * as fs from 'fs';
+import * as path from 'path';
+import yaml from 'js-yaml';
 import {
   BasicStageDirector,
   DirectedActionConfig,
   EvalResult,
   InvocationMode,
   WithStageDirector,
-} from "@kaleido-io/workflow-engine-sdk";
+} from '@kaleido-io/workflow-engine-sdk';
 
 export interface HTTPInvokeConfig {
   url: string;
@@ -34,8 +34,8 @@ export interface HTTPInvokeConfig {
 function loadAppConfig(): { httpInvoke?: HTTPInvokeConfig } {
   const configPath =
     process.env.CONFIG_FILE ??
-    path.join(process.cwd(), "config", "config.yaml");
-  const raw = fs.readFileSync(configPath, "utf8");
+    path.join(process.cwd(), 'config', 'config.yaml');
+  const raw = fs.readFileSync(configPath, 'utf8');
   return yaml.load(raw) as { httpInvoke?: HTTPInvokeConfig };
 }
 
@@ -47,10 +47,10 @@ class HTTPInvokeHandlerInput implements WithStageDirector {
 
   constructor(data: any) {
     this.stageDirector = new BasicStageDirector(
-      data.action || "http-invoke",
-      data.outputPath || "/output",
-      data.nextStage || "end",
-      data.failureStage || "failed",
+      data.action || 'http-invoke',
+      data.outputPath || '/output',
+      data.nextStage || 'end',
+      data.failureStage || 'failed',
     );
     this.customData = data.customData;
   }
@@ -60,27 +60,27 @@ class HTTPInvokeHandlerInput implements WithStageDirector {
   }
 
   name(): string {
-    return "hello";
+    return 'hello';
   }
 }
 
 const appConfig = loadAppConfig();
 const httpInvoke = appConfig.httpInvoke ?? {
-  url: "https://httpbin.org/get",
-  invocationMode: "PARALLEL" as const,
-  apiKeyHeader: "X-API-KEY",
+  url: 'https://httpbin.org/get',
+  invocationMode: 'PARALLEL' as const,
+  apiKeyHeader: 'X-API-KEY',
 };
 
 const map: Map<string, DirectedActionConfig<HTTPInvokeHandlerInput>> = new Map([
   [
-    "http-invoke",
+    'http-invoke',
     {
       invocationMode:
         InvocationMode[httpInvoke.invocationMode] ?? InvocationMode.PARALLEL,
       handler: async () => {
         const response = await fetch(httpInvoke.url, {
           headers: {
-            [httpInvoke.apiKeyHeader]: process.env.API_KEY ?? "",
+            [httpInvoke.apiKeyHeader]: process.env.API_KEY ?? '',
           },
         });
         const body = await response.json();

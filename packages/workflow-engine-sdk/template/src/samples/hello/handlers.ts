@@ -15,7 +15,7 @@
 // limitations under the License.
 
 
-import { BasicStageDirector, DirectedActionConfig, EvalResult, InvocationMode, WithStageDirector, WSEvaluateTransaction } from "@kaleido-io/workflow-engine-sdk";
+import { BasicStageDirector, DirectedActionConfig, EvalResult, InvocationMode, WithStageDirector, WSEvaluateTransaction } from '@kaleido-io/workflow-engine-sdk';
 
 class MyHandlerInput implements WithStageDirector {
     public stageDirector: BasicStageDirector;
@@ -43,7 +43,7 @@ class MyHandlerInput implements WithStageDirector {
 }
 
 const map: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-    ["hello", {
+    ['hello', {
         invocationMode: InvocationMode.PARALLEL, handler: async (transaction: WSEvaluateTransaction) => {
             if (transaction.state?.input?.name === undefined) {
                 return {

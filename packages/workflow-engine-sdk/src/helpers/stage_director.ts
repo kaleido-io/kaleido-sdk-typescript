@@ -359,7 +359,7 @@ async function execMapped<T extends WithStageDirector>(
       events
     );
   } catch (error) {
-    log.error(`Handler execution failed:`, error);
+    log.error('Handler execution failed:', error);
     return {
       error: getErrorMessage(error)
     };
@@ -398,7 +398,7 @@ async function execBatchMapped<T extends WithStageDirector>(
       );
     });
   } catch (error) {
-    log.error(`Batch handler execution failed:`, error);
+    log.error('Batch handler execution failed:', error);
     return transactions.map(() => ({
       error: getErrorMessage(error)
     }));

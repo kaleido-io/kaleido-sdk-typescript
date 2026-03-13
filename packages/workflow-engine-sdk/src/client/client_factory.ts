@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { WorkflowEngineClient, WorkflowEngineClientConfig } from "./client";
+import { WorkflowEngineClient } from "./client";
 import { ConfigLoader } from "../config/config";
 import { newError, SDKErrors } from "../i18n/errors";
 import {
@@ -63,9 +63,7 @@ export async function NewWorkflowEngineClient(
   handlerSet: HandlerSet,
   configFile?: string /** Path to WFE config file; if empty, process.env[WFE_CONFIG_FILE] is used. */,
 ): Promise<WorkflowEngineClient> {
-  let clientConfig: WorkflowEngineClientConfig;
-
-  clientConfig = ConfigLoader.loadClientConfigFromFile(configFile);
+  const clientConfig = ConfigLoader.loadClientConfigFromFile(configFile);
   const client = new WorkflowEngineClient(clientConfig);
 
   for (const handler of handlerSet) {
