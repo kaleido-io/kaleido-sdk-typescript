@@ -1,4 +1,4 @@
-# Fixture for loadClientConfigFromFile tests (workflow-engine root key, Go shape)
+# Fixture for loadClientConfigFromFile tests
 workflow-engine:
   providerName: test-provider
   url: http://localhost:5503

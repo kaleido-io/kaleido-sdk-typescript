@@ -109,38 +109,54 @@ client.disconnect();
 
 ### Configuration file format
 
-If you choose to use YAML files, create a configuration file like this:
+The SDK only accepts the root key **`workflow-engine`** in config files (not `workflowEngine`). Use one of two shapes:
+
+- **Local dev:** `url` and `auth` (required). The SDK connects to the workflow engine at the given URL with the provided auth.
+- **Hosted:** `server` with `address` and `port`; URL is derived as `http://address:port`. Auth is not needed for hosted.
+
+Delay fields (`retryDelay`, etc.) use time strings: `ms`, `s`, `m`, `h` (e.g. `"2s"`, `"30s"`, `"100ms"`, `"1m"`).
+
+**Example — local dev with basic auth:**
 
 ```yaml
-# Basic authentication (username/password)
-workflowEngine:
+workflow-engine:
+  providerName: my-service
   url: http://localhost:5503
   auth:
     type: basic
     username: my-user
     password: my-password
   # maxRetries: undefined = infinite reconnection (recommended)
-  # maxRetries: 5           # Optional: limit reconnection attempts
+  # retryDelay: "2s" (time string: ms, s, m, h)
   retryDelay: 2s
-  timeout: 30s
-  batchSize: 10
-  batchTimeout: 500ms
-  pollDuration: 2s
 ```
 
-**Or use token authentication:**
+**Example — local dev with token auth:**
 
 ```yaml
-# Token authentication (API key, JWT, etc.)
-workflowEngine:
+workflow-engine:
+  providerName: my-service
   url: http://localhost:5503
   auth:
     type: token
     token: dev-token-123
-    header: X-Kld-Authz # Optional, defaults to Authorization
-    scheme: "" # Optional, e.g. "Bearer" for "Bearer <token>"
-  # maxRetries: undefined = infinite reconnection (recommended for long-running services)
+    header: X-Kld-Authz   # optional, defaults to Authorization
+    scheme: ""            # optional, e.g. "Bearer" for "Bearer <token>"
   retryDelay: 2s
+```
+
+**Example — hosted (server only; auth not needed):**
+
+```yaml
+workflow-engine:
+  providerName: my-service
+  providerMetadata: {}
+  server:
+    address: "0.0.0.0"
+    port: 6000
+    heartbeatInterval: "30s"
+    requestsPerSecond: 100
+    burst: 200
 ```
 
 Load and use configuration:
@@ -180,7 +196,7 @@ const client = new WorkflowEngineClient(clientConfig);
 
 Two config files are required for this setup:
 
-1. **WFE config (SDK contract)** — Workflow engine connection and identity. Path from `WFE_CONFIG_FILE` or pass `configFile` to `NewWorkflowEngineClient`. Root key in YAML: `workflow-engine` or `workflowEngine`. Contains `providerName`, optional `providerMetadata`, `url`, `auth`, and optional retry settings.
+1. **WFE config (SDK contract)** — Workflow engine connection and identity. Path from `WFE_CONFIG_FILE` or pass `configFile` to `NewWorkflowEngineClient`. Root key in YAML must be **`workflow-engine`** (only this key is supported). Local dev: include `providerName`, `url`, and `auth`. Hosted: include `providerName` and `server` (address, port); auth is not needed. Delay fields use time strings (e.g. `retryDelay: "2s"`).
 2. **Provider config (application-owned)** — App-specific settings. Path from `CONFIG_FILE` or `-f`; your app loads and uses it (e.g. to build handlers). The SDK does not read or define its schema.
 
 Example run:
@@ -206,19 +222,18 @@ const txHandler = newDirectedTransactionHandler("my-handler", actionMap);
 
 // Create and start runtime (loads WFE config from file, registers handlers, connects)
 const runtime = await NewWorkflowEngineClient(
-  { configFile: process.env[WFE_CONFIG_FILE] ?? "./wfe-config.yaml" },
   HandlerSetFor(handler, txHandler),
+  process.env[WFE_CONFIG_FILE] ?? "./wfe-config.yaml",
 );
 // runtime is already connected
 // On shutdown:
 runtime.disconnect();
 ```
 
-- **HandlerRuntimeConfig**: `configFile?` (path to WFE config; if empty, `WFE_CONFIG_FILE` env is used) or `clientConfig?` for in-memory config (e.g. tests).
 - **HandlerSetFor(...handlers)**: Builds a handler set from one or more transaction handlers, event sources, or event processors.
-- **NewWorkflowEngineClient(config, handlerSet)**: Loads WFE config from file (when `configFile` or `WFE_CONFIG_FILE` is set), creates the client, registers all handlers, connects, and returns the client. Uses `ConfigLoader.loadClientConfigFromFile` under the hood.
+- **NewWorkflowEngineClient(handlerSet, configFile?)**: Loads WFE config from file (when `configFile` or `WFE_CONFIG_FILE` env is set), creates the client, registers all handlers, connects, and returns the client. Uses `ConfigLoader.loadClientConfigFromFile` under the hood.
 
-To load client config from a WFE config file without using `NewWorkflowEngineClient` (e.g. for custom startup), use `ConfigLoader.loadClientConfigFromFile(configFilePath?)`. If `configFilePath` is omitted, `process.env[WFE_CONFIG_FILE]` is used. The file must use root key `workflow-engine` or `workflowEngine`, and must include `providerName`, `url`, and `auth`.
+To load client config from a WFE config file without using `NewWorkflowEngineClient` (e.g. for custom startup), use `ConfigLoader.loadClientConfigFromFile(configFilePath?)`. If `configFilePath` is omitted, `process.env[WFE_CONFIG_FILE]` is used. The file must use the root key **`workflow-engine`** only. For local dev include `providerName`, `url`, and `auth`; for hosted include `providerName` and `server` (address, port)—auth is not needed for hosted.
 
 ### Configuration Schema
 
@@ -255,12 +270,13 @@ interface TokenAuth {
 }
 ```
 
-### Configuration examples
+### Configuration examples (config file: root key `workflow-engine` only)
 
-**Outbound, basic auth:**
+**Local dev — basic auth:**
 
 ```yaml
-workflowEngine:
+workflow-engine:
+  providerName: my-service
   url: http://localhost:5503
   auth:
     type: basic
@@ -268,37 +284,43 @@ workflowEngine:
     password: secret123
 ```
 
-**Outbound, token auth (raw token):**
+**Local dev — token auth (raw token):**
 
 ```yaml
-workflowEngine:
+workflow-engine:
+  providerName: my-service
   url: http://localhost:5503
   auth:
     type: token
     token: dev-token-123
     header: X-Kld-Authz
-    scheme: "" # Empty string = raw token
+    scheme: ""   # Empty string = raw token
 ```
 
-**Outbound, token auth (bearer token):**
+**Local dev — token auth (bearer):**
 
 ```yaml
-workflowEngine:
+workflow-engine:
+  providerName: my-service
   url: http://localhost:5503
   auth:
     type: token
     token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-    scheme: Bearer # Sends "Bearer <token>"
+    scheme: Bearer
 ```
 
-**Inbound:**
-
-The client will wait for an inbound connection from the workflow engine
+**Hosted (server; auth not needed):**
 
 ```yaml
-workflowEngine:
-  mode: inbound
-  port: 12345
+workflow-engine:
+  providerName: my-service
+  providerMetadata: {}
+  server:
+    address: "0.0.0.0"
+    port: 6000
+    heartbeatInterval: "30s"
+    requestsPerSecond: 100
+    burst: 200
 ```
 
 **With environment variable overrides:**
@@ -1214,10 +1236,10 @@ See the TypeScript type definitions for complete API documentation:
 
 The `ConfigLoader` class provides utilities for transforming configuration:
 
-- `createClientConfig(config, providerName)` - Transforms `WorkflowEngineConfig` into `WorkflowEngineClientConfig`
-  - Converts HTTP URLs to WebSocket URLs
-  - Sets up authentication headers based on auth type
-  - Handles retry and timeout settings
-- `logConfigSummary(config)` - Logs configuration summary (without sensitive data)
+- `loadClientConfigFromFile(configFilePath?)` - Loads WFE config from a YAML file. Only the root key **`workflow-engine`** is supported. Local dev: `url` + `auth`; hosted: `server` (address, port), auth not needed. Uses `process.env[WFE_CONFIG_FILE]` when path is omitted.
+- `createClientConfig(config, providerName)` - Transforms `WorkflowEngineConfig` into `WorkflowEngineClientConfig` (converts HTTP to WebSocket URL, sets auth headers, parses time strings for delays).
+- `logConfigSummary(config)` - Logs configuration summary (without sensitive data).
 
-**Note:** The SDK does not load configuration from files. Your application should load configuration and pass it to these utilities.
+Time strings for delay fields (e.g. `retryDelay`) are parsed by `parseTimeStringToMs`: units `ms`, `s`, `m`, `h` (e.g. `"2s"`, `"30s"`, `"100ms"`, `"1m"`).
+
+**Note:** For file-based config, use `loadClientConfigFromFile` so the SDK handles the `workflow-engine` file format. Your application can still load YAML and call `createClientConfig` when using the in-memory `WorkflowEngineConfig` shape (e.g. with a `workflowEngine` property).

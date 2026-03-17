@@ -4,13 +4,10 @@ This project contains worked examples of custom providers that register transact
 
 ## Getting started
 
-1. Copy `.env.sample` to `.env` and populate the values. You will need:
-   - a Kaleido account in a tenant something of the format <account_name>.<tenant_url>
-   - an environment in that account, either name or ID
-   - a workflow engine in that environment, either name or ID
-   - an API key name and value - the API key will need to be granted service access to the workflow engine
-2. Install dependencies: `npm install`
-3. Start the provider, either:
+1. Copy `.env.sample` to `.env` and set `WFE_CONFIG_FILE` (path to your workflow engine config). Optionally set `CONFIG_FILE` for application config.
+2. Edit `config/wfe-config.yaml`: use the root key **`workflow-engine`** only. For local dev set `providerName`, `url`, and `auth`; for hosted set `providerName` and `server` (address, port)—auth is not needed for hosted. Delay fields use time strings (e.g. `retryDelay: "2s"`).
+3. Install dependencies: `npm install`
+4. Start the provider, either:
    - use the vscode launch configurations to run inside the debugger
    - use `npm run start:dev` to run TypeScript
    - use `npm build` and `npm start` to run transpiled JavaScript
@@ -25,7 +22,7 @@ This project will be bootstrapped with some example handlers, and the flows and 
 - defining a workflow that uses the `hello` handler by running `npm run create-workflow ./src/samples/hello/flow.ts`
 - create a transaction against that workflow by running `npm run create-transaction ./src/samples/hello/transaction.json`
 
-You should see the transaction appear in your workflow engine, and it should transition to `succeeded` shortly afterwars with a greeting message produced by the `hello` handler in this project.
+You should see the transaction appear in your workflow engine, and it should transition to `succeeded` shortly afterwards with a greeting message produced by the `hello` handler in this project.
 
 ## Included Samples
 

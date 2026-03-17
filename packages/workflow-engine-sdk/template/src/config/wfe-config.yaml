@@ -1,4 +1,4 @@
-# Workflow engine connection config (SDK contract; same shape as Go/generator for pods).
+# Workflow engine connection config (SDK contract).
 # Set WFE_CONFIG_FILE to this file or pass configFile to NewWorkflowEngineClient.
 workflow-engine:
   providerName: example-provider

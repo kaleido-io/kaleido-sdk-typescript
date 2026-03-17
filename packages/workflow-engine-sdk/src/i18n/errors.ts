@@ -86,7 +86,7 @@ export const SDKErrors = {
   MsgSDKConfigUnknownAuthType: fe('KA140626', 'Unknown auth type: %s'),
   MsgSDKConfigFileNotSet: fe('KA140635', 'Workflow engine config file not set: pass a config file or set %s'),
   MsgSDKConfigFileInvalid: fe('KA140636', 'Invalid workflow engine config file: %s'),
-  MsgSDKConfigSectionMissing: fe('KA140637', 'Missing "workflow-engine" or "workflowEngine" section in %s'),
+  MsgSDKConfigSectionMissing: fe('KA140637', 'Missing "workflow-engine" section in %s'),
   MsgSDKConfigUrlAuthMissing: fe('KA140638', 'Missing url or auth in workflow-engine section in %s'),
   MsgSDKHandlerInvalidType: fe('KA140639', 'Handler "%s" does not implement TransactionHandler, EventSource, or EventProcessor'),
 
