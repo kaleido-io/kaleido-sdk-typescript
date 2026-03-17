@@ -248,16 +248,19 @@ describe("ConfigLoader", () => {
       expect(clientConfig.providerName).toBe("test-provider");
     });
 
-    it("should load client config from hosted file (server only, no auth)", () => {
+    it("should load client config for inbound (server only, no auth)", () => {
       const configPath = path.join(FIXTURES_DIR, "wfe-config-hosted.yaml");
       const clientConfig = ConfigLoader.loadClientConfigFromFile(configPath);
       expect(clientConfig).toBeDefined();
       expect(clientConfig.providerName).toBe("hosted-provider");
-      expect(clientConfig.url).toBe("ws://0.0.0.0:6000/ws");
-      expect(clientConfig.options?.headers).toBeUndefined();
+      expect(clientConfig.url).toBeUndefined();
+      expect(clientConfig.server).toBeDefined();
+      expect(clientConfig.server?.address).toBe("0.0.0.0");
+      expect(clientConfig.server?.port).toBe(6000);
+      expect(clientConfig.server?.tls).toBeUndefined();
     });
 
-    it("should load client config from hosted file with server.tls (wss, ca/cert/key options)", () => {
+    it("should load client config for inbound with server.tls (WebSocket server TLS)", () => {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "wfe-tls-"));
       try {
         const caFile = path.join(tmpDir, "ca.crt");
@@ -285,12 +288,14 @@ workflow-engine:
         const clientConfig = ConfigLoader.loadClientConfigFromFile(configPath);
         expect(clientConfig).toBeDefined();
         expect(clientConfig.providerName).toBe("tls-provider");
-        expect(clientConfig.url).toBe("wss://0.0.0.0:6000/ws");
-        expect(clientConfig.options).toBeDefined();
-        expect(clientConfig.options?.ca?.toString()).toBe("mock-ca");
-        expect(clientConfig.options?.cert?.toString()).toBe("mock-cert");
-        expect(clientConfig.options?.key?.toString()).toBe("mock-key");
-        expect(clientConfig.options?.rejectUnauthorized).toBe(true);
+        expect(clientConfig.url).toBeUndefined();
+        expect(clientConfig.server).toBeDefined();
+        expect(clientConfig.server?.address).toBe("0.0.0.0");
+        expect(clientConfig.server?.port).toBe(6000);
+        expect(clientConfig.server?.tls?.enabled).toBe(true);
+        expect(clientConfig.server?.tls?.ca?.toString()).toBe("mock-ca");
+        expect(clientConfig.server?.tls?.cert?.toString()).toBe("mock-cert");
+        expect(clientConfig.server?.tls?.key?.toString()).toBe("mock-key");
       } finally {
         try {
           fs.rmSync(tmpDir, { recursive: true });

@@ -16,7 +16,7 @@
 
 import * as fs from "fs";
 import * as yaml from "js-yaml";
-import { WorkflowEngineClientConfig } from "../client/client";
+import { WorkflowEngineClientConfig, ServerConfig } from "../client/client";
 import { newLogger } from "../log/logger";
 import { SDKErrors, newError } from "../i18n/errors";
 
@@ -227,8 +227,8 @@ export class ConfigLoader {
    * Uses WFE_CONFIG_FILE env if configFilePath is not provided.
    * Only the root key "workflow-engine" is supported in the config file.
    *
-   * - Local dev: use "url" and "auth" in the section.
-   * - Hosted: use "server" (address, port, etc.); url is derived from server. Auth is not needed for hosted.
+   * - Outbound: use "url" and "auth"; the app connects to the workflow engine.
+   * - Inbound: use "server" (address, port, etc.); the app creates a WebSocket server and the engine connects to it. Auth is not used.
    */
   static loadClientConfigFromFile(
     configFilePath?: string,
@@ -269,7 +269,7 @@ export class ConfigLoader {
         : undefined;
 
     // Local dev: explicit url (and auth required)
-    let url: string | undefined =
+    const url: string | undefined =
       typeof section[ConfigWorkflowEngineUrl] === "string"
         ? (section[ConfigWorkflowEngineUrl] as string)
         : undefined;
@@ -277,10 +277,9 @@ export class ConfigLoader {
       | WorkflowEngineConfig["workflowEngine"]["auth"]
       | undefined;
 
-    // Hosted: derive url from server (address, port); auth not needed
-    const fromServer = !url && serverSection;
-    let tlsSection: Record<string, unknown> | undefined;
-    if (fromServer && serverSection) {
+    // Inbound: server section only → app creates WebSocket server (no url, no auth)
+    const inbound = !url && serverSection;
+    if (inbound && serverSection) {
       const address =
         typeof serverSection[ConfigServerAddress] === "string"
           ? (serverSection[ConfigServerAddress] as string).trim()
@@ -292,16 +291,38 @@ export class ConfigLoader {
             ? parseInt(serverSection[ConfigServerPort] as string, 10)
             : undefined;
       if (address && port !== undefined && !Number.isNaN(port)) {
-        tlsSection =
+        const tlsSection =
           serverSection[ConfigServerTls] != null &&
           typeof serverSection[ConfigServerTls] === "object" &&
           !Array.isArray(serverSection[ConfigServerTls])
             ? (serverSection[ConfigServerTls] as Record<string, unknown>)
             : undefined;
-        const tlsEnabled =
-          tlsSection !== undefined && tlsSection[ConfigTlsEnabled] === true;
-        const scheme = tlsEnabled ? "https" : "http";
-        url = `${scheme}://${address}:${port}`;
+        const serverConfig: ServerConfig = {
+          address,
+          port,
+        };
+        if (tlsSection && tlsSection[ConfigTlsEnabled] === true) {
+          serverConfig.tls = ConfigLoader.buildServerTlsFromSection(tlsSection);
+        }
+        const clientConfig: WorkflowEngineClientConfig = {
+          server: serverConfig,
+          providerName,
+          maxAttempts:
+            typeof section[ConfigWorkflowEngineMaxRetries] === "number"
+              ? (section[ConfigWorkflowEngineMaxRetries] as number)
+              : undefined,
+          reconnectDelay:
+            typeof section[ConfigWorkflowEngineRetryDelay] === "string"
+              ? (() => {
+                  const ms = parseTimeStringToMs(
+                    section[ConfigWorkflowEngineRetryDelay] as string,
+                  );
+                  return Number.isNaN(ms) ? 2000 : ms;
+                })()
+              : 2000,
+        };
+        ConfigLoader.applyProviderMetadata(clientConfig, section);
+        return clientConfig;
       }
     }
 
@@ -309,7 +330,7 @@ export class ConfigLoader {
       throw newError(SDKErrors.MsgSDKConfigUrlAuthMissing, configPath);
     }
 
-    // Local dev: url + auth → use createClientConfig
+    // Outbound: url + auth → use createClientConfig
     if (auth && typeof auth === "object") {
       const engineConfig: WorkflowEngineConfig = {
         workflowEngine: {
@@ -333,34 +354,41 @@ export class ConfigLoader {
       return clientConfig;
     }
 
-    // Hosted: server-derived url, no auth (not needed for hosted)
-    const clientConfig: WorkflowEngineClientConfig = {
-      url: ConfigLoader.toWsUrl(url),
-      providerName,
-      maxAttempts:
-        typeof section[ConfigWorkflowEngineMaxRetries] === "number"
-          ? (section[ConfigWorkflowEngineMaxRetries] as number)
-          : undefined,
-      reconnectDelay:
-        typeof section[ConfigWorkflowEngineRetryDelay] === "string"
-          ? (() => {
-              const ms = parseTimeStringToMs(
-                section[ConfigWorkflowEngineRetryDelay] as string,
-              );
-              return Number.isNaN(ms) ? 2000 : ms;
-            })()
-          : 2000,
-    };
-    if (tlsSection && tlsSection[ConfigTlsEnabled] === true) {
-      clientConfig.options =
-        ConfigLoader.buildTlsOptionsFromSection(tlsSection);
-    }
-    ConfigLoader.applyProviderMetadata(clientConfig, section);
-    return clientConfig;
+    throw newError(SDKErrors.MsgSDKConfigUrlAuthMissing, configPath);
   }
 
   /**
-   * Build WebSocket client TLS options from server.tls config section.
+   * Build server TLS config from server.tls section (for inbound WebSocket server).
+   * Reads caFile, certFile, keyFile and returns { enabled, ca?, cert?, key? }.
+   */
+  static buildServerTlsFromSection(tlsSection: Record<string, unknown>): {
+    enabled: boolean;
+    ca?: Buffer;
+    cert?: Buffer;
+    key?: Buffer;
+  } {
+    const certFile =
+      typeof tlsSection[ConfigTlsCertFile] === "string"
+        ? (tlsSection[ConfigTlsCertFile] as string).trim()
+        : "";
+    const keyFile =
+      typeof tlsSection[ConfigTlsKeyFile] === "string"
+        ? (tlsSection[ConfigTlsKeyFile] as string).trim()
+        : "";
+    const caFile =
+      typeof tlsSection[ConfigTlsCaFile] === "string"
+        ? (tlsSection[ConfigTlsCaFile] as string).trim()
+        : "";
+    return {
+      enabled: true,
+      ...(caFile && { ca: fs.readFileSync(caFile) }),
+      ...(certFile && { cert: fs.readFileSync(certFile) }),
+      ...(keyFile && { key: fs.readFileSync(keyFile) }),
+    };
+  }
+
+  /**
+   * Build WebSocket client TLS options from server.tls config section (outbound client).
    * Reads caFile, certFile, keyFile and returns options suitable for ws client (ca, cert, key, rejectUnauthorized).
    */
   static buildTlsOptionsFromSection(tlsSection: Record<string, unknown>): {

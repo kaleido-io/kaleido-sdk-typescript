@@ -109,14 +109,14 @@ client.disconnect();
 
 ### Configuration file format
 
-The SDK only accepts the root key **`workflow-engine`** in config files (not `workflowEngine`). Use one of two shapes:
+The SDK only accepts the root key **`workflow-engine`** in config files (not `workflowEngine`). Use one of two modes:
 
-- **Local dev:** `url` and `auth` (required). The SDK connects to the workflow engine at the given URL with the provided auth.
-- **Hosted:** `server` with `address` and `port`; URL is derived as `http://address:port`. Auth is not needed for hosted.
+- **Outbound:** Provide `url` and `auth`. The app (SDK client) connects to the workflow engine at that URL.
+- **Inbound:** Provide `server` with `address` and `port`. The app creates a WebSocket server on that address/port; the workflow engine connects to the app. Auth is not used. Optional `server.tls` (`enabled`, `caFile`, `certFile`, `keyFile`, `clientAuth`) enables TLS for the server.
 
 Delay fields (`retryDelay`, etc.) use time strings: `ms`, `s`, `m`, `h` (e.g. `"2s"`, `"30s"`, `"100ms"`, `"1m"`).
 
-**Example — local dev with basic auth:**
+**Example — outbound (local dev) with basic auth:**
 
 ```yaml
 workflow-engine:
@@ -131,7 +131,7 @@ workflow-engine:
   retryDelay: 2s
 ```
 
-**Example — local dev with token auth:**
+**Example — outbound with token auth:**
 
 ```yaml
 workflow-engine:
@@ -145,7 +145,7 @@ workflow-engine:
   retryDelay: 2s
 ```
 
-**Example — hosted (server only; auth not needed):**
+**Example — inbound (app creates WebSocket server):**
 
 ```yaml
 workflow-engine:
@@ -196,7 +196,7 @@ const client = new WorkflowEngineClient(clientConfig);
 
 Two config files are required for this setup:
 
-1. **WFE config (SDK contract)** — Workflow engine connection and identity. Path from `WFE_CONFIG_FILE` or pass `configFile` to `NewWorkflowEngineClient`. Root key in YAML must be **`workflow-engine`** (only this key is supported). Local dev: include `providerName`, `url`, and `auth`. Hosted: include `providerName` and `server` (address, port); auth is not needed. Delay fields use time strings (e.g. `retryDelay: "2s"`).
+1. **WFE config (SDK contract)** — Workflow engine connection and identity. Path from `WFE_CONFIG_FILE` or pass `configFile` to `NewWorkflowEngineClient`. Root key in YAML must be **`workflow-engine`**. **Outbound:** `providerName`, `url`, and `auth`. **Inbound:** `providerName` and `server` (address, port); the app creates a WebSocket server and the engine connects to it. Optional `server.tls` for TLS. Delay fields use time strings (e.g. `retryDelay: "2s"`).
 2. **Provider config (application-owned)** — App-specific settings. Path from `CONFIG_FILE` or `-f`; your app loads and uses it (e.g. to build handlers). The SDK does not read or define its schema.
 
 Example run:
@@ -233,7 +233,7 @@ runtime.disconnect();
 - **HandlerSetFor(...handlers)**: Builds a handler set from one or more transaction handlers, event sources, or event processors.
 - **NewWorkflowEngineClient(handlerSet, configFile?)**: Loads WFE config from file (when `configFile` or `WFE_CONFIG_FILE` env is set), creates the client, registers all handlers, connects, and returns the client. Uses `ConfigLoader.loadClientConfigFromFile` under the hood.
 
-To load client config from a WFE config file without using `NewWorkflowEngineClient` (e.g. for custom startup), use `ConfigLoader.loadClientConfigFromFile(configFilePath?)`. If `configFilePath` is omitted, `process.env[WFE_CONFIG_FILE]` is used. The file must use the root key **`workflow-engine`** only. For local dev include `providerName`, `url`, and `auth`; for hosted include `providerName` and `server` (address, port)—auth is not needed for hosted.
+To load client config from a WFE config file without using `NewWorkflowEngineClient` (e.g. for custom startup), use `ConfigLoader.loadClientConfigFromFile(configFilePath?)`. If `configFilePath` is omitted, `process.env[WFE_CONFIG_FILE]` is used. The file must use the root key **`workflow-engine`** only. **Outbound:** include `providerName`, `url`, and `auth`. **Inbound:** include `providerName` and `server` (address, port); the app will create a WebSocket server and auth is not used.
 
 ### Configuration Schema
 
@@ -272,7 +272,7 @@ interface TokenAuth {
 
 ### Configuration examples (config file: root key `workflow-engine` only)
 
-**Local dev — basic auth:**
+**Outbound — basic auth:**
 
 ```yaml
 workflow-engine:
@@ -284,7 +284,7 @@ workflow-engine:
     password: secret123
 ```
 
-**Local dev — token auth (raw token):**
+**Outbound — token auth (raw token):**
 
 ```yaml
 workflow-engine:
@@ -297,7 +297,7 @@ workflow-engine:
     scheme: ""   # Empty string = raw token
 ```
 
-**Local dev — token auth (bearer):**
+**Outbound — token auth (bearer):**
 
 ```yaml
 workflow-engine:
@@ -1236,7 +1236,7 @@ See the TypeScript type definitions for complete API documentation:
 
 The `ConfigLoader` class provides utilities for transforming configuration:
 
-- `loadClientConfigFromFile(configFilePath?)` - Loads WFE config from a YAML file. Only the root key **`workflow-engine`** is supported. Local dev: `url` + `auth`; hosted: `server` (address, port), auth not needed. Uses `process.env[WFE_CONFIG_FILE]` when path is omitted.
+- `loadClientConfigFromFile(configFilePath?)` - Loads WFE config from a YAML file. Only the root key **`workflow-engine`** is supported. **Outbound:** `url` + `auth`. **Inbound:** `server` (address, port); app creates WebSocket server, optional `server.tls`. Uses `process.env[WFE_CONFIG_FILE]` when path is omitted.
 - `createClientConfig(config, providerName)` - Transforms `WorkflowEngineConfig` into `WorkflowEngineClientConfig` (converts HTTP to WebSocket URL, sets auth headers, parses time strings for delays).
 - `logConfigSummary(config)` - Logs configuration summary (without sensitive data).
 

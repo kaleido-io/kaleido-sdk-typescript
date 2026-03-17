@@ -15,6 +15,7 @@
 // limitations under the License.
 
 
+import https from 'https';
 import WebSocket, { ClientOptions, WebSocketServer } from 'ws';
 import { backOff } from 'exponential-backoff';
 import {
@@ -50,23 +51,39 @@ export enum HandlerRuntimeMode {
   INBOUND = 'inbound',
 }
 /**
+ * Server config for inbound mode (app creates WebSocket server).
+ * Matches WorkflowEngineClientConfig.server.
+ */
+export interface ServerConfig {
+  address: string;
+  port: number;
+  tls?: {
+    enabled: boolean;
+    ca?: Buffer;
+    cert?: Buffer;
+    key?: Buffer;
+  };
+}
+
+/**
  * Configuration for the handler runtime
  */
 export interface HandlerRuntimeConfig {
-  // This is the websocket URL of the workflow engine
+  // Outbound: websocket URL of the workflow engine (client connects to engine)
   url?: string;
+  // Inbound: create WebSocket server on address/port (engine connects to app)
+  server?: ServerConfig;
   // Provider name is the name of the provider
   providerName: string;
   // Provider metadata is used to identify the provider to the workflow engine
   providerMetadata?: Record<string, string>;
-  // Auth token is used to authenticate the client to the workflow engine 
+  // Auth token is used to authenticate the client to the workflow engine
   authToken?: string;
-  // Auth header name is used to authenticate the client to the workflow engine   
+  // Auth header name is used to authenticate the client to the workflow engine
   authHeaderName?: string;
   // Headers are used to add additional headers to the websocket connection
   headers?: Record<string, string>;
-  // Options are used to pass additional options to the websocket connection
-  // This is directly from the ws library
+  // Options are used to pass additional options to the websocket connection (outbound)
   options?: ClientOptions;
   // Reconnect delay is the delay before reconnecting to the workflow engine
   reconnectDelay?: number;
@@ -88,6 +105,7 @@ export class HandlerRuntime {
   private config: HandlerRuntimeConfig;
   private mode: HandlerRuntimeMode = HandlerRuntimeMode.OUTBOUND;
   private port?: number;
+  private serverConfig?: ServerConfig;
 
   private transactionHandlers: Map<string, TransactionHandler> = new Map();
   private eventSources: Map<string, EventSource> = new Map();
@@ -109,7 +127,11 @@ export class HandlerRuntime {
   private activeHandlerContext?: { requestId: string; authTokens: Record<string, string> };
 
   constructor(config: HandlerRuntimeConfig) {
-    if (process.env.WORKFLOW_ENGINE_MODE === 'inbound') {
+    if (config.server) {
+      this.mode = HandlerRuntimeMode.INBOUND;
+      this.port = config.server.port;
+      this.serverConfig = config.server;
+    } else if (process.env.WORKFLOW_ENGINE_MODE === 'inbound') {
       this.mode = HandlerRuntimeMode.INBOUND;
       if (!process.env.WEBSOCKET_PORT) {
         throw newError(SDKErrors.MsgSDKWebSocketPortRequiredInbound);
@@ -271,7 +293,28 @@ export class HandlerRuntime {
   // ============================================================================
 
   private createWebSocketServer(): void {
-    this.wsServer = new WebSocketServer({ port: this.port });
+    const port = this.port ?? 6000;
+    const address = this.serverConfig?.address ?? '0.0.0.0';
+    const tls = this.serverConfig?.tls;
+
+    if (tls?.enabled && tls.cert && tls.key) {
+      const httpsOptions: https.ServerOptions = {
+        cert: tls.cert,
+        key: tls.key,
+      };
+      if (tls.ca) {
+        httpsOptions.ca = tls.ca;
+      }
+      const httpsServer = https.createServer(httpsOptions);
+      httpsServer.listen(port, address, () => {
+        log.info('WebSocket server (TLS) listening', { address, port, provider: this.config.providerName });
+      });
+      this.wsServer = new WebSocketServer({ server: httpsServer });
+    } else {
+      this.wsServer = new WebSocketServer({ port, host: address });
+      log.info('WebSocket server listening', { address, port, provider: this.config.providerName });
+    }
+
     this.wsServer.on('connection', (ws, req) => {
       log.info('WebSocket server connection', { remoteAddress: req.socket.remoteAddress, remotePort: req.socket.remotePort });
       this.ws = ws;

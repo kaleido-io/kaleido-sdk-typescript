@@ -25,6 +25,8 @@
 export {
   WorkflowEngineClient,
   WorkflowEngineClientConfig,
+  ServerConfig,
+  ServerTlsConfig,
 } from './client/client';
 
 export {
