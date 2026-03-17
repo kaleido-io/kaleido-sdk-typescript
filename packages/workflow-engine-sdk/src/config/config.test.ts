@@ -14,6 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import { describe, it, expect, afterEach } from "@jest/globals";
 
@@ -253,6 +255,49 @@ describe("ConfigLoader", () => {
       expect(clientConfig.providerName).toBe("hosted-provider");
       expect(clientConfig.url).toBe("ws://0.0.0.0:6000/ws");
       expect(clientConfig.options?.headers).toBeUndefined();
+    });
+
+    it("should load client config from hosted file with server.tls (wss, ca/cert/key options)", () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "wfe-tls-"));
+      try {
+        const caFile = path.join(tmpDir, "ca.crt");
+        const certFile = path.join(tmpDir, "tls.crt");
+        const keyFile = path.join(tmpDir, "tls.key");
+        fs.writeFileSync(caFile, "mock-ca");
+        fs.writeFileSync(certFile, "mock-cert");
+        fs.writeFileSync(keyFile, "mock-key");
+        const tlsYaml = `
+workflow-engine:
+  providerName: tls-provider
+  providerMetadata: {}
+  server:
+    address: "0.0.0.0"
+    port: 6000
+    tls:
+      enabled: true
+      caFile: "${caFile.replace(/\\/g, "/")}"
+      certFile: "${certFile.replace(/\\/g, "/")}"
+      keyFile: "${keyFile.replace(/\\/g, "/")}"
+      clientAuth: true
+`;
+        const configPath = path.join(tmpDir, "wfe-config.yaml");
+        fs.writeFileSync(configPath, tlsYaml);
+        const clientConfig = ConfigLoader.loadClientConfigFromFile(configPath);
+        expect(clientConfig).toBeDefined();
+        expect(clientConfig.providerName).toBe("tls-provider");
+        expect(clientConfig.url).toBe("wss://0.0.0.0:6000/ws");
+        expect(clientConfig.options).toBeDefined();
+        expect(clientConfig.options?.ca?.toString()).toBe("mock-ca");
+        expect(clientConfig.options?.cert?.toString()).toBe("mock-cert");
+        expect(clientConfig.options?.key?.toString()).toBe("mock-key");
+        expect(clientConfig.options?.rejectUnauthorized).toBe(true);
+      } finally {
+        try {
+          fs.rmSync(tmpDir, { recursive: true });
+        } catch {
+          // ignore
+        }
+      }
     });
   });
 });
