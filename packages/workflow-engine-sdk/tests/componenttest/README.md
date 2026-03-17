@@ -18,6 +18,7 @@ These tests mirror the workflow engine component test suite and use the same wor
 ### Three-Ringed Circus (`three-ringed-circus.test.ts`)
 
 Tests a complex workflow where visitors circuit through three rings multiple times:
+
 - Multiple actions (`enter`, `one`, `two`, `three`)
 - JSON Patch state management
 - Loop detection (returning to `one` from `three`)
@@ -26,6 +27,7 @@ Tests a complex workflow where visitors circuit through three rings multiple tim
 - Label-based organization (by tent)
 
 Key features tested:
+
 - StageDirector pattern with custom stages
 - State updates with JSON Patch operations
 - Handler invocation in PARALLEL mode
@@ -35,6 +37,7 @@ Key features tested:
 ### Snap (`snap.test.ts`)
 
 Tests event-driven workflow with triggers and correlation:
+
 - Event source polling (dealer)
 - Trigger creation and matching
 - Topic-based correlation
@@ -42,6 +45,7 @@ Tests event-driven workflow with triggers and correlation:
 - Event batching and timing
 
 Key features tested:
+
 - Trigger generation from handlers
 - Event source with checkpoint management
 - Topic-based event matching
@@ -75,10 +79,10 @@ Tests use the standard `WorkflowEngineConfig` format via `test-config.yaml`:
 workflowEngine:
   url: http://localhost:5503
   auth:
-    type: token  # 'token' or 'basic' (AuthType enum)
+    type: token # 'token' or 'basic' (AuthType enum)
     token: dev-token-123
     header: X-Kld-Authz
-    scheme: ""  # Empty for raw token, "Bearer" for Bearer token
+    scheme: "" # Empty for raw token, "Bearer" for Bearer token
   # Workflow engine settings
   maxRetries: 5
   retryDelay: 2s
@@ -87,6 +91,7 @@ workflowEngine:
 ```
 
 **Auth Types (AuthType enum):**
+
 - `token`: Token-based auth (supports custom headers and schemes)
 - `basic`: Username/password auth (automatically uses Basic Auth)
 
@@ -102,6 +107,7 @@ You can override config file values with environment variables:
 - `WORKFLOW_ENGINE_AUTH_SCHEME`: Auth scheme
 
 Example:
+
 ```bash
 FLOW_ENGINE_URL=http://localhost:8080 npm run test:component
 ```
@@ -109,6 +115,7 @@ FLOW_ENGINE_URL=http://localhost:8080 npm run test:component
 ### In CI
 
 The GitHub Actions workflow (`.github/workflows/workflow-engine-sdk-ts.yaml`) automatically:
+
 1. Starts the workflow engine with `make run-compose`
 2. Runs unit tests
 3. Runs E2E tests
@@ -128,6 +135,7 @@ These files are copied from `workflow-engine/test/componenttest/workflows/` and 
 ## Cleanup
 
 Tests automatically clean up after themselves:
+
 - Disconnect SDKs
 - Delete created streams
 - Delete created transactions
@@ -141,37 +149,39 @@ If tests fail or are interrupted, resources may remain in the workflow engine an
 
 ```typescript
 const client = new WorkflowEngineClient({
-  url: 'ws://localhost:5503/ws',
+  url: "ws://localhost:5503/ws",
   authToken: AUTH_TOKEN,
-  providerName: 'my-provider',
+  providerName: "my-provider",
 });
 
 const actionMap = new Map();
-actionMap.set('my-action', {
+actionMap.set("my-action", {
   invocationMode: InvocationMode.PARALLEL,
   handler: async (transaction, input) => ({
     result: EvalResult.COMPLETE,
-    output: { /* ... */ }
-  })
+    output: {
+      /* ... */
+    },
+  }),
 });
 
-const handler = newDirectedTransactionHandler('handler-name', actionMap);
-client.registerTransactionHandler('handler-name', handler);
+const handler = newDirectedTransactionHandler("handler-name", actionMap);
+client.registerTransactionHandler("handler-name", handler);
 await client.connect();
 ```
 
 ### Workflow Submission
 
 ```typescript
-const workflowYAML = fs.readFileSync('workflows/my-workflow.yaml', 'utf8');
+const workflowYAML = fs.readFileSync("workflows/my-workflow.yaml", "utf8");
 
 const response = await fetch(`http://${FLOW_ENGINE_ADDRESS}/api/v1/workflows`, {
-  method: 'POST',
+  method: "POST",
   headers: {
-    'Content-Type': 'application/x-yaml',
-    [AUTH_HEADER_NAME]: AUTH_TOKEN
+    "Content-Type": "application/x-yaml",
+    [AUTH_HEADER_NAME]: AUTH_TOKEN,
   },
-  body: workflowYAML
+  body: workflowYAML,
 });
 
 const workflow = await response.json();
@@ -180,18 +190,23 @@ const workflow = await response.json();
 ### Transaction Submission
 
 ```typescript
-const response = await fetch(`http://${FLOW_ENGINE_ADDRESS}/api/v1/transactions`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    [AUTH_HEADER_NAME]: AUTH_TOKEN
+const response = await fetch(
+  `http://${FLOW_ENGINE_ADDRESS}/api/v1/transactions`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      [AUTH_HEADER_NAME]: AUTH_TOKEN,
+    },
+    body: JSON.stringify({
+      workflowId: workflow.id,
+      operation: "my-operation",
+      input: {
+        /* ... */
+      },
+    }),
   },
-  body: JSON.stringify({
-    workflowId: workflow.id,
-    operation: 'my-operation',
-    input: { /* ... */ }
-  })
-});
+);
 
 const tx = await response.json();
 ```
@@ -200,24 +215,28 @@ const tx = await response.json();
 
 ```typescript
 const eventSource = {
-  name: () => 'my-source',
+  name: () => "my-source",
   init: async () => {},
   close: () => {},
   eventSourcePoll: async (config, result, request) => {
     result.events = [
       {
-        idempotencyKey: 'unique-key',
-        topic: 'my-topic',
-        data: { /* ... */ }
-      }
+        idempotencyKey: "unique-key",
+        topic: "my-topic",
+        data: {
+          /* ... */
+        },
+      },
     ];
-    result.checkpoint = { /* ... */ };
+    result.checkpoint = {
+      /* ... */
+    };
   },
   eventSourceValidateConfig: async () => {},
-  eventSourceDelete: async () => {}
+  eventSourceDelete: async () => {},
 };
 
-sdk.registerEventSource('my-source', eventSource);
+sdk.registerEventSource("my-source", eventSource);
 ```
 
 ## Implementation notes
@@ -232,18 +251,21 @@ sdk.registerEventSource('my-source', eventSource);
 To debug failing tests:
 
 1. Check workflow engine logs:
+
    ```bash
    docker compose -f workflow-engine/hack/dev.compose.yaml logs workflow-engine
    ```
 
 2. Check database state:
+
    ```bash
    docker compose -f workflow-engine/hack/dev.compose.yaml exec postgres psql -U comptest
    ```
 
 3. Enable debug logging in tests:
+
    ```typescript
-   import { setLogLevel, LogLevel } from '../../src/index';
+   import { setLogLevel, LogLevel } from "../../src/index";
    setLogLevel(LogLevel.DEBUG);
    ```
 
@@ -258,4 +280,3 @@ When adding new component tests:
 3. Add cleanup in `afterAll`
 4. Set appropriate timeouts
 5. Add documentation to this README
-
