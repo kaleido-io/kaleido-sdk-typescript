@@ -1,0 +1,16 @@
+# Hosted with TLS (server.tls)
+workflow-engine:
+  providerName: tls-provider
+  providerMetadata: {}
+  server:
+    address: "0.0.0.0"
+    port: 6000
+    heartbeatInterval: "30s"
+    requestsPerSecond: 100
+    burst: 200
+    tls:
+      caFile: "/etc/tls/ca.crt"
+      certFile: "/etc/tls/tls.crt"
+      clientAuth: true
+      enabled: true
+      keyFile: "/etc/tls/tls.key"

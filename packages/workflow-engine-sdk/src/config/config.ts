@@ -48,6 +48,15 @@ export const ConfigServerThrottleRPS = "requestsPerSecond";
 export const ConfigServerThrottleBurst = "burst";
 export const ConfigServerTls = "tls";
 
+/**
+ * Config key names for server.tls subsection
+ */
+export const ConfigTlsEnabled = "enabled";
+export const ConfigTlsCaFile = "caFile";
+export const ConfigTlsCertFile = "certFile";
+export const ConfigTlsKeyFile = "keyFile";
+export const ConfigTlsClientAuth = "clientAuth";
+
 const log = newLogger("config");
 
 /**
@@ -270,6 +279,7 @@ export class ConfigLoader {
 
     // Hosted: derive url from server (address, port); auth not needed
     const fromServer = !url && serverSection;
+    let tlsSection: Record<string, unknown> | undefined;
     if (fromServer && serverSection) {
       const address =
         typeof serverSection[ConfigServerAddress] === "string"
@@ -282,7 +292,16 @@ export class ConfigLoader {
             ? parseInt(serverSection[ConfigServerPort] as string, 10)
             : undefined;
       if (address && port !== undefined && !Number.isNaN(port)) {
-        url = `http://${address}:${port}`;
+        tlsSection =
+          serverSection[ConfigServerTls] != null &&
+          typeof serverSection[ConfigServerTls] === "object" &&
+          !Array.isArray(serverSection[ConfigServerTls])
+            ? (serverSection[ConfigServerTls] as Record<string, unknown>)
+            : undefined;
+        const tlsEnabled =
+          tlsSection !== undefined && tlsSection[ConfigTlsEnabled] === true;
+        const scheme = tlsEnabled ? "https" : "http";
+        url = `${scheme}://${address}:${port}`;
       }
     }
 
@@ -332,8 +351,51 @@ export class ConfigLoader {
             })()
           : 2000,
     };
+    if (tlsSection && tlsSection[ConfigTlsEnabled] === true) {
+      clientConfig.options =
+        ConfigLoader.buildTlsOptionsFromSection(tlsSection);
+    }
     ConfigLoader.applyProviderMetadata(clientConfig, section);
     return clientConfig;
+  }
+
+  /**
+   * Build WebSocket client TLS options from server.tls config section.
+   * Reads caFile, certFile, keyFile and returns options suitable for ws client (ca, cert, key, rejectUnauthorized).
+   */
+  static buildTlsOptionsFromSection(tlsSection: Record<string, unknown>): {
+    ca?: Buffer;
+    cert?: Buffer;
+    key?: Buffer;
+    rejectUnauthorized?: boolean;
+  } {
+    const opts: {
+      ca?: Buffer;
+      cert?: Buffer;
+      key?: Buffer;
+      rejectUnauthorized?: boolean;
+    } = {};
+    const caFile =
+      typeof tlsSection[ConfigTlsCaFile] === "string"
+        ? (tlsSection[ConfigTlsCaFile] as string).trim()
+        : "";
+    const certFile =
+      typeof tlsSection[ConfigTlsCertFile] === "string"
+        ? (tlsSection[ConfigTlsCertFile] as string).trim()
+        : "";
+    const keyFile =
+      typeof tlsSection[ConfigTlsKeyFile] === "string"
+        ? (tlsSection[ConfigTlsKeyFile] as string).trim()
+        : "";
+    if (caFile) {
+      opts.ca = fs.readFileSync(caFile);
+      opts.rejectUnauthorized = true;
+    } else {
+      opts.rejectUnauthorized = false;
+    }
+    if (certFile) opts.cert = fs.readFileSync(certFile);
+    if (keyFile) opts.key = fs.readFileSync(keyFile);
+    return opts;
   }
 
   private static applyProviderMetadata(
