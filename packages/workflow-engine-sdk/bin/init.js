@@ -195,6 +195,5 @@ console.log(`Project ${projectName} initialized\n\n`);
 console.log('Next steps:');
 console.log(`\tcd ${projectName}`);
 console.log('\tnpm install');
-console.log('\tcp .env.sample .env');
-console.log('\t# Edit .env with your configuration');
+console.log('\t# Edit config/wfe-config.yaml with your configuration');
 console.log('\tnpm run start:dev\n');
