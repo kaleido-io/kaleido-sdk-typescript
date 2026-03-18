@@ -49,6 +49,7 @@ const client = await NewWorkflowEngineClient(
     snapHandler,
     dealerEventSource,
   ),
+  process.env.WFE_CONFIG_FILE ?? "./config/wfe-config.yaml",
 );
 
 process.on("SIGINT", () => client.disconnect());
