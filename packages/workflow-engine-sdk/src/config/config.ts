@@ -17,6 +17,13 @@
 import * as fs from "fs";
 import * as yaml from "js-yaml";
 import { WorkflowEngineClientConfig, ServerConfig } from "../client/client";
+import {
+  cfgStrField,
+  cfgStrOrNumAsString,
+  cfgNumField,
+  cfgObjField,
+  parseInboundServerAddressPort,
+} from "./config_helpers";
 import { newLogger } from "../log/logger";
 import { SDKErrors, newError } from "../i18n/errors";
 
@@ -68,19 +75,26 @@ export function parseTimeStringToMs(value: string): number {
   const match = s.match(/^(\d+(?:\.\d+)?)\s*(ms|s|m|h)$/i);
   if (!match) return NaN;
   const n = parseFloat(match[1]);
-  const unit = (match[2] || "s").toLowerCase();
-  switch (unit) {
-    case "ms":
-      return n;
-    case "s":
-      return n * 1000;
-    case "m":
-      return n * 60 * 1000;
-    case "h":
-      return n * 60 * 60 * 1000;
-    default:
-      return NaN;
+  // Group 2 is always ms|s|m|h when the full pattern matches.
+  const unit = match[2]!.toLowerCase();
+  return timeStringUnitToMs(n, unit);
+}
+
+/** @internal exposed for tests — defensive NaN when unit is not ms|s|m|h */
+export function timeStringUnitToMs(n: number, unitLower: string): number {
+  if (unitLower === "ms") {
+    return n;
   }
+  if (unitLower === "s") {
+    return n * 1000;
+  }
+  if (unitLower === "m") {
+    return n * 60 * 1000;
+  }
+  if (unitLower === "h") {
+    return n * 60 * 60 * 1000;
+  }
+  return NaN;
 }
 
 /**
@@ -176,20 +190,8 @@ export class ConfigLoader {
       }
     }
 
-    // Convert HTTP(S) URL to WebSocket URL with /ws path
-    let wsUrl = config.workflowEngine.url;
-    if (wsUrl.startsWith("http://")) {
-      wsUrl = "ws://" + wsUrl.substring(7);
-    } else if (wsUrl.startsWith("https://")) {
-      wsUrl = "wss://" + wsUrl.substring(8);
-    }
-    // Add /ws path if not already present
-    if (!wsUrl.endsWith("/ws")) {
-      wsUrl = wsUrl.replace(/\/$/, "") + "/ws";
-    }
-
     return {
-      url: wsUrl,
+      url: ConfigLoader.httpUrlToWsUrl(config.workflowEngine.url),
       providerName,
       options: {
         headers: {
@@ -197,19 +199,29 @@ export class ConfigLoader {
         },
       },
       maxAttempts: config.workflowEngine.maxRetries, // undefined = infinite retries
-      reconnectDelay: config.workflowEngine.retryDelay
-        ? (() => {
-            const ms = parseTimeStringToMs(config.workflowEngine.retryDelay!);
-            return Number.isNaN(ms) ? 2000 : ms;
-          })()
-        : 2000,
+      reconnectDelay: ConfigLoader.retryDelayRawToMs(
+        config.workflowEngine.retryDelay,
+      ),
     };
+  }
+
+  /**
+   * Parse retry delay: plain integer (or digits-only string) = seconds; otherwise time string (2s, 100ms, 1m, 1h).
+   * Matches file-loader behavior for inbound/outbound.
+   */
+  static retryDelayRawToMs(raw: string | undefined): number {
+    const s = raw?.trim();
+    if (!s) {
+      return 2000;
+    }
+    const ms = parseTimeStringToMs(/^\d+$/.test(s) ? `${s}s` : s);
+    return Number.isNaN(ms) ? 2000 : ms;
   }
 
   /**
    * Build WebSocket URL from HTTP(S) base URL (add /ws, convert scheme).
    */
-  private static toWsUrl(baseUrl: string): string {
+  static httpUrlToWsUrl(baseUrl: string): string {
     let wsUrl = baseUrl;
     if (wsUrl.startsWith("http://")) {
       wsUrl = "ws://" + wsUrl.substring(7);
@@ -220,6 +232,12 @@ export class ConfigLoader {
       wsUrl = wsUrl.replace(/\/$/, "") + "/ws";
     }
     return wsUrl;
+  }
+
+  static retryDelayMsFromSection(section: Record<string, unknown>): number {
+    return ConfigLoader.retryDelayRawToMs(
+      cfgStrOrNumAsString(section, ConfigWorkflowEngineRetryDelay),
+    );
   }
 
   /**
@@ -253,26 +271,18 @@ export class ConfigLoader {
       throw newError(SDKErrors.MsgSDKConfigSectionMissing, configPath);
     }
 
-    const providerName =
-      typeof section[ConfigWorkflowEngineProviderName] === "string"
-        ? (section[ConfigWorkflowEngineProviderName] as string).trim()
-        : "";
+    const providerName = cfgStrField(
+      section,
+      ConfigWorkflowEngineProviderName,
+    );
     if (!providerName) {
       throw newError(SDKErrors.MsgSDKProviderNameNotSet);
     }
 
-    const serverSection =
-      section[ConfigWorkflowEngineServer] != null &&
-      typeof section[ConfigWorkflowEngineServer] === "object" &&
-      !Array.isArray(section[ConfigWorkflowEngineServer])
-        ? (section[ConfigWorkflowEngineServer] as Record<string, unknown>)
-        : undefined;
+    const serverSection = cfgObjField(section, ConfigWorkflowEngineServer);
 
-    // Local dev: explicit url (and auth required)
-    const url: string | undefined =
-      typeof section[ConfigWorkflowEngineUrl] === "string"
-        ? (section[ConfigWorkflowEngineUrl] as string)
-        : undefined;
+    const url =
+      cfgStrField(section, ConfigWorkflowEngineUrl) || undefined;
     const auth = section[ConfigWorkflowEngineAuth] as
       | WorkflowEngineConfig["workflowEngine"]["auth"]
       | undefined;
@@ -280,26 +290,16 @@ export class ConfigLoader {
     // Inbound: server section only → app creates WebSocket server (no url, no auth)
     const inbound = !url && serverSection;
     if (inbound && serverSection) {
-      const address =
-        typeof serverSection[ConfigServerAddress] === "string"
-          ? (serverSection[ConfigServerAddress] as string).trim()
-          : "";
-      const port =
-        typeof serverSection[ConfigServerPort] === "number"
-          ? serverSection[ConfigServerPort]
-          : typeof serverSection[ConfigServerPort] === "string"
-            ? parseInt(serverSection[ConfigServerPort] as string, 10)
-            : undefined;
-      if (address && port !== undefined && !Number.isNaN(port)) {
-        const tlsSection =
-          serverSection[ConfigServerTls] != null &&
-          typeof serverSection[ConfigServerTls] === "object" &&
-          !Array.isArray(serverSection[ConfigServerTls])
-            ? (serverSection[ConfigServerTls] as Record<string, unknown>)
-            : undefined;
+      const addrPort = parseInboundServerAddressPort(
+        serverSection,
+        ConfigServerAddress,
+        ConfigServerPort,
+      );
+      if (addrPort) {
+        const tlsSection = cfgObjField(serverSection, ConfigServerTls);
         const serverConfig: ServerConfig = {
-          address,
-          port,
+          address: addrPort.address,
+          port: addrPort.port,
         };
         if (tlsSection && tlsSection[ConfigTlsEnabled] === true) {
           serverConfig.tls = ConfigLoader.buildServerTlsFromSection(tlsSection);
@@ -307,19 +307,11 @@ export class ConfigLoader {
         const clientConfig: WorkflowEngineClientConfig = {
           server: serverConfig,
           providerName,
-          maxAttempts:
-            typeof section[ConfigWorkflowEngineMaxRetries] === "number"
-              ? (section[ConfigWorkflowEngineMaxRetries] as number)
-              : undefined,
-          reconnectDelay:
-            typeof section[ConfigWorkflowEngineRetryDelay] === "string"
-              ? (() => {
-                  const ms = parseTimeStringToMs(
-                    section[ConfigWorkflowEngineRetryDelay] as string,
-                  );
-                  return Number.isNaN(ms) ? 2000 : ms;
-                })()
-              : 2000,
+          maxAttempts: cfgNumField(
+            section,
+            ConfigWorkflowEngineMaxRetries,
+          ),
+          reconnectDelay: ConfigLoader.retryDelayMsFromSection(section),
         };
         ConfigLoader.applyProviderMetadata(clientConfig, section);
         return clientConfig;
@@ -336,14 +328,14 @@ export class ConfigLoader {
         workflowEngine: {
           url,
           auth,
-          maxRetries:
-            typeof section[ConfigWorkflowEngineMaxRetries] === "number"
-              ? (section[ConfigWorkflowEngineMaxRetries] as number)
-              : undefined,
-          retryDelay:
-            typeof section[ConfigWorkflowEngineRetryDelay] === "string"
-              ? (section[ConfigWorkflowEngineRetryDelay] as string)
-              : undefined,
+          maxRetries: cfgNumField(
+            section,
+            ConfigWorkflowEngineMaxRetries,
+          ),
+          retryDelay: cfgStrOrNumAsString(
+            section,
+            ConfigWorkflowEngineRetryDelay,
+          ),
         },
       };
       const clientConfig = ConfigLoader.createClientConfig(
@@ -367,18 +359,9 @@ export class ConfigLoader {
     cert?: Buffer;
     key?: Buffer;
   } {
-    const certFile =
-      typeof tlsSection[ConfigTlsCertFile] === "string"
-        ? (tlsSection[ConfigTlsCertFile] as string).trim()
-        : "";
-    const keyFile =
-      typeof tlsSection[ConfigTlsKeyFile] === "string"
-        ? (tlsSection[ConfigTlsKeyFile] as string).trim()
-        : "";
-    const caFile =
-      typeof tlsSection[ConfigTlsCaFile] === "string"
-        ? (tlsSection[ConfigTlsCaFile] as string).trim()
-        : "";
+    const certFile = cfgStrField(tlsSection, ConfigTlsCertFile);
+    const keyFile = cfgStrField(tlsSection, ConfigTlsKeyFile);
+    const caFile = cfgStrField(tlsSection, ConfigTlsCaFile);
     return {
       enabled: true,
       ...(caFile && { ca: fs.readFileSync(caFile) }),
@@ -403,18 +386,9 @@ export class ConfigLoader {
       key?: Buffer;
       rejectUnauthorized?: boolean;
     } = {};
-    const caFile =
-      typeof tlsSection[ConfigTlsCaFile] === "string"
-        ? (tlsSection[ConfigTlsCaFile] as string).trim()
-        : "";
-    const certFile =
-      typeof tlsSection[ConfigTlsCertFile] === "string"
-        ? (tlsSection[ConfigTlsCertFile] as string).trim()
-        : "";
-    const keyFile =
-      typeof tlsSection[ConfigTlsKeyFile] === "string"
-        ? (tlsSection[ConfigTlsKeyFile] as string).trim()
-        : "";
+    const caFile = cfgStrField(tlsSection, ConfigTlsCaFile);
+    const certFile = cfgStrField(tlsSection, ConfigTlsCertFile);
+    const keyFile = cfgStrField(tlsSection, ConfigTlsKeyFile);
     if (caFile) {
       opts.ca = fs.readFileSync(caFile);
       opts.rejectUnauthorized = true;
@@ -430,18 +404,18 @@ export class ConfigLoader {
     clientConfig: WorkflowEngineClientConfig,
     section: Record<string, unknown>,
   ): void {
-    if (
-      section[ConfigWorkflowEngineProviderMetadata] == null ||
-      typeof section[ConfigWorkflowEngineProviderMetadata] !== "object" ||
-      Array.isArray(section[ConfigWorkflowEngineProviderMetadata])
-    ) {
+    const metaObj = cfgObjField(
+      section,
+      ConfigWorkflowEngineProviderMetadata,
+    );
+    if (!metaObj) {
       return;
     }
     const meta: Record<string, string> = {};
-    for (const [k, v] of Object.entries(
-      section[ConfigWorkflowEngineProviderMetadata] as Record<string, unknown>,
-    )) {
-      if (typeof v === "string") meta[k] = v;
+    for (const [k, v] of Object.entries(metaObj)) {
+      if (typeof v === "string") {
+        meta[k] = v;
+      }
     }
     if (Object.keys(meta).length > 0) {
       clientConfig.providerMetadata = meta;

@@ -26,6 +26,7 @@ import {
   AuthType,
   ConfigLoader,
   parseTimeStringToMs,
+  timeStringUnitToMs,
   WorkflowEngineConfig,
   WFE_CONFIG_FILE,
 } from "./config";
@@ -87,6 +88,27 @@ const unknownAuthConfig: WorkflowEngineConfig = {
   },
 };
 
+describe("ConfigLoader.httpUrlToWsUrl", () => {
+  it("converts http and https and appends /ws", () => {
+    expect(ConfigLoader.httpUrlToWsUrl("http://h:1")).toBe("ws://h:1/ws");
+    expect(ConfigLoader.httpUrlToWsUrl("https://h:1/path")).toBe(
+      "wss://h:1/path/ws",
+    );
+  });
+  it("leaves url ending in /ws unchanged", () => {
+    expect(ConfigLoader.httpUrlToWsUrl("ws://h/ws")).toBe("ws://h/ws");
+    expect(ConfigLoader.httpUrlToWsUrl("https://h/ws")).toBe("wss://h/ws");
+  });
+  it("strips trailing slash before appending /ws", () => {
+    expect(ConfigLoader.httpUrlToWsUrl("http://h:9/")).toBe("ws://h:9/ws");
+  });
+  it("appends /ws for non-http schemes", () => {
+    expect(ConfigLoader.httpUrlToWsUrl("ws://localhost:1")).toBe(
+      "ws://localhost:1/ws",
+    );
+  });
+});
+
 describe("parseTimeStringToMs", () => {
   it("parses s, ms, m, h to milliseconds", () => {
     expect(parseTimeStringToMs("2s")).toBe(2000);
@@ -101,6 +123,61 @@ describe("parseTimeStringToMs", () => {
     expect(parseTimeStringToMs("x")).toBeNaN();
     expect(parseTimeStringToMs("10")).toBeNaN();
     expect(parseTimeStringToMs("10sec")).toBeNaN();
+  });
+});
+
+describe("timeStringUnitToMs", () => {
+  it("returns NaN for unknown unit (defensive)", () => {
+    expect(timeStringUnitToMs(1, "days")).toBeNaN();
+  });
+});
+
+describe("ConfigLoader.retryDelayMsFromSection", () => {
+  it("defaults to 2000 when missing", () => {
+    expect(ConfigLoader.retryDelayMsFromSection({})).toBe(2000);
+  });
+  it("parses time strings", () => {
+    expect(
+      ConfigLoader.retryDelayMsFromSection({ retryDelay: "5s" }),
+    ).toBe(5000);
+    expect(
+      ConfigLoader.retryDelayMsFromSection({ retryDelay: "100ms" }),
+    ).toBe(100);
+  });
+  it("coerces plain number to seconds", () => {
+    expect(ConfigLoader.retryDelayMsFromSection({ retryDelay: 3 })).toBe(3000);
+  });
+  it("falls back on invalid", () => {
+    expect(
+      ConfigLoader.retryDelayMsFromSection({ retryDelay: "not-a-time" }),
+    ).toBe(2000);
+  });
+});
+
+describe("ConfigLoader.buildTlsOptionsFromSection", () => {
+  const fixture = path.join(
+    process.cwd(),
+    "tests",
+    "fixtures",
+    "wfe-config.yaml",
+  );
+  it("sets rejectUnauthorized false when no caFile", () => {
+    const opts = ConfigLoader.buildTlsOptionsFromSection({
+      certFile: fixture,
+      keyFile: fixture,
+    });
+    expect(opts.rejectUnauthorized).toBe(false);
+  });
+  it("sets rejectUnauthorized true and reads ca when caFile set", () => {
+    const opts = ConfigLoader.buildTlsOptionsFromSection({
+      caFile: fixture,
+      certFile: fixture,
+      keyFile: fixture,
+    });
+    expect(opts.rejectUnauthorized).toBe(true);
+    expect(opts.ca?.length).toBeGreaterThan(0);
+    expect(opts.cert?.length).toBeGreaterThan(0);
+    expect(opts.key?.length).toBeGreaterThan(0);
   });
 });
 
@@ -130,6 +207,30 @@ describe("ConfigLoader", () => {
     };
     const clientConfig = ConfigLoader.createClientConfig(config, "svc");
     expect(clientConfig.reconnectDelay).toBe(30000);
+  });
+  it("should treat plain numeric retryDelay as seconds (createClientConfig, matches file YAML)", () => {
+    const config: WorkflowEngineConfig = {
+      workflowEngine: {
+        url: "http://localhost:5503",
+        auth: { type: AuthType.TOKEN, token: "t" },
+        retryDelay: "3",
+      },
+    };
+    expect(ConfigLoader.createClientConfig(config, "svc").reconnectDelay).toBe(
+      3000,
+    );
+  });
+  it("should use 2000ms reconnectDelay when retryDelay is invalid", () => {
+    const config: WorkflowEngineConfig = {
+      workflowEngine: {
+        url: "http://localhost:5503",
+        auth: { type: AuthType.TOKEN, token: "t" },
+        retryDelay: "not-a-duration",
+      },
+    };
+    expect(ConfigLoader.createClientConfig(config, "svc").reconnectDelay).toBe(
+      2000,
+    );
   });
   it("should create client config with token auth with default header and scheme", async () => {
     const clientConfig = ConfigLoader.createClientConfig(
@@ -230,6 +331,131 @@ describe("ConfigLoader", () => {
       ).toThrow();
     });
 
+    it("should throw when YAML root is not an object", () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "wfe-yaml-"));
+      try {
+        const p = path.join(tmpDir, "bad.yaml");
+        fs.writeFileSync(p, "plain-scalar-root");
+        expect(() => ConfigLoader.loadClientConfigFromFile(p)).toThrow(
+          /Invalid workflow engine config file/,
+        );
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true });
+      }
+    });
+
+    it("should throw when workflow-engine section is missing", () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "wfe-yaml-"));
+      try {
+        const p = path.join(tmpDir, "bad.yaml");
+        fs.writeFileSync(p, "other: 1\n");
+        expect(() => ConfigLoader.loadClientConfigFromFile(p)).toThrow(
+          /Missing "workflow-engine" section/,
+        );
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true });
+      }
+    });
+
+    it("should throw when providerName is missing", () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "wfe-yaml-"));
+      try {
+        const p = path.join(tmpDir, "bad.yaml");
+        fs.writeFileSync(
+          p,
+          "workflow-engine:\n  url: http://localhost:1\n  auth:\n    type: token\n    token: t\n",
+        );
+        expect(() => ConfigLoader.loadClientConfigFromFile(p)).toThrow(
+          /Provider name not set/,
+        );
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true });
+      }
+    });
+
+    it("should throw when url is set but auth is missing", () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "wfe-yaml-"));
+      try {
+        const p = path.join(tmpDir, "bad.yaml");
+        fs.writeFileSync(
+          p,
+          "workflow-engine:\n  providerName: p\n  url: http://localhost:1\n",
+        );
+        expect(() => ConfigLoader.loadClientConfigFromFile(p)).toThrow(
+          /Missing url or auth/,
+        );
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true });
+      }
+    });
+
+    it("should parse numeric retryDelay as seconds for outbound file load (same as inbound)", () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "wfe-retry-"));
+      try {
+        const p = path.join(tmpDir, "wfe.yaml");
+        fs.writeFileSync(
+          p,
+          `workflow-engine:
+  providerName: outbound-num-retry
+  url: http://localhost:5503
+  auth:
+    type: token
+    token: t
+  retryDelay: 3
+`,
+        );
+        const c = ConfigLoader.loadClientConfigFromFile(p);
+        expect(c.reconnectDelay).toBe(3000);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true });
+      }
+    });
+
+    it("should apply providerMetadata with only string values", () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "wfe-meta-"));
+      try {
+        const p = path.join(tmpDir, "wfe.yaml");
+        fs.writeFileSync(
+          p,
+          `workflow-engine:
+  providerName: meta-p
+  providerMetadata:
+    displayName: "Example"
+    skipMe: 99
+  server:
+    address: "127.0.0.1"
+    port: 5555
+`,
+        );
+        const c = ConfigLoader.loadClientConfigFromFile(p);
+        expect(c.providerMetadata).toEqual({ displayName: "Example" });
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true });
+      }
+    });
+
+    it("should omit providerMetadata when only non-string entries", () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "wfe-meta-"));
+      try {
+        const p = path.join(tmpDir, "wfe.yaml");
+        fs.writeFileSync(
+          p,
+          `workflow-engine:
+  providerName: meta-p
+  providerMetadata:
+    n: 1
+  server:
+    address: "127.0.0.1"
+    port: 5555
+`,
+        );
+        const c = ConfigLoader.loadClientConfigFromFile(p);
+        expect(c.providerMetadata).toBeUndefined();
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true });
+      }
+    });
+
     it("should throw when path is blank and WFE_CONFIG_FILE is not set", () => {
       delete process.env[WFE_CONFIG_FILE];
       expect(() => ConfigLoader.loadClientConfigFromFile("")).toThrow(
@@ -258,6 +484,29 @@ describe("ConfigLoader", () => {
       expect(clientConfig.server?.address).toBe("0.0.0.0");
       expect(clientConfig.server?.port).toBe(6000);
       expect(clientConfig.server?.tls).toBeUndefined();
+    });
+
+    it("should throw when server present but address missing (inbound invalid)", () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "wfe-bad-"));
+      try {
+        const badYaml = `
+workflow-engine:
+  providerName: bad-inbound
+  server:
+    port: 6000
+`;
+        const configPath = path.join(tmpDir, "wfe.yaml");
+        fs.writeFileSync(configPath, badYaml);
+        expect(() => ConfigLoader.loadClientConfigFromFile(configPath)).toThrow(
+          /Missing url or auth/,
+        );
+      } finally {
+        try {
+          fs.rmSync(tmpDir, { recursive: true });
+        } catch {
+          // ignore
+        }
+      }
     });
 
     it("should load client config for inbound with server.tls (WebSocket server TLS)", () => {
