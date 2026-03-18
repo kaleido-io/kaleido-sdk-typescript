@@ -31,10 +31,26 @@ export interface HTTPInvokeConfig {
   apiKeyHeader: string;
 }
 
+function resolveAppConfigPath(): string | undefined {
+  const fromEnv = process.env.CONFIG_FILE?.trim();
+  const candidates = [
+    fromEnv,
+    path.join(process.cwd(), 'src', 'config', 'config.yaml'),
+    path.join(process.cwd(), 'config', 'config.yaml'),
+  ].filter(Boolean) as string[];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      return p;
+    }
+  }
+  return undefined;
+}
+
 function loadAppConfig(): { httpInvoke?: HTTPInvokeConfig } {
-  const configPath =
-    process.env.CONFIG_FILE ??
-    path.join(process.cwd(), 'config', 'config.yaml');
+  const configPath = resolveAppConfigPath();
+  if (!configPath) {
+    return {};
+  }
   const raw = fs.readFileSync(configPath, 'utf8');
   return yaml.load(raw) as { httpInvoke?: HTTPInvokeConfig };
 }

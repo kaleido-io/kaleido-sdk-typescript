@@ -40,7 +40,8 @@ export interface ServerTlsConfig {
  */
 export interface ServerConfig {
   address: string;
-  port: number;
+  /** Defaults to 6000 when omitted (inbound WebSocket server). */
+  port?: number;
   tls?: ServerTlsConfig;
 }
 

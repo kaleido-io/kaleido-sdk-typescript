@@ -50,13 +50,22 @@ export enum HandlerRuntimeMode {
   OUTBOUND = 'outbound',
   INBOUND = 'inbound',
 }
+
+/** Default listen port for inbound WebSocket server when `server.port` is omitted. */
+export const DEFAULT_INBOUND_WS_PORT = 6000;
+
+export function resolveInboundListenPort(port?: number): number {
+  return port ?? DEFAULT_INBOUND_WS_PORT;
+}
+
 /**
  * Server config for inbound mode (app creates WebSocket server).
  * Matches WorkflowEngineClientConfig.server.
  */
 export interface ServerConfig {
   address: string;
-  port: number;
+  /** Defaults to 6000 when omitted. */
+  port?: number;
   tls?: {
     enabled: boolean;
     ca?: Buffer;
@@ -106,6 +115,8 @@ export class HandlerRuntime {
   private mode: HandlerRuntimeMode = HandlerRuntimeMode.OUTBOUND;
   private port?: number;
   private serverConfig?: ServerConfig;
+  /** When inbound TLS, underlying HTTPS server must be closed explicitly. */
+  private inboundHttpsServer?: https.Server;
 
   private transactionHandlers: Map<string, TransactionHandler> = new Map();
   private eventSources: Map<string, EventSource> = new Map();
@@ -234,6 +245,10 @@ export class HandlerRuntime {
     if (this.wsServer) {
       this.wsServer.close();
     }
+    if (this.inboundHttpsServer) {
+      this.inboundHttpsServer.close();
+      this.inboundHttpsServer = undefined;
+    }
 
     for (const [name, handler] of this.transactionHandlers.entries()) {
       handler.close();
@@ -293,7 +308,7 @@ export class HandlerRuntime {
   // ============================================================================
 
   private createWebSocketServer(): void {
-    const port = this.port ?? 6000;
+    const port = resolveInboundListenPort(this.port);
     const address = this.serverConfig?.address ?? '0.0.0.0';
     const tls = this.serverConfig?.tls;
 
@@ -306,6 +321,7 @@ export class HandlerRuntime {
         httpsOptions.ca = tls.ca;
       }
       const httpsServer = https.createServer(httpsOptions);
+      this.inboundHttpsServer = httpsServer;
       httpsServer.listen(port, address, () => {
         log.info('WebSocket server (TLS) listening', { address, port, provider: this.config.providerName });
       });

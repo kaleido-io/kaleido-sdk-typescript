@@ -5,9 +5,8 @@ workflow-engine:
   # optional: providerMetadata: { displayName: "Example provider" }
   url: https://my-account.my-tenant.com/endpoint/my-environment/my-workflow-engine/rest
   auth:
-    type: token
-    token: your-api-token
-    header: Authorization
-    scheme: "" # empty = raw token; use "Bearer" for Bearer token
+    type: basic
+    username: your-api-key-name
+    password: your-api-key
   # retryDelay: 2s
   # maxRetries: 5   # omit for infinite retries
