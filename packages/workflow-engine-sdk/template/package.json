@@ -29,7 +29,7 @@
         "README.md"
     ],
     "dependencies": {
-        "@kaleido-io/workflow-engine-sdk": "^0.9.3",
+        "@kaleido-io/workflow-engine-sdk": "^0.9.4",
         "dotenv": "^17.2.3",
         "js-yaml": "^4.1.1",
         "web3": "^4.16.0",
