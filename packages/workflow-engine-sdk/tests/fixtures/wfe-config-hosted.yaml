@@ -1,0 +1,10 @@
+# Hosted: server spelling only (no url, no auth in file)
+workflow-engine:
+  providerName: hosted-provider
+  providerMetadata: {}
+  server:
+    address: "0.0.0.0"
+    port: 6000
+    heartbeatInterval: "30s"
+    requestsPerSecond: 100
+    burst: 200

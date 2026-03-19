@@ -15,6 +15,8 @@
 // limitations under the License.
 
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { describe, it, expect, jest, beforeAll, afterAll, beforeEach, afterEach } from '@jest/globals';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer, IncomingMessage } from 'http';
@@ -30,7 +32,13 @@ jest.mock('./engine_client', () => ({
     EngineClient: jest.fn(() => mockEngineClient)
 }));
 
-import { HandlerRuntime, HandlerRuntimeConfig, HandlerRuntimeMode } from './handler_runtime';
+import {
+    HandlerRuntime,
+    HandlerRuntimeConfig,
+    HandlerRuntimeMode,
+    resolveInboundListenPort,
+    DEFAULT_INBOUND_WS_PORT,
+} from './handler_runtime';
 import { EngineClient } from './engine_client';
 import { EventProcessor, EventSource, TransactionHandler } from '../interfaces/handlers';
 import { WSEventProcessorBatchRequest, WSMessageType } from '../types/core';
@@ -85,6 +93,15 @@ const mockEventSource: EventSource = {
     eventSourceValidateConfig: jest.fn(() => Promise.resolve()),
     eventSourceDelete: jest.fn(() => Promise.resolve()),
 };
+
+describe('resolveInboundListenPort', () => {
+    it('uses DEFAULT_INBOUND_WS_PORT when port is undefined', () => {
+        expect(resolveInboundListenPort(undefined)).toBe(DEFAULT_INBOUND_WS_PORT);
+    });
+    it('uses explicit port when set', () => {
+        expect(resolveInboundListenPort(7123)).toBe(7123);
+    });
+});
 
 describe('HandlerRuntime', () => {
     jest.setTimeout(20000); // 20 seconds
@@ -261,6 +278,120 @@ describe('HandlerRuntime', () => {
         });
         handlerRuntime.stop();
     })
+
+    async function getFreeTcpPort(): Promise<number> {
+        return new Promise((resolve, reject) => {
+            const s = createServer();
+            s.listen(0, '127.0.0.1', () => {
+                const a = s.address();
+                const port = typeof a === 'object' && a ? a.port : 0;
+                s.close(() => resolve(port));
+            });
+            s.on('error', reject);
+        });
+    }
+
+    it('should start inbound HandlerRuntime from config.server (plain WebSocket)', async () => {
+        const port = await getFreeTcpPort();
+        handlerRuntime = new HandlerRuntime({
+            providerName: 'inbound-server-cfg',
+            server: { address: '127.0.0.1', port },
+        });
+        await handlerRuntime.start();
+        await new Promise((r) => setTimeout(r, 150));
+        await new Promise<void>((resolve, reject) => {
+            const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+            ws.on('open', () => {
+                expect(handlerRuntime.isWebSocketConnected()).toBe(true);
+                ws.close();
+                resolve();
+            });
+            ws.on('error', reject);
+        });
+        handlerRuntime.stop();
+    });
+
+    it('should start inbound HandlerRuntime from config.server with TLS (wss)', async () => {
+        const tlsDir = path.join(__dirname, '../../tests/fixtures/tls');
+        const cert = fs.readFileSync(path.join(tlsDir, 'server-cert.pem'));
+        const key = fs.readFileSync(path.join(tlsDir, 'server-key.pem'));
+        const port = await getFreeTcpPort();
+        handlerRuntime = new HandlerRuntime({
+            providerName: 'inbound-tls-cfg',
+            server: {
+                address: '127.0.0.1',
+                port,
+                tls: { enabled: true, cert, key },
+            },
+        });
+        await handlerRuntime.start();
+        await new Promise((r) => setTimeout(r, 200));
+        await new Promise<void>((resolve, reject) => {
+            const ws = new WebSocket(`wss://127.0.0.1:${port}`, {
+                rejectUnauthorized: false,
+            });
+            ws.on('open', () => {
+                expect(handlerRuntime.isWebSocketConnected()).toBe(true);
+                ws.close();
+                resolve();
+            });
+            ws.on('error', reject);
+        });
+        handlerRuntime.stop();
+    });
+
+    it('should use plain WebSocket server from config.server when TLS incomplete', async () => {
+        const port = await getFreeTcpPort();
+        handlerRuntime = new HandlerRuntime({
+            providerName: 'inbound-partial-tls',
+            server: {
+                address: '127.0.0.1',
+                port,
+                tls: { enabled: true, cert: Buffer.from('incomplete') },
+            },
+        });
+        await handlerRuntime.start();
+        await new Promise((r) => setTimeout(r, 150));
+        await new Promise<void>((resolve, reject) => {
+            const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+            ws.on('open', () => {
+                expect(handlerRuntime.isWebSocketConnected()).toBe(true);
+                ws.close();
+                resolve();
+            });
+            ws.on('error', reject);
+        });
+        handlerRuntime.stop();
+    });
+
+    it('should start inbound config.server TLS with optional ca on server', async () => {
+        const tlsDir = path.join(__dirname, '../../tests/fixtures/tls');
+        const cert = fs.readFileSync(path.join(tlsDir, 'server-cert.pem'));
+        const key = fs.readFileSync(path.join(tlsDir, 'server-key.pem'));
+        const port = await getFreeTcpPort();
+        handlerRuntime = new HandlerRuntime({
+            providerName: 'inbound-tls-ca',
+            server: {
+                address: '127.0.0.1',
+                port,
+                tls: { enabled: true, cert, key, ca: cert },
+            },
+        });
+        await handlerRuntime.start();
+        await new Promise((r) => setTimeout(r, 200));
+        await new Promise<void>((resolve, reject) => {
+            const ws = new WebSocket(`wss://127.0.0.1:${port}`, {
+                rejectUnauthorized: false,
+            });
+            ws.on('open', () => {
+                ws.close();
+                resolve();
+            });
+            ws.on('error', reject);
+        });
+        handlerRuntime.stop();
+    });
+
     it('should fail to start without a port in inbound mode', () => {
         process.env.WORKFLOW_ENGINE_MODE = HandlerRuntimeMode.INBOUND;
         expect(() => new HandlerRuntime(handlerRuntimeConfig)).toThrow('KA140631: WEBSOCKET_PORT is required in inbound mode');
@@ -295,7 +426,7 @@ describe('HandlerRuntime', () => {
         connectedSocket?.send(JSON.stringify({ messageType: 'unknown' }));
         handlerRuntime.stop();
         await new Promise(resolve => setTimeout(resolve, 100));
-        expect(mockLogger.warn).toHaveBeenCalledWith("Unknown message type", { "messageType": "unknown" });
+        expect(mockLogger.warn).toHaveBeenCalledWith('Unknown message type', { 'messageType': 'unknown' });
     })
     it('should handle a protocol error message', async () => {
         handlerRuntime = new HandlerRuntime(handlerRuntimeConfig);
@@ -437,7 +568,7 @@ describe('HandlerRuntime', () => {
         connectedSocket?.send(JSON.stringify({ messageType: WSMessageType.HANDLE_TRANSACTIONS, id: 'test-request-id', handler: 'test-transaction-handler', transactions: [{ id: 'test-transaction-id', operation: 'test-operation' }] }));
         handlerRuntime.stop();
         await new Promise(resolve => setTimeout(resolve, 100));
-        expect(mockLogger.error).toHaveBeenCalledWith("No transaction handler registered: test-transaction-handler");
+        expect(mockLogger.error).toHaveBeenCalledWith('No transaction handler registered: test-transaction-handler');
     })
     it('should handle an error when handler is undefined', async () => {
         handlerRuntime = new HandlerRuntime(handlerRuntimeConfig);
@@ -448,7 +579,7 @@ describe('HandlerRuntime', () => {
         connectedSocket?.send(JSON.stringify({ messageType: WSMessageType.HANDLE_TRANSACTIONS, id: 'test-request-id', transactions: [{ id: 'test-transaction-id', operation: 'test-operation' }] }));
         handlerRuntime.stop();
         await new Promise(resolve => setTimeout(resolve, 100));
-        expect(mockLogger.error).toHaveBeenCalledWith("Handler not set in transactions message");
+        expect(mockLogger.error).toHaveBeenCalledWith('Handler not set in transactions message');
     })
     it('should handle an error from a transaction handler', async () => {
         handlerRuntime = new HandlerRuntime(handlerRuntimeConfig);
@@ -928,7 +1059,7 @@ describe('HandlerRuntime', () => {
 
             // Verify that the pong timeout warning was NOT called
             // (because the pong event should have cleared the timeout)
-            expect(mockLogger.warn).not.toHaveBeenCalledWith("Pong timeout - connection appears dead, reconnecting");
+            expect(mockLogger.warn).not.toHaveBeenCalledWith('Pong timeout - connection appears dead, reconnecting');
 
             // Verify connection is still alive
             expect(handlerRuntime.isWebSocketConnected()).toBe(true);
@@ -1021,7 +1152,7 @@ describe('HandlerRuntime', () => {
 
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            expect(mockLogger.warn).toHaveBeenCalledWith("Pong timeout - connection appears dead, reconnecting");
+            expect(mockLogger.warn).toHaveBeenCalledWith('Pong timeout - connection appears dead, reconnecting');
         });
         it('should handle multiple ping-pong cycles', async () => {
             handlerRuntime = new HandlerRuntime(heartbeatConfig);

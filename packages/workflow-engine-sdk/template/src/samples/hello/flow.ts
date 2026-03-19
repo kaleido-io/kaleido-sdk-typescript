@@ -17,58 +17,58 @@
 
 import provider from '../../provider.js';
 export const flow = {
-  "name": "hello-flow",
-  "description": "",
-  "labels": {},
-  "handlerBindings": {
-    "hello": {
-      "provider": provider.name,
-      "providerHandler": "hello"
+  'name': 'hello-flow',
+  'description': '',
+  'labels': {},
+  'handlerBindings': {
+    'hello': {
+      'provider': provider.name,
+      'providerHandler': 'hello'
     }
   },
-  "version": "1.0.0",
-  "operations": [
+  'version': '1.0.0',
+  'operations': [
     {
-      "name": "hello",
-      "description": "Hello",
-      "type": "asynchronous",
-      "stage": "my-beginning-state",
-      "stateUpdates": null,
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": [
-              "string"
+      'name': 'hello',
+      'description': 'Hello',
+      'type': 'asynchronous',
+      'stage': 'my-beginning-state',
+      'stateUpdates': null,
+      'inputSchema': {
+        'type': 'object',
+        'properties': {
+          'name': {
+            'type': [
+              'string'
             ]
           }
         },
-        "required": [
-          "name"
+        'required': [
+          'name'
         ],
-        "additionalProperties": false
+        'additionalProperties': false
       }
     }
   ],
-  "stages": [
+  'stages': [
     {
-      "name": "my-beginning-state",
-      "type": "pending",
-      "handler": "hello",
-      "inputMap": {
-        "jsonata": "{\n    \"action\": \"hello\",\n    \"invoke\": {\n      \"input\": state.input\n    },\n    \"nextStage\": \"end\",\n    \"failureStage\": \"failure\",\n    \"outputPath\": \"/output\"\n}\n"
+      'name': 'my-beginning-state',
+      'type': 'pending',
+      'handler': 'hello',
+      'inputMap': {
+        'jsonata': '{\n    "action": "hello",\n    "invoke": {\n      "input": state.input\n    },\n    "nextStage": "end",\n    "failureStage": "failure",\n    "outputPath": "/output"\n}\n'
       },
-      "fullState": true
+      'fullState': true
     },
     {
-      "name": "end",
-      "type": "success",
-      "handler": ""
+      'name': 'end',
+      'type': 'success',
+      'handler': ''
     },
     {
-      "name": "failure",
-      "type": "failure",
-      "handler": ""
+      'name': 'failure',
+      'type': 'failure',
+      'handler': ''
     }
   ]
 }

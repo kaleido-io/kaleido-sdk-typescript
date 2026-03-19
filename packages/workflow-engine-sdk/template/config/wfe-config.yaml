@@ -1,0 +1,12 @@
+# Workflow engine connection config (SDK contract).
+# Set WFE_CONFIG_FILE to this file or pass configFile to NewWorkflowEngineClient.
+workflow-engine:
+  providerName: example-provider
+  # optional: providerMetadata: { displayName: "Example provider" }
+  url: https://my-account.my-tenant.com/endpoint/my-environment/my-workflow-engine/rest
+  auth:
+    type: basic
+    username: your-api-key-name
+    password: your-api-key
+  # retryDelay: 2s
+  # maxRetries: 5   # omit for infinite retries

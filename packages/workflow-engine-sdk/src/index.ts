@@ -14,7 +14,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 /**
  * Kaleido Workflow Engine SDK - TypeScript
  */
@@ -26,6 +25,8 @@
 export {
   WorkflowEngineClient,
   WorkflowEngineClientConfig,
+  ServerConfig,
+  ServerTlsConfig,
 } from './client/client';
 
 export {
@@ -43,7 +44,14 @@ export {
 export {
   WorkflowEngineConfig,
   ConfigLoader,
+  WFE_CONFIG_FILE,
 } from './config/config';
+
+export {
+  HandlerSet,
+  HandlerSetFor,
+  NewWorkflowEngineClient,
+} from './client/client_factory';
 
 export { newLogger } from './log/logger';
 

@@ -23,22 +23,22 @@ import { fileURLToPath } from 'url';
 const projectNameRegex = /^(?:@[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*|[a-z0-9][a-z0-9-]*)$/;
 
 const templateConfig = {
-  "variables": {
-    "PROVIDER_NAME": {
-      "description": "The npm package name for the provider",
-      "default": "my-provider",
-      "required": true
+  'variables': {
+    'PROVIDER_NAME': {
+      'description': 'The npm package name for the provider',
+      'default': 'my-provider',
+      'required': true
     }
   },
-  "files": {
-    "package.json": {
-      "replace": [
-        "PROVIDER_NAME"
+  'files': {
+    'package.json': {
+      'replace': [
+        'PROVIDER_NAME'
       ]
     },
-    "src/provider.ts": {
-      "replace": [
-        "PROVIDER_NAME",
+    'src/provider.ts': {
+      'replace': [
+        'PROVIDER_NAME',
       ]
     }
   }
@@ -95,7 +95,7 @@ const targetDir = join(cwd, projectName);
 // Check if target directory already exists
 if (existsSync(targetDir)) {
   console.error(`Error: Directory "${projectName}" already exists.`);
-  console.error(`Please choose a different name or remove the existing directory.`);
+  console.error('Please choose a different name or remove the existing directory.');
   process.exit(1);
 }
 
@@ -195,6 +195,5 @@ console.log(`Project ${projectName} initialized\n\n`);
 console.log('Next steps:');
 console.log(`\tcd ${projectName}`);
 console.log('\tnpm install');
-console.log('\tcp .env.sample .env');
-console.log('\t# Edit .env with your configuration');
+console.log('\t# Edit config/wfe-config.yaml with your configuration');
 console.log('\tnpm run start:dev\n');

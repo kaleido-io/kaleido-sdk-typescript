@@ -14,12 +14,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import {
+  HandlerRuntime,
+  HandlerRuntimeConfig,
+} from '../runtime/handler_runtime';
+import {
+  TransactionHandler,
+  EventSource,
+  EventProcessor,
+} from '../interfaces/handlers';
 
-import { HandlerRuntime, HandlerRuntimeConfig } from '../runtime/handler_runtime';
-import { TransactionHandler, EventSource, EventProcessor } from '../interfaces/handlers';
+/**
+ * TLS options for the WebSocket server (inbound mode).
+ * Cert and key are required when TLS is enabled.
+ */
+export interface ServerTlsConfig {
+  enabled: boolean;
+  ca?: Buffer;
+  cert?: Buffer;
+  key?: Buffer;
+}
+
+/**
+ * Server config for inbound mode: app creates a WebSocket server and the workflow engine connects to it.
+ */
+export interface ServerConfig {
+  address: string;
+  /** Defaults to 6000 when omitted (inbound WebSocket server). */
+  port?: number;
+  tls?: ServerTlsConfig;
+}
 
 export interface WorkflowEngineClientConfig {
+  /** Outbound: URL of the workflow engine WebSocket. When set, the client connects to the engine. */
   url?: string;
+  /** Inbound: create a WebSocket server on this address/port. When set, the engine connects to the app. */
+  server?: ServerConfig;
   providerName: string;
   providerMetadata?: Record<string, string>;
   authToken?: string;
@@ -36,6 +66,7 @@ export class WorkflowEngineClient {
   constructor(config: WorkflowEngineClientConfig) {
     const runtimeConfig: HandlerRuntimeConfig = {
       url: config.url,
+      server: config.server,
       providerName: config.providerName,
       providerMetadata: config.providerMetadata,
       authToken: config.authToken,
@@ -77,4 +108,3 @@ export class WorkflowEngineClient {
     return this.runtime.isWebSocketConnected();
   }
 }
-

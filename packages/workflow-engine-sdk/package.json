@@ -1,14 +1,14 @@
 {
   "name": "@kaleido-io/workflow-engine-sdk",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "TypeScript SDK for Kaleido Workflow Engine",
   "type": "module",
   "main": "dist/src/index.js",
   "module": "dist-esm/src/index.js",
   "types": "dist/src/index.d.ts",
   "repository": {
-      "type": "git",
-      "url": "git+https://github.com/kaleido-io/kaleido-sdk-typescript.git"
+    "type": "git",
+    "url": "git+https://github.com/kaleido-io/kaleido-sdk-typescript.git"
   },
   "scripts": {
     "prebuild": "npm run clean && npm run lint",

@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { EngineAPI, WSEventProcessorBatchRequest, WSEventProcessorBatchResult } from "@kaleido-io/workflow-engine-sdk";
+import { EngineAPI, WSEventProcessorBatchRequest, WSEventProcessorBatchResult } from '@kaleido-io/workflow-engine-sdk';
 
 export class MyEventProcessor {
 

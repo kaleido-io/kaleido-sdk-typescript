@@ -17,69 +17,69 @@
 
 import provider from '../../provider.js';
 export const flow = {
-  "operations": [
+  'operations': [
     {
-      "name": "play",
-      "type": "asynchronous",
-      "stage": "set-trap",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "suit": {
-            "type": "string"
+      'name': 'play',
+      'type': 'asynchronous',
+      'stage': 'set-trap',
+      'inputSchema': {
+        'type': 'object',
+        'properties': {
+          'suit': {
+            'type': 'string'
           },
-          "rank": {
-            "type": "string"
+          'rank': {
+            'type': 'string'
           }
         },
-        "required": [
-          "suit",
-          "rank"
+        'required': [
+          'suit',
+          'rank'
         ],
-        "additionalProperties": false
+        'additionalProperties': false
       }
     }
   ],
-  "stages": [
+  'stages': [
     {
-      "name": "set-trap",
-      "type": "pending",
-      "handler": "watcher",
-      "inputMap": {
-        "jsonata": "{\n  \"action\": \"set-trap\",\n  \"nextStage\": \"trap-set\",\n  \"failureStage\": \"fail\",\n  \"suit\": state.input.suit,\n  \"rank\": state.input.rank\n}\n"
+      'name': 'set-trap',
+      'type': 'pending',
+      'handler': 'watcher',
+      'inputMap': {
+        'jsonata': '{\n  "action": "set-trap",\n  "nextStage": "trap-set",\n  "failureStage": "fail",\n  "suit": state.input.suit,\n  "rank": state.input.rank\n}\n'
       }
     },
     {
-      "name": "trap-set",
-      "type": "pending",
-      "handler": "watcher",
-      "inputMap": {
-        "jsonata": "{\n  \"action\": \"trap-set\",\n  \"nextStage\": \"success\",\n  \"failureStage\": \"fail\",\n  \"suit\": state.input.suit,\n  \"rank\": state.input.rank\n}\n"
+      'name': 'trap-set',
+      'type': 'pending',
+      'handler': 'watcher',
+      'inputMap': {
+        'jsonata': '{\n  "action": "trap-set",\n  "nextStage": "success",\n  "failureStage": "fail",\n  "suit": state.input.suit,\n  "rank": state.input.rank\n}\n'
       }
     },
     {
-      "name": "snap",
-      "type": "success"
+      'name': 'snap',
+      'type': 'success'
     },
     {
-      "name": "fail",
-      "type": "failure"
+      'name': 'fail',
+      'type': 'failure'
     }
   ],
-  "events": [
+  'events': [
     {
-      "name": "played",
-      "topicMatch": "suit\\.(.*)\\.rank\\.(.*)",
-      "handler": "watcher",
-      "inputMap": {
-        "jsonata": "{\n  \"action\": \"trap-fired\",\n  \"nextStage\": \"snap\",\n  \"failureStage\": \"fail\",\n  \"outputPath\": \"/data\",\n  \"suit\": state.input.suit,\n  \"rank\": state.input.rank\n}\n"
+      'name': 'played',
+      'topicMatch': 'suit\\.(.*)\\.rank\\.(.*)',
+      'handler': 'watcher',
+      'inputMap': {
+        'jsonata': '{\n  "action": "trap-fired",\n  "nextStage": "snap",\n  "failureStage": "fail",\n  "outputPath": "/data",\n  "suit": state.input.suit,\n  "rank": state.input.rank\n}\n'
       }
     }
   ],
-  "handlerBindings": {
-    "watcher": {
-      "provider": provider.name,
-      "providerHandler": "snap-watcher"
+  'handlerBindings': {
+    'watcher': {
+      'provider': provider.name,
+      'providerHandler': 'snap-watcher'
     }
   }
 }

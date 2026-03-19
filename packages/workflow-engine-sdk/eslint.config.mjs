@@ -15,6 +15,7 @@ export default [
     ignores: [
       "dist/**",
       "dist-esm/**",
+      "template/dist/**",
       "coverage/**",
       "node_modules/**",
       "copyright.js",
@@ -23,10 +24,10 @@ export default [
   },
   {
     files: ["**/*.{js,mjs,cjs,ts}"],
-    languageOptions: { globals: { ...globals.node, ...globals.browser } }
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   pluginJs.configs.recommended,
-  ...tseslint.configs.recommended.map(config => ({
+  ...tseslint.configs.recommended.map((config) => ({
     ...config,
     rules: {
       ...config.rules,
@@ -38,11 +39,11 @@ export default [
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
-          "argsIgnorePattern": "^_",
-          "varsIgnorePattern": "^_"
-        }
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
       ],
-    }
+    },
   })),
   {
     files: ["**/*.{js,mjs,cjs,ts}"],
@@ -58,5 +59,5 @@ export default [
         },
       ],
     },
-  }
+  },
 ];

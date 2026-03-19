@@ -18,17 +18,17 @@
 import provider from '../../provider.js';
 
 export const stream = {
-    "name": "event-echo-stream",
-    "description": "Listen for events from the custom event source and pass them to the echo event processor",
-    "type": "event_stream",
-    "config": {
-        "pollingInterval": "2s"
+    'name': 'event-echo-stream',
+    'description': 'Listen for events from the custom event source and pass them to the echo event processor',
+    'type': 'event_stream',
+    'config': {
+        'pollingInterval': '2s'
     },
-    "listenerHandler": "my-listener",
-    "listenerHandlerProvider": provider.name,
-    "eventHandler": "echo",
-    "eventHandlerProvider": provider.name,
-    "postFilter": {
-        "jsonata": "true"
+    'listenerHandler': 'my-listener',
+    'listenerHandlerProvider': provider.name,
+    'eventHandler': 'echo',
+    'eventHandlerProvider': provider.name,
+    'postFilter': {
+        'jsonata': 'true'
     }
 }
