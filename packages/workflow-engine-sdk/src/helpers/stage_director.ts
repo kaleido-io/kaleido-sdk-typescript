@@ -80,7 +80,8 @@ export class StageDirectorHelper {
     triggers?: Trigger[],
     extraStateUpdates?: Patch,
     customStage?: string,
-    events?: HandlerEvent[]
+    events?: HandlerEvent[],
+    deadline?: string,
   ): WSEvaluateReplyResult {
     const replyResult: WSEvaluateReplyResult = {};
 
@@ -114,6 +115,13 @@ export class StageDirectorHelper {
     // Append any extra state updates provided by the handler
     if (extraStateUpdates && extraStateUpdates.length) {
       replyResult.stateUpdates = (replyResult.stateUpdates || []).concat(extraStateUpdates);
+    }
+
+    if (deadline && result !== EvalResult.WAITING) {
+      if (!error) {
+        error = newError(SDKErrors.MsgSDKDeadlineNotWaiting, stageDirector.action, EvalResult[result]);
+      }
+      result = EvalResult.FIXABLE_ERROR;
     }
 
     // Set result based on evaluation outcome
@@ -160,6 +168,9 @@ export class StageDirectorHelper {
         break;
       }
       case EvalResult.WAITING:
+        if (deadline) {
+          replyResult.deadline = deadline;
+        }
         log.debug(`Transaction ${transaction.transactionId} evaluated successfully and will remain in stage`);
         break;
       case EvalResult.FIXABLE_ERROR:
@@ -338,7 +349,7 @@ async function execMapped<T extends WithStageDirector>(
       throw newError(SDKErrors.MsgSDKHandlerNotConfigured);
     }
     const handlerResult = await config.handler(transaction, input);
-    const { result, output, error, triggers, extraUpdates, customStage, events } = handlerResult as {
+    const { result, output, error, triggers, extraUpdates, customStage, events, deadline } = handlerResult as {
       result: EvalResult;
       output?: any;
       error?: Error;
@@ -346,6 +357,7 @@ async function execMapped<T extends WithStageDirector>(
       events?: HandlerEvent[];
       extraUpdates?: Patch;
       customStage?: string;
+      deadline?: string;
     };
     return StageDirectorHelper.mapOutput(
       input.getStageDirector(),
@@ -356,7 +368,8 @@ async function execMapped<T extends WithStageDirector>(
       triggers,
       extraUpdates,
       customStage,
-      events
+      events,
+      deadline,
     );
   } catch (error) {
     log.error('Handler execution failed:', error);
@@ -394,7 +407,9 @@ async function execBatchMapped<T extends WithStageDirector>(
         batchResult.error,
         batchResult.triggers,
         batchResult.extraUpdates,
-        batchResult.customStage
+        batchResult.customStage,
+        batchResult.events,
+        batchResult.deadline,
       );
     });
   } catch (error) {

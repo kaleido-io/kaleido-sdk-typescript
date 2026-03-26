@@ -95,7 +95,7 @@ export interface EventProcessor extends Handler {
 export type DirectedTransactionHandler<T extends WithStageDirector> = (
   transaction: WSEvaluateTransaction,
   input: T
-) => Promise<{ result: EvalResult; output?: any; error?: Error; triggers?: Trigger[]; events?: HandlerEvent[]; extraUpdates?: Patch; customStage?: string }>;
+) => Promise<{ result: EvalResult; output?: any; error?: Error; triggers?: Trigger[]; events?: HandlerEvent[]; extraUpdates?: Patch; customStage?: string; deadline?: string }>;
 
 /**
  * Input for batch directed transaction handling
@@ -116,6 +116,7 @@ export interface DirectedTransactionBatchOut<_T extends WithStageDirector> {
   extraUpdates?: Patch;
   customStage?: string;
   events?: HandlerEvent[];
+  deadline?: string;
 }
 
 /**
