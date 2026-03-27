@@ -567,6 +567,53 @@ describe('BasicStageDirector', () => {
         expect(reply.results[0].stage).toBeUndefined();
     })
 
+    it('should handle WAITING result with deadline via evalDirected', async () => {
+        const deadlineActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
+            ['deadline-action', {
+                invocationMode: InvocationMode.PARALLEL,
+                handler: async (_transaction: WSEvaluateTransaction) => {
+                    return {
+                        result: EvalResult.WAITING,
+                        deadline: '5m0s',
+                        triggers: [{ topic: 'my-topic' }],
+                    };
+                }
+            }],
+        ]);
+
+        const transactions: WSEvaluateTransaction[] = [{
+            handler: 'test-handler',
+            sequence: 'test-seq',
+            transactionId: 'test-transaction-id',
+            workflowId: 'test-flow',
+            stage: 'batch-test',
+            state: { input: {} },
+            input: {
+                action: 'deadline-action',
+                outputPath: '/output',
+                nextStage: 'end',
+                failureStage: 'failed',
+            } as any as MyHandlerInput,
+        }];
+
+        const reply: WSHandleTransactionsResult = {
+            results: [],
+            messageType: WSMessageType.EVALUATE,
+            id: 'test-id',
+        };
+        const batch: WSHandleTransactions = {
+            transactions,
+            handler: 'test-handler',
+            messageType: WSMessageType.EVALUATE_RESULT,
+            id: 'test-id',
+        };
+        await evalDirected<MyHandlerInput>(reply, batch, deadlineActionMap);
+        expect(reply.results[0].stage).toBeUndefined();
+        expect(reply.results[0].deadline).toBe('5m0s');
+        expect(reply.results[0].triggers?.length).toBe(1);
+        expect(reply.results[0].triggers?.[0]?.topic).toBe('my-topic');
+    })
+
     it('should handle FIXABLE_ERROR result', async () => {
         const fixableErrorActionMap: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
             ['fixable-error-action', {
@@ -1038,5 +1085,54 @@ describe('StageDirectorHelper', () => {
         );
         expect(result.stage).toBe('next-stage');
         expect(result.stateUpdates).toBeUndefined();
+    })
+
+    it('should map WAITING result with deadline and triggers', () => {
+        const triggers = [{ topic: 'topic1' }];
+        const result = StageDirectorHelper.mapOutput(
+            mockStageDirector,
+            mockRequest,
+            EvalResult.WAITING,
+            undefined,
+            undefined,
+            triggers,
+            undefined,
+            undefined,
+            undefined,
+            '5m0s',
+        );
+        expect(result.error).toBeUndefined();
+        expect(result.deadline).toBe('5m0s');
+        expect(result.triggers?.length).toBe(1);
+        expect(result.triggers?.[0]?.topic).toBe('topic1');
+        expect(result.stage).toBeUndefined();
+    })
+
+    it('should error when deadline used with non-WAITING result', () => {
+        const result = StageDirectorHelper.mapOutput(
+            mockStageDirector,
+            mockRequest,
+            EvalResult.COMPLETE,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            '30s',
+        );
+        expect(result.error).toMatch(/KA140640/);
+        expect(result.deadline).toBeUndefined();
+    })
+
+    it('should not set deadline on WAITING when deadline is undefined', () => {
+        const result = StageDirectorHelper.mapOutput(
+            mockStageDirector,
+            mockRequest,
+            EvalResult.WAITING,
+        );
+        expect(result.deadline).toBeUndefined();
+        expect(result.stage).toBeUndefined();
+        expect(result.error).toBeUndefined();
     })
 })

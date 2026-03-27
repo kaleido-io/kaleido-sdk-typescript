@@ -159,6 +159,7 @@ export interface WSEvaluateReplyResult {
   stateUpdates?: Patch;
   triggers?: Trigger[];
   events?: HandlerEvent[];
+  deadline?: string;
 }
 
 /**

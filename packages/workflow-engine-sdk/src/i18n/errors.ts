@@ -89,6 +89,7 @@ export const SDKErrors = {
   MsgSDKConfigSectionMissing: fe('KA140637', 'Missing "workflow-engine" section in %s'),
   MsgSDKConfigUrlAuthMissing: fe('KA140638', 'Missing url or auth in workflow-engine section in %s'),
   MsgSDKHandlerInvalidType: fe('KA140639', 'Handler "%s" does not implement TransactionHandler, EventSource, or EventProcessor'),
+  MsgSDKDeadlineNotWaiting: fe('KA140640', "Deadline can only be used with WAITING result type (action='%s' result='%s')"),
 
   // Engine connection errors
   MsgSDKEngineNotConnected: fe('KA140627', 'WebSocket is not connected. Cannot submit async transactions'),
