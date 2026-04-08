@@ -64,7 +64,7 @@ This sample is yours to fork. Common customizations:
 
 - **Multiple contracts** — create a second `ERC20Indexer` instance with a different
   config, add it to `HandlerSetFor(...)` in `connect.ts`, and create a second stream.
-- **Custom event filtering** — edit `logFilters` in `src/erc20/stream.ts`.
+- **Scoped event filtering** — edit `logFilters` in `src/erc20/stream.ts` to filter events to a specific contract address or indexed fields within the event signature.
 - **Additional event types** — extend `eventProcessorBatch` in `src/erc20/indexer.ts`.
 
 ## Asset Manager client
@@ -85,7 +85,7 @@ package is available. Until then, you own this code and can modify it freely.
     yq -o=json config/provider-config.yaml > config/provider-config.json
     ```
 
-### Building an OCI image
+### 1. Building an OCI image
 
 ```bash
 npm install --save-dev @types/node
@@ -97,31 +97,97 @@ npm run package:docker # or package:podman for Podman users
 The image uses [distroless/nodejs22](https://github.com/GoogleContainerTools/distroless) on `linux/amd64`
 for a minimal, shell-free runtime — required for hosting on the Kaleido platform.
 
-### Pushing to the artifact registry
+### 2. Pushing to the artifact registry
 
 To push to your artifact registry:
 ```bash
 # Set the image tag - must be unique as tags for each promote as tags are immutable
-export IMAGE_TAG=v1alpha1-$(date +%Y%m%d%H%M%S)
+export IMAGE_TAG=v1-$(date +%Y%m%d%H%M%S)
 # Set the artifact registry hostname
 export ARTIFACT_REGISTRY=my-registry.my-kaleido.io/my-namespace
 npm run promote:docker # or promote:podman for Podman users, or promote:crane if copying from an existing OCI registry via Crane
 ```
 
-### Deploying the provider
+### 3. Deploying the provider
 
 1. Go to the Kaleido platform UI within your running environment
 2. Navigate to the **Operations and resources** page
 3. Click the **+** button on the **Services** section, to begin creating a new service
 4. Select the **Provider** service type
 5. After you have named your service:
-  a. Refer to the namespace, `erc20-indexer` repository, and the promoted image tag for your provider
+  a. Select your uploaded provider artifact tag from within your namespaced repository
   b. Drag and drop the `config/provider-config.json` into the configuration file input box
 6. Finish creating the **Provider** service
 7. As the provider is provisioning, go to the underlying **Provider** runtime and view the **Logs** to ensure the provider is running correctly
 8. Confirm you see the provider is connected within your **Provider proxy** service, and that it is registered within the **Workflow engine** service provider list
 
-### Streaming events to the provider
+### 4.Streaming events to the provider
 
 You can then either use `npm run create-stream` to create a new stream pointed at your hosted provider, or go to your **EVM connector** service
 and create a new stream pointed at your hosted provider via the `transactionEvents` stream factory and a copy of an ERC-20-compatible ABI.
+
+### 5. Upgrading the provider
+
+To upgrade the provider, you will need to create a new artifact tag and promote it to the artifact registry.
+
+```bash
+npm run package:docker # or package:podman for Podman users
+export IMAGE_TAG=v2-$(date +%Y%m%d%H%M%S)
+npm run promote:docker # or promote:podman for Podman users, or promote:crane if copying from an existing OCI registry via Crane
+```
+
+Then, you can patch the existing provider either in the UI by editing the service settings, or by running the following commands:
+
+```bash
+# NOTE: this will extract the platform URL and API credentials from the WFE config file,
+#       your API credentials will need privileges to patch the provider runtime if they do not already have them.
+export RUNTIME_NAME=erc20-indexer-runtime
+export IMAGE_REPOSITORY=samples/erc20-indexer
+npm run patch-provider-runtime
+```
+
+If with your edits, you need to update the `config.json` for your provider, you can do so via the UI.
+
+Otherwise, we encourage you to use https://github.com/kaleido-io/terraform-provider-kaleido to manage your provider runtime and service configurations as code, such as:
+
+```hcl
+resource "kaleido_platform_runtime" "erc20_indexer_runtime" {
+  name = "erc20-indexer-runtime"
+  type = "Provider"
+  environment = var.environment_id
+  image = {
+    repository = "samples/erc20-indexer"
+    tag = "v1"
+  }
+  config_json = jsonencode({})
+}
+
+resource "kaleido_platform_service" "erc20_indexer_service" {
+  name = "erc20-indexer"
+  type = "Provider"
+  environment = var.environment_id
+  runtime = kaleido_platform_runtime.erc20_indexer_runtime.id
+  config_json = jsonencode({
+    configFileJSON = {
+      fileRef = "#provider-config#config.json"
+    }
+  })
+
+  file_sets = {
+    provider_config = {
+      name = "provider-config"
+      files = {
+        config.json = {
+          type = "json"
+          data = {
+            text = file("config/provider-config.json")
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Troubleshooting
+

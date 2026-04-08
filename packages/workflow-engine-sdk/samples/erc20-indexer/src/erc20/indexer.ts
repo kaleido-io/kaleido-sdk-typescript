@@ -121,7 +121,18 @@ export class ERC20Indexer {
       if (!tx.decodedEvents) continue;
 
       for (const decoded of tx.decodedEvents) {
-        if (decoded.signature !== TRANSFER_SIG) continue;
+        // These are safety guards to prevent processing events that are not Transfer(address,address,uint256) events
+        // nor events for the contract address we are interested in. It could be a misconfiguration in your stream if you
+        // see this warning, but if you feel confident that your stream is configured correctly, please reach out
+        // to the Kaleido team for support.
+        if (decoded.signature !== TRANSFER_SIG) {
+          console.warn(`[ERC20Indexer] skipping event with signature ${decoded.signature} not matching ${TRANSFER_SIG}`);
+          continue;
+        }
+        if ( decoded.address.toLowerCase() !== this.contractAddress) {
+          console.warn(`[ERC20Indexer] skipping event with address ${decoded.address} not matching ${this.contractAddress}`);
+          continue;
+        }
 
         const { from, to, value } = decoded.data as ERC20TransferData;
         const isMint = from === ZERO_ADDRESS;
