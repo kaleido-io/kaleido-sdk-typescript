@@ -18,7 +18,8 @@
     "package:podman": "podman build --platform linux/amd64 -t erc20-indexer:latest .",
     "promote:docker": "docker tag erc20-indexer:latest ${ARTIFACT_REGISTRY}/erc20-indexer:${IMAGE_TAG} && docker push ${ARTIFACT_REGISTRY}/erc20-indexer:${IMAGE_TAG}",
     "promote:podman": "podman tag erc20-indexer:latest ${ARTIFACT_REGISTRY}/erc20-indexer:${IMAGE_TAG} && podman push ${ARTIFACT_REGISTRY}/erc20-indexer:${IMAGE_TAG}",
-    "promote:crane": "crane copy ${SOURCE_REGISTRY}/erc20-indexer:${IMAGE_TAG} ${ARTIFACT_REGISTRY}/erc20-indexer:${IMAGE_TAG}"
+    "promote:crane": "crane copy ${SOURCE_REGISTRY}/erc20-indexer:${IMAGE_TAG} ${ARTIFACT_REGISTRY}/erc20-indexer:${IMAGE_TAG}",
+    "patch-provider-runtime": "tsx ./src/utils/patch-provider-runtime.ts"
   },
   "dependencies": {
     "@kaleido-io/workflow-engine-sdk": "^0.9.5",

@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import axios, { type AxiosError, type AxiosInstance } from 'axios';
+import axios, { AxiosError, type AxiosInstance } from 'axios';
 import axiosRetry, { isNetworkError } from 'axios-retry';
 import * as http from 'http';
 import * as https from 'https';
@@ -78,7 +78,17 @@ export class AssetManagerClient {
 
   /** Upsert assets, addresses, pools, transfers, and/or fragments in a single call. */
   async bulkUpsert(input: BulkUpsertInput): Promise<BulkUpsertResult> {
-    const resp = await this.http.put<BulkUpsertResult>('/api/v1/bulk/datamodel', input);
-    return resp.data;
+    try {
+      const resp = await this.http.put<BulkUpsertResult>('/api/v1/bulk/datamodel', input);
+      return resp.data;
+    } catch (error) {
+      if (error instanceof AxiosError && error.response) {
+        const { status, data } = error.response;
+        const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        console.error(`[AssetManagerClient] bulkUpsert failed (${status}):\n${body}`);
+        throw new Error(`[AssetManagerClient] bulkUpsert failed (${status}): ${body}`);
+      }
+      throw error;
+    }
   }
 }
