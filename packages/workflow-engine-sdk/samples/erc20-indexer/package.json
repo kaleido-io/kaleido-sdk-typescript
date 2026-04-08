@@ -14,8 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "package:docker": "docker build -t erc20-indexer:latest .",
-    "package:podman": "podman build -t erc20-indexer:latest .",
+    "package:docker": "docker build --platform linux/amd64 -t erc20-indexer:latest .",
+    "package:podman": "podman build --platform linux/amd64 -t erc20-indexer:latest .",
     "promote:docker": "docker tag erc20-indexer:latest ${ARTIFACT_REGISTRY}/erc20-indexer:${IMAGE_TAG} && docker push ${ARTIFACT_REGISTRY}/erc20-indexer:${IMAGE_TAG}",
     "promote:podman": "podman tag erc20-indexer:latest ${ARTIFACT_REGISTRY}/erc20-indexer:${IMAGE_TAG} && podman push ${ARTIFACT_REGISTRY}/erc20-indexer:${IMAGE_TAG}",
     "promote:crane": "crane copy ${SOURCE_REGISTRY}/erc20-indexer:${IMAGE_TAG} ${ARTIFACT_REGISTRY}/erc20-indexer:${IMAGE_TAG}"
