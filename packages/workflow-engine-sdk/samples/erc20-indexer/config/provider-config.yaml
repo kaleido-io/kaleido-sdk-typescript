@@ -1,0 +1,21 @@
+# Provider configuration for the ERC-20 Indexer.
+# Set CONFIG_FILE env var to point to this file (default: ./config/provider-config.yaml).
+
+# Asset Manager connection — where indexed transfers are written.
+assetManager:
+  account: my-account.my-tenant.com
+  environment: my-environment
+  serviceName: my-asset-manager
+  auth:
+    keyName: my-key-name
+    keyValue: my-key-value
+
+# ERC-20 contract to index
+erc20:
+  contractAddress: '0x...'
+  contractName: USDC
+  contractSymbol: USDC
+  chain: ethereum          # Informational label attached to indexed transfers
+
+# Service ID of the EVM Connector provider (used when creating the event stream)
+evmConnector: my-evm-connector-service-id
