@@ -1,17 +1,13 @@
 # Samples
 
-Samples live inside the SDK package so they are distributed with `npm publish`
-and available to the `wesdk init --sample` CLI.
+Each subdirectory is a self-contained, runnable project that demonstrates a
+different use case of the Kaleido Workflow Engine SDK.
 
-Browse them at:
-[`packages/workflow-engine-sdk/samples/`](../packages/workflow-engine-sdk/samples/)
+To get started with a sample, fork or copy the directory and follow the README
+inside it:
 
-## Using a sample
+| Sample | Description |
+|--------|-------------|
+| [erc20-indexer](./erc20-indexer/) | Indexes ERC-20 `Transfer` events into the Kaleido Asset Manager |
 
-```bash
-npx @kaleido-io/workflow-engine-sdk init my-provider --sample erc20-indexer
-cd my-provider
-npm install
-# edit config/ files, then:
-npm run start:dev
-```
+> **Starting from scratch?** Use `npx @kaleido-io/workflow-engine-sdk init <project-name>` to scaffold a blank provider project instead.
