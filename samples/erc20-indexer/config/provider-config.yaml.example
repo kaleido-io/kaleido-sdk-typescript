@@ -3,19 +3,19 @@
 
 # Asset Manager connection — where indexed transfers are written.
 assetManager:
-  account: my-account.my-tenant.com
+  account: my-account.my-kaleido.io
   environment: my-environment
-  serviceName: my-asset-manager
+  serviceName: assets-asset-manager
   auth:
-    keyName: my-key-name
-    keyValue: my-key-value
+    keyName: my-api-key-name
+    keyValue: my-api-key
 
 # ERC-20 contract to index
 erc20:
-  contractAddress: '0x...'
-  contractName: USDC
-  contractSymbol: USDC
+  contractAddress: '0x..'
+  contractName: Token Name
+  contractSymbol: TKN
   chain: ethereum          # Informational label attached to indexed transfers
 
 # Service ID of the EVM Connector provider (used when creating the event stream)
-evmConnector: my-evm-connector-service-id
+evmConnector: s:my-evm-connector-service-id

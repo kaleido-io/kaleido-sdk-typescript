@@ -7,10 +7,10 @@ workflow-engine:
   providerMetadata:
     displayName: ERC-20 Indexer
     description: Indexes ERC-20 Transfer events into the Kaleido Asset Manager
-  url: https://my-account.my-tenant.com/endpoint/my-environment/my-workflow-engine/rest
+  url: https://my-account.my-kaleido.io/endpoint/my-environment/my-workflow-engine/rest
   auth:
     type: basic
-    username: your-api-key-name
-    password: your-api-key
+    username: my-api-key-name
+    password: my-api-key
   # retryDelay: 2s
   # maxRetries: 5   # omit for infinite retries

@@ -16,8 +16,8 @@
 // limitations under the License.
 
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'fs';
-import { join, dirname, resolve } from 'path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const projectNameRegex = /^(?:@[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*|[a-z0-9][a-z0-9-]*)$/;
@@ -78,30 +78,17 @@ if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
 Usage: npx @kaleido-io/workflow-engine-sdk init <project-name> [options]
 
 Options:
-  --sample <name>  Start from a sample instead of the blank template
   --help, -h       Show this help message
 ${samplesHelp}
 Examples:
   npx @kaleido-io/workflow-engine-sdk init my-provider
-  npx @kaleido-io/workflow-engine-sdk init my-provider --sample erc20-indexer
+  npx @kaleido-io/workflow-engine-sdk init my-provider
   npx @kaleido-io/workflow-engine-sdk init @my-scope/my-provider
 `);
   process.exit(0);
 }
 
 const projectName = args[0];
-
-// Check for --sample flag
-let sampleName = null;
-const sampleFlagIdx = args.indexOf('--sample');
-if (sampleFlagIdx !== -1) {
-  sampleName = args[sampleFlagIdx + 1];
-  if (!sampleName || sampleName.startsWith('--')) {
-    console.error('Error: --sample requires a sample name argument.');
-    console.error('Run with --help to see available samples.');
-    process.exit(1);
-  }
-}
 
 // Validate project name (npm package name rules: unscoped or @scope/name)
 if (!projectNameRegex.test(projectName)) {
@@ -112,30 +99,10 @@ if (!projectNameRegex.test(projectName)) {
 
 // Resolve source directory: sample or blank template
 let sourceDir;
-if (sampleName) {
-  sourceDir = join(SAMPLES_DIR, sampleName);
-  if (!existsSync(sourceDir)) {
-    // List available samples to help the user
-    let available = [];
-    try {
-      available = readdirSync(SAMPLES_DIR, { withFileTypes: true })
-        .filter((e) => e.isDirectory())
-        .map((e) => e.name);
-    } catch {
-      // samples dir not present
-    }
-    console.error(`Error: Sample "${sampleName}" not found.`);
-    if (available.length > 0) {
-      console.error(`Available samples: ${available.join(', ')}`);
-    }
-    process.exit(1);
-  }
-} else {
-  sourceDir = TEMPLATE_DIR;
-  if (!existsSync(sourceDir)) {
-    console.error(`Error: Template directory not found at ${sourceDir}`);
-    process.exit(1);
-  }
+sourceDir = TEMPLATE_DIR;
+if (!existsSync(sourceDir)) {
+  console.error(`Error: Template directory not found at ${sourceDir}`);
+  process.exit(1);
 }
 
 // Get current working directory
@@ -162,8 +129,7 @@ for (const [key, config] of Object.entries(templateConfig.variables || {})) {
 // Override with project name
 variables.PROVIDER_NAME = projectName;
 
-const sourceLabel = sampleName ? `sample: ${sampleName}` : 'blank template';
-console.log(`\nCreating new provider project: ${projectName} (from ${sourceLabel})`);
+console.log(`\nCreating new provider project: ${projectName} (from blank template)`);
 console.log(`Location: ${targetDir}\n`);
 
 // Create target directory
@@ -234,7 +200,7 @@ function copyTemplate(src, dest, basePath = '') {
   }
 }
 
-// Copy source (template or sample) to target directory
+// Copy source (template) to target directory
 try {
   copyTemplate(sourceDir, targetDir);
 } catch (error) {

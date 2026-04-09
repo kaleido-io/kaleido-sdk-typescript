@@ -62,9 +62,8 @@ Workflow Engine connection. `providerName` must match `src/provider.ts`.
 
 This sample is yours to fork. Common customizations:
 
-- **Multiple contracts** — create a second `ERC20Indexer` instance with a different
-  config, add it to `HandlerSetFor(...)` in `connect.ts`, and create a second stream.
-- **Scoped event filtering** — edit `logFilters` in `src/erc20/stream.ts` to filter events to a specific contract address or indexed fields within the event signature.
+- **Multiple contracts** — create a separate stream and event processor for the ERC-20 contract constructor, to dynamically create the asset and pool definitions in the Asset Manager. And update the ERC-20 indexer to upsert the addresses and transfers for any contract address.
+- **Scoped event filtering** — edit `logFilters` in `src/erc20/stream.ts` to filter events for indexed fields within the event signature i.e. index certain `from` and `to` addresses.
 - **Additional event types** — extend `eventProcessorBatch` in `src/erc20/indexer.ts`.
 
 ## Asset Manager client
@@ -191,3 +190,22 @@ resource "kaleido_platform_service" "erc20_indexer_service" {
 
 ### Troubleshooting
 
+1. New image tag not taken affect in the Provider runtime:
+   - Ensure the new image tag has been promoted to the artifact registry
+   - See the logs of the Provider runtime to watch for it stopping and restarting
+   - Image updates may take up to 3 minutes to take affect
+
+2. Provider is not receiving events:
+   - Ensure the stream is pointing at the correct Provider
+   - Ensure the Provider is running correctly
+   - Ensure the Provider is reporting that it is connected to the Workflow Engine via the Provider proxy service
+   - See the logs of the Provider proxy service to watch for it forwarding events to the Provider
+   - Use the Provider proxy Swagger UI to `PUT /providers/{name}/reconnect` to force a reconnect of the Provider
+   - See the Workflow engine logs, searching by your stream ID, to watch for it polling the event source, and sending them to event processor for the Provider
+   - If the Workflow engine is unsuccesfully polling the EVM connector, see the EVM connector logs for any errors. It could be there are JSONRPC connectivity issues, or you need to decrease the `catchupPageSize` in the stream configuration to reduce the number of events polled from the chain at once.
+
+3. Asset manager is not receiving transfers:
+   - See the Provider logs for any errors when calling the Asset Manager APIs
+   - Common causes are bad API key credentials, but if the indexer is receiving events from a misconfigured stream (multiple ERC-20 contracts for example) it
+     may be trying to upsert addresses and transfers for an unknown contract address.
+   - Bulk upsert API has limits on the number of addresses and transfers that can be upserted in a single call. If you are indexing a large number of addresses and transfers, you may need to split the upsert into multiple calls, or decrease the `batchSize` in the stream configuration to reduce the number of events processed at once.
