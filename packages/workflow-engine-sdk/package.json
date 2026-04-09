@@ -37,6 +37,10 @@
   "author": "Kaleido",
   "license": "Apache-2.0",
   "dependencies": {
+    "@kaleido-io/core": "file:../core",
+    "axios": "^1.13.0",
+    "axios-retry": "^4.5.0",
+    "cacheable-lookup": "^6.1.0",
     "exponential-backoff": "^3.1.1",
     "fast-json-patch": "^3.1.1",
     "js-yaml": "^4.1.1",

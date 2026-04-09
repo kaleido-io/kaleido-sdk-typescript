@@ -27,11 +27,15 @@ jest.mock('./client');
 jest.mock('../config/config', () => ({
   ConfigLoader: {
     loadClientConfigFromFile: jest.fn(),
+    loadServiceBindings: jest.fn().mockReturnValue({}),
   },
 }));
 
 const { ConfigLoader } = jest.requireMock('../config/config') as {
-  ConfigLoader: { loadClientConfigFromFile: jest.Mock };
+  ConfigLoader: {
+    loadClientConfigFromFile: jest.Mock;
+    loadServiceBindings: jest.Mock;
+  };
 };
 
 const mockClientConfig: WorkflowEngineClientConfig = {
