@@ -19,9 +19,8 @@ import {
   WSEventProcessorBatchRequest,
   WSEventProcessorBatchResult,
 } from '@kaleido-io/workflow-engine-sdk';
-// TODO remove once this is merged and published via the SDK
-import type { EVMTransactionEvent } from '../evm/index.js';
-// import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
+
+import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
 import { AssetManagerClient } from '../clients/asset-manager/client.js';
 import type { Address, BalanceChange, Transfer } from '../clients/asset-manager/models.js';
 import type { ERC20Config } from '../config/provider-config.js';
