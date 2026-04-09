@@ -75,10 +75,8 @@
     "dist/**/*",
     "dist-esm/**/*",
     "bin/**/*",
-    "template/**/*",
-    "!template/node_modules/**/*",
-    "samples/**/*",
-    "!samples/*/node_modules/**/*",
+    "templates/**/*",
+    "!templates/**/node_modules/**/*",
     "README.md",
     "LICENSE"
   ],
