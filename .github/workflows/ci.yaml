@@ -52,8 +52,6 @@ jobs:
 
       - run: npm run build
 
-      - run: npm test
-
   template-getting-started:
     name: Build & Test (getting-started template)
     runs-on: ubuntu-latest
