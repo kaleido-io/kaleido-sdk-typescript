@@ -148,7 +148,7 @@ Then, you can patch the existing provider either in the UI by editing the servic
 # NOTE: this will extract the platform URL and API credentials from the WFE config file,
 #       your API credentials will need privileges to patch the provider runtime if they do not already have them.
 export RUNTIME_NAME=erc20-indexer-runtime
-export IMAGE_REPOSITORY=samples/erc20-indexer
+export IMAGE_REPOSITORY=my-namespace/{{PROVIDER_NAME}}
 npm run patch-provider-runtime
 ```
 
@@ -162,7 +162,7 @@ resource "kaleido_platform_runtime" "erc20_indexer_runtime" {
   type = "Provider"
   environment = var.environment_id
   image = {
-    repository = "samples/erc20-indexer"
+    repository = "my-namespace/{{PROVIDER_NAME}}"
     tag = "v1"
   }
   config_json = jsonencode({})
