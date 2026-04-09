@@ -86,7 +86,7 @@ export class AssetManagerClient {
         const { status, data } = error.response;
         const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
         console.error(`[AssetManagerClient] bulkUpsert failed (${status}):\n${body}`);
-        throw new Error(`[AssetManagerClient] bulkUpsert failed (${status}): ${body}`);
+        throw new Error(`[AssetManagerClient] bulkUpsert failed (${status}): ${body}`, { cause: error });
       }
       throw error;
     }
