@@ -1,0 +1,49 @@
+# Provider configuration for the BTC Indexer.
+# Set CONFIG_FILE env var to point to this file (default: ./config/provider-config.yaml).
+
+# Asset Manager connection — where indexed transfers are written.
+assetManager:
+  account: account1.custody2.devel.eap.labs.kaleido-demos.com
+  environment: e:h2kduc3mxn
+  serviceName: assets-asset-manager
+  auth:
+    keyName: peter6
+    keyValue: 47b62ec6-2325-4122-ad6e-3f7a704e20eaa037a1d9-b120-402c-8556-c5c0748114ea
+
+# BTC contract to index
+bitcoin:
+  fromBlock: '134721' # contains faucet TX b3c85afadc5cf1a03e4aaf7f8fa658f03a07fceb381338800186dfa79145ad45
+  netId: 0x283f161c
+  tokenSymbol: tBTC
+  tokenName: test_bitcoin
+  chain: testnet4          # Informational label attached to indexed transfers (e.g. "ethereum", "polygon", "base", "besu")
+
+# Service ID of the BTC Connector provider (used when creating the event stream)
+# btcConnector: s-abcde12345
+btcConnector: s-r5jzff3yoj
+
+# {
+#   "name": "bitcoin-indexer",
+#   "started": true,
+#   "eventProcessor": {
+#     "handler": {
+#       "name": "bitcoin-indexer",
+#       "provider": "bitcoin-indexer"
+#     },
+#     "type": "handler"
+#   },
+#   "eventSource": {
+#     "handler": {
+#       "name": "btcTransactions",
+#       "provider": "s-h4x2lhqx57",
+#       "config": {
+#         "unfiltered": true,
+#         "fromBlock": "131358",
+#         "batchSize": 50,
+#         "pollTimeout": "30s",
+#         "requiredConfirmations": 5
+#       }
+#     },
+#     "type": "handler"
+#   }
+# }

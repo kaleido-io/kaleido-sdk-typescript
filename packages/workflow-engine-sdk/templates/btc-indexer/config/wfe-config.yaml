@@ -1,0 +1,32 @@
+# Workflow Engine connection config.
+# Set WFE_CONFIG_FILE env var to point to this file (default: ./config/wfe-config.yaml).
+#
+# providerName must match the `name` exported from src/provider.ts.
+# Workflow Engine connection config.
+# Set WFE_CONFIG_FILE env var to point to this file (default: ./config/wfe-config.yaml).
+# providerName must match the `name` exported from src/provider.ts.
+workflow-engine:
+  providerName: bitcoin-indexer
+  providerMetadata:
+    displayName: BTC Indexer
+    description: Indexes BTC Transfer events into the Kaleido Asset Manager
+  url: https://account1.custody2.devel.eap.labs.kaleido-demos.com/endpoint/peter-bitcoin/workflow-engine/rest
+  auth:
+    type: basic
+    username: peter6
+    password: 47b62ec6-2325-4122-ad6e-3f7a704e20eaa037a1d9-b120-402c-8556-c5c0748114ea
+  # retryDelay: 2s
+  # maxRetries: 5   # omit for infinite retries
+
+# workflow-engine:
+#   providerName: bitcoin-indexer
+#   providerMetadata:
+#     displayName: BTC Indexer
+#     description: Indexes BTC Transfer events into the Kaleido Asset Manager
+#   url: http://127.0.0.1:56065
+#   headers:
+#     x-kld-authz: anything
+#   auth:
+#     type: basic
+#     username: my-api-key-name
+#     password: my-api-key

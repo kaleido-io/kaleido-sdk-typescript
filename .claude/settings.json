@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"5b747eb0-b193-427b-8be8-929650171ad0\" /Users/pbroadhurst/Downloads/logs_r_8zwjuiyhqv_2026-05-12T22_33_37Z_2026-05-12T22_38_37Z.log | head -60)",
+      "Read(//Users/pbroadhurst/Downloads/**)",
+      "Bash(find /Users/pbroadhurst/dev/ffe/firefly-enterprise/btconnect -type f -name \"*.ts\" -o -name \"*.js\" -o -name \"*.json\" | head -100)",
+      "Read(//Users/pbroadhurst/dev/ffe/firefly-enterprise/**)",
+      "Bash(ls -la /Users/pbroadhurst/dev/ffe/)",
+      "Read(//Users/pbroadhurst/dev/ffe/**)"
+    ]
+  }
+}
