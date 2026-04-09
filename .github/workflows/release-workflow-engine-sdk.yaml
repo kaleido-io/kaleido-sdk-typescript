@@ -52,7 +52,16 @@ jobs:
       - name: Upgrade npm for OIDC support
         shell: bash
         run: |
-          npm install -g npm@^11.5.1
+          # Self-replacing npm via `npm install -g npm` corrupts its own dependency
+          # tree on GHA runners (MODULE_NOT_FOUND for promise-retry). Instead, pack
+          # the tarball and extract it over the existing installation.
+          NPM_ROOT="$(npm root -g)/npm"
+          npm pack npm@11.12.1
+          rm -rf "$NPM_ROOT"
+          mkdir -p "$NPM_ROOT"
+          tar xzf npm-*.tgz --strip-components=1 -C "$NPM_ROOT"
+          rm -f npm-*.tgz
+          npm cache clean --force
           npm --version
 
       - name: Prepare Clean Version Number
