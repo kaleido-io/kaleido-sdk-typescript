@@ -1,0 +1,54 @@
+{
+  "name": "@kaleido-io/core",
+  "version": "0.1.0",
+  "description": "Core utilities for Kaleido SDKs",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "module": "dist-esm/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "http": ["./dist/src/http/index.d.ts"]
+    }
+  },
+  "exports": {
+    ".": {
+      "import": "./dist-esm/src/index.js",
+      "require": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    },
+    "./http": {
+      "import": "./dist-esm/src/http/index.js",
+      "require": "./dist/src/http/index.js",
+      "types": "./dist/src/http/index.d.ts"
+    }
+  },
+  "scripts": {
+    "prebuild": "npm run clean",
+    "build": "tsc && npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc && cp cjs-package-template.json dist/package.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "postbuild": "tsc-esm-fix --target='dist-esm'",
+    "clean": "rm -rf dist && rm -rf dist-esm",
+    "dev": "tsc --watch"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-esm/**/*",
+    "README.md"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "axios": "^1.13.0",
+    "axios-retry": "^4.5.0",
+    "cacheable-lookup": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsc-esm-fix": "^3.1.2",
+    "typescript": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
