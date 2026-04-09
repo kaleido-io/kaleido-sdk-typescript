@@ -98,6 +98,13 @@ for a minimal, shell-free runtime — required for hosting on the Kaleido platfo
 
 ### 2. Pushing to the artifact registry
 
+Make sure you are logged into the artifact registry you want to push to. You can do this by running `docker login my-registry.my-kaleido.io`:
+
+```bash
+# or with podman
+docker login my-registry.my-kaleido.io
+```
+
 To push to your artifact registry:
 ```bash
 # Set the image tag - must be unique as tags for each promote as tags are immutable
