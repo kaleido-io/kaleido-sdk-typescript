@@ -15,14 +15,11 @@ npm install @kaleido-io/workflow-engine-sdk
 Scaffold a blank provider project:
 
 ```bash
-npx @kaleido-io/workflow-engine-sdk init <project-name>
+npx @kaleido-io/workflow-engine-sdk init <project-name> --template getting-started
 ```
 
 This creates a new project directory with boilerplate config and a starter
 provider that connects to your Kaleido workflow engine.
-
-> **Want a real-world starting point?** Browse the
-> [samples](../../samples/) directory and fork one instead.
 
 ### Integrating into an existing project
 
