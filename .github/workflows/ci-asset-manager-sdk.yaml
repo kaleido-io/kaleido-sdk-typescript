@@ -30,6 +30,7 @@ jobs:
 
   sdk:
     name: Build (Asset Manager SDK)
+    needs: core
     runs-on: ubuntu-latest
     defaults:
       run:
