@@ -487,7 +487,10 @@ describe('BasicStageDirector', () => {
                 handler: async (_transaction: WSEvaluateTransaction) => {
                     return {
                         result: EvalResult.HARD_FAILURE,
-                        error: new Error('Hard failure occurred')
+                        error: new Error('Hard failure occurred'),
+                        errorData: {
+                            extra: 'data'
+                        }
                     };
                 }
             }],
@@ -523,6 +526,8 @@ describe('BasicStageDirector', () => {
         expect(reply.results[0].stage).toBe('failed');
         expect(reply.results[0].stateUpdates).toBeDefined();
         expect(reply.results[0].stateUpdates?.some(update => update.path === '/error')).toBe(true);
+        expect(reply.results[0].stateUpdates?.some(
+            update => update.path === '/errorData' && update.value.extra === 'data')).toBe(true);
     })
 
     it('should handle WAITING result', async () => {
@@ -977,6 +982,7 @@ describe('StageDirectorHelper', () => {
             error,
             undefined,
             undefined,
+            undefined,
             'custom-failure-stage'
         );
         expect(result.stage).toBe('custom-failure-stage');
@@ -1037,6 +1043,7 @@ describe('StageDirectorHelper', () => {
             EvalResult.COMPLETE,
             { data: 'test' },
             undefined,
+            undefined,
             triggers
         );
         expect(result.triggers).toBeDefined();
@@ -1055,6 +1062,7 @@ describe('StageDirectorHelper', () => {
             mockRequest,
             EvalResult.COMPLETE,
             { data: 'test' },
+            undefined,
             undefined,
             undefined,
             undefined,
@@ -1095,6 +1103,7 @@ describe('StageDirectorHelper', () => {
             EvalResult.WAITING,
             undefined,
             undefined,
+            undefined,
             triggers,
             undefined,
             undefined,
@@ -1113,6 +1122,7 @@ describe('StageDirectorHelper', () => {
             mockStageDirector,
             mockRequest,
             EvalResult.COMPLETE,
+            undefined,
             undefined,
             undefined,
             undefined,
