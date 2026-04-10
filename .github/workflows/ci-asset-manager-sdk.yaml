@@ -1,0 +1,28 @@
+name: Kaleido Asset Manager TypeScript SDK CI
+
+on:
+  pull_request:
+    paths:
+      - 'packages/asset-manager-sdk/**'
+      - '.github/workflows/ci-asset-manager-sdk.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  sdk:
+    name: Build (Asset Manager SDK)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/asset-manager-sdk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - run: npm install
+
+      - run: npm run build
