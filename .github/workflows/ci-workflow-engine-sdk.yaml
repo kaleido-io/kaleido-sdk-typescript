@@ -1,4 +1,4 @@
-name: CI
+name: Kaleido Workflow Engine TypeScript SDK CI
 
 on:
   pull_request:
