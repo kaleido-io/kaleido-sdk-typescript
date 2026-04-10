@@ -23,17 +23,19 @@ import {
   WSEngineAPISubmitTransactionsResult,
 } from '../types/core';
 import { EngineAPI } from '../interfaces/handlers';
+import { invocationContext } from '../context/invocation_context';
 import { newLogger } from '../log/logger';
 import { SDKErrors, newError } from '../i18n/errors';
 
 const log = newLogger('engine_client');
 
 /**
- * Interface for the runtime that EngineClient depends on
+ * Interface for the runtime that EngineClient depends on.
+ * Handler context (requestId, authTokens, authRef) is now read from
+ * the ambient InvocationContext via AsyncLocalStorage.
  */
 export interface EngineClientRuntime {
   sendMessage(message: any): void;
-  getActiveHandlerContext(): { requestId: string; authTokens: Record<string, string> } | undefined;
   isWebSocketConnected(): boolean;
 }
 
@@ -64,8 +66,8 @@ export class EngineClient implements EngineAPI {
       throw newError(SDKErrors.MsgSDKEngineNotConnected);
     }
 
-    const activeContext = this.runtime.getActiveHandlerContext();
-    if (!activeContext) {
+    const ctx = invocationContext.getStore();
+    if (!ctx) {
       throw newError(SDKErrors.MsgSDKEngineReqNoActiveRequest);
     }
 
@@ -79,7 +81,7 @@ export class EngineClient implements EngineAPI {
     const request: WSEngineAPISubmitTransactions = {
       messageType: WSMessageType.ENGINE_API_SUBMIT_TRANSACTIONS,
       id: requestId,
-      activeRequestId: activeContext.requestId,
+      activeRequestId: ctx.requestId,
       authRef: authRef,
       transactions: transactions,
     };

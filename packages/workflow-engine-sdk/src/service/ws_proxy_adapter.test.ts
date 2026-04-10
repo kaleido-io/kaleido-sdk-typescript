@@ -28,6 +28,7 @@ jest.mock("../log/logger", () => ({
 }));
 
 import { WSProxyAdapter, ProxyAdapterRuntime } from "./ws_proxy_adapter";
+import { invocationContext } from "../context/invocation_context";
 import { WSMessageType, ServiceProxyResponse } from "../types/core";
 
 function createMockRuntime(): ProxyAdapterRuntime & { lastMessage: any } {
@@ -139,6 +140,42 @@ describe("WSProxyAdapter", () => {
     adapter.cancelAll();
 
     await expect(promise).rejects.toThrow("connection closed");
+  });
+
+  it("should attach authRef from InvocationContext to ServiceProxyRequest", async () => {
+    const adapter = new WSProxyAdapter(5000);
+    const runtime = createMockRuntime();
+    adapter.setRuntime(runtime);
+
+    const promise = invocationContext.run(
+      { requestId: "req-1", authTokens: {}, authRef: "auth-ref-abc" },
+      () => adapter.request("asset-manager", "PUT", "u:5678", { data: 1 }),
+    );
+
+    expect(runtime.lastMessage.authRef).toBe("auth-ref-abc");
+
+    adapter.handleResponse({
+      messageType: WSMessageType.SERVICE_PROXY_RESPONSE,
+      requestId: runtime.lastMessage.requestId,
+      status: 200,
+    });
+    await promise;
+  });
+
+  it("should set authRef to undefined when no InvocationContext is active", async () => {
+    const adapter = new WSProxyAdapter(5000);
+    const runtime = createMockRuntime();
+    adapter.setRuntime(runtime);
+
+    const promise = adapter.request("asset-manager", "GET", "u:1234");
+    expect(runtime.lastMessage.authRef).toBeUndefined();
+
+    adapter.handleResponse({
+      messageType: WSMessageType.SERVICE_PROXY_RESPONSE,
+      requestId: runtime.lastMessage.requestId,
+      status: 200,
+    });
+    await promise;
   });
 
   it("should warn on response for unknown request", () => {

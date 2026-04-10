@@ -138,3 +138,8 @@ export * from "./i18n/errors";
 export type { HandlerBindingTarget } from "./types/flows";
 
 export { HandlerRuntimeMode } from "./runtime/handler_runtime";
+
+export {
+  InvocationContext,
+  invocationContext,
+} from "./context/invocation_context";

@@ -326,7 +326,8 @@ export interface ServiceProxyRequest {
   serviceType: string;
   /** Service instance identifier — the proxy resolves this to the actual service URL. */
   id: string;
-  invocationId?: string;
+  /** AuthRef correlates with cached auth tokens that the provider-proxy stripped from the original WFE message. */
+  authRef?: string;
   request: {
     method: string;
     headers?: Record<string, string>;

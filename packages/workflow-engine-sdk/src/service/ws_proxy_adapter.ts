@@ -14,6 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { invocationContext } from "../context/invocation_context";
 import { newLogger } from "../log/logger";
 import {
   WSMessageType,
@@ -119,6 +120,7 @@ export class WSProxyAdapter {
       requestId,
       serviceType,
       id,
+      authRef: invocationContext.getStore()?.authRef,
       request: {
         method,
         headers,

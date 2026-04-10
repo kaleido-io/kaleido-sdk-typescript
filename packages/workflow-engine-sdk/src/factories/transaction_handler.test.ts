@@ -39,9 +39,7 @@ describe('newDirectedTransactionHandler', () => {
         const closeFn = jest.fn();
         const engineClientRuntime = {
             sendMessage: jest.fn(),
-            getActiveHandlerContext: jest.fn(() => ({ requestId: 'test', authTokens: { 'test': 'test' } })),
             isWebSocketConnected: jest.fn(() => true),
-            generateId: jest.fn(() => 'test'),
         } as any as EngineClientRuntime;
         const engineClient = new EngineClient(engineClientRuntime);
         const transactionHandler = newDirectedTransactionHandler('test-transaction-handler', new Map<string, DirectedActionConfig<WithStageDirector>>())

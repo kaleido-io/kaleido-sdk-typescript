@@ -14,21 +14,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 /**
  * Stage Director Helper
- * 
+ *
  * Provides the StageDirector pattern for building composable transaction handlers.
  * The StageDirector pattern allows handlers to define multiple "actions" that can
  * be configured to transition to different stages based on success or failure.
  */
 
-import { SDKErrors, newError } from '../i18n/errors';
+import { SDKErrors, newError } from "../i18n/errors";
 import {
   DirectedActionConfig,
-  DirectedTransactionBatchIn
-} from '../interfaces/handlers';
-import { newLogger } from '../log/logger';
+  DirectedTransactionBatchIn,
+} from "../interfaces/handlers";
+import { invocationContext } from "../context/invocation_context";
+import { newLogger } from "../log/logger";
 import {
   EvalResult,
   ExecutableTransaction,
@@ -43,10 +43,10 @@ import {
   WSEvaluateReplyResult,
   WSEvaluateTransaction,
   WithStageDirector,
-} from '../types/core';
-import { getErrorMessage } from '../utils/errors';
+} from "../types/core";
+import { getErrorMessage } from "../utils/errors";
 
-const log = newLogger('stage_director.ts');
+const log = newLogger("stage_director.ts");
 
 /**
  * Basic StageDirector implementation
@@ -56,8 +56,8 @@ export class BasicStageDirector implements StageDirector, WithStageDirector {
     public action: string,
     public outputPath: string,
     public nextStage: string,
-    public failureStage: string
-  ) { }
+    public failureStage: string,
+  ) {}
 
   getStageDirector(): StageDirector {
     return this;
@@ -98,28 +98,38 @@ export class StageDirectorHelper {
     // Serialize output to state updates
     if (output !== undefined && output !== null) {
       if (!stageDirector.outputPath) {
-        log.error(`Transaction ${transaction.transactionId} cannot store output as outputPath is missing`);
+        log.error(
+          `Transaction ${transaction.transactionId} cannot store output as outputPath is missing`,
+        );
         if (!error) {
           error = newError(SDKErrors.MsgSDKDirectorOutputPathMissing);
           result = EvalResult.FIXABLE_ERROR;
         }
       } else {
-        replyResult.stateUpdates = [{
-          op: PatchOpType.ADD,
-          path: stageDirector.outputPath,
-          value: output
-        }];
+        replyResult.stateUpdates = [
+          {
+            op: PatchOpType.ADD,
+            path: stageDirector.outputPath,
+            value: output,
+          },
+        ];
       }
     }
 
     // Append any extra state updates provided by the handler
     if (extraStateUpdates && extraStateUpdates.length) {
-      replyResult.stateUpdates = (replyResult.stateUpdates || []).concat(extraStateUpdates);
+      replyResult.stateUpdates = (replyResult.stateUpdates || []).concat(
+        extraStateUpdates,
+      );
     }
 
     if (deadline && result !== EvalResult.WAITING) {
       if (!error) {
-        error = newError(SDKErrors.MsgSDKDeadlineNotWaiting, stageDirector.action, EvalResult[result]);
+        error = newError(
+          SDKErrors.MsgSDKDeadlineNotWaiting,
+          stageDirector.action,
+          EvalResult[result],
+        );
       }
       result = EvalResult.FIXABLE_ERROR;
     }
@@ -130,13 +140,17 @@ export class StageDirectorHelper {
         // Check if failureStage is missing (validation inside switch for failure-stage handling)
         const failureStage = stageDirector.failureStage;
         if (!failureStage && !customStage) {
-          log.error(`Transaction ${transaction.transactionId} cannot be transitioned due to missing failureStage`);
+          log.error(
+            `Transaction ${transaction.transactionId} cannot be transitioned due to missing failureStage`,
+          );
           if (!error) {
             error = newError(SDKErrors.MsgSDKDirectorFailureStageMissing);
           }
           // Fall through to error handling below by breaking and letting default case handle it
           replyResult.error = error.message;
-          log.debug(`Transaction ${transaction.transactionId} encountered error: ${error.message}`);
+          log.debug(
+            `Transaction ${transaction.transactionId} encountered error: ${error.message}`,
+          );
         } else {
           // Successfully transitioning to failure stage
           const next = customStage || failureStage;
@@ -149,11 +163,13 @@ export class StageDirectorHelper {
             }
             replyResult.stateUpdates.push({
               op: PatchOpType.ADD,
-              path: '/error',
-              value: error.message
+              path: "/error",
+              value: error.message,
             });
           }
-          log.debug(`Transaction ${transaction.transactionId} directed to failureStage '${next}'`);
+          log.debug(
+            `Transaction ${transaction.transactionId} directed to failureStage '${next}'`,
+          );
         }
         break;
       }
@@ -164,21 +180,27 @@ export class StageDirectorHelper {
           return { error: error.message };
         }
         replyResult.stage = next;
-        log.debug(`Transaction ${transaction.transactionId} evaluated successfully and will transition to nextStage '${next}'`);
+        log.debug(
+          `Transaction ${transaction.transactionId} evaluated successfully and will transition to nextStage '${next}'`,
+        );
         break;
       }
       case EvalResult.WAITING:
         if (deadline) {
           replyResult.deadline = deadline;
         }
-        log.debug(`Transaction ${transaction.transactionId} evaluated successfully and will remain in stage`);
+        log.debug(
+          `Transaction ${transaction.transactionId} evaluated successfully and will remain in stage`,
+        );
         break;
       case EvalResult.FIXABLE_ERROR:
       case EvalResult.TRANSIENT_ERROR:
       default:
         if (error) {
           replyResult.error = error.message;
-          log.debug(`Transaction ${transaction.transactionId} encountered error: ${error.message}`);
+          log.debug(
+            `Transaction ${transaction.transactionId} encountered error: ${error.message}`,
+          );
         }
         break;
     }
@@ -189,17 +211,17 @@ export class StageDirectorHelper {
 
 /**
  * Evaluate a batch of directed transactions
- * 
+ *
  * This is the core function that processes a batch of transactions using the
  * StageDirector pattern. It groups transactions by action, executes them according
  * to their invocation mode (PARALLEL or BATCH), and maps the results back to
  * the workflow engine's expected format.
- * 
+ *
  * @param reply The reply object to populate with results
  * @param batch The batch of transactions to process
  * @param actionMap Map of action names to their configurations
  * @param parseInput Function to parse transaction input
- * 
+ *
  * @example
  * ```typescript
  * evalDirected(reply, batch, actionMap, (input) => input as MyInput);
@@ -208,7 +230,7 @@ export class StageDirectorHelper {
 export async function evalDirected<T extends WithStageDirector>(
   reply: WSHandleTransactionsResult,
   batch: WSHandleTransactions,
-  actionMap: Map<string, DirectedActionConfig<T>>
+  actionMap: Map<string, DirectedActionConfig<T>>,
 ): Promise<void> {
   reply.results = new Array(batch.transactions.length);
 
@@ -217,9 +239,15 @@ export async function evalDirected<T extends WithStageDirector>(
   // Phase 1: Parse inputs and group by action
   for (let i = 0; i < batch.transactions.length; i++) {
     const req = batch.transactions[i];
-    log.debug(`Transaction id=${req.transactionId},workflow=${req.workflowId},stage=${req.stage} evaluating`);
+    log.debug(
+      `Transaction id=${req.transactionId},workflow=${req.workflowId},stage=${req.stage} evaluating`,
+    );
 
-    const execReq: ExecutableTransaction = { idx: i, transaction: req, input: {} as T };
+    const execReq: ExecutableTransaction = {
+      idx: i,
+      transaction: req,
+      input: {} as T,
+    };
 
     try {
       // Direct type assertion for transaction input (JSON-deserialized generic type)
@@ -232,7 +260,7 @@ export async function evalDirected<T extends WithStageDirector>(
 
       // If input doesn't have getStageDirector method (plain object from JSON),
       // wrap it to provide the method
-      if (typeof execReq.input.getStageDirector !== 'function') {
+      if (typeof execReq.input.getStageDirector !== "function") {
         const plainInput = execReq.input as any;
 
         // Validate that the plain input has the required action field
@@ -240,7 +268,7 @@ export async function evalDirected<T extends WithStageDirector>(
           throw newError(
             SDKErrors.MsgSDKMissingActionField,
             req.stage,
-            Object.keys(plainInput).join(', ')
+            Object.keys(plainInput).join(", "),
           );
         }
 
@@ -250,14 +278,16 @@ export async function evalDirected<T extends WithStageDirector>(
             action: plainInput.action,
             outputPath: plainInput.outputPath,
             nextStage: plainInput.nextStage,
-            failureStage: plainInput.failureStage
-          })
+            failureStage: plainInput.failureStage,
+          }),
         } as T;
       }
     } catch (error) {
-      log.error(`Transaction id=${req.transactionId} could not be parsed: ${error}`);
+      log.error(
+        `Transaction id=${req.transactionId} could not be parsed: ${error}`,
+      );
       reply.results[i] = {
-        error: `Input parsing error: ${getErrorMessage(error)}`
+        error: `Input parsing error: ${getErrorMessage(error)}`,
       };
       continue;
     }
@@ -267,7 +297,7 @@ export async function evalDirected<T extends WithStageDirector>(
 
     if (!actionConf) {
       reply.results[i] = {
-        error: `Invalid action '${sd.action}' for handler '${batch.handler}'`
+        error: `Invalid action '${sd.action}' for handler '${batch.handler}'`,
       };
       continue;
     }
@@ -286,41 +316,62 @@ export async function evalDirected<T extends WithStageDirector>(
 
     switch (actionConf.invocationMode) {
       case InvocationMode.PARALLEL:
-        // Execute each transaction in parallel
         for (const req of transactions) {
+          const parentCtx = invocationContext.getStore();
+          if (!parentCtx) {
+            // This should never happen unless evalDirected
+            // is called directly outside of an invocationContext.run scope
+            throw new Error("Invocation context not set");
+          }
           completions.push(
-            (async () => {
-              req.result = await execMapped(actionConf, req.transaction, req.input);
-              return req;
-            })()
+            invocationContext.run(
+              // requestId and authTokens are per batch
+              // authRef is per transaction
+              { ...parentCtx, authRef: req.transaction.authRef },
+              async () => {
+                req.result = await execMapped(
+                  actionConf,
+                  req.transaction,
+                  req.input,
+                );
+                return req;
+              },
+            ),
           );
         }
         break;
 
       case InvocationMode.BATCH: {
-        // Execute all transactions for this action as a batch
-        // Note: We execute the batch as one async operation, but add each
-        // individual transaction to completions
-        const batchPromise = (async () => {
-          const batchIn: DirectedTransactionBatchIn<T>[] = transactions.map(r => ({
-            transaction: r.transaction,
-            value: r.input
-          }));
+        const parentCtx = invocationContext.getStore();
+        if (!parentCtx) {
+          // This should never happen unless evalDirected
+          // is called directly outside of an invocationContext.run scope
+          throw new Error("Invocation context not set");
+        }
+        const batchPromise = invocationContext.run(
+          // requestId and authTokens are per batch
+          // authRef is per transaction
+          { ...parentCtx, authRef: transactions[0]?.transaction.authRef },
+          async () => {
+            const batchIn: DirectedTransactionBatchIn<T>[] = transactions.map(
+              (r) => ({
+                transaction: r.transaction,
+                value: r.input,
+              }),
+            );
 
-          const batchOut = await execBatchMapped(actionConf, batchIn);
+            const batchOut = await execBatchMapped(actionConf, batchIn);
 
-          for (let i = 0; i < transactions.length; i++) {
-            transactions[i].result = batchOut[i];
-          }
+            for (let i = 0; i < transactions.length; i++) {
+              transactions[i].result = batchOut[i];
+            }
 
-          return transactions;
-        })();
+            return transactions;
+          },
+        );
 
-        // Add each transaction as a separate completion to maintain flat array structure
         for (const req of transactions) {
-          completions.push(
-            batchPromise.then(() => req)
-          );
+          completions.push(batchPromise.then(() => req));
         }
         break;
       }
@@ -342,14 +393,23 @@ export async function evalDirected<T extends WithStageDirector>(
 async function execMapped<T extends WithStageDirector>(
   config: DirectedActionConfig<T>,
   transaction: WSEvaluateTransaction,
-  input: T
+  input: T,
 ): Promise<WSEvaluateReplyResult> {
   try {
     if (!config.handler) {
       throw newError(SDKErrors.MsgSDKHandlerNotConfigured);
     }
     const handlerResult = await config.handler(transaction, input);
-    const { result, output, error, triggers, extraUpdates, customStage, events, deadline } = handlerResult as {
+    const {
+      result,
+      output,
+      error,
+      triggers,
+      extraUpdates,
+      customStage,
+      events,
+      deadline,
+    } = handlerResult as {
       result: EvalResult;
       output?: any;
       error?: Error;
@@ -372,9 +432,9 @@ async function execMapped<T extends WithStageDirector>(
       deadline,
     );
   } catch (error) {
-    log.error('Handler execution failed:', error);
+    log.error("Handler execution failed:", error);
     return {
-      error: getErrorMessage(error)
+      error: getErrorMessage(error),
     };
   }
 }
@@ -384,7 +444,7 @@ async function execMapped<T extends WithStageDirector>(
  */
 async function execBatchMapped<T extends WithStageDirector>(
   config: DirectedActionConfig<T>,
-  transactions: DirectedTransactionBatchIn<T>[]
+  transactions: DirectedTransactionBatchIn<T>[],
 ): Promise<WSEvaluateReplyResult[]> {
   if (!config.batchHandler) {
     throw newError(SDKErrors.MsgSDKBatchHandlerNotConfigured);
@@ -394,7 +454,11 @@ async function execBatchMapped<T extends WithStageDirector>(
     const batchResults = await config.batchHandler(transactions);
 
     if (batchResults.length !== transactions.length) {
-      throw newError(SDKErrors.MsgSDKBatchHandlerResultCountMismatch, batchResults.length, transactions.length);
+      throw newError(
+        SDKErrors.MsgSDKBatchHandlerResultCountMismatch,
+        batchResults.length,
+        transactions.length,
+      );
     }
 
     return transactions.map((req, i) => {
@@ -413,10 +477,9 @@ async function execBatchMapped<T extends WithStageDirector>(
       );
     });
   } catch (error) {
-    log.error('Batch handler execution failed:', error);
+    log.error("Batch handler execution failed:", error);
     return transactions.map(() => ({
-      error: getErrorMessage(error)
+      error: getErrorMessage(error),
     }));
   }
 }
-

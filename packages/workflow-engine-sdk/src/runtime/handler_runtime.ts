@@ -38,6 +38,7 @@ import {
 } from '../interfaces/handlers';
 import { EngineClient } from './engine_client';
 import { WSProxyAdapter } from '../service/ws_proxy_adapter';
+import { invocationContext } from '../context/invocation_context';
 import { newLogger } from '../log/logger';
 import { getErrorMessage } from '../utils/errors';
 import { newError, SDKErrors } from '../i18n/errors';
@@ -138,7 +139,6 @@ export class HandlerRuntime {
 
   private engineClient: EngineClient;
   private wsProxyAdapter: WSProxyAdapter;
-  private activeHandlerContext?: { requestId: string; authTokens: Record<string, string> };
 
   constructor(config: HandlerRuntimeConfig) {
     if (config.server) {
@@ -284,24 +284,12 @@ export class HandlerRuntime {
   }
 
   /**
-   * Set active handler context for EngineAPI calls
-   */
-  setActiveHandlerContext(requestId: string, authTokens: Record<string, string>): void {
-    this.activeHandlerContext = { requestId, authTokens };
-  }
-
-  /**
-   * Clear active handler context
-   */
-  clearActiveHandlerContext(): void {
-    this.activeHandlerContext = undefined;
-  }
-
-  /**
-   * Get active handler context
+   * Get active handler context from AsyncLocalStorage.
+   * Kept for backward compatibility — callers should prefer
+   * importing invocationContext directly.
    */
   getActiveHandlerContext(): { requestId: string; authTokens: Record<string, string> } | undefined {
-    return this.activeHandlerContext;
+    return invocationContext.getStore();
   }
 
   /**
@@ -562,22 +550,24 @@ export class HandlerRuntime {
       results: [],
     };
 
+    const handler = this.transactionHandlers.get(batch.handler);
+    if (!handler) {
+      response.error = `No transaction handler registered: ${batch.handler}`;
+      log.error(response.error);
+      this.sendMessage(response);
+      return;
+    }
+
     try {
-      const handler = this.transactionHandlers.get(batch.handler);
-      if (handler) {
-        this.setActiveHandlerContext(batch.id, batch.authTokens || {});
-        await handler.transactionHandlerBatch(response, batch);
-      } else {
-        response.error = `No transaction handler registered: ${batch.handler}`;
-        log.error(response.error);
-      }
+      await invocationContext.run(
+        { requestId: batch.id, authTokens: batch.authTokens || {} },
+        () => handler.transactionHandlerBatch(response, batch),
+      );
     } catch (error) {
       log.error('Handler failed', { handler: batch.handler, error });
       response.results = batch.transactions.map(() => ({
         error: getErrorMessage(error)
       }));
-    } finally {
-      this.clearActiveHandlerContext();
     }
 
     this.sendMessage(response);
@@ -596,20 +586,22 @@ export class HandlerRuntime {
       handler: batch.handler,
       events: batch.events,
     };
+    const eventProcessor = this.eventProcessors.get(batch.handler || '');
+    if (!eventProcessor) {
+      response.error = `No event processor registered: ${batch.handler}`;
+      log.error(response.error);
+      this.sendMessage(response);
+      return;
+    }
+
     try {
-      const eventProcessor = this.eventProcessors.get(batch.handler || '');
-      if (eventProcessor) {
-        this.setActiveHandlerContext(batch.id, batch.authTokens || {});
-        await eventProcessor.eventProcessorBatch(response as any, batch as any);
-      } else {
-        response.error = `No event processor registered: ${batch.handler}`;
-        log.error(response.error);
-      }
+      await invocationContext.run(
+        { requestId: batch.id, authTokens: batch.authTokens || {}, authRef: batch.authRef },
+        () => eventProcessor.eventProcessorBatch(response as any, batch as any),
+      );
     } catch (error) {
       log.error('Event processor batch failed', { handler: batch.handler, error });
       response.error = getErrorMessage(error);
-    } finally {
-      this.clearActiveHandlerContext();
     }
 
     this.sendMessage(response);
@@ -634,22 +626,24 @@ export class HandlerRuntime {
       events: [],
     };
 
-    try {
-      const eventSource = this.eventSources.get(request.handler || '');
-      const config = this.eventSourceConfigs.get(request.streamId);
+    const eventSource = this.eventSources.get(request.handler || '');
+    const config = this.eventSourceConfigs.get(request.streamId);
 
-      if (eventSource && config) {
-        this.setActiveHandlerContext(request.id, request.authTokens || {});
-        await eventSource.eventSourcePoll(config, response, request);
-      } else {
-        response.error = `No event source or config: ${request.handler}/${request.streamId}`;
-        log.error(response.error);
-      }
+    if (!eventSource || !config) {
+      response.error = `No event source or config: ${request.handler}/${request.streamId}`;
+      log.error(response.error);
+      this.sendMessage(response);
+      return;
+    }
+
+    try {
+      await invocationContext.run(
+        { requestId: request.id, authTokens: request.authTokens || {}, authRef: request.authRef },
+        () => eventSource.eventSourcePoll(config, response, request),
+      );
     } catch (error) {
       log.error('Event source poll failed', { handler: request.handler, error });
       response.error = getErrorMessage(error);
-    } finally {
-      this.clearActiveHandlerContext();
     }
 
     this.sendMessage(response);
@@ -664,23 +658,25 @@ export class HandlerRuntime {
       handler: request.handler,
     };
 
+    const eventSource = this.eventSources.get(request.handler || '');
+    if (!eventSource) {
+      response.error = `No event source registered: ${request.handler}`;
+      log.error(response.error);
+      this.sendMessage(response);
+      return;
+    }
+
     try {
-      const eventSource = this.eventSources.get(request.handler || '');
-      if (eventSource) {
-        this.setActiveHandlerContext(request.id, request.authTokens || {});
-        await eventSource.eventSourceValidateConfig(response, request);
-      } else {
-        response.error = `No event source registered: ${request.handler}`;
-        log.error(response.error);
-      }
+      await invocationContext.run(
+        { requestId: request.id, authTokens: request.authTokens || {} },
+        () => eventSource.eventSourceValidateConfig(response, request),
+      );
     } catch (error) {
       log.error('Event source validate config failed', {
         handler: request.handler,
         error
       });
       response.error = getErrorMessage(error);
-    } finally {
-      this.clearActiveHandlerContext();
     }
 
     this.sendMessage(response);
@@ -698,21 +694,25 @@ export class HandlerRuntime {
       handler: request.handler,
     };
 
+    const eventSource = this.eventSources.get(request.handler || '');
+    if (!eventSource) {
+      response.error = `No event source registered: ${request.handler}`;
+      log.error(response.error);
+      this.sendMessage(response);
+      return;
+    }
+
     try {
-      const eventSource = this.eventSources.get(request.handler || '');
-      if (eventSource) {
-        this.setActiveHandlerContext(request.id, request.authTokens || {});
-        await eventSource.eventSourceDelete(response, request);
-        this.eventSourceConfigs.delete(request.streamId);
-      } else {
-        response.error = `No event source registered: ${request.handler}`;
-        log.error(response.error);
-      }
+      await invocationContext.run(
+        { requestId: request.id, authTokens: request.authTokens || {} },
+        async () => {
+          await eventSource.eventSourceDelete(response, request);
+          this.eventSourceConfigs.delete(request.streamId);
+        },
+      );
     } catch (error) {
       log.error('Event source delete failed', { handler: request.handler, error });
       response.error = getErrorMessage(error);
-    } finally {
-      this.clearActiveHandlerContext();
     }
 
     this.sendMessage(response);
