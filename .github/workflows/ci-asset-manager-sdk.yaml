@@ -11,37 +11,24 @@ permissions:
   contents: read
 
 jobs:
-  core:
-    name: Build (Core)
+  build:
+    name: Build (Core + Asset Manager SDK)
     runs-on: ubuntu-latest
-    defaults:
-      run:
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - run: npm install
         working-directory: packages/core
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
-
-      - run: npm install
 
       - run: npm run build
+        working-directory: packages/core
 
-  sdk:
-    name: Build (Asset Manager SDK)
-    needs: core
-    runs-on: ubuntu-latest
-    defaults:
-      run:
+      - run: npm install
         working-directory: packages/asset-manager-sdk
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
-
-      - run: npm install
 
       - run: npm run build
+        working-directory: packages/asset-manager-sdk
