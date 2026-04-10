@@ -8,7 +8,9 @@
   "types": "dist/src/index.d.ts",
   "typesVersions": {
     "*": {
-      "http": ["./dist/src/http/index.d.ts"]
+      "http": [
+        "./dist/src/http/index.d.ts"
+      ]
     }
   },
   "exports": {
@@ -30,6 +32,7 @@
     "build:esm": "tsc -p tsconfig.esm.json",
     "postbuild": "tsc-esm-fix --target='dist-esm'",
     "clean": "rm -rf dist && rm -rf dist-esm",
+    "test": "jest --coverage",
     "dev": "tsc --watch"
   },
   "files": [
@@ -44,7 +47,10 @@
     "cacheable-lookup": "^6.1.0"
   },
   "devDependencies": {
+    "@jest/globals": "^30.3.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.0.0",
+    "jest": "^30.3.0",
     "tsc-esm-fix": "^3.1.2",
     "typescript": "^5.2.0"
   },
