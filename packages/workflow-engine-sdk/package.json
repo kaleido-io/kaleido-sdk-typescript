@@ -75,8 +75,8 @@
     "dist/**/*",
     "dist-esm/**/*",
     "bin/**/*",
-    "template/**/*",
-    "!template/node_modules/**/*",
+    "templates/**/*",
+    "!templates/**/node_modules/**/*",
     "README.md",
     "LICENSE"
   ],
@@ -85,6 +85,11 @@
       "import": "./dist-esm/src/index.js",
       "require": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
+    },
+    "./types/evm": {
+      "import": "./dist-esm/src/types/evm/index.js",
+      "require": "./dist/src/types/evm/index.js",
+      "types": "./dist/src/types/evm/index.d.ts"
     }
   }
 }
