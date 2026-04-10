@@ -16,8 +16,8 @@
 // limitations under the License.
 
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'fs';
-import { join, dirname, resolve } from 'path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const projectNameRegex = /^(?:@[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*|[a-z0-9][a-z0-9-]*)$/;
@@ -50,7 +50,7 @@ const __dirname = dirname(__filename);
 // Get the project root (parent of bin directory)
 // When installed via npm, this will be in node_modules/@kaleido-io/workflow-engine-sdk
 const PROJECT_ROOT = resolve(__dirname, '..');
-const TEMPLATE_DIR = join(PROJECT_ROOT, 'template');
+const TEMPLATES_DIR = join(PROJECT_ROOT, 'templates');
 
 // Files and directories to exclude when copying template
 const EXCLUDE_PATTERNS = [
@@ -64,11 +64,13 @@ if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
 Usage: npx @kaleido-io/workflow-engine-sdk init <project-name> [options]
 
 Options:
-  --help, -h     Show this help message
+  --help, -h       Show this help message
 
 Examples:
-  npx @kaleido-io/workflow-engine-sdk init @my-scope/my-provider
-  npx @kaleido-io/workflow-engine-sdk init my-custom-provider
+  npx @kaleido-io/workflow-engine-sdk init my-provider --template getting-started
+  npx @kaleido-io/workflow-engine-sdk init my-provider --template erc20-indexer
+  npx @kaleido-io/workflow-engine-sdk init @my-scope/my-provider --template getting-started
+  npx @kaleido-io/workflow-engine-sdk init @my-scope/my-provider --template erc20-indexer
 `);
   process.exit(0);
 }
@@ -82,9 +84,20 @@ if (!projectNameRegex.test(projectName)) {
   process.exit(1);
 }
 
-// Check if template directory exists
-if (!existsSync(TEMPLATE_DIR)) {
-  console.error(`Error: Template directory not found at ${TEMPLATE_DIR}`);
+// Parse --template flag (required)
+const templateIdx = args.indexOf('--template');
+if (templateIdx === -1 || templateIdx + 1 >= args.length) {
+  console.error('Error: --template <name> is required.');
+  console.error('Available templates: getting-started, erc20-indexer');
+  process.exit(1);
+}
+const templateName = args[templateIdx + 1];
+
+// Resolve source directory from the chosen template
+const sourceDir = join(TEMPLATES_DIR, templateName);
+if (!existsSync(sourceDir)) {
+  console.error(`Error: Template "${templateName}" not found at ${sourceDir}`);
+  console.error('Available templates: getting-started, erc20-indexer');
   process.exit(1);
 }
 
@@ -112,7 +125,7 @@ for (const [key, config] of Object.entries(templateConfig.variables || {})) {
 // Override with project name
 variables.PROVIDER_NAME = projectName;
 
-console.log(`\nCreating new provider project: ${projectName}`);
+console.log(`\nCreating new provider project: ${projectName} (from template: ${templateName})`);
 console.log(`Location: ${targetDir}\n`);
 
 // Create target directory
@@ -183,9 +196,9 @@ function copyTemplate(src, dest, basePath = '') {
   }
 }
 
-// Copy template to target directory
+// Copy source (template) to target directory
 try {
-  copyTemplate(TEMPLATE_DIR, targetDir);
+  copyTemplate(sourceDir, targetDir);
 } catch (error) {
   console.error(`Error copying template files: ${error.message}`);
   process.exit(1);

@@ -30,5 +30,5 @@ All packages in this monorepo are licensed under the Apache-2.0 License.
 
 ## Links
 
-- [Kaleido documentation](https://docs.kaleido.io)
+- [Kaleido documentation](https://docs.kaleido.io/platform)
 - [GitHub issues](https://github.com/kaleido-io/kaleido-sdk-typescript/issues)

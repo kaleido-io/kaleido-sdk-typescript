@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+    paths:
+      - 'packages/workflow-engine-sdk/**'
+      - '.github/workflows/ci.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  sdk:
+    name: Lint, Build & Test (SDK)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/workflow-engine-sdk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - run: npm install
+
+      - run: npm run lint
+
+      - run: npm run build
+
+      - run: npm test
+
+  template-erc20-indexer:
+    name: Build & Test (erc20-indexer template)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/workflow-engine-sdk/templates/erc20-indexer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Install SDK (local)
+        working-directory: packages/workflow-engine-sdk
+        run: npm install && npm run build
+
+      - run: npm install
+
+      - run: npm run build
+
+  template-getting-started:
+    name: Build & Test (getting-started template)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/workflow-engine-sdk/templates/getting-started
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Install SDK (local)
+        working-directory: packages/workflow-engine-sdk
+        run: npm install && npm run build
+
+      - run: npm install
+
+      - run: npm run build
+
+      - run: npm test
