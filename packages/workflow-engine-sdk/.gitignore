@@ -2,6 +2,6 @@ dist
 dist-esm
 node_modules
 coverage
-template/node_modules
+templates/**/node_modules
 *.tgz
 tests/componenttest/test-config.yaml

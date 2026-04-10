@@ -112,6 +112,7 @@ export interface DirectedTransactionBatchOut<_T extends WithStageDirector> {
   result: EvalResult;
   output?: any;
   error?: Error;
+  errorData?: any;
   triggers?: Trigger[];
   extraUpdates?: Patch;
   customStage?: string;
