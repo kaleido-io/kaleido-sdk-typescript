@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - 'packages/workflow-engine-sdk/**'
-      - '.github/workflows/ci.yaml'
+      - '.github/workflows/ci-workflow-engine-sdk.yaml'
 
 permissions:
   contents: read
