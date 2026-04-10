@@ -19,11 +19,14 @@
     "typescript",
     "workflows",
     "workflow-engine",
+    "assets",
+    "asset-manager",
     "handlers",
     "providers"
   ],
   "workspaces": [
-    "packages/workflow-engine-sdk",
-    "packages/core"
+    "packages/asset-manager-sdk",
+    "packages/core",
+    "packages/workflow-engine-sdk"
   ]
 }

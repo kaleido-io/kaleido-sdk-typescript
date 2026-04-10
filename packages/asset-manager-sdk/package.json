@@ -1,0 +1,43 @@
+{
+  "name": "@kaleido-io/asset-manager-sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK client for the Kaleido Asset Manager service",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "module": "dist-esm/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist-esm/src/index.js",
+      "require": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    }
+  },
+  "scripts": {
+    "prebuild": "npm run clean",
+    "build": "tsc && npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc && cp cjs-package-template.json dist/package.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "postbuild": "tsc-esm-fix --target='dist-esm'",
+    "clean": "rm -rf dist && rm -rf dist-esm",
+    "dev": "tsc --watch"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-esm/**/*",
+    "README.md"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@kaleido-io/core": "file:../core",
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsc-esm-fix": "^3.1.2",
+    "typescript": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
