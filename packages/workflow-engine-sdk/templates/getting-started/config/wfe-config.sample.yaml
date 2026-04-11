@@ -8,16 +8,16 @@ workflow-engine:
   providerName: {{PROVIDER_NAME}}
   url: https://<your-kaleido-wfe-url>   # Workflow Engine URL from the Kaleido platform
   auth:
-    type: token
-    token: <your-api-key>               # API key from Kaleido credentials
-    header: X-Kld-Authz
-    scheme: ""
+    type: basic
+    username: <api-key-name>            # Kaleido API key username
+    password: <api-key-password>        # Kaleido API key password
 
-  # Alternative: basic auth
+  # Alternative: token auth
   # auth:
-  #   type: basic
-  #   username: <api-key-name>
-  #   password: <api-key>
+  #   type: token
+  #   token: <your-token>
+  #   header: X-Kld-Authz
+  #   scheme: ""
 
   # retryDelay: 2s
   # maxRetries: 5   # omit for infinite retries
