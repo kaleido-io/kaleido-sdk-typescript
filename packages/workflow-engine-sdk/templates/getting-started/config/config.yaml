@@ -1,8 +1,8 @@
 # Application-owned config (consumer-defined). Load with CONFIG_FILE or -f.
 # Used by the app for app-specific settings.
-name: example-provider
+name: {{PROVIDER_NAME}}
 metadata:
-  displayName: Example provider
+  displayName: {{PROVIDER_NAME}}
   description: An example provider for the Kaleido Workflow Engine
 
 # Example: HTTP invoke handler (used by template/src/samples/http-invoke/handlers.ts)

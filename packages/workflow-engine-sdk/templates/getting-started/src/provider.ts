@@ -16,9 +16,9 @@
 
 
 export default {
-    'name': 'example-provider',
+    'name': '{{PROVIDER_NAME}}',
     'metadata': {
-        'displayName': 'Example provider',
+        'displayName': '{{PROVIDER_NAME}}',
         'description': 'An example provider for the Kaleido Workflow Engine'
     }
 }

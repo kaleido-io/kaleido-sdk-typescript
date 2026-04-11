@@ -1,0 +1,24 @@
+# Provider configuration for the ERC-20 Indexer.
+# Copy this file to provider-config.yaml and fill in your values.
+# provider-config.yaml is gitignored — never commit real credentials.
+#
+# Set CONFIG_FILE env var to point to this file (default: ./config/provider-config.yaml).
+
+# Asset Manager connection — where indexed transfers are written.
+assetManager:
+  account: <your-kaleido-account>.my-kaleido.io
+  environment: <environment-id>
+  serviceName: <asset-manager-service-id>
+  auth:
+    keyName: <api-key-name>
+    keyValue: <api-key-value>
+
+# ERC-20 contract to index
+erc20:
+  contractAddress: '0x<contract-address>'
+  contractName: <Token Name>
+  contractSymbol: <TKN>
+  chain: <chain-label>   # Informational label attached to indexed transfers (e.g. "ethereum", "polygon", "base", "besu")
+
+# Service ID of the EVM Connector provider (used when creating the event stream)
+evmConnector: s:<evm-connector-service-id>

@@ -1,2 +1,5 @@
 package-lock.json
 node_modules/
+.env
+config/wfe-config.yaml
+config/provider-config.yaml
