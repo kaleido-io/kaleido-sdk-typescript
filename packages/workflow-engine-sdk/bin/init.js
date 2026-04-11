@@ -208,5 +208,6 @@ console.log(`Project ${projectName} initialized\n\n`);
 console.log('Next steps:');
 console.log(`\tcd ${projectName}`);
 console.log('\tnpm install');
-console.log('\t# Edit config/wfe-config.yaml with your configuration');
+console.log('\tcp config/wfe-config.sample.yaml config/wfe-config.yaml');
+console.log('\t# Edit config/wfe-config.yaml with your Kaleido URL and credentials');
 console.log('\tnpm run start:dev\n');

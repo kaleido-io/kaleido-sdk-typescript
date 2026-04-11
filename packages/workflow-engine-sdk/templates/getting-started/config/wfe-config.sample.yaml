@@ -1,0 +1,23 @@
+# Workflow Engine connection config.
+# Copy this file to wfe-config.yaml and fill in your values.
+# wfe-config.yaml is gitignored — never commit real credentials.
+#
+# Set WFE_CONFIG_FILE env var to point to this file (default: ./config/wfe-config.yaml).
+# providerName must match the `name` exported from src/provider.ts.
+workflow-engine:
+  providerName: {{PROVIDER_NAME}}
+  url: https://<your-kaleido-wfe-url>   # Workflow Engine URL from the Kaleido platform
+  auth:
+    type: token
+    token: <your-api-key>               # API key from Kaleido credentials
+    header: X-Kld-Authz
+    scheme: ""
+
+  # Alternative: basic auth
+  # auth:
+  #   type: basic
+  #   username: <api-key-name>
+  #   password: <api-key>
+
+  # retryDelay: 2s
+  # maxRetries: 5   # omit for infinite retries

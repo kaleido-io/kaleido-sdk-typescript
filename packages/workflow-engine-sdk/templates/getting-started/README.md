@@ -4,9 +4,12 @@ This project contains worked examples of custom providers that register transact
 
 ## Getting started
 
-1. Copy `.env.sample` to `.env`. Defaults point at **`src/config/wfe-config.yaml`** and **`src/config/config.yaml`** (paths are relative to the project root).
-2. Edit `src/config/wfe-config.yaml`: root key **`workflow-engine`**. **Outbound:** `providerName`, `url`, and `auth`. **Inbound:** `providerName` and `server` (address, port). Optional `src/config/config.yaml` is for app-only settings (e.g. HTTP-invoke sample); if that file is missing, samples use built-in defaults.
-3. Install dependencies: `npm install`
+1. Install dependencies: `npm install`
+2. Copy `config/wfe-config.sample.yaml` to `config/wfe-config.yaml` and fill in your values:
+   - `providerName` — must match the provider name in `src/provider.ts`
+   - `url` — Workflow Engine URL from the Kaleido platform
+   - `auth` — API key or username/password from Kaleido credentials
+3. Copy `.env.sample` to `.env` (only needed for the http-invoke sample).
 4. Start the provider, either:
    - use the vscode launch configurations to run inside the debugger
    - use `npm run start:dev` to run TypeScript

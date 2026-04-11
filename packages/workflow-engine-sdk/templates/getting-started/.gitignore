@@ -1,5 +1,13 @@
-coverage
+node_modules/
+coverage/
 *.tgz
-build
-dist
+build/
+dist/
+
+# Environment files — contain secrets, never commit
 .env
+.env.local
+.env.*.local
+
+# Workflow Engine config — contains credentials, never commit
+config/wfe-config.yaml
