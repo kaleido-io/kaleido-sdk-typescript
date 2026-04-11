@@ -193,7 +193,11 @@ export class WorkflowEngineRestClient {
       this.baseUrl = restUrl;
     }
     if (!config?.authToken) {
-      if (process.env.KEY_NAME && process.env.KEY_VALUE) {
+      // Fall back to auth stored in options.headers (set by ConfigLoader.createClientConfig)
+      const optionsAuthHeader = config?.options?.headers?.['Authorization'];
+      if (optionsAuthHeader) {
+        this.authToken = optionsAuthHeader;
+      } else if (process.env.KEY_NAME && process.env.KEY_VALUE) {
         this.authToken = `basic ${Buffer.from(`${process.env.KEY_NAME}:${process.env.KEY_VALUE}`).toString('base64')}`;
       }
     } else {
