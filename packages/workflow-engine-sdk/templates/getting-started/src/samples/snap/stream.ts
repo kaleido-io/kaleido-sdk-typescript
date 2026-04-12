@@ -19,8 +19,15 @@ import provider from '../../provider.js';
 export const stream = {
     name: 'snap-dealer-stream',
     started: true,
-    type: 'correlation_stream',
-    listenerHandler: 'snap-dealer',
-    listenerHandlerProvider: provider.name,
-    config: { resetInterval: 10000 }
+    eventSource: {
+        type: 'handler',
+        handler: {
+            name: 'snap-dealer',
+            provider: provider.name,
+            config: { resetInterval: 10000 }
+        },
+    },
+    eventProcessor: {
+        type: 'correlation'
+    }
 }

@@ -15,7 +15,7 @@
 // limitations under the License.
 
 
-import { WorkflowEngineRestClient, CreateTransactionRequest } from '@kaleido-io/workflow-engine-sdk';
+import { WorkflowEngineRestClient, CreateTransactionRequest, ConfigLoader } from '@kaleido-io/workflow-engine-sdk';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -34,21 +34,24 @@ async function main() {
     // Import the transaction from the TypeScript file
     let transaction: CreateTransactionRequest;
     try {
-        const transactionModule = await import(`../../${transactionPath}`);
-        if (!transactionModule.transaction) {
-            console.error(`Error: The file ${transactionPath} does not export a 'transaction' constant.`);
-            process.exit(1);
-        }
-        transaction = transactionModule.transaction;
-    } catch (error) {
-        console.error(`Error importing transaction file at ${transactionPath}:`, error);
+      const transactionModule = await import(`../../${transactionPath}`);
+      if (!transactionModule.transaction) {
+        console.error(`Error: The file ${transactionPath} does not export a 'transaction' constant.`);
         process.exit(1);
+      }
+      transaction = transactionModule.transaction;
+    } catch (error) {
+      console.error(`Error importing transaction file at ${transactionPath}:`, error);
+      process.exit(1);
     }
 
     console.log('Posting transaction:', JSON.stringify(transaction, null, 2));
 
     // Create the transaction engine REST client
-    const client = new WorkflowEngineRestClient();
+    const config = ConfigLoader.loadClientConfigFromFile(
+      process.env.WFE_CONFIG_FILE ?? './config/wfe-config.yaml',
+    );
+    const client = new WorkflowEngineRestClient(config);
 
     // Post the transaction
     const response = await client.createTransaction(transaction);
