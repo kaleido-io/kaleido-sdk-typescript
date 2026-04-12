@@ -4,10 +4,9 @@ This project contains worked examples of custom providers that register transact
 
 ## Getting started
 
-1. Copy `.env.sample` to `.env`. Defaults point at **`config/wfe-config.yaml`** and **`config/config.yaml`** (paths are relative to the project root).
-2. Edit `config/wfe-config.yaml`: root key **`workflow-engine`**. **Outbound:** `providerName`, `url`, and `auth`. **Inbound:** `providerName` and `server` (address, port). Optional `config/config.yaml` is for app-only settings (e.g. HTTP-invoke sample); if that file is missing, samples use built-in defaults.
-3. Install dependencies: `npm install`
-4. Start the provider, either:
+1. Edit `config/wfe-config.yaml`: root key **`workflow-engine`**. **Outbound:** `providerName`, `url`, and `auth`. **Inbound:** `providerName` and `server` (address, port). Optional `config/config.yaml` is for app-only settings (e.g. HTTP-invoke sample); if that file is missing, samples use built-in defaults.
+2. Install dependencies: `npm install`
+3. Start the provider, either:
    - use the vscode launch configurations to run inside the debugger
    - use `npm run start:dev` to run TypeScript
    - use `npm build` and `npm start` to run transpiled JavaScript
