@@ -161,6 +161,89 @@ describe('WorkflowEngineRestClient', () => {
       );
     });
 
+    it('should use auth token from options.headers.Authorization when no authToken provided', async () => {
+      client = new WorkflowEngineRestClient({
+        url: 'http://test.example.com',
+        providerName: 'test-provider',
+        options: {
+          headers: { Authorization: 'Bearer from-options' },
+        },
+      } as WorkflowEngineClientConfig);
+
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse({
+          ok: true,
+          status: 201,
+          json: async () => ({ id: 'w1' }),
+        }),
+      );
+
+      await client.createWorkflow({ name: 'w' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer from-options',
+          }),
+        }),
+      );
+    });
+
+    it('should use KEY_NAME/KEY_VALUE env vars when no authToken or options header provided', async () => {
+      process.env.KEY_NAME = 'my-key';
+      process.env.KEY_VALUE = 'my-secret';
+
+      client = new WorkflowEngineRestClient({
+        url: 'http://test.example.com',
+        providerName: 'test-provider',
+      });
+
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse({
+          ok: true,
+          status: 201,
+          json: async () => ({ id: 'w1' }),
+        }),
+      );
+
+      await client.createWorkflow({ name: 'w' });
+
+      const expectedToken = `basic ${Buffer.from('my-key:my-secret').toString('base64')}`;
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: expectedToken,
+          }),
+        }),
+      );
+    });
+
+    it('should not set auth header when no credentials are available', async () => {
+      client = new WorkflowEngineRestClient({
+        url: 'http://test.example.com',
+        providerName: 'test-provider',
+      });
+
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse({
+          ok: true,
+          status: 201,
+          json: async () => ({ id: 'w1' }),
+        }),
+      );
+
+      await client.createWorkflow({ name: 'w' });
+
+      const callArgs = mockFetch.mock.calls[0];
+      const headers = (callArgs[1] as RequestInit).headers as Record<
+        string,
+        string
+      >;
+      expect(headers['Authorization']).toBeUndefined();
+    });
+
     it('should prefer explicit config over environment variables', () => {
       process.env.ACCOUNT = 'env-account';
       process.env.ENVIRONMENT = 'env-env';

@@ -26,8 +26,7 @@ into the [Kaleido Asset Manager](https://docs.kaleido.io/platform/digital-assets
 # 1. Install dependencies
 npm install
 
-# 2. Copy the sample env file and configure both YAML files
-cp .env.sample .env
+# 2. Edit the config files
 # Edit config/wfe-config.yaml — set providerName, url, and auth
 # Edit config/provider-config.yaml — set assetManager, erc20, and evmConnector values
 # See the Configuration section below for details on each field
