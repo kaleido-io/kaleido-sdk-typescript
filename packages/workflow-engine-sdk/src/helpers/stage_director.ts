@@ -77,6 +77,7 @@ export class StageDirectorHelper {
     result: EvalResult,
     output?: any,
     error?: Error,
+    errorData?: any,
     triggers?: Trigger[],
     extraStateUpdates?: Patch,
     customStage?: string,
@@ -166,6 +167,14 @@ export class StageDirectorHelper {
               path: "/error",
               value: error.message,
             });
+            // Store error data in state at /errorData path
+            if (errorData) {
+              replyResult.stateUpdates.push({
+                op: PatchOpType.ADD,
+                path: "/errorData",
+                value: errorData,
+              });
+            }
           }
           log.debug(
             `Transaction ${transaction.transactionId} directed to failureStage '${next}'`,
@@ -404,6 +413,7 @@ async function execMapped<T extends WithStageDirector>(
       result,
       output,
       error,
+      errorData,
       triggers,
       extraUpdates,
       customStage,
@@ -413,6 +423,7 @@ async function execMapped<T extends WithStageDirector>(
       result: EvalResult;
       output?: any;
       error?: Error;
+      errorData?: any;
       triggers?: Trigger[];
       events?: HandlerEvent[];
       extraUpdates?: Patch;
@@ -425,6 +436,7 @@ async function execMapped<T extends WithStageDirector>(
       result,
       output,
       error,
+      errorData,
       triggers,
       extraUpdates,
       customStage,
@@ -469,6 +481,7 @@ async function execBatchMapped<T extends WithStageDirector>(
         batchResult.result,
         batchResult.output,
         batchResult.error,
+        batchResult.errorData,
         batchResult.triggers,
         batchResult.extraUpdates,
         batchResult.customStage,
