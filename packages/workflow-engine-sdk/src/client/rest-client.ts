@@ -192,13 +192,21 @@ export class WorkflowEngineRestClient {
       }
       this.baseUrl = restUrl;
     }
-    if (config?.authToken) {
-      this.authToken = config.authToken;
-    } else if (process.env.KEY_NAME && process.env.KEY_VALUE) {
-      this.authToken = `basic ${Buffer.from(`${process.env.KEY_NAME}:${process.env.KEY_VALUE}`).toString("base64")}`;
+    if (!config?.authToken) {
+      // Fall back to auth stored in options.headers (set by ConfigLoader.createClientConfig)
+      const optionsAuthHeader = config?.options?.headers?.["Authorization"];
+      if (optionsAuthHeader) {
+        this.authToken = optionsAuthHeader;
+      } else if (process.env.KEY_NAME && process.env.KEY_VALUE) {
+        this.authToken = `basic ${Buffer.from(`${process.env.KEY_NAME}:${process.env.KEY_VALUE}`).toString("base64")}`;
+      }
+    } else {
+      this.authToken = config?.authToken;
     }
     this.authHeaderName = config?.authHeaderName || "Authorization";
-    const optionsHeaders = config?.options?.headers as Record<string, string> | undefined;
+    const optionsHeaders = config?.options?.headers as
+      | Record<string, string>
+      | undefined;
     this.headers = { ...optionsHeaders, ...config?.headers };
   }
 

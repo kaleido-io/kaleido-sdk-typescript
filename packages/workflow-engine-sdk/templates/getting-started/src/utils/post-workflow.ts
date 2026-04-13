@@ -15,7 +15,7 @@
 // limitations under the License.
 
 
-import { WorkflowEngineRestClient, CreateWorkflowRequest } from '@kaleido-io/workflow-engine-sdk';
+import { WorkflowEngineRestClient, CreateWorkflowRequest, ConfigLoader } from '@kaleido-io/workflow-engine-sdk';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -47,7 +47,10 @@ async function main() {
         console.log('Posting workflow:', JSON.stringify(workflow, null, 2));
 
         // Create the workflow engine REST client
-        const client = new WorkflowEngineRestClient();
+        const config = ConfigLoader.loadClientConfigFromFile(
+            process.env.WFE_CONFIG_FILE ?? './config/wfe-config.yaml',
+        );
+        const client = new WorkflowEngineRestClient(config);
 
         // Post the workflow
         const response = await client.createWorkflow(workflow);
