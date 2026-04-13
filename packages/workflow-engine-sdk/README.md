@@ -12,11 +12,20 @@ npm install @kaleido-io/workflow-engine-sdk
 
 ### Create a new project
 
-Scaffold a blank provider project:
+Scaffold a new provider project from a template. The `--template` flag is required:
 
 ```bash
+# Start from the getting-started template
 npx @kaleido-io/workflow-engine-sdk init <project-name> --template getting-started
+
+# Start from the ERC-20 indexer template
+npx @kaleido-io/workflow-engine-sdk init <project-name> --template erc20-indexer
 ```
+
+Available templates:
+
+- **getting-started** — basic provider with example transaction handlers and event sources
+- **erc20-indexer** — provider that indexes ERC-20 token events from an EVM chain
 
 This creates a new project directory with boilerplate config and a starter
 provider that connects to your Kaleido workflow engine.
