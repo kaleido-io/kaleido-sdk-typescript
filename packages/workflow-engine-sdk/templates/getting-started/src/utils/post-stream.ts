@@ -16,6 +16,7 @@
 
 
 import {
+    ConfigLoader,
     CreateStreamRequest,
     WorkflowEngineRestClient
 } from '@kaleido-io/workflow-engine-sdk';
@@ -51,7 +52,10 @@ async function main() {
         console.log('Posting stream:', JSON.stringify(stream, null, 2));
 
         // Create the workflow engine REST client
-        const client = new WorkflowEngineRestClient();
+        const config = ConfigLoader.loadClientConfigFromFile(
+            process.env.WFE_CONFIG_FILE ?? './config/wfe-config.yaml',
+        );
+        const client = new WorkflowEngineRestClient(config);
 
         // Post the workflow
         const response = await client.createStream(stream);
