@@ -23,6 +23,14 @@ import '../../tests/mock-logger';
 import { BasicStageDirector, evalDirected, StageDirectorHelper } from './stage_director';
 import { EvalResult, InvocationMode, WithStageDirector, WSHandleTransactions, WSHandleTransactionsResult, WSEvaluateTransaction, WSMessageType, PatchOpType } from '../types/core';
 import { DirectedActionConfig } from '../interfaces/handlers';
+import { invocationContext } from '../context/invocation_context';
+
+function withInvocationContext<T>(fn: () => Promise<T>): Promise<T> {
+    return invocationContext.run(
+        { requestId: 'test-request', authTokens: {} },
+        fn,
+    );
+}
 
 class MyHandlerInput implements WithStageDirector {
     public stageDirector: BasicStageDirector;
@@ -116,7 +124,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, actionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, actionMap));
         Array.from({ length: 5 }, (_, i) => {
             expect(reply.results[i]).toBeDefined();
             expect(reply.results[i].events).toBeDefined();
@@ -164,7 +172,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected(reply, batch, plainActionMap);
+        await withInvocationContext(() => evalDirected(reply, batch, plainActionMap));
         expect(reply.results[0]).toBeDefined();
         expect(reply.results[0].stage).toBe('end');
         expect(reply.results[0].stateUpdates).toBeDefined();
@@ -198,7 +206,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, actionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, actionMap));
         expect(reply.results[0].error).toContain("Invalid action 'invalid-action'");
     })
 
@@ -224,7 +232,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, actionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, actionMap));
         expect(reply.results[0].error).toBeDefined();
         expect(reply.results[0].error).toContain('Input parsing error');
     })
@@ -255,7 +263,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected(reply, batch, actionMap);
+        await withInvocationContext(() => evalDirected(reply, batch, actionMap));
         expect(reply.results[0].error).toBeDefined();
         expect(reply.results[0].error).toContain('action');
     })
@@ -299,7 +307,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, batchActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, batchActionMap));
         expect(reply.results).toHaveLength(3);
         reply.results.forEach((result, i) => {
             expect(result.stage).toBe('end');
@@ -342,7 +350,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await expect(evalDirected<MyHandlerInput>(reply, batch, noBatchHandlerActionMap)).rejects.toThrow(/KA140622/);
+        await expect(withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, noBatchHandlerActionMap))).rejects.toThrow(/KA140622/);
         // All transactions should have errors since batchHandler is missing
         // expect(reply.results).toHaveLength(2);
         // reply.results.forEach((result) => {
@@ -392,7 +400,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, mismatchBatchActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, mismatchBatchActionMap));
         // All transactions should have errors since batch handler returned wrong count
         expect(reply.results).toHaveLength(3);
         reply.results.forEach((result) => {
@@ -437,7 +445,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, errorActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, errorActionMap));
         expect(reply.results[0].error).toBe('Handler execution failed');
     })
 
@@ -475,7 +483,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, noHandlerActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, noHandlerActionMap));
         expect(reply.results[0].error).toBeDefined();
         expect(reply.results[0].error).toContain('KA140621');
     })
@@ -522,7 +530,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, failureActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, failureActionMap));
         expect(reply.results[0].stage).toBe('failed');
         expect(reply.results[0].stateUpdates).toBeDefined();
         expect(reply.results[0].stateUpdates?.some(update => update.path === '/error')).toBe(true);
@@ -568,7 +576,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, waitingActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, waitingActionMap));
         expect(reply.results[0].stage).toBeUndefined();
     })
 
@@ -612,7 +620,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, deadlineActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, deadlineActionMap));
         expect(reply.results[0].stage).toBeUndefined();
         expect(reply.results[0].deadline).toBe('5m0s');
         expect(reply.results[0].triggers?.length).toBe(1);
@@ -658,7 +666,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, fixableErrorActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, fixableErrorActionMap));
         expect(reply.results[0].error).toBe('Fixable error occurred');
     })
 
@@ -701,7 +709,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, transientErrorActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, transientErrorActionMap));
         expect(reply.results[0].error).toBe('Transient error occurred');
     })
 
@@ -745,7 +753,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, customStageActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, customStageActionMap));
         expect(reply.results[0].stage).toBe('custom-next-stage');
     })
 
@@ -792,7 +800,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, triggerActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, triggerActionMap));
         expect(reply.results[0].triggers).toBeDefined();
         expect(reply.results[0].triggers?.length).toBe(2);
         expect(reply.results[0].triggers?.[0]?.topic).toBe('trigger-topic-1');
@@ -841,7 +849,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, extraUpdatesActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, extraUpdatesActionMap));
         expect(reply.results[0].stateUpdates).toBeDefined();
         expect(reply.results[0].stateUpdates?.length).toBe(2);
         expect(reply.results[0].stateUpdates?.some(update => update.path === '/output')).toBe(true);
@@ -889,7 +897,7 @@ describe('BasicStageDirector', () => {
             messageType: WSMessageType.EVALUATE_RESULT,
             id: 'test-id',
         };
-        await evalDirected<MyHandlerInput>(reply, batch, extraUpdatesActionMap);
+        await withInvocationContext(() => evalDirected<MyHandlerInput>(reply, batch, extraUpdatesActionMap));
         expect(reply.results[0].stateUpdates).toBeDefined();
         expect(reply.results[0].stateUpdates?.length).toBe(1);
         expect(reply.results[0].stateUpdates?.some(update => update.path === '/extra')).toBe(true);
