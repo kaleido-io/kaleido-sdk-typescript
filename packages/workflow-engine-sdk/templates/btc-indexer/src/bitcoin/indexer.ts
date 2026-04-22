@@ -20,16 +20,10 @@ import {
   WSEventProcessorBatchResult,
 } from '@kaleido-io/workflow-engine-sdk';
 
-import type { BTCTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/btc';
+// import type { BTCTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/btc';
 import { AssetManagerClient } from '../clients/asset-manager/client.js';
-import type { Address, BalanceChange, Transfer } from '../clients/asset-manager/models.js';
+import type { Address, Transfer } from '../clients/asset-manager/models.js';
 import type { BTCConfig } from '../config/provider-config.js';
-
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-const TRANSFER_SIG = 'Transfer(address,address,uint256)';
-
-/** ABI-decoded fields from a Transfer(address,address,uint256) log event */
-type BTCTransferData = { from: string; to: string; value: string };
 
 /**
  * BTC Transfer event processor.
@@ -44,7 +38,7 @@ type BTCTransferData = { from: string; to: string; value: string };
 export class BTCIndexer {
   private amClient!: AssetManagerClient;
   private contractAddress!: string;
-  private contractName!: string;
+  private tokenName!: string;
   private chain!: string;
   private poolName!: string;
 
@@ -64,19 +58,19 @@ export class BTCIndexer {
    */
   async setup(amClient: AssetManagerClient, bitcoinConfig: BTCConfig): Promise<void> {
     this.amClient = amClient;
-    this.contractAddress = (bitcoinConfig.contractAddress ?? '').toLowerCase();
-    this.contractName = bitcoinConfig.contractName ?? 'BTC';
-    this.chain = bitcoinConfig.chain ?? 'ethereum';
-    this.poolName = this.contractName.toLowerCase();
+    this.contractAddress = `0x${bitcoinConfig.netId.toString(16)}`;
+    this.tokenName = bitcoinConfig.tokenName;
+    this.chain = bitcoinConfig.chain;
+    this.poolName = this.tokenName.toLowerCase();
 
-    const symbol = bitcoinConfig.contractSymbol ?? this.contractName;
-    const assetName = `${this.contractName.toLowerCase()}_${this.contractAddress.toLowerCase()}`;
+    const symbol = bitcoinConfig.tokenSymbol ?? this.tokenName;
+    const assetName = `${this.tokenName.toLowerCase()}_${this.contractAddress.toLowerCase()}`;
 
     await this.amClient.bulkUpsert({
       assets: [
         {
           name: assetName,
-          displayName: this.contractName,
+          displayName: this.tokenName,
           info: { symbol, contractAddress: this.contractAddress },
           updateType: 'create_or_ignore',
         },
@@ -93,8 +87,8 @@ export class BTCIndexer {
           name: this.poolName,
           asset: assetName,
           address: this.contractAddress,
-          standard: 'BTC',
-          displayName: `${this.contractName} on ${this.chain}`,
+          standard: 'bitcoin',
+          displayName: `${this.tokenName} on ${this.chain}`,
           labels: { chain: this.chain, symbol },
           updateType: 'create_or_ignore',
         },
@@ -115,71 +109,70 @@ export class BTCIndexer {
 
     console.log('Received batch of', batch.events.length, 'events');
 
-    for (const event of batch.events) {
-      const tx = event.data as BTCTransactionEvent;
-      if (!tx.decodedEvents) continue;
+    // for (const event of batch.events) {
+      // const tx = event.data as BTCTransactionEvent;
 
-      for (const decoded of tx.decodedEvents) {
-        // These are safety guards to prevent processing events that are not Transfer(address,address,uint256) events
-        // nor events for the contract address we are interested in. It could be a misconfiguration in your stream if you
-        // see this warning, but if you feel confident that your stream is configured correctly, please reach out
-        // to the Kaleido team for support.
-        if (decoded.signature !== TRANSFER_SIG) {
-          console.warn(`[BTCIndexer] skipping event with signature ${decoded.signature} not matching ${TRANSFER_SIG}`);
-          continue;
-        }
-        if ( decoded.address.toLowerCase() !== this.contractAddress) {
-          console.warn(`[BTCIndexer] skipping event with address ${decoded.address} not matching ${this.contractAddress}`);
-          continue;
-        }
+    //   for (const decoded of tx.decodedEvents) {
+    //     // These are safety guards to prevent processing events that are not Transfer(address,address,uint256) events
+    //     // nor events for the contract address we are interested in. It could be a misconfiguration in your stream if you
+    //     // see this warning, but if you feel confident that your stream is configured correctly, please reach out
+    //     // to the Kaleido team for support.
+    //     if (decoded.signature !== TRANSFER_SIG) {
+    //       console.warn(`[BTCIndexer] skipping event with signature ${decoded.signature} not matching ${TRANSFER_SIG}`);
+    //       continue;
+    //     }
+    //     if ( decoded.address.toLowerCase() !== this.contractAddress) {
+    //       console.warn(`[BTCIndexer] skipping event with address ${decoded.address} not matching ${this.contractAddress}`);
+    //       continue;
+    //     }
 
-        const { from, to, value } = decoded.data as BTCTransferData;
-        const isMint = from === ZERO_ADDRESS;
-        const isBurn = to === ZERO_ADDRESS;
-        const contractAddr = decoded.address.toLowerCase();
+    //     const { from, to, value } = decoded.data as BTCTransferData;
+    //     const isMint = from === ZERO_ADDRESS;
+    //     const isBurn = to === ZERO_ADDRESS;
+    //     const contractAddr = decoded.address.toLowerCase();
 
-        if (!isMint) addressSet.add(from.toLowerCase());
-        if (!isBurn) addressSet.add(to.toLowerCase());
-        addressSet.add(contractAddr);
+    //     if (!isMint) addressSet.add(from.toLowerCase());
+    //     if (!isBurn) addressSet.add(to.toLowerCase());
+    //     addressSet.add(contractAddr);
 
-        // Balance deltas: subtract from sender, add to receiver.
-        // Mints/burns update a virtual "circulation" address for total supply tracking.
-        const balanceChanges: BalanceChange[] = [];
-        if (!isMint) balanceChanges.push({ address: from, operation: 'subtract', amount: String(value) });
-        if (!isBurn) balanceChanges.push({ address: to, operation: 'add', amount: String(value) });
-        if (isMint) balanceChanges.push({ address: 'circulation', operation: 'add', amount: String(value) });
-        if (isBurn) balanceChanges.push({ address: 'circulation', operation: 'subtract', amount: String(value) });
+    //     // Balance deltas: subtract from sender, add to receiver.
+    //     // Mints/burns update a virtual "circulation" address for total supply tracking.
+    //     const balanceChanges: BalanceChange[] = [];
+    //     if (!isMint) balanceChanges.push({ address: from, operation: 'subtract', amount: String(value) });
+    //     if (!isBurn) balanceChanges.push({ address: to, operation: 'add', amount: String(value) });
+    //     if (isMint) balanceChanges.push({ address: 'circulation', operation: 'add', amount: String(value) });
+    //     if (isBurn) balanceChanges.push({ address: 'circulation', operation: 'subtract', amount: String(value) });
 
-        transfers.push({
-          protocolId: `${tx.block.number}/${tx.transactionHash}/${decoded.logIndex}`,
-          from: isMint ? undefined : from,
-          to: isBurn ? undefined : to,
-          signer: tx.receipt?.from,
-          amount: String(value),
-          transactionHash: tx.transactionHash,
-          parent: { type: 'pool', ref: `${contractAddr}/${this.poolName}` },
-          info: {
-            blockNumber: tx.block.number,
-            blockTimestamp: tx.block.timestamp,
-            logIndex: decoded.logIndex,
-          },
-          balanceChanges,
-          labels: { chain: this.chain },
-          updateType: 'create_or_replace',
-        });
-      }
-    }
+    //     transfers.push({
+    //       protocolId: `${tx.block.number}/${tx.transactionHash}/${decoded.logIndex}`,
+    //       from: isMint ? undefined : from,
+    //       to: isBurn ? undefined : to,
+    //       signer: tx.receipt?.from,
+    //       amount: String(value),
+    //       transactionHash: tx.transactionHash,
+    //       parent: { type: 'pool', ref: `${contractAddr}/${this.poolName}` },
+    //       info: {
+    //         blockNumber: tx.block.number,
+    //         blockTimestamp: tx.block.timestamp,
+    //         logIndex: decoded.logIndex,
+    //       },
+    //       balanceChanges,
+    //       labels: { chain: this.chain },
+    //       updateType: 'create_or_replace',
+    //     });
+    //   }
+    // }
 
-    if (transfers.length > 0) {
-      const addresses: Address[] = Array.from(addressSet).map((a) => ({
-        address: a,
-        contract: a === this.contractAddress,
-        updateType: 'create_or_ignore' as const,
-      }));
-      await this.amClient.bulkUpsert({ addresses, transfers });
-    }
+    // if (transfers.length > 0) {
+    //   const addresses: Address[] = Array.from(addressSet).map((a) => ({
+    //     address: a,
+    //     contract: a === this.contractAddress,
+    //     updateType: 'create_or_ignore' as const,
+    //   }));
+    //   await this.amClient.bulkUpsert({ addresses, transfers });
+    // }
 
-    result.checkpoint = { lastPollTime: Date.now() };
+    // result.checkpoint = { lastPollTime: Date.now() };
   }
 }
 

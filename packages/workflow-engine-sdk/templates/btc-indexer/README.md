@@ -44,6 +44,8 @@ npm run create-stream
 
 ### `config/wfe-config.yaml`
 
+> Copy `config/wfe-config.yaml.sample` to `config/wfe-config.yaml`
+
 Workflow Engine connection. `providerName` must match `src/provider.ts`.
 
 ### `config/provider-config.yaml`

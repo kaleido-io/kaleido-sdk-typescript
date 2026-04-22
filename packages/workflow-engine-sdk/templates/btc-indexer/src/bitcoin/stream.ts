@@ -40,28 +40,11 @@ export const stream = {
       name: 'btcTransactions',
       provider: providerConfig.btcConnector,
       config: {
-        fromBlock: 'latest',
+        fromBlock: '0',
         batchSize: 50,
         pollTimeout: '30s',
-        requiredConfirmations: 1,
-        abi: [
-          {
-            type: 'event',
-            name: 'Transfer',
-            inputs: [
-              { name: 'from', type: 'address', indexed: true },
-              { name: 'to', type: 'address', indexed: true },
-              { name: 'value', type: 'uint256', indexed: false },
-            ],
-          },
-        ],
-        logFilters: [
-          {
-            addresses: [providerConfig.bitcoin.contractAddress],
-            eventSignatures: ['Transfer(address,address,uint256)'],
-          },
-        ],
-      },
+        requiredConfirmations: 5
+      }
     },
   },
   eventProcessor: {

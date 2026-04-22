@@ -15,7 +15,7 @@ export default [
     ignores: [
       "dist/**",
       "dist-esm/**",
-      "template/dist/**",
+      "templates/**", // separate builds
       "coverage/**",
       "node_modules/**",
       "copyright.js",

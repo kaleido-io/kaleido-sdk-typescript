@@ -182,9 +182,9 @@ export class WorkflowEngineRestClient {
       this.baseUrl = `https://${process.env.ACCOUNT}/endpoint/${process.env.ENVIRONMENT}/${process.env.WORKFLOW_ENGINE}/rest`;
     } else {
       let restUrl = config.url.replace(/\/ws$/, '');
-      if (!restUrl.endsWith('/rest')) {
-        restUrl += '/rest';
-      }
+      // if (!restUrl.endsWith('/rest')) {
+      //   restUrl += '/rest';
+      // }
       if (restUrl.startsWith('ws://')) {
         restUrl = restUrl.replace('ws://', 'http://');
       } else if (config.url.startsWith('wss://')) {

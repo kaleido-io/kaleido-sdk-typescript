@@ -34,6 +34,9 @@ export interface AssetManagerConfig {
 }
 
 export interface BTCConfig {
+  netId: number;
+  tokenSymbol: string;
+  tokenName: string;
   chain: string;
 }
 
@@ -76,7 +79,10 @@ function parseBTC(raw: unknown): BTCConfig {
   }
   const o = raw as Record<string, unknown>;
   return {
-    chain: typeof o.chain === 'string' ? o.chain : 'ethereum',
+    netId: typeof o.netId === 'number' ? o.netId : 0x283f161c,
+    tokenSymbol: typeof o.chain === 'string' ? o.chain : 'tBTC',
+    tokenName: typeof o.chain === 'string' ? o.chain : 'test_bitcoin',
+    chain: typeof o.chain === 'string' ? o.chain : 'testnet4',
   };
 }
 
