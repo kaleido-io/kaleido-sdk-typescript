@@ -80,6 +80,7 @@ function parseBTC(raw: unknown): BTCConfig {
   }
   const o = raw as Record<string, unknown>;
   return {
+    fromBlock: typeof o.fromBlock === 'string' ? o.fromBlock : typeof o.fromBlock === 'number' ? String(o.fromBlock) : 'latest',
     netId: typeof o.netId === 'number' ? o.netId : 0x283f161c,
     tokenSymbol: typeof o.chain === 'string' ? o.chain : 'tBTC',
     tokenName: typeof o.chain === 'string' ? o.chain : 'test_bitcoin',
