@@ -40,6 +40,7 @@ export const stream = {
       name: 'btcTransactions',
       provider: providerConfig.btcConnector,
       config: {
+        unfiltered: true,
         fromBlock: '0',
         batchSize: 50,
         pollTimeout: '30s',

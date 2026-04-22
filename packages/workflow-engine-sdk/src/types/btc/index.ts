@@ -70,7 +70,13 @@ export type TxSummary = {
   vout: TxSummaryVOut[];
 };
 
+export type NetworkInfo = {
+  name: string;
+  net: number;
+}
+
 export type BTCTransactionEvent = {
+  network: NetworkInfo;
   block: BlockIdentity;
   tx: TxSummary;
 };

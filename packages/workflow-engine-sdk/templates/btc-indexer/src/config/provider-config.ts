@@ -37,7 +37,7 @@ export interface BTCConfig {
   netId: number;
   tokenSymbol: string;
   tokenName: string;
-  chain: string;
+  networkName: string;
 }
 
 export interface ProviderConfig {
@@ -82,7 +82,7 @@ function parseBTC(raw: unknown): BTCConfig {
     netId: typeof o.netId === 'number' ? o.netId : 0x283f161c,
     tokenSymbol: typeof o.chain === 'string' ? o.chain : 'tBTC',
     tokenName: typeof o.chain === 'string' ? o.chain : 'test_bitcoin',
-    chain: typeof o.chain === 'string' ? o.chain : 'testnet4',
+    networkName: typeof o.chain === 'string' ? o.chain : 'testnet4',
   };
 }
 
