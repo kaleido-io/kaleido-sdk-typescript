@@ -15,10 +15,28 @@
 // limitations under the License.
 
 
-export default {
-    'name': 'example-provider',
-    'metadata': {
-        'displayName': 'Example provider',
-        'description': 'An example provider for the Kaleido Workflow Engine'
-    }
-}
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html', 'lcov'],
+      exclude: [
+        'node_modules/',
+        'dist/',
+        '**/*.test.ts',
+        '**/*.spec.ts',
+        '**/*.config.ts',
+        '**/flow.yaml',
+      ],
+      include: ['src/**/*.ts'],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
+      },
+    },
+  },
+});

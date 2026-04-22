@@ -35,8 +35,8 @@ function resolveAppConfigPath(): string | undefined {
   const fromEnv = process.env.CONFIG_FILE?.trim();
   const candidates = [
     fromEnv,
-    path.join(process.cwd(), 'src', 'config', 'config.yaml'),
-    path.join(process.cwd(), 'config', 'config.yaml'),
+    path.join(process.cwd(), 'src', 'config', 'provider-config.yaml'),
+    path.join(process.cwd(), 'config', 'provider-config.yaml'),
   ].filter(Boolean) as string[];
   for (const p of candidates) {
     if (fs.existsSync(p)) {

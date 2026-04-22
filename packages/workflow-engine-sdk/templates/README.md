@@ -10,3 +10,4 @@ inside it. Alternatively, you can create a new project from scratch using `npx @
 |--------|-------------|
 | [getting-started](./getting-started/) | A set of examples that show the broad set of capabilities of the SDK and the Kaleido workflow engine |
 | [erc20-indexer](./erc20-indexer/) | Indexes ERC-20 `Transfer` events into the Kaleido Asset Manager |
+| [reverted-transactions](./reverted-transactions/) | Streams reverted transactions to an event processor |

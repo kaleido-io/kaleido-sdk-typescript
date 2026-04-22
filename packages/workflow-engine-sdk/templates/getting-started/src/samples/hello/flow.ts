@@ -15,14 +15,19 @@
 // limitations under the License.
 
 
-import provider from '../../provider.js';
+import yaml from 'js-yaml';
+import fs from 'fs';
+
+// read the config from the config.yaml file
+const config: any = yaml.load(fs.readFileSync(process.env.CONFIG_FILE ?? 'config/provider-config.yaml', 'utf8'));
+
 export const flow = {
   'name': 'hello-flow',
   'description': '',
   'labels': {},
   'handlerBindings': {
     'hello': {
-      'provider': provider.name,
+      'provider': config.name,
       'providerHandler': 'hello'
     }
   },
