@@ -1,0 +1,13 @@
+# Application-owned config (consumer-defined). Load with CONFIG_FILE or -f.
+# Used by the app for app-specific settings.
+name: example-provider
+metadata:
+  displayName: Example provider
+  description: An example provider for the Kaleido Workflow Engine
+
+revertReporter:
+  connectorProvider: your-connector-provider-id
+  # signing addresses to monitor for reverted transactions
+  addresses:
+   - "0x123"
+   - "0x456"

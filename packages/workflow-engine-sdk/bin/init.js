@@ -88,7 +88,7 @@ if (!projectNameRegex.test(projectName)) {
 const templateIdx = args.indexOf('--template');
 if (templateIdx === -1 || templateIdx + 1 >= args.length) {
   console.error('Error: --template <name> is required.');
-  console.error('Available templates: getting-started, erc20-indexer');
+  console.error('Available templates: getting-started, erc20-indexer, reverted-transactions');
   process.exit(1);
 }
 const templateName = args[templateIdx + 1];
@@ -97,7 +97,7 @@ const templateName = args[templateIdx + 1];
 const sourceDir = join(TEMPLATES_DIR, templateName);
 if (!existsSync(sourceDir)) {
   console.error(`Error: Template "${templateName}" not found at ${sourceDir}`);
-  console.error('Available templates: getting-started, erc20-indexer');
+  console.error('Available templates: getting-started, erc20-indexer, reverted-transactions');
   process.exit(1);
 }
 

@@ -13,24 +13,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import yaml from 'js-yaml';
-import fs from 'fs';
 
-// read the config from the config.yaml file
-const config: any = yaml.load(fs.readFileSync(process.env.CONFIG_FILE ?? 'config/provider-config.yaml', 'utf8'));
+import {
+  NewWorkflowEngineClient,
+  HandlerSetFor,
+} from "@kaleido-io/workflow-engine-sdk";
 
-export const stream: any = {
-    name: 'snap-dealer-stream',
-    started: true,
-    eventSource: {
-        type: 'handler',
-        handler: {
-            name: 'snap-dealer',
-            provider: config.name,
-            config: { resetInterval: 10000 }
-        },
-    },
-    eventProcessor: {
-        type: 'correlation'
-    }
-}
+import { revertReporterEventProcessor } from "./revert-reporter/event-processor.js";
+
+const client = await NewWorkflowEngineClient(
+  HandlerSetFor(
+    revertReporterEventProcessor,
+  ),
+  process.env.WFE_CONFIG_FILE ?? "./config/wfe-config.yaml",
+);
+
+process.on("SIGINT", () => client.disconnect());
+process.on("SIGTERM", () => client.disconnect());

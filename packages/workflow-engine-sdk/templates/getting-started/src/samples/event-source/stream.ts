@@ -14,8 +14,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import yaml from 'js-yaml';
+import fs from 'fs';
 
-import provider from '../../provider.js';
+// read the config from the config.yaml file
+const config: any = yaml.load(fs.readFileSync(process.env.CONFIG_FILE ?? 'config/provider-config.yaml', 'utf8'));
+
 
 export const stream = {
     'name': 'event-echo-stream',
@@ -24,7 +28,7 @@ export const stream = {
         type: 'handler',
         handler: {
             name: 'my-listener',
-            provider: provider.name,
+            provider: config.name,
             config: {
                 'pollingInterval': '2s'
             },
@@ -34,7 +38,7 @@ export const stream = {
         type: 'handler',
         handler: {
             name: 'echo',
-            provider: provider.name,
+            provider: config.name,
         },
     },
 }

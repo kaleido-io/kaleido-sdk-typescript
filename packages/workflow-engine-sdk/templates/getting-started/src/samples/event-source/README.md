@@ -26,7 +26,7 @@ When an event is received from the event source, the stream (`stream.ts`) ensure
 
 ### Event processor
 
-The event processor (`event-processor.ts`) listens for batches of events and logs them out as they are received. It then updates the checkpoint to acknowledge the event shave been processed.
+The event processor (`event-processor.ts`) listens for batches of events and logs them out as they are received. It then updates the checkpoint to acknowledge the events have been processed.
 
 ## Usage
 
