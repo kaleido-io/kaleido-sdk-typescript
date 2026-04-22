@@ -38,6 +38,7 @@ export interface BTCConfig {
   tokenSymbol: string;
   tokenName: string;
   networkName: string;
+  fromBlock: string;
 }
 
 export interface ProviderConfig {

@@ -32,6 +32,10 @@ import provider from '../provider.js';
  */
 const providerConfig = loadProviderConfig();
 
+if (typeof providerConfig.bitcoin.fromBlock != 'string' || providerConfig.bitcoin.fromBlock.length == 0) {
+  throw new Error("Must provide the fromBlock in the bitcoin provider config as a numeric string, or 'latest'")
+}
+
 export const stream = {
   name: 'bitcoin-indexer',
   eventSource: {
@@ -41,7 +45,7 @@ export const stream = {
       provider: providerConfig.btcConnector,
       config: {
         unfiltered: true,
-        fromBlock: '0',
+        fromBlock: providerConfig.bitcoin.fromBlock,
         batchSize: 50,
         pollTimeout: '30s',
         requiredConfirmations: 5

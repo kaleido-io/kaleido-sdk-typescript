@@ -12,6 +12,7 @@ assetManager:
 
 # BTC contract to index
 bitcoin:
+  fromBlock: latest
   netId: 0x283f161c
   tokenSymbol: tBTC
   tokenName: test_bitcoin
