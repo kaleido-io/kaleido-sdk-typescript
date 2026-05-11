@@ -19,6 +19,7 @@ import axiosRetry, { isNetworkError } from 'axios-retry';
 import * as http from 'http';
 import * as https from 'https';
 import type { BulkUpsertInput, BulkUpsertResult } from './bulkupsert.js';
+import type { BulkQueryInput, BulkQueryOutput } from './bulkquery.js';
 
 export interface AssetManagerClientOptions {
   url: string;
@@ -87,6 +88,22 @@ export class AssetManagerClient {
         const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
         console.error(`[AssetManagerClient] bulkUpsert failed (${status}):\n${body}`);
         throw new Error(`[AssetManagerClient] bulkUpsert failed (${status}): ${body}`, { cause: error });
+      }
+      throw error;
+    }
+  }
+
+  /** Query assets, addresses, pools, transfers, and/or fragments in a single call. */
+  async bulkQuery(input: BulkQueryInput): Promise<BulkQueryOutput> {
+    try {
+      const resp = await this.http.post<BulkQueryOutput>('/api/v1/bulk/query', input);
+      return resp.data;
+    } catch (error) {
+      if (error instanceof AxiosError && error.response) {
+        const { status, data } = error.response;
+        const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        console.error(`[AssetManagerClient] bulkQuery failed (${status}):\n${body}`);
+        throw new Error(`[AssetManagerClient] bulkQuery failed (${status}): ${body}`, { cause: error });
       }
       throw error;
     }

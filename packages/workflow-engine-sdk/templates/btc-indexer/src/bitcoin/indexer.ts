@@ -16,6 +16,7 @@
 
 import {
   EngineAPI,
+  ListenerEvent,
   WSEventProcessorBatchRequest,
   WSEventProcessorBatchResult,
 } from '@kaleido-io/workflow-engine-sdk';
@@ -24,7 +25,7 @@ import {
 import { AssetManagerClient } from '../clients/asset-manager/client.js';
 import type { Address, BalanceChange, Fragment, Transfer } from '../clients/asset-manager/models.js';
 import type { BTCConfig } from '../config/provider-config.js';
-import { BTCTransactionEvent } from '../../../../dist/src/types/btc/index.js';
+import { BTCTransactionEvent, TxSummary, TxSummaryVOut } from '../../../../dist/src/types/btc/index.js';
 
 /**
  * BTC Transfer event processor.
@@ -114,6 +115,72 @@ export class BTCIndexer {
     // console.log(JSON.stringify(batch.events[0], null, "  "))
 
     console.log('Received batch of', batch.events.length, 'events');
+
+    const forEachTX = (fn: (tx: TxSummary, ed: BTCTransactionEvent, e: ListenerEvent) => void) => {
+      for (const event of batch.events) {
+        const eventData = event.data as BTCTransactionEvent;
+        const { tx } = eventData;
+        fn(tx, eventData, event);
+      }
+    }
+
+    // Pass 1 - need to look up all the previous bitcoins that are used as inputs
+    const fragmentsToLookup: string[] = []
+    forEachTX((tx) => {
+      for (let vin of tx.vin) {
+        fragmentsToLookup.push(`${this.networkName}_${vin.txid}_${vin.vout}`);
+      }
+    })
+    // TODO: Paginate if length > limit
+    const indexedFragments = await this.amClient.bulkQuery({ fragments: {
+      limit: fragmentsToLookup.length,
+      in: [
+        {field: "name", values: fragmentsToLookup}
+      ]
+    } });
+
+    // Pass 2: identify all the addresses we know about, across both the
+    // outputs, and the inputs where we've indexed the previous outpoint.
+    const addressMap: Record<string, boolean> = {}
+    forEachTX((tx) => {
+      for (let vout of tx.vout) {
+        if (vout.scriptPubKey?.address) {
+          addressMap[vout.scriptPubKey?.address] = true
+        }
+      }
+    })
+    const inputDetail: Record<string,TxSummaryVOut> = {};
+    for (let fragment of (indexedFragments.fragments?.items || []) ) {
+      if (fragment.info) {
+        const utxo = inputDetail[fragment.name] = fragment.info as TxSummaryVOut;
+        if (utxo.scriptPubKey?.address) {
+          addressMap[utxo.scriptPubKey?.address] = true
+        }
+      }
+    }
+
+    // Do the lookup of info for all those addresses
+    // TODO: Paginate if length > limit
+    const uniqueAddresses = Object.values(addressMap);
+    const knownAddresses = await this.amClient.bulkQuery({ fragments: {
+      limit: uniqueAddresses.length,
+      in: [
+        {field: "address", values: uniqueAddresses}
+      ]
+    } });
+    const addressWallets: Record<string, string> = {};
+    // TODO: Iterate looking up wallets.
+
+
+    // Pass 1 - find all the unique addresses
+    // for (const event of batch.events) {
+    //   const eventData = event.data as BTCTransactionEvent;
+    //   const { tx } = eventData;
+    //   for (let iInput = 0; iInput < tx.vin.length; iInput++) {
+        
+    //     address[]
+    //   }
+    // }
 
     for (const event of batch.events) {
       const eventData = event.data as BTCTransactionEvent;
