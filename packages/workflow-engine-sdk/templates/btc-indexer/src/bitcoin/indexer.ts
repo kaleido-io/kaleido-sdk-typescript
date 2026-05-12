@@ -126,7 +126,8 @@ export class BTCIndexer {
 
     // Pass 1: Build a lookup for all the previous bitcoins that are used as inputs
     const fragmentsToLookup: string[] = []
-    forEachTX((tx) => {
+    forEachTX((tx, ed) => {
+      console.log(`Indexing TX ${tx} in block ${ed.block.height}`)
       for (let vin of tx.vin) {
         fragmentsToLookup.push(`${this.networkName}_${vin.txid}_${vin.vout}`);
       }
@@ -229,13 +230,15 @@ export class BTCIndexer {
           },
         })
         const detail = inputDetail[name];
-        const xfer = xferForAddr(detail.scriptPubKey?.address);
-        if (detail.value && xfer) {
-          xfer.balanceChanges.push({
-            address: detail.scriptPubKey?.address!,
-            amount: String(detail.value),
-            operation: "subtract",
-          })
+        if (detail) {
+          const xfer = xferForAddr(detail.scriptPubKey?.address);
+          if (detail.value && xfer) {
+            xfer.balanceChanges.push({
+              address: detail.scriptPubKey?.address!,
+              amount: String(detail.value),
+              operation: "subtract",
+            })
+          }
         }
       }
 
