@@ -124,7 +124,7 @@ export class BTCIndexer {
       }
     }
 
-    // Pass 1 - need to look up all the previous bitcoins that are used as inputs
+    // Pass 1: Build a lookup for all the previous bitcoins that are used as inputs
     const fragmentsToLookup: string[] = []
     forEachTX((tx) => {
       for (let vin of tx.vin) {
@@ -169,19 +169,15 @@ export class BTCIndexer {
       ]
     } });
     const addressWallets: Record<string, string> = {};
-    // TODO: Iterate looking up wallets.
+    for (let addr of knownAddresses.addresses?.items || []) {
+      if (addr.labels?.wallet) {
+        // This is possible because the wallet backend mapping tags the addresses with
+        // the wallet ID when they are created.
+        addressWallets[addr.address] = addr.labels?.wallet
+      }
+    }
 
-
-    // Pass 1 - find all the unique addresses
-    // for (const event of batch.events) {
-    //   const eventData = event.data as BTCTransactionEvent;
-    //   const { tx } = eventData;
-    //   for (let iInput = 0; iInput < tx.vin.length; iInput++) {
-        
-    //     address[]
-    //   }
-    // }
-
+    // Pass 3: Build the upsert
     for (const event of batch.events) {
       const eventData = event.data as BTCTransactionEvent;
       const { tx, block, network } = eventData;
@@ -192,12 +188,36 @@ export class BTCIndexer {
         throw new Error(`Network mismatch configured[name='${this.networkName}',net=${this.networkIdHex}] event[name='${network.name}',net=0x${network.net.toString(16)}}]`)
       }
 
+      const xferByWallet: Record<string,Transfer> = {};
+      const xferForAddr = (addr?: string): (Transfer|undefined) => {
+        const walletId = addr && addressWallets[addr];
+        if (!walletId) {
+          return undefined;
+        }
+        const safeWallet = walletId.replace(':','-');
+        let xfer = xferByWallet[safeWallet];
+        if (!xfer) {
+          xfer = xferByWallet[safeWallet] = {
+            protocolId: `tx.txid.${safeWallet}`,
+            amount: "0",
+            transactionHash: tx.txid,
+            balanceChanges: [],
+            parent: {
+              type: "pool",
+              ref: `testnet4-btc.${safeWallet}`
+            }
+          }
+        }
+        return xfer;
+      }
+
       for (let iInput = 0; iInput < tx.vin.length; iInput++) {
         const vin = tx.vin[iInput];
+        const name = `${this.networkName}_${vin.txid}_${vin.vout}`;
         fragments.push({
           updateType: 'create_or_update',
           address: this.networkIdHex,
-          name: `${this.networkName}_${vin.txid}_${vin.vout}`,
+          name,
           asset: this.assetName,
           labels: {
             networkName: this.networkName,
@@ -205,6 +225,15 @@ export class BTCIndexer {
             spend_tx: tx.txid,
           },
         })
+        const detail = inputDetail[name];
+        const xfer = xferForAddr(detail.scriptPubKey?.address);
+        if (detail.value && xfer) {
+          xfer.balanceChanges.push({
+            address: detail.scriptPubKey?.address!,
+            amount: String(detail.value),
+            operation: "subtract",
+          })
+        }
       }
 
       for (let iOutput = 0; iOutput < tx.vout.length; iOutput++) {
@@ -232,6 +261,14 @@ export class BTCIndexer {
           value,   
           labels,
         })
+        const xfer = xferForAddr(vout.scriptPubKey?.address);
+        if (vout.value && xfer) {
+          xfer.balanceChanges.push({
+            address: vout.scriptPubKey?.address!,
+            amount: String(vout.value),
+            operation: "add",
+          })
+        }
       }
 
       if (fragments.length > 0) {
