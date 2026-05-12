@@ -188,6 +188,7 @@ export class BTCIndexer {
         throw new Error(`Network mismatch configured[name='${this.networkName}',net=${this.networkIdHex}] event[name='${network.name}',net=0x${network.net.toString(16)}}]`)
       }
 
+      const xferOrdered: Transfer[] = []
       const xferByWallet: Record<string,Transfer> = {};
       const xferForAddr = (addr?: string): (Transfer|undefined) => {
         const walletId = addr && addressWallets[addr];
@@ -197,7 +198,7 @@ export class BTCIndexer {
         const safeWallet = walletId.replace(':','-');
         let xfer = xferByWallet[safeWallet];
         if (!xfer) {
-          xfer = xferByWallet[safeWallet] = {
+          xfer = {
             protocolId: `tx.txid.${safeWallet}`,
             amount: "0",
             transactionHash: tx.txid,
@@ -207,6 +208,8 @@ export class BTCIndexer {
               ref: `testnet4-btc.${safeWallet}`
             }
           }
+          xferOrdered.push(xfer);
+          xferByWallet[safeWallet] = xfer;
         }
         return xfer;
       }
@@ -272,7 +275,7 @@ export class BTCIndexer {
       }
 
       if (fragments.length > 0) {
-        await this.amClient.bulkUpsert({ fragments });
+        await this.amClient.bulkUpsert({ fragments, transfers: xferOrdered });
       }
     }
 
