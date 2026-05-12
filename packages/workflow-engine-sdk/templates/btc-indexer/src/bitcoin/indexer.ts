@@ -10,7 +10,7 @@
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, ewither express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
@@ -26,6 +26,7 @@ import { AssetManagerClient } from '../clients/asset-manager/client.js';
 import type { Address, BalanceChange, Fragment, Transfer } from '../clients/asset-manager/models.js';
 import type { BTCConfig } from '../config/provider-config.js';
 import { BTCTransactionEvent, TxSummary, TxSummaryVOut } from '../../../../dist/src/types/btc/index.js';
+import { BulkQueryInput, BulkQueryOutput } from '../clients/asset-manager/bulkquery.js';
 
 /**
  * BTC Transfer event processor.
@@ -101,6 +102,20 @@ export class BTCIndexer {
     });
   }
 
+  async batchLookup<T>(
+    lookups: string[],
+    buildQuery: (batch: string[]) => BulkQueryInput,
+    extractResults: (output: BulkQueryOutput) => T[],
+    handleResults: (values: T[]) => void,
+  ): Promise<void> {
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < lookups.length; i += BATCH_SIZE) {
+      const batch = lookups.slice(i, i + BATCH_SIZE);
+      const result = await this.amClient.bulkQuery(buildQuery(batch));
+      handleResults(extractResults(result));
+    }
+  }
+
   /**
    * Process a batch of BTC transaction events.
    * Filters for Transfer events, builds balance changes, and bulk-upserts to AM.
@@ -109,8 +124,6 @@ export class BTCIndexer {
     result: WSEventProcessorBatchResult,
     batch: WSEventProcessorBatchRequest,
   ): Promise<void> {
-    const transfers: Transfer[] = [];
-    const addressSet = new Set<string>();
 
     // console.log(JSON.stringify(batch.events[0], null, "  "))
 
@@ -125,58 +138,58 @@ export class BTCIndexer {
     }
 
     // Pass 1: Build a lookup for all the previous bitcoins that are used as inputs
-    const fragmentsToLookup: string[] = []
+    const fragmentsToLookup: string[] = [];
     forEachTX((tx, ed) => {
-      console.log(`Indexing TX ${tx} in block ${ed.block.height}`)
-      for (let vin of tx.vin) {
+      console.log(`Indexing TX ${tx.txid} in block ${ed.block.height}`);
+      for (const vin of tx.vin) {
         fragmentsToLookup.push(`${this.networkName}_${vin.txid}_${vin.vout}`);
       }
-    })
-    // TODO: Paginate if length > limit
-    const indexedFragments = await this.amClient.bulkQuery({ fragments: {
-      limit: fragmentsToLookup.length,
-      in: [
-        {field: "name", values: fragmentsToLookup}
-      ]
-    } });
+    });
+    const inputDetail: Record<string, TxSummaryVOut> = {};
+    await this.batchLookup<Fragment>(
+      fragmentsToLookup,
+      (batch) => ({ fragments: { limit: batch.length, in: [{ field: 'name', values: batch }] } }),
+      (output) => output.fragments?.items ?? [],
+      (fragments) => {
+        for (const fragment of fragments) {
+          if (fragment.info) {
+            inputDetail[fragment.name] = fragment.info as TxSummaryVOut;
+          }
+        }
+      },
+    );
 
     // Pass 2: identify all the addresses we know about, across both the
     // outputs, and the inputs where we've indexed the previous outpoint.
-    const addressMap: Record<string, boolean> = {}
+    const addressMap: Record<string, boolean> = {};
     forEachTX((tx) => {
-      for (let vout of tx.vout) {
+      for (const vout of tx.vout) {
         if (vout.scriptPubKey?.address) {
-          addressMap[vout.scriptPubKey?.address] = true
+          addressMap[vout.scriptPubKey.address] = true;
         }
       }
-    })
-    const inputDetail: Record<string,TxSummaryVOut> = {};
-    for (let fragment of (indexedFragments.fragments?.items || []) ) {
-      if (fragment.info) {
-        const utxo = inputDetail[fragment.name] = fragment.info as TxSummaryVOut;
-        if (utxo.scriptPubKey?.address) {
-          addressMap[utxo.scriptPubKey?.address] = true
-        }
+    });
+    for (const utxo of Object.values(inputDetail)) {
+      if (utxo.scriptPubKey?.address) {
+        addressMap[utxo.scriptPubKey.address] = true;
       }
     }
 
     // Do the lookup of info for all those addresses
-    // TODO: Paginate if length > limit
-    const uniqueAddresses = Object.values(addressMap);
-    const knownAddresses = await this.amClient.bulkQuery({ fragments: {
-      limit: uniqueAddresses.length,
-      in: [
-        {field: "address", values: uniqueAddresses}
-      ]
-    } });
     const addressWallets: Record<string, string> = {};
-    for (let addr of knownAddresses.addresses?.items || []) {
-      if (addr.labels?.wallet) {
-        // This is possible because the wallet backend mapping tags the addresses with
-        // the wallet ID when they are created.
-        addressWallets[addr.address] = addr.labels?.wallet
-      }
-    }
+    await this.batchLookup<Address>(
+      Object.keys(addressMap),
+      (batch) => ({ addresses: { limit: batch.length, in: [{ field: 'address', values: batch }] } }),
+      (output) => output.addresses?.items ?? [],
+      (addresses) => {
+        for (const addr of addresses) {
+          if (addr.labels?.wallet) {
+            // The wallet backend tags addresses with the wallet ID when they are created.
+            addressWallets[addr.address] = addr.labels.wallet;
+          }
+        }
+      },
+    );
 
     // Pass 3: Build the upsert
     for (const event of batch.events) {
