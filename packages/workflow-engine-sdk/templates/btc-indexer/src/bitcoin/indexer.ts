@@ -57,6 +57,10 @@ export class BTCIndexer {
 
   close(): void {}
 
+  log(s: string, ...args: any) {
+    console.log(`${new Date().toUTCString()}: ${s}`, ...args)
+  }
+
   /**
    * One-time setup: register the asset and pool in Asset Manager.
    * Must be called before the processor starts receiving batches.
@@ -125,9 +129,10 @@ export class BTCIndexer {
     batch: WSEventProcessorBatchRequest,
   ): Promise<void> {
 
-    // console.log(JSON.stringify(batch.events[0], null, "  "))
+    // this.log(JSON.stringify(batch.events[0], null, "  "))
 
-    console.log('Received batch of', batch.events.length, 'events');
+    const startTime = new Date();
+    this.log('Received batch of', batch.events.length, 'events');
 
     const forEachTX = (fn: (tx: TxSummary, ed: BTCTransactionEvent, e: ListenerEvent) => void) => {
       for (const event of batch.events) {
@@ -138,9 +143,11 @@ export class BTCIndexer {
     }
 
     // Pass 1: Build a lookup for all the previous bitcoins that are used as inputs
+    let txCount = 0;
     const fragmentsToLookup: string[] = [];
     forEachTX((tx, ed) => {
-      console.log(`Indexing TX ${tx.txid} in block ${ed.block.height}`);
+      txCount++;
+      this.log(`Indexing TX ${tx.txid} in block ${ed.block.height}`);
       for (const vin of tx.vin) {
         fragmentsToLookup.push(`${this.networkName}_${vin.txid}_${vin.vout}`);
       }
@@ -219,7 +226,7 @@ export class BTCIndexer {
             balanceChanges: [],
             parent: {
               type: "pool",
-              ref: `testnet4-btc.${safeWallet}`
+              ref: `testnet4-btc/${safeWallet}`
             }
           }
           xferOrdered.push(xfer);
@@ -245,12 +252,20 @@ export class BTCIndexer {
         const detail = inputDetail[name];
         if (detail) {
           const xfer = xferForAddr(detail.scriptPubKey?.address);
-          if (detail.value && xfer) {
-            xfer.balanceChanges.push({
-              address: detail.scriptPubKey?.address!,
-              amount: String(detail.value),
-              operation: "subtract",
-            })
+          if (xfer) {
+            let value: string | undefined;
+            if (typeof detail.valueSat == 'number') {
+              value = String(detail.valueSat)
+            } else if (typeof detail.value == 'number') {
+              value = String(Math.floor(detail.value * 100_000_000))
+            }
+            if (value) {
+              xfer.balanceChanges.push({
+                address: detail.scriptPubKey?.address!,
+                amount: value,
+                operation: "subtract",
+              })
+            }
           }
         }
       }
@@ -281,10 +296,10 @@ export class BTCIndexer {
           labels,
         })
         const xfer = xferForAddr(vout.scriptPubKey?.address);
-        if (vout.value && xfer) {
+        if (value && xfer) {
           xfer.balanceChanges.push({
             address: vout.scriptPubKey?.address!,
-            amount: String(vout.value),
+            amount: value,
             operation: "add",
           })
         }
@@ -295,6 +310,7 @@ export class BTCIndexer {
       }
     }
 
+    this.log(`Indexed ${txCount} transactions in ${new Date().getTime()-startTime.getTime()}ms`)
     result.checkpoint = { lastPollTime: Date.now() };
   }
 }

@@ -79,31 +79,40 @@ export class AssetManagerClient {
 
   /** Upsert assets, addresses, pools, transfers, and/or fragments in a single call. */
   async bulkUpsert(input: BulkUpsertInput): Promise<BulkUpsertResult> {
-    try {
+    return this.wrap("[AssetManagerClient] bulkUpsert", async () => {
       const resp = await this.http.put<BulkUpsertResult>('/api/v1/bulk/datamodel', input);
       return resp.data;
-    } catch (error) {
-      if (error instanceof AxiosError && error.response) {
-        const { status, data } = error.response;
-        const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-        console.error(`[AssetManagerClient] bulkUpsert failed (${status}):\n${body}`);
-        throw new Error(`[AssetManagerClient] bulkUpsert failed (${status}): ${body}`, { cause: error });
-      }
-      throw error;
-    }
+    });
   }
 
   /** Query assets, addresses, pools, transfers, and/or fragments in a single call. */
   async bulkQuery(input: BulkQueryInput): Promise<BulkQueryOutput> {
-    try {
+    return this.wrap("[AssetManagerClient] bulkQuery", async () => {
       const resp = await this.http.post<BulkQueryOutput>('/api/v1/bulk/query', input);
       return resp.data;
+    });
+  }
+
+  log(s: string, ...args: any) {
+    console.log(`${new Date().toUTCString()}: ${s}`, ...args)
+  }
+
+  logErr(s: string, ...args: any) {
+    console.error(`${new Date().toUTCString()}: ${s}`, ...args)
+  }
+
+  async wrap<T>(desc: string, fn: () => Promise<T>): Promise<T> {
+    const startTime = new Date();
+    try {
+      const ret = await fn();
+      this.log(`${desc} ${new Date().getTime()-startTime.getTime()}ms`)
+      return ret;
     } catch (error) {
       if (error instanceof AxiosError && error.response) {
         const { status, data } = error.response;
         const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-        console.error(`[AssetManagerClient] bulkQuery failed (${status}):\n${body}`);
-        throw new Error(`[AssetManagerClient] bulkQuery failed (${status}): ${body}`, { cause: error });
+        console.error(`${desc} failed (${status}):\n${body}`);
+        throw new Error(`${desc} failed (${status}): ${body}`, { cause: error });
       }
       throw error;
     }
