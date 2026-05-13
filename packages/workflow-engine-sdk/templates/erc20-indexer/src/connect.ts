@@ -33,7 +33,7 @@ const amClient = new AssetManagerClient({ url: amUrl, authToken });
 await erc20Indexer.setup(amClient, providerConfig.erc20);
 
 const client = await NewWorkflowEngineClient(
-  HandlerSetFor(erc20Indexer),
+  HandlerSetFor(erc20Indexer.handler),
   process.env.WFE_CONFIG_FILE ?? './config/wfe-config.yaml',
 );
 

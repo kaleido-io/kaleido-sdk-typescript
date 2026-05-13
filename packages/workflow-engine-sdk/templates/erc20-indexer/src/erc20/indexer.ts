@@ -15,9 +15,10 @@
 // limitations under the License.
 
 import {
-  EngineAPI,
-  WSEventProcessorBatchRequest,
-  WSEventProcessorBatchResult,
+  newEventProcessor,
+  newLogger,
+  EventProcessorEvent,
+  EventProcessorFactory,
 } from '@kaleido-io/workflow-engine-sdk';
 
 import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
@@ -25,11 +26,17 @@ import { AssetManagerClient } from '../clients/asset-manager/client.js';
 import type { Address, BalanceChange, Transfer } from '../clients/asset-manager/models.js';
 import type { ERC20Config } from '../config/provider-config.js';
 
+const log = newLogger('erc20-indexer');
+
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 const TRANSFER_SIG = 'Transfer(address,address,uint256)';
 
 /** ABI-decoded fields from a Transfer(address,address,uint256) log event */
 type ERC20TransferData = { from: string; to: string; value: string };
+
+interface IndexerCheckpoint {
+  highestBlock: number;
+}
 
 /**
  * ERC20 Transfer event processor.
@@ -48,15 +55,14 @@ export class ERC20Indexer {
   private chain!: string;
   private poolName!: string;
 
-  name(): string {
-    return 'erc20-indexer';
-  }
+  readonly handler: EventProcessorFactory<EVMTransactionEvent, IndexerCheckpoint>;
 
-  init(_engAPI: EngineAPI): Promise<void> {
-    return Promise.resolve();
+  constructor() {
+    this.handler = newEventProcessor<EVMTransactionEvent, IndexerCheckpoint>(
+      'erc20-indexer',
+      (events) => this.process(events),
+    );
   }
-
-  close(): void {}
 
   /**
    * One-time setup: register the asset and pool in Asset Manager.
@@ -102,22 +108,22 @@ export class ERC20Indexer {
     });
   }
 
-  /**
-   * Process a batch of EVM transaction events.
-   * Filters for Transfer events, builds balance changes, and bulk-upserts to AM.
-   */
-  async eventProcessorBatch(
-    result: WSEventProcessorBatchResult,
-    batch: WSEventProcessorBatchRequest,
-  ): Promise<void> {
+  private async process(
+    events: EventProcessorEvent<EVMTransactionEvent>[],
+  ): Promise<{ events: EventProcessorEvent<EVMTransactionEvent>[]; checkpointOut?: IndexerCheckpoint }> {
     const transfers: Transfer[] = [];
     const addressSet = new Set<string>();
+    let highestBlock = 0;
 
-    console.log('Received batch of', batch.events.length, 'events');
+    log.info(`Received batch of ${events.length} events`);
 
-    for (const event of batch.events) {
-      const tx = event.data as EVMTransactionEvent;
+    for (const event of events) {
+      const tx = event.data;
       if (!tx.decodedEvents) continue;
+
+      if (tx.block.number > highestBlock) {
+        highestBlock = tx.block.number;
+      }
 
       for (const decoded of tx.decodedEvents) {
         // These are safety guards to prevent processing events that are not Transfer(address,address,uint256) events
@@ -125,11 +131,11 @@ export class ERC20Indexer {
         // see this warning, but if you feel confident that your stream is configured correctly, please reach out
         // to the Kaleido team for support.
         if (decoded.signature !== TRANSFER_SIG) {
-          console.warn(`[ERC20Indexer] skipping event with signature ${decoded.signature} not matching ${TRANSFER_SIG}`);
+          log.warn(`skipping event with signature ${decoded.signature} not matching ${TRANSFER_SIG}`);
           continue;
         }
-        if ( decoded.address.toLowerCase() !== this.contractAddress) {
-          console.warn(`[ERC20Indexer] skipping event with address ${decoded.address} not matching ${this.contractAddress}`);
+        if (decoded.address.toLowerCase() !== this.contractAddress) {
+          log.warn(`skipping event with address ${decoded.address} not matching ${this.contractAddress}`);
           continue;
         }
 
@@ -179,7 +185,10 @@ export class ERC20Indexer {
       await this.amClient.bulkUpsert({ addresses, transfers });
     }
 
-    result.checkpoint = { lastPollTime: Date.now() };
+    return {
+      events,
+      checkpointOut: highestBlock > 0 ? { highestBlock } : undefined,
+    };
   }
 }
 
