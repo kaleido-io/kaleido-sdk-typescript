@@ -85,6 +85,14 @@ export {
   EventSourceConfigParserFn,
 } from './factories/event_source';
 
+// Event processor factory
+export {
+  newEventProcessor,
+  EventProcessorFactory,
+  EventProcessorEvent,
+  EventProcessorBatchFn,
+} from './factories/event_processor';
+
 // Stage director helpers
 export {
   BasicStageDirector,

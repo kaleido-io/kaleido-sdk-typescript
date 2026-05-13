@@ -14,33 +14,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { EngineAPI, WSEventProcessorBatchRequest, WSEventProcessorBatchResult } from '@kaleido-io/workflow-engine-sdk';
+import { newEventProcessor } from '@kaleido-io/workflow-engine-sdk';
+import type { MyEventData } from './event-source.js';
 
-export class MyEventProcessor {
-
-    constructor() { }
-
-    name(): string {
-        return 'echo';
+export const echoEventProcessor = newEventProcessor<MyEventData>(
+  'echo',
+  async (events) => {
+    for (const event of events) {
+      console.log(`Event received: ${event.topic} - ${JSON.stringify(event.data, null, '\t')}`);
     }
-
-    init(_engAPI: EngineAPI): Promise<void> {
-        return Promise.resolve();
-    }
-
-    close(): void {
-        return;
-    }
-
-    eventProcessorBatch(result: WSEventProcessorBatchResult, batch: WSEventProcessorBatchRequest): Promise<void> {
-        for (const event of batch.events) {
-            console.log(`Event received: ${event.topic} - ${JSON.stringify(event.data, null, '\t')}`);
-        }
-        result.checkpoint = {
-            lastPollTime: Date.now()
-        };
-        return Promise.resolve();
-    }
-}
-
-export const echoEventProcessor = new MyEventProcessor();
+    return { events };
+  }
+);
