@@ -69,8 +69,10 @@ Options:
 Examples:
   npx @kaleido-io/workflow-engine-sdk init my-provider --template getting-started
   npx @kaleido-io/workflow-engine-sdk init my-provider --template erc20-indexer
+  npx @kaleido-io/workflow-engine-sdk init my-provider --template canton-cip56-indexer
   npx @kaleido-io/workflow-engine-sdk init @my-scope/my-provider --template getting-started
   npx @kaleido-io/workflow-engine-sdk init @my-scope/my-provider --template erc20-indexer
+  npx @kaleido-io/workflow-engine-sdk init @my-scope/my-provider --template canton-cip56-indexer
 `);
   process.exit(0);
 }
@@ -88,7 +90,7 @@ if (!projectNameRegex.test(projectName)) {
 const templateIdx = args.indexOf('--template');
 if (templateIdx === -1 || templateIdx + 1 >= args.length) {
   console.error('Error: --template <name> is required.');
-  console.error('Available templates: getting-started, erc20-indexer');
+  console.error('Available templates: getting-started, erc20-indexer, canton-cip56-indexer');
   process.exit(1);
 }
 const templateName = args[templateIdx + 1];
@@ -97,7 +99,7 @@ const templateName = args[templateIdx + 1];
 const sourceDir = join(TEMPLATES_DIR, templateName);
 if (!existsSync(sourceDir)) {
   console.error(`Error: Template "${templateName}" not found at ${sourceDir}`);
-  console.error('Available templates: getting-started, erc20-indexer');
+  console.error('Available templates: getting-started, erc20-indexer, canton-cip56-indexer');
   process.exit(1);
 }
 

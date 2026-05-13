@@ -1,0 +1,15 @@
+# Workflow Engine connection config.
+# Set WFE_CONFIG_FILE env var to point to this file (default: ./config/wfe-config.yaml).
+# providerName must match the `name` exported from src/provider.ts.
+workflow-engine:
+  providerName: canton-cip56-indexer
+  providerMetadata:
+    displayName: Canton CIP-56 Indexer
+    description: Indexes Canton CIP-56 token holding and transfer events into the Kaleido Asset Manager
+  url: https://my-account.my-kaleido.io/endpoint/my-environment/my-workflow-engine/rest
+  auth:
+    type: basic
+    username: my-api-key-name
+    password: my-api-key
+  # retryDelay: 2s
+  # maxRetries: 5   # omit for infinite retries
