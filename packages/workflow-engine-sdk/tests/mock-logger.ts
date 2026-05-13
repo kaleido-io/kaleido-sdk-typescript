@@ -25,5 +25,6 @@ export const mockLogger = {
 };
 
 jest.mock('../src/log/logger', () => ({
-    newLogger: jest.fn(() => mockLogger)
+    newLogger: jest.fn(() => mockLogger),
+    setLoggerFactory: jest.fn(),
 }));

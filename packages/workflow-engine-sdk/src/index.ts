@@ -53,7 +53,7 @@ export {
   NewWorkflowEngineClient,
 } from './client/client_factory';
 
-export { newLogger } from './log/logger';
+export { newLogger, setLoggerFactory, defaultLoggerFactory, LoggerFactory } from './log/logger';
 
 // ============================================================================
 // Core Types & Interfaces

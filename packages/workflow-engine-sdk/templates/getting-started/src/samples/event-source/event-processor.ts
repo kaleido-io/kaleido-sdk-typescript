@@ -14,14 +14,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { newEventProcessor } from '@kaleido-io/workflow-engine-sdk';
+import { newEventProcessor, newLogger } from '@kaleido-io/workflow-engine-sdk';
+
+const log = newLogger('echo-event-processor');
 import type { MyEventData } from './event-source.js';
 
 export const echoEventProcessor = newEventProcessor<MyEventData>(
   'echo',
   async (events) => {
     for (const event of events) {
-      console.log(`Event received: ${event.topic} - ${JSON.stringify(event.data, null, '\t')}`);
+      log.info(`Event received: ${event.topic} - ${JSON.stringify(event.data, null, '\t')}`);
     }
     return { events };
   }

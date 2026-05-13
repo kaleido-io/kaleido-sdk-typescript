@@ -15,194 +15,171 @@
 // limitations under the License.
 
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { newLogger, Logger } from '../../src/log/logger';
+import { newLogger, setLoggerFactory, defaultLoggerFactory, Logger, LoggerFactory } from '../../src/log/logger';
+
+// Matches e.g. "2026-05-13T14:23:45.123Z "
+const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z /;
 
 describe('Logger', () => {
-  let mockConsole: any;
-  let originalConsole: any;
+  let consoleMock: Record<string, jest.Mock>;
+  let originalConsole: Record<string, any>;
 
   beforeEach(() => {
-    // Save original console methods
     originalConsole = {
       debug: console.debug,
-      info: console.info,
-      warn: console.warn,
-      error: console.error
+      info:  console.info,
+      warn:  console.warn,
+      error: console.error,
     };
-
-    // Create mock console methods
-    mockConsole = {
+    consoleMock = {
       debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn()
+      info:  jest.fn(),
+      warn:  jest.fn(),
+      error: jest.fn(),
     };
-
-    // Replace console methods with mocks
-    console.debug = mockConsole.debug;
-    console.info = mockConsole.info;
-    console.warn = mockConsole.warn;
-    console.error = mockConsole.error;
+    console.debug = consoleMock.debug as any;
+    console.info  = consoleMock.info  as any;
+    console.warn  = consoleMock.warn  as any;
+    console.error = consoleMock.error as any;
   });
 
   afterEach(() => {
-    // Restore original console methods
     console.debug = originalConsole.debug;
-    console.info = originalConsole.info;
-    console.warn = originalConsole.warn;
+    console.info  = originalConsole.info;
+    console.warn  = originalConsole.warn;
     console.error = originalConsole.error;
+    setLoggerFactory(defaultLoggerFactory);
   });
 
-  describe('newLogger', () => {
-    it('should create a logger with context', () => {
-      const logger = newLogger('test-context');
-      
-      expect(logger).toBeDefined();
-      expect(typeof logger.debug).toBe('function');
-      expect(typeof logger.info).toBe('function');
-      expect(typeof logger.warn).toBe('function');
-      expect(typeof logger.error).toBe('function');
+  describe('default ConsoleLogger format', () => {
+    it('includes ISO timestamp for debug', () => {
+      newLogger('ctx').debug('msg');
+      expect((consoleMock.debug.mock.calls[0] as string[])[0]).toMatch(ISO_TIMESTAMP);
     });
 
-    it('should create different loggers for different contexts', () => {
-      const logger1 = newLogger('context-1');
-      const logger2 = newLogger('context-2');
-      
-      expect(logger1).not.toBe(logger2);
-    });
-  });
-
-  describe('Logger methods', () => {
-    let logger: Logger;
-
-    beforeEach(() => {
-      logger = newLogger('test-logger');
+    it('includes ISO timestamp for info', () => {
+      newLogger('ctx').info('msg');
+      expect((consoleMock.info.mock.calls[0] as string[])[0]).toMatch(ISO_TIMESTAMP);
     });
 
-    it('should log debug messages with context', () => {
-      logger.debug('Debug message');
-      
-      expect(mockConsole.debug).toHaveBeenCalledWith('[test-logger] Debug message');
+    it('includes ISO timestamp for warn', () => {
+      newLogger('ctx').warn('msg');
+      expect((consoleMock.warn.mock.calls[0] as string[])[0]).toMatch(ISO_TIMESTAMP);
     });
 
-    it('should log info messages with context', () => {
-      logger.info('Info message');
-      
-      expect(mockConsole.info).toHaveBeenCalledWith('[test-logger] Info message');
+    it('includes ISO timestamp for error', () => {
+      newLogger('ctx').error('msg');
+      expect((consoleMock.error.mock.calls[0] as string[])[0]).toMatch(ISO_TIMESTAMP);
     });
 
-    it('should log warn messages with context', () => {
-      logger.warn('Warning message');
-      
-      expect(mockConsole.warn).toHaveBeenCalledWith('[test-logger] Warning message');
+    it('includes level name DEBUG', () => {
+      newLogger('ctx').debug('msg');
+      expect((consoleMock.debug.mock.calls[0] as string[])[0]).toContain('DEBUG');
     });
 
-    it('should log error messages with context', () => {
-      logger.error('Error message');
-      
-      expect(mockConsole.error).toHaveBeenCalledWith('[test-logger] Error message');
+    it('includes level name INFO', () => {
+      newLogger('ctx').info('msg');
+      expect((consoleMock.info.mock.calls[0] as string[])[0]).toContain('INFO');
     });
 
-    it('should handle additional arguments', () => {
-      const additionalData = { key: 'value', number: 42 };
-      logger.info('Message with data', additionalData);
-      
-      expect(mockConsole.info).toHaveBeenCalledWith('[test-logger] Message with data', additionalData);
+    it('includes level name WARN', () => {
+      newLogger('ctx').warn('msg');
+      expect((consoleMock.warn.mock.calls[0] as string[])[0]).toContain('WARN');
     });
 
-    it('should handle multiple additional arguments', () => {
-      logger.error('Error with multiple args', 'arg1', 'arg2', { data: 'test' });
-      
-      expect(mockConsole.error).toHaveBeenCalledWith(
-        '[test-logger] Error with multiple args',
-        'arg1',
-        'arg2',
-        { data: 'test' }
-      );
+    it('includes level name ERROR', () => {
+      newLogger('ctx').error('msg');
+      expect((consoleMock.error.mock.calls[0] as string[])[0]).toContain('ERROR');
     });
 
-    it('should handle empty messages', () => {
-      logger.info('');
-      
-      expect(mockConsole.info).toHaveBeenCalledWith('[test-logger] ');
+    it('includes the context name', () => {
+      newLogger('my-module').info('msg');
+      expect((consoleMock.info.mock.calls[0] as string[])[0]).toContain('[my-module]');
     });
 
-    it('should handle special characters in context', () => {
-      const specialLogger = newLogger('special-context!@#$%');
-      specialLogger.info('Message');
-      
-      expect(mockConsole.info).toHaveBeenCalledWith('[special-context!@#$%] Message');
+    it('includes the message text', () => {
+      newLogger('ctx').info('hello world');
+      expect((consoleMock.info.mock.calls[0] as string[])[0]).toContain('hello world');
     });
 
-    it('should handle long context names', () => {
-      const longContext = 'very-long-context-name-that-might-be-used-in-production';
-      const longLogger = newLogger(longContext);
-      longLogger.info('Message');
-      
-      expect(mockConsole.info).toHaveBeenCalledWith(`[${longContext}] Message`);
+    it('forwards additional arguments after the formatted string', () => {
+      const extra = { key: 'value' };
+      newLogger('ctx').info('msg', extra);
+      expect(consoleMock.info.mock.calls[0]).toHaveLength(2);
+      expect(consoleMock.info.mock.calls[0][1]).toEqual(extra);
+    });
+
+    it('forwards multiple additional arguments', () => {
+      newLogger('ctx').error('err', 'a', 'b', { x: 1 });
+      expect(consoleMock.error.mock.calls[0]).toHaveLength(4);
+    });
+
+    it('routes each level to the correct console method', () => {
+      const log = newLogger('ctx');
+      log.debug('d'); log.info('i'); log.warn('w'); log.error('e');
+      expect(consoleMock.debug).toHaveBeenCalledTimes(1);
+      expect(consoleMock.info).toHaveBeenCalledTimes(1);
+      expect(consoleMock.warn).toHaveBeenCalledTimes(1);
+      expect(consoleMock.error).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('Logger interface compliance', () => {
-    it('should implement the Logger interface correctly', () => {
-      const logger = newLogger('test');
-      
-      // Check that all required methods exist
-      expect(typeof logger.debug).toBe('function');
-      expect(typeof logger.info).toBe('function');
-      expect(typeof logger.warn).toBe('function');
-      expect(typeof logger.error).toBe('function');
+  describe('setLoggerFactory', () => {
+    it('replaces the factory for loggers created after the call', () => {
+      const customInfo: jest.Mock = jest.fn();
+      const factory: LoggerFactory = (_ctx) => ({
+        debug: jest.fn(), warn: jest.fn(), error: jest.fn(),
+        info: customInfo as any,
+      });
+
+      setLoggerFactory(factory);
+      newLogger('ctx').info('hello');
+
+      expect(customInfo).toHaveBeenCalledWith('hello');
+      // Default ConsoleLogger must not have been called
+      expect(consoleMock.info).not.toHaveBeenCalled();
     });
 
-    it('should handle all log levels consistently', () => {
-      const logger = newLogger('test');
-      
-      logger.debug('debug');
-      logger.info('info');
-      logger.warn('warn');
-      logger.error('error');
-      
-      expect(mockConsole.debug).toHaveBeenCalledWith('[test] debug');
-      expect(mockConsole.info).toHaveBeenCalledWith('[test] info');
-      expect(mockConsole.warn).toHaveBeenCalledWith('[test] warn');
-      expect(mockConsole.error).toHaveBeenCalledWith('[test] error');
+    it('takes effect immediately for loggers created before the call', () => {
+      // Simulate SDK module-load-time logger creation
+      const log = newLogger('ctx');
+
+      const customInfo: jest.Mock = jest.fn();
+      setLoggerFactory((_ctx) => ({
+        debug: jest.fn(), warn: jest.fn(), error: jest.fn(),
+        info: customInfo as any,
+      }));
+
+      log.info('after swap');
+
+      expect(customInfo).toHaveBeenCalledWith('after swap');
+      expect(consoleMock.info).not.toHaveBeenCalled();
+    });
+
+    it('passes the context string to the factory', () => {
+      const factoryFn = jest.fn().mockReturnValue({
+        debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn(),
+      });
+
+      setLoggerFactory(factoryFn as unknown as LoggerFactory);
+      newLogger('my-module').info('x');
+
+      expect(factoryFn).toHaveBeenCalledWith('my-module');
+    });
+
+    it('returns distinct instances for different contexts', () => {
+      const instances: Logger[] = [];
+      setLoggerFactory((ctx) => {
+        const inst = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+        instances.push(inst);
+        return inst;
+      });
+
+      newLogger('a').info('x');
+      newLogger('b').info('x');
+
+      expect(instances).toHaveLength(2);
+      expect(instances[0]).not.toBe(instances[1]);
     });
   });
-
-  describe('Edge cases', () => {
-    it('should handle null context', () => {
-      const logger = newLogger(null as any);
-      logger.info('Message');
-      
-      expect(mockConsole.info).toHaveBeenCalledWith('[null] Message');
-    });
-
-    it('should handle undefined context', () => {
-      const logger = newLogger(undefined as any);
-      logger.info('Message');
-      
-      expect(mockConsole.info).toHaveBeenCalledWith('[undefined] Message');
-    });
-
-    it('should handle empty context', () => {
-      const logger = newLogger('');
-      logger.info('Message');
-      
-      expect(mockConsole.info).toHaveBeenCalledWith('[] Message');
-    });
-
-    it('should handle null message', () => {
-      const logger = newLogger('test');
-      logger.info(null as any);
-      
-      expect(mockConsole.info).toHaveBeenCalledWith('[test] null');
-    });
-
-    it('should handle undefined message', () => {
-      const logger = newLogger('test');
-      logger.info(undefined as any);
-      
-      expect(mockConsole.info).toHaveBeenCalledWith('[test] undefined');
-    });
-  });
-}); 
+});
