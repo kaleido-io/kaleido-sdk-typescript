@@ -21,7 +21,6 @@ import {
   WSEvaluateTransaction,
   WSHandleTransactionsResult,
   WSHandleTransactions,
-  WSEvaluateReplyResult,
   WSEventSourceConfig,
   WSListenerPollRequest,
   WSListenerPollResult,
@@ -136,37 +135,3 @@ export interface DirectedActionConfig<T extends WithStageDirector> {
   batchHandler?: DirectedTransactionBatchHandler<T>;
 }
 
-/**
- * Simple handler interface compatible with existing code
- */
-export interface IHandler {
-  init(): Promise<void>;
-  handle(transactions: WSEvaluateTransaction[]): Promise<WSEvaluateReplyResult[]>;
-  close?(): void; // Optional for backward compatibility
-}
-
-/**
- * Transaction handler for batch evaluation with services support
- */
-export interface TransactionHandler<SVCS = any> extends Handler {
-  transactionHandlerBatch(
-    reply: WSHandleTransactionsResult,
-    batch: WSHandleTransactions,
-    svcs?: SVCS
-  ): Promise<void>;
-}
-
-/**
- * Listener handler for event streams with services support
- */
-export interface ListenerHandler<SVCS = any> extends Handler {
-  /**
-   * Configure the listener when it's first set up
-   */
-  configure?(config: WSEventSourceConfig, svcs?: SVCS): Promise<void>;
-
-  /**
-   * Poll for events and update the result object
-   */
-  poll(request: WSListenerPollRequest, svcs?: SVCS): Promise<WSListenerPollResult>;
-}

@@ -582,7 +582,7 @@ export class HandlerRuntime {
       const eventProcessor = this.eventProcessors.get(batch.handler || '');
       if (eventProcessor) {
         this.setActiveHandlerContext(batch.id, batch.authTokens || {});
-        await eventProcessor.eventProcessorBatch(response as any, batch as any);
+        await eventProcessor.eventProcessorBatch(response, batch);
       } else {
         response.error = `No event processor registered: ${batch.handler}`;
         log.error(response.error);
