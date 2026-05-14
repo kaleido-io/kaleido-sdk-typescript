@@ -51,6 +51,8 @@ export enum WSMessageType {
   EVENT_PROCESSOR_BATCH_RESULT = 'event_processor_batch_result',
   ENGINE_API_SUBMIT_TRANSACTIONS = 'engineapi_submit_transactions',
   ENGINE_API_SUBMIT_TRANSACTIONS_RESULT = 'engineapi_submit_transactions_result',
+  SERVICE_PROXY_REQUEST = 'service_proxy_request',
+  SERVICE_PROXY_RESPONSE = 'service_proxy_response',
 }
 
 export enum WSHandlerType {
@@ -307,4 +309,41 @@ export interface ExecutableTransaction<T = any> {
   transaction: WSEvaluateTransaction;         // The transaction being processed
   input: T;                           // Parsed input for the transaction
   result?: WSEvaluateReplyResult;     // Result after execution (if completed)
+}
+
+/**
+ * Service proxy request sent over WebSocket to provider-proxy.
+ * Mirrors task-engine's ServiceProxyRequest message shape.
+ *
+ * The `id` identifies the target service instance on the proxy side,
+ * which maps to the actual service URL. The request contains only
+ * the HTTP method, path, headers, and body — the proxy resolves
+ * the full URL from the `id`.
+ */
+export interface ServiceProxyRequest {
+  messageType: WSMessageType.SERVICE_PROXY_REQUEST;
+  requestId: string;
+  serviceType: string;
+  /** Service instance identifier — the proxy resolves this to the actual service URL. */
+  id: string;
+  invocationId?: string;
+  request: {
+    method: string;
+    headers?: Record<string, string>;
+    params?: Record<string, string>;
+    bodyBase64?: string;
+  };
+}
+
+/**
+ * Service proxy response received over WebSocket from provider-proxy.
+ * Mirrors task-engine's ServiceProxyResponse message shape.
+ */
+export interface ServiceProxyResponse {
+  messageType: WSMessageType.SERVICE_PROXY_RESPONSE;
+  requestId: string;
+  status: number;
+  headers?: Record<string, string>;
+  bodyBase64?: string;
+  error?: string;
 }

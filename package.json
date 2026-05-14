@@ -24,6 +24,7 @@
   ],
   "workspaces": [
     "packages/workflow-engine-sdk",
-    "packages/core"
+    "packages/core",
+    "packages/asset-manager"
   ]
 }

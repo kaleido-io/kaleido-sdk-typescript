@@ -28,6 +28,7 @@ import {
   WSListenerPollResult,
   WSEventProcessorBatchResult,
   WSEventProcessorBatchRequest,
+  ServiceProxyResponse,
 } from '../types/core';
 import {
   Handler,
@@ -36,6 +37,7 @@ import {
   EventProcessor,
 } from '../interfaces/handlers';
 import { EngineClient } from './engine_client';
+import { WSProxyAdapter } from '../service/ws_proxy_adapter';
 import { newLogger } from '../log/logger';
 import { getErrorMessage } from '../utils/errors';
 import { newError, SDKErrors } from '../i18n/errors';
@@ -135,6 +137,7 @@ export class HandlerRuntime {
   private readonly PONG_TIMEOUT_MS: number;
 
   private engineClient: EngineClient;
+  private wsProxyAdapter: WSProxyAdapter;
   private activeHandlerContext?: { requestId: string; authTokens: Record<string, string> };
 
   constructor(config: HandlerRuntimeConfig) {
@@ -151,6 +154,8 @@ export class HandlerRuntime {
     }
     this.config = config;
     this.engineClient = new EngineClient(this);
+    this.wsProxyAdapter = new WSProxyAdapter();
+    this.wsProxyAdapter.setRuntime(this);
     // Set heartbeat intervals from config or use defaults
     this.PING_INTERVAL_MS = config.pingIntervalMs ?? 30000; // 30 seconds default
     this.PONG_TIMEOUT_MS = config.pongTimeoutMs ?? 10000; // 10 seconds default
@@ -175,6 +180,13 @@ export class HandlerRuntime {
    */
   registerEventProcessor(name: string, handler: EventProcessor): void {
     this.eventProcessors.set(name, handler);
+  }
+
+  /**
+   * Get the WS proxy adapter for service proxy requests in hosted mode.
+   */
+  getWSProxyAdapter(): WSProxyAdapter {
+    return this.wsProxyAdapter;
   }
 
   /**
@@ -413,6 +425,9 @@ export class HandlerRuntime {
     // Clean up heartbeat
     this.cleanupHeartbeat();
 
+    // Cancel in-flight service proxy requests
+    this.wsProxyAdapter.cancelAll();
+
     if (this.reconnectReject) {
       this.reconnectReject(new Error('WebSocket closed'));
       this.reconnectReject = undefined;
@@ -512,6 +527,9 @@ export class HandlerRuntime {
         break;
       case WSMessageType.ENGINE_API_SUBMIT_TRANSACTIONS_RESULT:
         this.engineClient.handleResponse(msg);
+        break;
+      case WSMessageType.SERVICE_PROXY_RESPONSE:
+        this.wsProxyAdapter.handleResponse(msg as ServiceProxyResponse);
         break;
       case WSMessageType.PROTOCOL_ERROR:
         log.error('Protocol error received', { error: msg.error });

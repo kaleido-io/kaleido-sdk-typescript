@@ -64,6 +64,12 @@ export async function NewWorkflowEngineClient(
   configFile?: string /** Path to WFE config file; if empty, process.env[WFE_CONFIG_FILE] is used. */,
 ): Promise<WorkflowEngineClient> {
   const clientConfig = ConfigLoader.loadClientConfigFromFile(configFile);
+
+  const serviceBindings = ConfigLoader.loadServiceBindings(configFile);
+  if (Object.keys(serviceBindings).length > 0) {
+    clientConfig.serviceBindings = serviceBindings;
+  }
+
   const client = new WorkflowEngineClient(clientConfig);
 
   for (const handler of handlerSet) {

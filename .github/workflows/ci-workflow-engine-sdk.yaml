@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'packages/workflow-engine-sdk/**'
+      - 'packages/core/**'
       - '.github/workflows/ci-workflow-engine-sdk.yaml'
 
 permissions:
@@ -22,6 +23,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.x'
+
+      - name: Build core dependency
+        working-directory: packages/core
+        run: npm install && npm run build
 
       - run: npm install
 
@@ -44,6 +49,10 @@ jobs:
         with:
           node-version: '22.x'
 
+      - name: Build core dependency
+        working-directory: packages/core
+        run: npm install && npm run build
+
       - name: Install SDK (local)
         working-directory: packages/workflow-engine-sdk
         run: npm install && npm run build
@@ -64,6 +73,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.x'
+
+      - name: Build core dependency
+        working-directory: packages/core
+        run: npm install && npm run build
 
       - name: Install SDK (local)
         working-directory: packages/workflow-engine-sdk

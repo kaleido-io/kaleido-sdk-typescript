@@ -23,6 +23,9 @@ import {
   EventSource,
   EventProcessor,
 } from '../interfaces/handlers';
+import { ServiceBindingsMap, ServiceBindingConfig } from "../service/types";
+import { ServiceClientOptions } from "@kaleido-io/core/http";
+import { WSProxyAdapter } from "../service/ws_proxy_adapter";
 
 /**
  * TLS options for the WebSocket server (inbound mode).
@@ -58,10 +61,13 @@ export interface WorkflowEngineClientConfig {
   options?: any;
   reconnectDelay?: number;
   maxAttempts?: number;
+  /** Service bindings for platform service access (asset-manager, key-manager, etc.) */
+  serviceBindings?: ServiceBindingsMap;
 }
 
 export class WorkflowEngineClient {
   private runtime: HandlerRuntime;
+  private bindings: ServiceBindingsMap;
 
   constructor(config: WorkflowEngineClientConfig) {
     const runtimeConfig: HandlerRuntimeConfig = {
@@ -78,6 +84,7 @@ export class WorkflowEngineClient {
     };
 
     this.runtime = new HandlerRuntime(runtimeConfig);
+    this.bindings = config.serviceBindings ?? {};
   }
 
   registerTransactionHandler(name: string, handler: TransactionHandler): void {
@@ -106,5 +113,54 @@ export class WorkflowEngineClient {
 
   isConnected(): boolean {
     return this.runtime.isWebSocketConnected();
+  }
+
+  getWSProxyAdapter(): WSProxyAdapter {
+    return this.runtime.getWSProxyAdapter();
+  }
+
+  getServiceBindings(): ServiceBindingsMap {
+    return { ...this.bindings };
+  }
+
+  getServiceBinding(name: string): ServiceBindingConfig {
+    const binding = this.bindings[name];
+    if (!binding) {
+      throw new Error(
+        `Service binding '${name}' not found. ` +
+          `Available bindings: ${Object.keys(this.bindings).join(", ") || "(none)"}`,
+      );
+    }
+    return binding;
+  }
+
+  getServiceClientOptions(name: string): ServiceClientOptions {
+    const binding = this.getServiceBinding(name);
+
+    switch (binding.bindingType) {
+      case "hosted":
+        return {
+          transport: "ws-proxy",
+          wsProxy: this.getWSProxyAdapter(),
+          serviceType: binding.type,
+          id: binding.id,
+        };
+
+      case "non-hosted":
+        return {
+          transport: "http",
+          url: binding.url,
+          auth: binding.auth,
+          maxRetries: binding.maxRetries,
+          timeout: binding.timeout,
+        };
+
+      default: {
+        const _exhaustive: never = binding;
+        throw new Error(
+          `Service binding '${name}' has unknown bindingType: ${(_exhaustive as ServiceBindingConfig).bindingType}`,
+        );
+      }
+    }
   }
 }

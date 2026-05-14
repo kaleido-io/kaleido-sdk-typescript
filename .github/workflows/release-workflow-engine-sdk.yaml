@@ -96,6 +96,11 @@ jobs:
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
+      - name: Build core dependency
+        working-directory: packages/core
+        shell: bash
+        run: npm install && npm run build
+
       - name: Publish to npm with primary tag
         working-directory: packages/workflow-engine-sdk
         shell: bash
