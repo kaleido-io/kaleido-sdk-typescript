@@ -404,30 +404,6 @@ describe('CantonCIP56Indexer', () => {
     });
   });
 
-  describe('TransferFactory created', () => {
-    it('creates pool with factory info', async () => {
-      const event = makeEvent({
-        entityName: 'TestTransferRules',
-        arguments: { issuer: 'bank::fp' },
-      });
-
-      const result = makeResult();
-      await indexer.eventProcessorBatch(result, makeBatch([event]));
-
-      const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(call.pools).toHaveLength(1);
-      expect(call.pools[0]).toMatchObject({
-        name: 'cip56_factory',
-        standard: 'CIP-56',
-        info: expect.objectContaining({
-          factoryContractId: 'contract-1',
-        }),
-        labels: { chain: 'canton', standard: 'CIP-56', type: 'transfer_factory' },
-      });
-      expect(call.fragments).toHaveLength(0);
-    });
-  });
-
   describe('Archive / consuming exercise', () => {
     it('marks fragment spent and emits subtract transfer on archived event', async () => {
       const createEvent = makeEvent({
@@ -585,8 +561,13 @@ describe('CantonCIP56Indexer', () => {
         makeEvent({
           contractId: 'c2',
           offset: 11,
-          entityName: 'TestTransferRules',
-          arguments: { issuer: 'bank::fp' },
+          interfaceViews: [
+            holdingInterfaceView({
+              owner: 'bob::fp',
+              amount: '200',
+              instrumentId: { admin: 'bank::fp', id: 'TOK' },
+            }),
+          ],
         }),
       ];
 
@@ -596,9 +577,9 @@ describe('CantonCIP56Indexer', () => {
       expect(am.bulkUpsert).toHaveBeenCalledTimes(1);
       const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
 
-      expect(call.fragments).toHaveLength(1);
-      expect(call.pools).toHaveLength(2);
-      expect(call.transfers).toHaveLength(1);
+      expect(call.fragments).toHaveLength(2);
+      expect(call.pools).toHaveLength(1);
+      expect(call.transfers).toHaveLength(2);
       expect(result.checkpoint).toEqual({ offset: 11 });
     });
 

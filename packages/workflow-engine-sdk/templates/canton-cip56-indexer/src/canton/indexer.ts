@@ -208,8 +208,8 @@ type EventHandler<T = unknown> = {
  *   1. Holding created   -> fragment + balance-add transfer + addresses + asset + pool
  *      Holding archived  -> balance-subtract transfer + fragment.labels.spent = "true"
  *   2. TransferInstruction created -> fragment (pending transfer, no balance change)
- *   3. TransferFactory created     -> pool
- *   4. Other archived / consuming exercise -> fragment.labels.spent = "true"
+ *
+ *   All archived / consuming exercise events also set fragment.labels.spent = "true".
  */
 export class CantonCIP56Indexer {
   private amClient: AssetManagerClient | undefined;
@@ -708,34 +708,6 @@ export class CantonCIP56Indexer {
       },
     },
 
-    // 3. TransferFactory / TransferRules
-    {
-      match: (ce) =>
-        (ce.entityName.includes('TransferRules') ||
-        ce.entityName.includes('TransferFactory')) || null,
-      extractOwner: () => '',
-      handleCreated: (ce, ctx, _matched) => {
-        const args = ce.arguments ?? {};
-        const issuer = normalizeAddr((args.issuer as string) ?? '');
-        if (issuer) ctx.addressSet.add(issuer);
-
-        const poolKey = `${issuer}/cip56_factory`;
-        ctx.poolMap.set(poolKey, {
-          name: 'cip56_factory',
-          address: issuer,
-          standard: 'CIP-56',
-          description: `CIP-56 transfer factory managed by ${shortPartyName(issuer)} on Canton`,
-          info: {
-            factoryContractId: ce.contractId,
-            factoryTemplateId: `${ce.packageId}:${ce.templateId}`,
-            synchronizerId: ce.synchronizerId,
-            admin: issuer,
-          },
-          labels: baseLabels('CIP-56', 'transfer_factory'),
-          updateType: 'create_or_replace',
-        });
-      },
-    },
   ];
 }
 
