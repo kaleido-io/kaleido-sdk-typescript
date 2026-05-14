@@ -75,10 +75,6 @@ function mockAmClient() {
   } as unknown as AssetManagerClient;
 }
 
-/** Mirror the indexer's truncateToInteger for readable assertions. */
-function trunc(amount: string): string {
-  return amount.split('.')[0] || '0';
-}
 
 describe('CantonCIP56Indexer', () => {
   let indexer: CantonCIP56Indexer;
@@ -121,7 +117,7 @@ describe('CantonCIP56Indexer', () => {
       expect(call.fragments[0]).toMatchObject({
         name: 'contract-1',
         address: 'alice::fingerprint1',
-        value: trunc('1000'),
+        value: '10000000000000',
         asset: 'TestInstId',
         labels: {
           chain: 'canton',
@@ -138,11 +134,11 @@ describe('CantonCIP56Indexer', () => {
       expect(call.transfers[0]).toMatchObject({
         protocolId: 'tx-1/contract-1/created',
         to: 'alice::fingerprint1',
-        amount: trunc('1000'),
+        amount: '10000000000000',
         transactionHash: 'tx-1',
         parent: { type: 'pool', ref: 'bank::fingerprint2/TestInstId' },
         balanceChanges: [
-          { address: 'alice::fingerprint1', operation: 'add', amount: trunc('1000') },
+          { address: 'alice::fingerprint1', operation: 'add', amount: '10000000000000' },
         ],
         labels: { chain: 'canton', standard: 'CIP-56', type: 'holding_created' },
         updateType: 'create_or_replace',
@@ -211,7 +207,7 @@ describe('CantonCIP56Indexer', () => {
       expect(call.assets[0].name).toBe('KLD');
     });
 
-    it('truncates decimal amounts to integers', async () => {
+    it('converts decimal amounts to base units (x 10^10)', async () => {
       const event = makeEvent({
         interfaceViews: [
           holdingInterfaceView({
@@ -226,10 +222,10 @@ describe('CantonCIP56Indexer', () => {
       await indexer.eventProcessorBatch(result, makeBatch([event]));
 
       const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(call.fragments[0].value).toBe('33');
+      expect(call.fragments[0].value).toBe('331081975897');
       expect(call.transfers).toHaveLength(1);
-      expect(call.transfers[0].amount).toBe('33');
-      expect(call.transfers[0].balanceChanges[0].amount).toBe('33');
+      expect(call.transfers[0].amount).toBe('331081975897');
+      expect(call.transfers[0].balanceChanges[0].amount).toBe('331081975897');
     });
 
     it('lowercases party addresses to match asset-manager storage', async () => {
@@ -470,11 +466,11 @@ describe('CantonCIP56Indexer', () => {
       expect(archiveCall.transfers[0]).toMatchObject({
         protocolId: 'tx-archive/contract-1/archived',
         from: 'alice::fp',
-        amount: trunc('100'),
+        amount: '1000000000000',
         transactionHash: 'tx-archive',
         parent: { type: 'pool', ref: 'bank::fp/TOK' },
         balanceChanges: [
-          { address: 'alice::fp', operation: 'subtract', amount: trunc('100') },
+          { address: 'alice::fp', operation: 'subtract', amount: '1000000000000' },
         ],
         labels: { chain: 'canton', standard: 'CIP-56', type: 'holding_archived' },
       });
@@ -519,10 +515,10 @@ describe('CantonCIP56Indexer', () => {
       expect(call.transfers[0]).toMatchObject({
         protocolId: 'tx-exercise/contract-2/archived',
         from: 'alice::fp',
-        amount: trunc('50'),
+        amount: '500000000000',
         parent: { type: 'pool', ref: 'bank::fp/TOK' },
         balanceChanges: [
-          { address: 'alice::fp', operation: 'subtract', amount: trunc('50') },
+          { address: 'alice::fp', operation: 'subtract', amount: '500000000000' },
         ],
       });
     });
@@ -645,19 +641,19 @@ describe('CantonCIP56Indexer', () => {
       expect(call.transfers[0]).toMatchObject({
         protocolId: 'tx-create/h1/created',
         to: 'alice::fp',
-        amount: trunc('500'),
+        amount: '5000000000000',
         parent: { type: 'pool', ref: 'bank::fp/TestInstId' },
         balanceChanges: [
-          { address: 'alice::fp', operation: 'add', amount: trunc('500') },
+          { address: 'alice::fp', operation: 'add', amount: '5000000000000' },
         ],
       });
       expect(call.transfers[1]).toMatchObject({
         protocolId: 'tx-archive/h1/archived',
         from: 'alice::fp',
-        amount: trunc('500'),
+        amount: '5000000000000',
         parent: { type: 'pool', ref: 'bank::fp/TestInstId' },
         balanceChanges: [
-          { address: 'alice::fp', operation: 'subtract', amount: trunc('500') },
+          { address: 'alice::fp', operation: 'subtract', amount: '5000000000000' },
         ],
       });
     });
@@ -738,7 +734,7 @@ describe('CantonCIP56Indexer', () => {
       expect(addTransfer).toMatchObject({
         from: 'alice::fp',
         to: 'bob::fp',
-        amount: trunc('100'),
+        amount: '1000000000000',
         labels: { type: 'transfer' },
       });
 
@@ -748,7 +744,7 @@ describe('CantonCIP56Indexer', () => {
       expect(subTransfer).toMatchObject({
         from: 'alice::fp',
         to: 'bob::fp',
-        amount: trunc('100'),
+        amount: '1000000000000',
         labels: { type: 'transfer' },
       });
     });
@@ -825,7 +821,7 @@ describe('CantonCIP56Indexer', () => {
       expect(call.transfers).toHaveLength(1);
       expect(call.transfers[0]).toMatchObject({
         to: 'alice::fp',
-        amount: trunc('200'),
+        amount: '2000000000000',
         labels: { type: 'holding_created' },
       });
       expect(call.transfers[0].from).toBeUndefined();

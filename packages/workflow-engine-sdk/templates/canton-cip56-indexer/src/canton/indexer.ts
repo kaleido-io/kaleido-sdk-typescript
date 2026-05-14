@@ -135,14 +135,28 @@ function extractIssuer(view: HoldingView): string {
   return view.instrumentId?.admin ?? '';
 }
 
+
 /**
- * Truncate a Canton decimal amount to its integer part.
- * The asset-manager stores transfer/balance amounts as BigInt.
- * "33.1081975897" -> "33", "1000" -> "1000", "-5.5" -> "-5"
+ * Convert a Daml Decimal string to integer base units.
+ *
+ * Daml's Decimal type is Numeric 10 (38 total digits, 10 fractional).
+ * We multiply by 10^10 so the Asset Manager can store amounts as integers,
+ * similar to how BTC amounts are stored in satoshis (x 10^8).
+ *
+ * Examples:
+ *   "33.1081975897" -> "331081975897"
+ *   "1000"          -> "10000000000000"
+ *   "0.0000000001"  -> "1"
  */
-function truncateToInteger(amount: string): string {
-  const [intPart] = amount.split('.');
-  return intPart || '0';
+const DAML_DECIMAL_SCALE = 10;
+
+function toBaseUnits(amount: string): string {
+  const negative = amount.startsWith('-');
+  const abs = negative ? amount.slice(1) : amount;
+  const [intPart, fracPart = ''] = abs.split('.');
+  const padded = fracPart.padEnd(DAML_DECIMAL_SCALE, '0').slice(0, DAML_DECIMAL_SCALE);
+  const raw = (intPart + padded).replace(/^0+/, '') || '0';
+  return negative && raw !== '0' ? `-${raw}` : raw;
 }
 
 function isCreate(ce: CantonContractEvent): boolean {
@@ -516,11 +530,11 @@ export class CantonCIP56Indexer {
         const issuer = normalizeAddr(extractIssuer(view));
         const instId = extractInstrumentId(view);
         const poolRef = `${issuer}/${instId}`;
-        const intAmount = truncateToInteger(String(view.amount));
+        const amount = toBaseUnits(String(view.amount));
 
         ctx.setContractInfo(ce.contractId, {
           owner,
-          amount: intAmount,
+          amount,
           asset: instId,
           poolRef,
         });
@@ -574,7 +588,7 @@ export class CantonCIP56Indexer {
         ctx.fragmentMap.set(fragKey, {
           name: ce.contractId,
           address: owner,
-          value: intAmount,
+          value: amount,
           valueReference: ce.contractId,
           asset: instId,
           displayName: `${ce.entityName} ${view.amount} ${instId}`,
@@ -599,7 +613,7 @@ export class CantonCIP56Indexer {
           protocolId: `${ce.transactionId}/${ce.contractId}/created`,
           ...(txInfo?.sender ? { from: txInfo.sender } : {}),
           to: owner,
-          amount: intAmount,
+          amount,
           transactionHash: ce.transactionId,
           parent: { type: 'pool', ref: poolRef },
           info: {
@@ -608,7 +622,7 @@ export class CantonCIP56Indexer {
             effectiveAt: ce.effectiveAt,
           },
           balanceChanges: [
-            { address: owner, operation: 'add', amount: intAmount },
+            { address: owner, operation: 'add', amount },
           ],
           labels: {
             chain: 'canton',
