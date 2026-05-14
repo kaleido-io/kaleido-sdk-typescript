@@ -18,7 +18,10 @@ import axios, { AxiosError, type AxiosInstance } from 'axios';
 import axiosRetry, { isNetworkError } from 'axios-retry';
 import * as http from 'http';
 import * as https from 'https';
+import { newLogger } from '@kaleido-io/workflow-engine-sdk';
 import type { BulkUpsertInput, BulkUpsertResult } from './bulkupsert.js';
+
+const log = newLogger('AssetManagerClient');
 
 export interface AssetManagerClientOptions {
   url: string;
@@ -68,10 +71,7 @@ export class AssetManagerClient {
       },
       onRetry: (retryCount, error, requestConfig) => {
         const status = error.response?.status ?? 'network error';
-        console.warn(
-          `[AssetManagerClient] retry ${retryCount}/${maxRetries} ` +
-            `${requestConfig.url} (${status}: ${error.message})`,
-        );
+        log.warn(`retry ${retryCount}/${maxRetries} ${requestConfig.url} (${status}: ${error.message})`);
       },
     });
   }
@@ -85,7 +85,7 @@ export class AssetManagerClient {
       if (error instanceof AxiosError && error.response) {
         const { status, data } = error.response;
         const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-        console.error(`[AssetManagerClient] bulkUpsert failed (${status}):\n${body}`);
+        log.error(`bulkUpsert failed (${status}):\n${body}`);
         throw new Error(`[AssetManagerClient] bulkUpsert failed (${status}): ${body}`, { cause: error });
       }
       throw error;
