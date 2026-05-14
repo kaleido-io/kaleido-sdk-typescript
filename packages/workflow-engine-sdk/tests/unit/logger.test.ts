@@ -169,7 +169,7 @@ describe('Logger', () => {
 
     it('returns distinct instances for different contexts', () => {
       const instances: Logger[] = [];
-      setLoggerFactory((ctx) => {
+      setLoggerFactory((_ctx) => {
         const inst = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
         instances.push(inst);
         return inst;
