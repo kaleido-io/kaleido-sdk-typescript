@@ -46,6 +46,7 @@ type TransferContext = {
   receiver: string;
   amount?: string;
   instrumentId?: string;
+  contractId?: string;
 };
 
 // ── CIP-56 view types ───────────────────────────────────────────────
@@ -437,8 +438,9 @@ export class CantonCIP56Indexer {
       if (ce.eventType === 'exercised' && ce.consuming) {
         const tiInfo = this.transferInstructionCache.get(ce.contractId);
         if (tiInfo) {
-          txContext.set(ce.transactionId, tiInfo);
-          this.txTransferContext.set(ce.transactionId, tiInfo);
+          const ctx = { ...tiInfo, contractId: ce.contractId };
+          txContext.set(ce.transactionId, ctx);
+          this.txTransferContext.set(ce.transactionId, ctx);
           this.transferInstructionCache.delete(ce.contractId);
         } else {
           cacheMisses.push(ce.contractId);
@@ -469,6 +471,7 @@ export class CantonCIP56Indexer {
             sender: frag.labels.sender,
             receiver: frag.labels.receiver ?? '',
             instrumentId: frag.labels.instrumentId,
+            contractId: ce.contractId,
           };
           txContext.set(ce.transactionId, ctx);
           this.txTransferContext.set(ce.transactionId, ctx);
@@ -625,6 +628,8 @@ export class CantonCIP56Indexer {
         });
 
         const txInfo = ctx.txContext.get(ce.transactionId);
+        const isTransfer = !!txInfo;
+        const displayAmount = String(view.amount);
         ctx.transfers.push({
           protocolId: `${ce.transactionId}/${ce.contractId}/created`,
           ...(txInfo?.sender ? { from: txInfo.sender } : {}),
@@ -632,6 +637,12 @@ export class CantonCIP56Indexer {
           amount,
           transactionHash: ce.transactionId,
           parent: { type: 'pool', ref: poolRef },
+          displayName: isTransfer
+            ? `Receive ${displayAmount} ${instId}`
+            : `Holding created ${displayAmount} ${instId}`,
+          description: isTransfer
+            ? `CIP-56 receiving transfer of ${displayAmount} ${instId} from ${shortPartyName(txInfo!.sender)} to ${shortPartyName(owner)} on Canton`
+            : `CIP-56 holding of ${displayAmount} ${instId} created for ${shortPartyName(owner)} on Canton`,
           info: {
             offset: ce.offset,
             contractId: ce.contractId,
@@ -643,7 +654,9 @@ export class CantonCIP56Indexer {
           labels: {
             chain: 'canton',
             standard: 'CIP-56',
-            type: txInfo ? 'transfer' : 'holding_created',
+            type: isTransfer ? 'transfer' : 'holding_created',
+            ...(isTransfer ? { direction: 'receive' } : {}),
+            ...(txInfo?.contractId ? { transferInstructionId: txInfo.contractId } : {}),
           },
           updateType: 'create_or_replace',
         });
@@ -653,6 +666,8 @@ export class CantonCIP56Indexer {
         if (!info?.amount || !info?.poolRef) return;
 
         const txInfo = ctx.txContext.get(ce.transactionId);
+        const isTransfer = !!txInfo;
+        const asset = info.asset ?? '';
         ctx.transfers.push({
           protocolId: `${ce.transactionId}/${ce.contractId}/archived`,
           from: info.owner,
@@ -660,6 +675,12 @@ export class CantonCIP56Indexer {
           amount: info.amount,
           transactionHash: ce.transactionId,
           parent: { type: 'pool', ref: info.poolRef },
+          displayName: isTransfer
+            ? `Send ${asset} to ${shortPartyName(txInfo!.receiver)}`
+            : `Holding archived ${asset}`,
+          description: isTransfer
+            ? `CIP-56 sending transfer of ${asset} from ${shortPartyName(info.owner)} to ${shortPartyName(txInfo!.receiver)} on Canton`
+            : `CIP-56 holding of ${asset} archived for ${shortPartyName(info.owner)} on Canton`,
           info: {
             offset: ce.offset,
             contractId: ce.contractId,
@@ -671,7 +692,9 @@ export class CantonCIP56Indexer {
           labels: {
             chain: 'canton',
             standard: 'CIP-56',
-            type: txInfo ? 'transfer' : 'holding_archived',
+            type: isTransfer ? 'transfer' : 'holding_archived',
+            ...(isTransfer ? { direction: 'send' } : {}),
+            ...(txInfo?.contractId ? { transferInstructionId: txInfo.contractId } : {}),
           },
           updateType: 'create_or_replace',
         });

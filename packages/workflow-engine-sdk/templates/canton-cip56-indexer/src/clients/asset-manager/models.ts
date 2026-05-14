@@ -82,6 +82,8 @@ export type Transfer = {
   amount: string;
   transactionHash: string;
   parent: { type: string; ref: string };
+  displayName?: string;
+  description?: string;
   info?: Record<string, unknown>;
   balanceChanges: BalanceChange[];
   labels?: Record<string, string>;
