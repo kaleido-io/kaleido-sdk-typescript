@@ -121,8 +121,9 @@ export class ERC20Indexer {
       const tx = event.data;
       if (!tx.decodedEvents) continue;
 
-      if (tx.block.number > highestBlock) {
-        highestBlock = tx.block.number;
+      const blockNumber = parseInt(tx.block.number, 10);
+      if (blockNumber > highestBlock) {
+        highestBlock = blockNumber;
       }
 
       for (const decoded of tx.decodedEvents) {

@@ -28,7 +28,7 @@ interface MyEventSourceCheckpoint {
   lastPollTime: number;
 }
 
-interface MyEventData {
+export interface MyEventData {
   message: string;
   timestamp: number;
 }
