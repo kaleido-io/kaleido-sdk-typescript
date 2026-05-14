@@ -289,8 +289,8 @@ describe('CantonCIP56Indexer', () => {
     it('creates fragment from nested interface view without balance transfers', async () => {
       const event = makeEvent({
         contractId: 'ti-1',
-        entityName: 'TransferOffer',
-        templateId: 'Utility.Registry.App.V0.Model.Transfer:TransferOffer',
+        entityName: 'TransferInstruction',
+        templateId: 'pkg123:Token.Transfer:TransferInstruction',
         interfaceViews: [
           {
             interfaceId: 'abc123:Splice.Api.Token.TransferInstructionV1:TransferInstruction',
@@ -334,15 +334,13 @@ describe('CantonCIP56Indexer', () => {
     });
   });
 
-  describe('TransferOffer created (via arguments.transfer fallback)', () => {
+  describe('TransferInstruction created (via arguments.transfer fallback)', () => {
     it('creates fragment from arguments.transfer when no interface views', async () => {
       const event = makeEvent({
         contractId: 'to-1',
-        entityName: 'TransferOffer',
-        templateId: 'Utility.Registry.App.V0.Model.Transfer:TransferOffer',
+        entityName: 'TransferInstruction',
+        templateId: 'pkg123:Token.Transfer:TransferInstruction',
         arguments: {
-          operator: 'op::fp',
-          provider: 'prov::fp',
           transfer: {
             sender: 'alice::fp1',
             receiver: 'bob::fp2',
@@ -379,7 +377,7 @@ describe('CantonCIP56Indexer', () => {
     it('caches owner from arguments.transfer and marks spent on archive', async () => {
       const createEvent = makeEvent({
         contractId: 'to-2',
-        entityName: 'TransferOffer',
+        entityName: 'TransferInstruction',
         arguments: {
           transfer: {
             sender: 'alice::fp1',
@@ -669,7 +667,7 @@ describe('CantonCIP56Indexer', () => {
     it('enriches Holding transfer with sender/receiver when TI exercised in same batch', async () => {
       const tiCreate = makeEvent({
         contractId: 'ti-enrich',
-        entityName: 'TransferOffer',
+        entityName: 'TransferInstruction',
         transactionId: 'tx-ti-create',
         offset: 1,
         arguments: {
@@ -836,7 +834,7 @@ describe('CantonCIP56Indexer', () => {
     it('cleans up TI cache on archive', async () => {
       const tiCreate = makeEvent({
         contractId: 'ti-cleanup',
-        entityName: 'TransferOffer',
+        entityName: 'TransferInstruction',
         transactionId: 'tx-1',
         offset: 1,
         arguments: {

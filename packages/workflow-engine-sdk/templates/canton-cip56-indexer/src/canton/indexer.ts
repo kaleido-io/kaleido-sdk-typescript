@@ -93,9 +93,6 @@ function findHoldingView(
  * The CIP-56 TransferInstruction view nests data under .transfer:
  *   { transfer: { sender, receiver, amount, instrumentId }, status, meta }
  *
- * The utility-registry-app TransferOffer template also uses .transfer:
- *   { operator, provider, transfer: { sender, receiver, amount, instrumentId } }
- *
  * When interfaceViews is not populated by the connector, we fall back to
  * arguments.transfer.
  */
