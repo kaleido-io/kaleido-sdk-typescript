@@ -215,6 +215,7 @@ export class CantonCIP56Indexer {
   private amClient: AssetManagerClient | undefined;
   private contractCache = new Map<string, ContractInfo>();
   private transferInstructionCache = new Map<string, TransferContext>();
+  private txTransferContext = new Map<string, TransferContext>();
   private log = newLogger('canton-cip56-indexer');
 
   name(): string {
@@ -253,6 +254,8 @@ export class CantonCIP56Indexer {
     result: WSEventProcessorBatchResult,
     batch: WSEventProcessorBatchRequest,
   ): Promise<void> {
+    this.log.info(`Batch received: ${batch.events.length} events`);
+
     // Pass 1: warm owner cache for create events, collect cache misses for archives
     const cacheMisses = new Set<string>();
     for (const event of batch.events) {
@@ -333,9 +336,10 @@ export class CantonCIP56Indexer {
     for (const event of batch.events) {
       const ce = event.data as CantonContractEvent;
 
-      this.log.debug(
-        `${ce.eventType} ${ce.entityName} offset=${ce.offset} contractId=${ce.contractId}`,
+      this.log.info(
+        `EVENT ${ce.eventType} ${ce.entityName} offset=${ce.offset} txId=${ce.transactionId} contractId=${ce.contractId}`,
       );
+      this.log.info(JSON.stringify(ce, null, 2));
 
       if (isCreate(ce)) {
         for (const handler of this.handlers) {
@@ -418,6 +422,14 @@ export class CantonCIP56Indexer {
       }
     }
 
+    // Restore transfer context from prior batches in the same transaction
+    for (const ce of events) {
+      const prior = this.txTransferContext.get(ce.transactionId);
+      if (prior) {
+        txContext.set(ce.transactionId, prior);
+      }
+    }
+
     const cacheMisses: string[] = [];
     const exerciseEvents: CantonContractEvent[] = [];
 
@@ -426,6 +438,7 @@ export class CantonCIP56Indexer {
         const tiInfo = this.transferInstructionCache.get(ce.contractId);
         if (tiInfo) {
           txContext.set(ce.transactionId, tiInfo);
+          this.txTransferContext.set(ce.transactionId, tiInfo);
           this.transferInstructionCache.delete(ce.contractId);
         } else {
           cacheMisses.push(ce.contractId);
@@ -452,11 +465,13 @@ export class CantonCIP56Indexer {
       for (const ce of exerciseEvents) {
         const frag = fragMap.get(ce.contractId);
         if (frag?.labels?.sender) {
-          txContext.set(ce.transactionId, {
+          const ctx: TransferContext = {
             sender: frag.labels.sender,
             receiver: frag.labels.receiver ?? '',
             instrumentId: frag.labels.instrumentId,
-          });
+          };
+          txContext.set(ce.transactionId, ctx);
+          this.txTransferContext.set(ce.transactionId, ctx);
         }
       }
     }
@@ -604,6 +619,7 @@ export class CantonCIP56Indexer {
             instrumentId: instId,
             owner,
             issuer,
+            ...(view.lock ? { locked: 'true' } : {}),
           },
           updateType: 'create_or_replace',
         });
@@ -673,7 +689,8 @@ export class CantonCIP56Indexer {
         const td = matched as TransferData;
         const sender = normalizeAddr(td.sender || ce.signatories?.[0] || '');
         const receiver = normalizeAddr(td.receiver || '');
-        const amount = td.amount || '0';
+        const rawAmount = td.amount || '0';
+        const amount = toBaseUnits(rawAmount);
         const instId = td.instrumentId?.id || '';
         const admin = td.instrumentId?.admin || '';
 
@@ -687,8 +704,8 @@ export class CantonCIP56Indexer {
           address: sender,
           value: amount,
           valueReference: ce.contractId,
-          displayName: `TransferInstruction ${amount} ${instId}`,
-          description: `CIP-56 transfer instruction of ${amount} ${instId} from ${shortPartyName(sender)} to ${shortPartyName(receiver)} on Canton`,
+          displayName: `TransferInstruction ${rawAmount} ${instId}`,
+          description: `CIP-56 transfer instruction of ${rawAmount} ${instId} from ${shortPartyName(sender)} to ${shortPartyName(receiver)} on Canton`,
           info: {
             ...contractInfoBlock(ce),
             sender,

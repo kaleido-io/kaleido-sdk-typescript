@@ -170,6 +170,27 @@ describe('CantonCIP56Indexer', () => {
       expect(result.checkpoint).toEqual({ offset: 100 });
     });
 
+    it('adds locked label when holding has a lock', async () => {
+      const event = makeEvent({
+        interfaceViews: [
+          holdingInterfaceView({
+            owner: 'alice::fp',
+            amount: '100',
+            instrumentId: { admin: 'bank::fp', id: 'TOK' },
+            lock: { holders: ['bank::fp'], expiresAt: null, expiresAfter: null, context: '' },
+          }),
+        ],
+      });
+
+      const result = makeResult();
+      await indexer.eventProcessorBatch(result, makeBatch([event]));
+
+      const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(call.fragments[0].labels).toMatchObject({
+        locked: 'true',
+      });
+    });
+
     it('extracts instrumentId from view', async () => {
       const event = makeEvent({
         interfaceViews: [
@@ -315,7 +336,7 @@ describe('CantonCIP56Indexer', () => {
       expect(call.fragments[0]).toMatchObject({
         name: 'ti-1',
         address: 'alice::fp1',
-        value: '42.5',
+        value: '425000000000',
         labels: expect.objectContaining({
           chain: 'canton',
           standard: 'CIP-56',
@@ -354,7 +375,7 @@ describe('CantonCIP56Indexer', () => {
       expect(call.fragments[0]).toMatchObject({
         name: 'to-1',
         address: 'alice::fp1',
-        value: '10.0',
+        value: '100000000000',
         displayName: 'TransferInstruction 10.0 TestInstId',
         labels: expect.objectContaining({
           chain: 'canton',
