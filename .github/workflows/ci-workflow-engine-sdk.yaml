@@ -24,11 +24,13 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: Build core dependency
-        working-directory: packages/core
-        run: npm install && npm run build
+      - name: Install workspace dependencies
+        working-directory: .
+        run: npm install
 
-      - run: npm install
+      - name: Build core
+        working-directory: packages/core
+        run: npm run build
 
       - run: npm run lint
 
@@ -49,13 +51,17 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: Build core dependency
-        working-directory: packages/core
-        run: npm install && npm run build
+      - name: Install workspace dependencies
+        working-directory: .
+        run: npm install
 
-      - name: Install SDK (local)
+      - name: Build core and SDK
+        working-directory: packages/core
+        run: npm run build
+
+      - name: Build SDK
         working-directory: packages/workflow-engine-sdk
-        run: npm install && npm run build
+        run: npm run build
 
       - run: npm install
 
@@ -74,13 +80,17 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: Build core dependency
-        working-directory: packages/core
-        run: npm install && npm run build
+      - name: Install workspace dependencies
+        working-directory: .
+        run: npm install
 
-      - name: Install SDK (local)
+      - name: Build core
+        working-directory: packages/core
+        run: npm run build
+
+      - name: Build SDK
         working-directory: packages/workflow-engine-sdk
-        run: npm install && npm run build
+        run: npm run build
 
       - run: npm install
 
