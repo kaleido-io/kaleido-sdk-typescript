@@ -255,7 +255,7 @@ export class CantonCIP56Indexer {
     result: WSEventProcessorBatchResult,
     batch: WSEventProcessorBatchRequest,
   ): Promise<void> {
-    this.log.info(`Batch received: ${batch.events.length} events`);
+    this.log.debug(`Batch received: ${batch.events.length} events`);
 
     // Pass 1: warm owner cache for create events, collect cache misses for archives
     const cacheMisses = new Set<string>();
@@ -337,10 +337,10 @@ export class CantonCIP56Indexer {
     for (const event of batch.events) {
       const ce = event.data as CantonContractEvent;
 
-      this.log.info(
+      this.log.debug(
         `EVENT ${ce.eventType} ${ce.entityName} offset=${ce.offset} txId=${ce.transactionId} contractId=${ce.contractId}`,
       );
-      this.log.info(JSON.stringify(ce, null, 2));
+      // this.log.info(JSON.stringify(ce, null, 2));
 
       if (isCreate(ce)) {
         for (const handler of this.handlers) {
