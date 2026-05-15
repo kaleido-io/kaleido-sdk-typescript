@@ -32,7 +32,7 @@ import type {
 import type { CantonContractEvent, ContractInterfaceView } from './types.js';
 import { shortPartyName, normalizeAddr, contractInfoBlock, baseLabels } from './helpers.js';
 
-// ── Contract cache types ────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────
 
 type ContractInfo = {
   owner: string;
@@ -47,6 +47,18 @@ type TransferContext = {
   amount?: string;
   instrumentId?: string;
   contractId?: string;
+};
+
+type BatchContext = {
+  fragmentMap: Map<string, Fragment>;
+  transfers: Transfer[];
+  addressMap: Map<string, Address>;
+  assetMap: Map<string, Asset>;
+  poolMap: Map<string, Pool>;
+  addressSet: Set<string>;
+  txContext: Map<string, TransferContext>;
+  contracts: Map<string, ContractInfo>;
+  addAddress: (addr: Address) => void;
 };
 
 // ── CIP-56 view types ───────────────────────────────────────────────
@@ -136,7 +148,6 @@ function extractIssuer(view: HoldingView): string {
   return view.instrumentId?.admin ?? '';
 }
 
-
 /**
  * Convert a Daml Decimal string to integer base units.
  *
@@ -171,51 +182,27 @@ function isArchive(ce: CantonContractEvent): boolean {
   );
 }
 
-// ── Handler context ─────────────────────────────────────────────────
-
-type HandlerContext = {
-  fragmentMap: Map<string, Fragment>;
-  transfers: Transfer[];
-  addressMap: Map<string, Address>;
-  assetMap: Map<string, Asset>;
-  poolMap: Map<string, Pool>;
-  addressSet: Set<string>;
-  txContext: Map<string, TransferContext>;
-  addAddress: (addr: Address) => void;
-  setOwner: (contractId: string, owner: string) => void;
-  setContractInfo: (contractId: string, info: ContractInfo) => void;
-  getContractInfo: (contractId: string) => ContractInfo | undefined;
-};
-
-type EventHandler<T = unknown> = {
-  match: (ce: CantonContractEvent) => T | null | undefined | false;
-  extractOwner: (ce: CantonContractEvent, matched: T) => string;
-  handleCreated: (ce: CantonContractEvent, ctx: HandlerContext, matched: T) => void;
-  handleArchived?: (ce: CantonContractEvent, ctx: HandlerContext) => void;
-};
-
 // ── CIP-56 Indexer ──────────────────────────────────────────────────
 
 /**
  * CIP-56 event processor for the Canton connector.
  *
- * Two-pass batch pipeline:
- *   Pass 1 — warm contract-owner cache from creates, bulk-query AM for archive misses.
- *   Pre-scan — resolve TransferInstruction context for holding enrichment.
- *   Pass 2 — dispatch events to matched handlers, collect entities.
- *   Flush — single bulkUpsert with all fragments, transfers, addresses, assets, pools.
+ * Batch pipeline:
+ *   Scan 1 — build batch-local maps from creates (contracts + TI context).
+ *   Scan 2 — restore cross-batch transfer context, collect archive/TI misses.
+ *   Query  — single batched AM bulk-query for all cache misses.
+ *   Process — dispatch creates and archives, collect entities.
+ *   Flush  — single bulkUpsert with all fragments, transfers, addresses, assets, pools.
  *
- * Handlers (checked in order):
- *   1. Holding created   -> fragment + balance-add transfer + addresses + asset + pool
- *      Holding archived  -> balance-subtract transfer + fragment.labels.spent = "true"
- *   2. TransferInstruction created -> fragment (pending transfer, no balance change)
- *
- *   All archived / consuming exercise events also set fragment.labels.spent = "true".
+ * State model:
+ *   - No persistent caches for contract or TI data; all state is batch-local.
+ *   - A bounded txTransferContext bridges TI exercise → Holding enrichment
+ *     across WFE batches, evicted after each batch that references the txId.
+ *   - On cache miss (contract created in a prior batch), AM is queried
+ *     for the existing fragment.
  */
 export class CantonCIP56Indexer {
   private amClient: AssetManagerClient | undefined;
-  private contractCache = new Map<string, ContractInfo>();
-  private transferInstructionCache = new Map<string, TransferContext>();
   private txTransferContext = new Map<string, TransferContext>();
   private log = newLogger('canton-cip56-indexer');
 
@@ -245,8 +232,8 @@ export class CantonCIP56Indexer {
   ): Promise<void> {
     const BATCH_SIZE = 100;
     for (let i = 0; i < lookups.length; i += BATCH_SIZE) {
-      const batch = lookups.slice(i, i + BATCH_SIZE);
-      const result = await this.amClient!.bulkQuery(buildQuery(batch));
+      const chunk = lookups.slice(i, i + BATCH_SIZE);
+      const result = await this.amClient!.bulkQuery(buildQuery(chunk));
       handleResults(extractResults(result));
     }
   }
@@ -257,55 +244,122 @@ export class CantonCIP56Indexer {
   ): Promise<void> {
     this.log.debug(`Batch received: ${batch.events.length} events`);
 
-    // Pass 1: warm owner cache for create events, collect cache misses for archives
-    const cacheMisses = new Set<string>();
+    const contracts = new Map<string, ContractInfo>();
+    const batchTI = new Map<string, TransferContext>();
+    const txContext = new Map<string, TransferContext>();
+    const archiveMisses = new Set<string>();
+    const tiMisses: string[] = [];
+    const exerciseEvents: CantonContractEvent[] = [];
+    const txIdsInBatch = new Set<string>();
+
+    // ── Scan 1: collect creates into batch-local maps ─────────────
     for (const event of batch.events) {
       const ce = event.data as CantonContractEvent;
+      if (!isCreate(ce)) continue;
 
-      if (isCreate(ce)) {
-        for (const handler of this.handlers) {
-          const matched = handler.match(ce);
-          if (matched) {
-            const owner = normalizeAddr(handler.extractOwner(ce, matched));
-            if (owner) this.contractCache.set(ce.contractId, { owner });
-            break;
-          }
+      const holdingIV = findHoldingView(ce);
+      if (holdingIV?.viewValue) {
+        const view = holdingIV.viewValue as unknown as HoldingView;
+        const instId = extractInstrumentId(view);
+        const issuer = normalizeAddr(extractIssuer(view));
+        contracts.set(ce.contractId, {
+          owner: normalizeAddr(view.owner),
+          amount: toBaseUnits(String(view.amount)),
+          asset: instId,
+          poolRef: `${issuer}/${instId}`,
+        });
+      } else {
+        const td = extractTransferData(ce);
+        if (td) {
+          const sender = normalizeAddr(td.sender || ce.signatories?.[0] || '');
+          contracts.set(ce.contractId, { owner: sender });
+          batchTI.set(ce.contractId, {
+            sender,
+            receiver: normalizeAddr(td.receiver),
+            amount: td.amount,
+            instrumentId: td.instrumentId?.id,
+          });
+        }
+      }
+    }
+
+    // ── Scan 2: restore cross-batch context, collect misses ───────
+    for (const event of batch.events) {
+      const ce = event.data as CantonContractEvent;
+      txIdsInBatch.add(ce.transactionId);
+
+      if (!txContext.has(ce.transactionId)) {
+        const prior = this.txTransferContext.get(ce.transactionId);
+        if (prior) txContext.set(ce.transactionId, prior);
+      }
+
+      if (isArchive(ce) && !contracts.has(ce.contractId)) {
+        archiveMisses.add(ce.contractId);
+      }
+
+      if (ce.eventType === 'exercised' && ce.consuming) {
+        const tiInfo = batchTI.get(ce.contractId);
+        if (tiInfo) {
+          const ctx = { ...tiInfo, contractId: ce.contractId };
+          txContext.set(ce.transactionId, ctx);
+          this.txTransferContext.set(ce.transactionId, ctx);
+          batchTI.delete(ce.contractId);
+        } else if (!txContext.has(ce.transactionId)) {
+          tiMisses.push(ce.contractId);
+          exerciseEvents.push(ce);
         }
       }
 
-      if (isArchive(ce) && !this.contractCache.has(ce.contractId)) {
-        cacheMisses.add(ce.contractId);
+      if (ce.eventType === 'archived') {
+        batchTI.delete(ce.contractId);
       }
     }
 
-    // Bulk-query Asset Manager for all cache misses (batched)
-    if (cacheMisses.size > 0 && this.amClient) {
+    // ── AM query: resolve all misses in one batched call ──────────
+    const allMisses = new Set([...archiveMisses, ...tiMisses]);
+    if (allMisses.size > 0 && this.amClient) {
+      const fragMap = new Map<string, Fragment>();
       await this.batchLookup<Fragment>(
-        Array.from(cacheMisses),
-        (batch) => ({ fragments: { limit: batch.length, in: [{ field: 'name', values: batch }] } }),
+        Array.from(allMisses),
+        (chunk) => ({ fragments: { limit: chunk.length, in: [{ field: 'name', values: chunk }] } }),
         (output) => output.fragments?.items ?? [],
         (fragments) => {
-          for (const frag of fragments) {
-            if (!frag.name || !frag.address) continue;
-            const issuer = normalizeAddr(frag.labels?.issuer ?? '');
-            const instId = frag.labels?.instrumentId || frag.asset;
-            this.contractCache.set(frag.name, {
-              owner: normalizeAddr(frag.address),
-              amount: frag.value,
-              asset: instId,
-              poolRef: issuer && instId ? `${issuer}/${instId}` : undefined,
-            });
+          for (const f of fragments) {
+            if (f.name) fragMap.set(f.name, f);
           }
         },
       );
+
+      for (const contractId of archiveMisses) {
+        const frag = fragMap.get(contractId);
+        if (frag?.address) {
+          const issuer = normalizeAddr(frag.labels?.issuer ?? '');
+          const instId = frag.labels?.instrumentId || frag.asset;
+          contracts.set(contractId, {
+            owner: normalizeAddr(frag.address),
+            amount: frag.value,
+            asset: instId,
+            poolRef: issuer && instId ? `${issuer}/${instId}` : undefined,
+          });
+        }
+      }
+
+      for (const ce of exerciseEvents) {
+        const frag = fragMap.get(ce.contractId);
+        if (frag?.labels?.sender) {
+          const ctx: TransferContext = {
+            sender: frag.labels.sender,
+            receiver: frag.labels.receiver ?? '',
+            instrumentId: frag.labels.instrumentId,
+            contractId: ce.contractId,
+          };
+          txContext.set(ce.transactionId, ctx);
+          this.txTransferContext.set(ce.transactionId, ctx);
+        }
+      }
     }
 
-    // Pre-scan: resolve TransferInstruction context for holding enrichment
-    const txContext = new Map<string, TransferContext>();
-    const rawEvents = batch.events.map((e) => e.data as CantonContractEvent);
-    await this.preScanBatch(rawEvents, txContext);
-
-    // Pass 2: dispatch events to matched handlers
+    // ── Process: dispatch events, collect entities ────────────────
     const fragmentMap = new Map<string, Fragment>();
     const transfers: Transfer[] = [];
     const addressMap = new Map<string, Address>();
@@ -313,25 +367,15 @@ export class CantonCIP56Indexer {
     const poolMap = new Map<string, Pool>();
     const addressSet = new Set<string>();
 
-    const ctx: HandlerContext = {
-      fragmentMap,
-      transfers,
-      addressMap,
-      assetMap,
-      poolMap,
-      addressSet,
-      txContext,
-      addAddress: (addr: Address) => {
-        const role = (addr.info as Record<string, unknown>)?.role ?? '';
-        const key = `${addr.address}:${role}`;
-        if (!addressMap.has(key)) addressMap.set(key, addr);
-      },
-      setOwner: (id, owner) => {
-        const existing = this.contractCache.get(id);
-        this.contractCache.set(id, { ...existing, owner });
-      },
-      setContractInfo: (id, info) => this.contractCache.set(id, info),
-      getContractInfo: (id) => this.contractCache.get(id),
+    const addAddress = (addr: Address) => {
+      const role = (addr.info as Record<string, unknown>)?.role ?? '';
+      const key = `${addr.address}:${role}`;
+      if (!addressMap.has(key)) addressMap.set(key, addr);
+    };
+
+    const ctx: BatchContext = {
+      fragmentMap, transfers, addressMap, assetMap, poolMap, addressSet,
+      txContext, contracts, addAddress,
     };
 
     for (const event of batch.events) {
@@ -340,22 +384,28 @@ export class CantonCIP56Indexer {
       this.log.debug(
         `EVENT ${ce.eventType} ${ce.entityName} offset=${ce.offset} txId=${ce.transactionId} contractId=${ce.contractId}`,
       );
-      // this.log.info(JSON.stringify(ce, null, 2));
 
       if (isCreate(ce)) {
-        for (const handler of this.handlers) {
-          const matched = handler.match(ce);
-          if (matched) {
-            handler.handleCreated(ce, ctx, matched);
-            break;
-          }
+        const holdingIV = findHoldingView(ce);
+        if (holdingIV?.viewValue) {
+          this.handleHoldingCreated(ce, holdingIV.viewValue as unknown as HoldingView, ctx);
+        } else {
+          const td = extractTransferData(ce);
+          if (td) this.handleTICreated(ce, td, ctx);
         }
       } else if (isArchive(ce)) {
-        this.handleArchived(ce, ctx);
+        const info = contracts.get(ce.contractId) ?? this.resolveFromEvent(ce);
+        if (info) {
+          this.handleArchived(ce, info, ctx);
+        } else {
+          this.log.warn(
+            `Skipping archive — unknown owner for contractId=${ce.contractId}`,
+          );
+        }
       }
     }
 
-    // Flush all collected entities via a single bulkUpsert
+    // ── Flush all collected entities via a single bulkUpsert ──────
     const fragments = Array.from(fragmentMap.values());
     const assets = Array.from(assetMap.values());
     const pools = Array.from(poolMap.values());
@@ -397,358 +447,252 @@ export class CantonCIP56Indexer {
       }
     }
 
+    // ── Evict txTransferContext for completed transactions ─────────
+    for (const txId of txIdsInBatch) {
+      this.txTransferContext.delete(txId);
+    }
+
     const lastEvent = batch.events[batch.events.length - 1];
     if (lastEvent) {
       result.checkpoint = { offset: (lastEvent.data as CantonContractEvent).offset };
     }
   }
 
-  // ── TransferInstruction pre-scan ────────────────────────────────
+  // ── Event-level fallback for owner resolution ──────────────────
 
-  private async preScanBatch(
-    events: CantonContractEvent[],
-    txContext: Map<string, TransferContext>,
-  ): Promise<void> {
-    for (const ce of events) {
-      if (ce.eventType === 'created') {
-        const td = extractTransferData(ce);
-        if (td) {
-          this.transferInstructionCache.set(ce.contractId, {
-            sender: normalizeAddr(td.sender),
-            receiver: normalizeAddr(td.receiver),
-            amount: td.amount,
-            instrumentId: td.instrumentId?.id,
-          });
-        }
-      }
+  private resolveFromEvent(ce: CantonContractEvent): ContractInfo | undefined {
+    const holdingIV = findHoldingView(ce);
+    if (holdingIV?.viewValue) {
+      const view = holdingIV.viewValue as unknown as HoldingView;
+      return { owner: normalizeAddr(view.owner) };
     }
-
-    // Restore transfer context from prior batches in the same transaction
-    for (const ce of events) {
-      const prior = this.txTransferContext.get(ce.transactionId);
-      if (prior) {
-        txContext.set(ce.transactionId, prior);
-      }
+    const td = extractTransferData(ce);
+    if (td) {
+      return { owner: normalizeAddr(td.sender || ce.signatories?.[0] || '') };
     }
+    return undefined;
+  }
 
-    const cacheMisses: string[] = [];
-    const exerciseEvents: CantonContractEvent[] = [];
+  // ── Holding created ────────────────────────────────────────────
 
-    for (const ce of events) {
-      if (ce.eventType === 'exercised' && ce.consuming) {
-        const tiInfo = this.transferInstructionCache.get(ce.contractId);
-        if (tiInfo) {
-          const ctx = { ...tiInfo, contractId: ce.contractId };
-          txContext.set(ce.transactionId, ctx);
-          this.txTransferContext.set(ce.transactionId, ctx);
-          this.transferInstructionCache.delete(ce.contractId);
-        } else {
-          cacheMisses.push(ce.contractId);
-          exerciseEvents.push(ce);
-        }
-      }
-      if (ce.eventType === 'archived') {
-        this.transferInstructionCache.delete(ce.contractId);
-      }
-    }
+  private handleHoldingCreated(
+    ce: CantonContractEvent,
+    view: HoldingView,
+    ctx: BatchContext,
+  ): void {
+    const owner = normalizeAddr(view.owner);
+    const issuer = normalizeAddr(extractIssuer(view));
+    const instId = extractInstrumentId(view);
+    const poolRef = `${issuer}/${instId}`;
+    const amount = toBaseUnits(String(view.amount));
 
-    if (cacheMisses.length > 0 && this.amClient) {
-      const fragMap = new Map<string, Fragment>();
-      await this.batchLookup<Fragment>(
-        cacheMisses,
-        (batch) => ({ fragments: { limit: batch.length, in: [{ field: 'name', values: batch }] } }),
-        (output) => output.fragments?.items ?? [],
-        (fragments) => {
-          for (const f of fragments) {
-            if (f.name) fragMap.set(f.name, f);
-          }
+    if (owner) ctx.addressSet.add(owner);
+    if (issuer) ctx.addressSet.add(issuer);
+
+    ctx.addAddress({
+      address: owner,
+      displayName: shortPartyName(owner),
+      info: { partyId: owner, role: 'owner' },
+      updateType: 'create_or_ignore',
+    });
+    ctx.addAddress({
+      address: issuer,
+      displayName: shortPartyName(issuer),
+      info: { partyId: issuer, role: 'issuer' },
+      updateType: 'create_or_ignore',
+    });
+
+    if (!ctx.assetMap.has(instId)) {
+      ctx.assetMap.set(instId, {
+        name: instId,
+        displayName: instId,
+        labels: {
+          chain: 'canton',
+          standard: 'CIP-56',
+          instrumentId: instId,
+          admin: issuer,
         },
-      );
-      for (const ce of exerciseEvents) {
-        const frag = fragMap.get(ce.contractId);
-        if (frag?.labels?.sender) {
-          const ctx: TransferContext = {
-            sender: frag.labels.sender,
-            receiver: frag.labels.receiver ?? '',
-            instrumentId: frag.labels.instrumentId,
-            contractId: ce.contractId,
-          };
-          txContext.set(ce.transactionId, ctx);
-          this.txTransferContext.set(ce.transactionId, ctx);
-        }
-      }
-    }
-  }
-
-  // ── Archive handling ────────────────────────────────────────────
-
-  private resolveOwner(ce: CantonContractEvent): string {
-    const cached = this.contractCache.get(ce.contractId);
-    if (cached) return cached.owner;
-
-    for (const handler of this.handlers) {
-      const matched = handler.match(ce);
-      if (matched) {
-        const owner = handler.extractOwner(ce, matched);
-        if (owner) return owner;
-      }
+        updateType: 'create_or_ignore',
+      });
     }
 
-    return '';
-  }
-
-  private handleArchived(ce: CantonContractEvent, ctx: HandlerContext): void {
-    const owner = this.resolveOwner(ce);
-
-    if (!owner) {
-      this.log.warn(
-        `Skipping archive — unknown owner for contractId=${ce.contractId}`,
-      );
-      return;
+    if (!ctx.poolMap.has(poolRef)) {
+      ctx.poolMap.set(poolRef, {
+        name: instId,
+        address: issuer,
+        standard: 'CIP-56',
+        asset: instId,
+        description: `CIP-56 holding pool for ${instId} issued by ${shortPartyName(issuer)} on Canton`,
+        labels: {
+          chain: 'canton',
+          standard: 'CIP-56',
+          instrumentId: instId,
+        },
+        updateType: 'create_or_ignore',
+      });
     }
-
-    for (const handler of this.handlers) {
-      if (handler.handleArchived) {
-        handler.handleArchived(ce, ctx);
-      }
-    }
-
-    ctx.addressSet.add(owner);
 
     const fragKey = `${owner}/${ce.contractId}`;
+    ctx.fragmentMap.set(fragKey, {
+      name: ce.contractId,
+      address: owner,
+      value: amount,
+      valueReference: ce.contractId,
+      asset: instId,
+      displayName: `${ce.entityName} ${view.amount} ${instId}`,
+      description: `CIP-56 holding of ${view.amount} ${instId} owned by ${shortPartyName(owner)}, issued by ${shortPartyName(issuer)} on Canton`,
+      info: {
+        ...contractInfoBlock(ce),
+        synchronizerId: ce.synchronizerId,
+        holdingView: view,
+        updateId: ce.updateId,
+      },
+      labels: {
+        ...baseLabels('CIP-56', 'holding'),
+        instrumentId: instId,
+        owner,
+        issuer,
+        ...(view.lock ? { locked: 'true' } : {}),
+      },
+      updateType: 'create_or_replace',
+    });
+
+    const txInfo = ctx.txContext.get(ce.transactionId);
+    const isTransfer = !!txInfo;
+    const displayAmount = String(view.amount);
+    ctx.transfers.push({
+      protocolId: `${ce.transactionId}/${ce.contractId}/created`,
+      ...(txInfo?.sender ? { from: txInfo.sender } : {}),
+      to: owner,
+      amount,
+      transactionHash: ce.transactionId,
+      parent: { type: 'pool', ref: poolRef },
+      displayName: isTransfer
+        ? `Receive ${displayAmount} ${instId}`
+        : `Holding created ${displayAmount} ${instId}`,
+      description: isTransfer
+        ? `CIP-56 receiving transfer of ${displayAmount} ${instId} from ${shortPartyName(txInfo!.sender)} to ${shortPartyName(owner)} on Canton`
+        : `CIP-56 holding of ${displayAmount} ${instId} created for ${shortPartyName(owner)} on Canton`,
+      info: {
+        offset: ce.offset,
+        contractId: ce.contractId,
+        effectiveAt: ce.effectiveAt,
+      },
+      balanceChanges: [
+        { address: owner, operation: 'add', amount },
+      ],
+      labels: {
+        chain: 'canton',
+        standard: 'CIP-56',
+        type: isTransfer ? 'transfer' : 'holding_created',
+        ...(isTransfer ? { direction: 'receive' } : {}),
+        ...(txInfo?.contractId ? { transferInstructionId: txInfo.contractId } : {}),
+      },
+      updateType: 'create_or_replace',
+    });
+  }
+
+  // ── TransferInstruction created ────────────────────────────────
+
+  private handleTICreated(
+    ce: CantonContractEvent,
+    td: TransferData,
+    ctx: BatchContext,
+  ): void {
+    const sender = normalizeAddr(td.sender || ce.signatories?.[0] || '');
+    const receiver = normalizeAddr(td.receiver || '');
+    const rawAmount = td.amount || '0';
+    const amount = toBaseUnits(rawAmount);
+    const instId = td.instrumentId?.id || '';
+    const admin = td.instrumentId?.admin || '';
+
+    if (sender) ctx.addressSet.add(sender);
+    if (receiver) ctx.addressSet.add(receiver);
+
+    const fragKey = `${sender}/${ce.contractId}`;
+    ctx.fragmentMap.set(fragKey, {
+      name: ce.contractId,
+      address: sender,
+      value: amount,
+      valueReference: ce.contractId,
+      displayName: `TransferInstruction ${rawAmount} ${instId}`,
+      description: `CIP-56 transfer instruction of ${rawAmount} ${instId} from ${shortPartyName(sender)} to ${shortPartyName(receiver)} on Canton`,
+      info: {
+        ...contractInfoBlock(ce),
+        sender,
+        receiver,
+        instrumentId: td.instrumentId,
+        interfaceViews: ce.interfaceViews,
+      },
+      labels: {
+        ...baseLabels('CIP-56', 'transfer_instruction'),
+        instrumentId: instId,
+        admin,
+        sender,
+        receiver,
+      },
+      updateType: 'create_or_replace',
+    });
+  }
+
+  // ── Archive handling ───────────────────────────────────────────
+
+  private handleArchived(
+    ce: CantonContractEvent,
+    info: ContractInfo,
+    ctx: BatchContext,
+  ): void {
+    if (info.amount && info.poolRef) {
+      const txInfo = ctx.txContext.get(ce.transactionId);
+      const isTransfer = !!txInfo;
+      const asset = info.asset ?? '';
+      ctx.transfers.push({
+        protocolId: `${ce.transactionId}/${ce.contractId}/archived`,
+        from: info.owner,
+        ...(txInfo?.receiver ? { to: txInfo.receiver } : {}),
+        amount: info.amount,
+        transactionHash: ce.transactionId,
+        parent: { type: 'pool', ref: info.poolRef },
+        displayName: isTransfer
+          ? `Send ${asset} to ${shortPartyName(txInfo!.receiver)}`
+          : `Holding archived ${asset}`,
+        description: isTransfer
+          ? `CIP-56 sending transfer of ${asset} from ${shortPartyName(info.owner)} to ${shortPartyName(txInfo!.receiver)} on Canton`
+          : `CIP-56 holding of ${asset} archived for ${shortPartyName(info.owner)} on Canton`,
+        info: {
+          offset: ce.offset,
+          contractId: ce.contractId,
+          effectiveAt: ce.effectiveAt,
+        },
+        balanceChanges: [
+          { address: info.owner, operation: 'subtract', amount: info.amount },
+        ],
+        labels: {
+          chain: 'canton',
+          standard: 'CIP-56',
+          type: isTransfer ? 'transfer' : 'holding_archived',
+          ...(isTransfer ? { direction: 'send' } : {}),
+          ...(txInfo?.contractId ? { transferInstructionId: txInfo.contractId } : {}),
+        },
+        updateType: 'create_or_replace',
+      });
+    }
+
+    ctx.addressSet.add(info.owner);
+
+    const fragKey = `${info.owner}/${ce.contractId}`;
     const existing = ctx.fragmentMap.get(fragKey);
     if (existing) {
       existing.labels = { ...existing.labels, spent: 'true' };
     } else {
       ctx.fragmentMap.set(fragKey, {
         name: ce.contractId,
-        address: owner,
+        address: info.owner,
         labels: { chain: 'canton', spent: 'true' },
         updateType: 'create_or_update',
       });
     }
   }
-
-  // ── Handler definitions ─────────────────────────────────────────
-
-  private handlers: EventHandler<unknown>[] = [
-    // 1. Holding (via CIP-56 interface view)
-    {
-      match: (ce) => findHoldingView(ce) ?? null,
-      extractOwner: (_ce, matched) => {
-        const iv = matched as ContractInterfaceView;
-        return iv.viewValue
-          ? normalizeAddr((iv.viewValue as unknown as HoldingView).owner)
-          : '';
-      },
-      handleCreated: (ce, ctx, matched) => {
-        const iv = matched as ContractInterfaceView;
-        const view = iv.viewValue as unknown as HoldingView;
-        const owner = normalizeAddr(view.owner);
-        const issuer = normalizeAddr(extractIssuer(view));
-        const instId = extractInstrumentId(view);
-        const poolRef = `${issuer}/${instId}`;
-        const amount = toBaseUnits(String(view.amount));
-
-        ctx.setContractInfo(ce.contractId, {
-          owner,
-          amount,
-          asset: instId,
-          poolRef,
-        });
-        if (owner) ctx.addressSet.add(owner);
-        if (issuer) ctx.addressSet.add(issuer);
-
-        ctx.addAddress({
-          address: owner,
-          displayName: shortPartyName(owner),
-          info: { partyId: owner, role: 'owner' },
-          updateType: 'create_or_ignore',
-        });
-        ctx.addAddress({
-          address: issuer,
-          displayName: shortPartyName(issuer),
-          info: { partyId: issuer, role: 'issuer' },
-          updateType: 'create_or_ignore',
-        });
-
-        if (!ctx.assetMap.has(instId)) {
-          ctx.assetMap.set(instId, {
-            name: instId,
-            displayName: instId,
-            labels: {
-              chain: 'canton',
-              standard: 'CIP-56',
-              instrumentId: instId,
-              admin: issuer,
-            },
-            updateType: 'create_or_ignore',
-          });
-        }
-
-        if (!ctx.poolMap.has(poolRef)) {
-          ctx.poolMap.set(poolRef, {
-            name: instId,
-            address: issuer,
-            standard: 'CIP-56',
-            asset: instId,
-            description: `CIP-56 holding pool for ${instId} issued by ${shortPartyName(issuer)} on Canton`,
-            labels: {
-              chain: 'canton',
-              standard: 'CIP-56',
-              instrumentId: instId,
-            },
-            updateType: 'create_or_ignore',
-          });
-        }
-
-        const fragKey = `${owner}/${ce.contractId}`;
-        ctx.fragmentMap.set(fragKey, {
-          name: ce.contractId,
-          address: owner,
-          value: amount,
-          valueReference: ce.contractId,
-          asset: instId,
-          displayName: `${ce.entityName} ${view.amount} ${instId}`,
-          description: `CIP-56 holding of ${view.amount} ${instId} owned by ${shortPartyName(owner)}, issued by ${shortPartyName(issuer)} on Canton`,
-          info: {
-            ...contractInfoBlock(ce),
-            synchronizerId: ce.synchronizerId,
-            holdingView: view,
-            updateId: ce.updateId,
-          },
-          labels: {
-            ...baseLabels('CIP-56', 'holding'),
-            instrumentId: instId,
-            owner,
-            issuer,
-            ...(view.lock ? { locked: 'true' } : {}),
-          },
-          updateType: 'create_or_replace',
-        });
-
-        const txInfo = ctx.txContext.get(ce.transactionId);
-        const isTransfer = !!txInfo;
-        const displayAmount = String(view.amount);
-        ctx.transfers.push({
-          protocolId: `${ce.transactionId}/${ce.contractId}/created`,
-          ...(txInfo?.sender ? { from: txInfo.sender } : {}),
-          to: owner,
-          amount,
-          transactionHash: ce.transactionId,
-          parent: { type: 'pool', ref: poolRef },
-          displayName: isTransfer
-            ? `Receive ${displayAmount} ${instId}`
-            : `Holding created ${displayAmount} ${instId}`,
-          description: isTransfer
-            ? `CIP-56 receiving transfer of ${displayAmount} ${instId} from ${shortPartyName(txInfo!.sender)} to ${shortPartyName(owner)} on Canton`
-            : `CIP-56 holding of ${displayAmount} ${instId} created for ${shortPartyName(owner)} on Canton`,
-          info: {
-            offset: ce.offset,
-            contractId: ce.contractId,
-            effectiveAt: ce.effectiveAt,
-          },
-          balanceChanges: [
-            { address: owner, operation: 'add', amount },
-          ],
-          labels: {
-            chain: 'canton',
-            standard: 'CIP-56',
-            type: isTransfer ? 'transfer' : 'holding_created',
-            ...(isTransfer ? { direction: 'receive' } : {}),
-            ...(txInfo?.contractId ? { transferInstructionId: txInfo.contractId } : {}),
-          },
-          updateType: 'create_or_replace',
-        });
-      },
-      handleArchived: (ce, ctx) => {
-        const info = ctx.getContractInfo(ce.contractId);
-        if (!info?.amount || !info?.poolRef) return;
-
-        const txInfo = ctx.txContext.get(ce.transactionId);
-        const isTransfer = !!txInfo;
-        const asset = info.asset ?? '';
-        ctx.transfers.push({
-          protocolId: `${ce.transactionId}/${ce.contractId}/archived`,
-          from: info.owner,
-          ...(txInfo?.receiver ? { to: txInfo.receiver } : {}),
-          amount: info.amount,
-          transactionHash: ce.transactionId,
-          parent: { type: 'pool', ref: info.poolRef },
-          displayName: isTransfer
-            ? `Send ${asset} to ${shortPartyName(txInfo!.receiver)}`
-            : `Holding archived ${asset}`,
-          description: isTransfer
-            ? `CIP-56 sending transfer of ${asset} from ${shortPartyName(info.owner)} to ${shortPartyName(txInfo!.receiver)} on Canton`
-            : `CIP-56 holding of ${asset} archived for ${shortPartyName(info.owner)} on Canton`,
-          info: {
-            offset: ce.offset,
-            contractId: ce.contractId,
-            effectiveAt: ce.effectiveAt,
-          },
-          balanceChanges: [
-            { address: info.owner, operation: 'subtract', amount: info.amount },
-          ],
-          labels: {
-            chain: 'canton',
-            standard: 'CIP-56',
-            type: isTransfer ? 'transfer' : 'holding_archived',
-            ...(isTransfer ? { direction: 'send' } : {}),
-            ...(txInfo?.contractId ? { transferInstructionId: txInfo.contractId } : {}),
-          },
-          updateType: 'create_or_replace',
-        });
-      },
-    },
-
-    // 2. TransferInstruction (via interface view or arguments.transfer fallback)
-    {
-      match: (ce) => extractTransferData(ce),
-      extractOwner: (ce, matched) => {
-        const td = matched as TransferData;
-        return normalizeAddr(td.sender || ce.signatories?.[0] || '');
-      },
-      handleCreated: (ce, ctx, matched) => {
-        const td = matched as TransferData;
-        const sender = normalizeAddr(td.sender || ce.signatories?.[0] || '');
-        const receiver = normalizeAddr(td.receiver || '');
-        const rawAmount = td.amount || '0';
-        const amount = toBaseUnits(rawAmount);
-        const instId = td.instrumentId?.id || '';
-        const admin = td.instrumentId?.admin || '';
-
-        ctx.setOwner(ce.contractId, sender);
-        if (sender) ctx.addressSet.add(sender);
-        if (receiver) ctx.addressSet.add(receiver);
-
-        const fragKey = `${sender}/${ce.contractId}`;
-        ctx.fragmentMap.set(fragKey, {
-          name: ce.contractId,
-          address: sender,
-          value: amount,
-          valueReference: ce.contractId,
-          displayName: `TransferInstruction ${rawAmount} ${instId}`,
-          description: `CIP-56 transfer instruction of ${rawAmount} ${instId} from ${shortPartyName(sender)} to ${shortPartyName(receiver)} on Canton`,
-          info: {
-            ...contractInfoBlock(ce),
-            sender,
-            receiver,
-            instrumentId: td.instrumentId,
-            interfaceViews: ce.interfaceViews,
-          },
-          labels: {
-            ...baseLabels('CIP-56', 'transfer_instruction'),
-            instrumentId: instId,
-            admin,
-            sender,
-            receiver,
-          },
-          updateType: 'create_or_replace',
-        });
-      },
-    },
-
-  ];
 }
 
 export const cantonCip56Indexer = new CantonCIP56Indexer();

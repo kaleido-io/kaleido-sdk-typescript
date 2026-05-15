@@ -391,7 +391,7 @@ describe('CantonCIP56Indexer', () => {
       });
     });
 
-    it('caches owner from arguments.transfer and marks spent on archive', async () => {
+    it('marks spent on archive via AM query when TI was in a prior batch', async () => {
       const createEvent = makeEvent({
         contractId: 'to-2',
         entityName: 'TransferInstruction',
@@ -412,6 +412,13 @@ describe('CantonCIP56Indexer', () => {
 
       const r1 = makeResult();
       await indexer.eventProcessorBatch(r1, makeBatch([createEvent]));
+
+      // AM returns the TI fragment for the archive batch
+      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        fragments: {
+          items: [{ name: 'to-2', address: 'alice::fp1' }],
+        },
+      });
 
       const r2 = makeResult();
       await indexer.eventProcessorBatch(r2, makeBatch([archiveEvent]));
@@ -445,6 +452,18 @@ describe('CantonCIP56Indexer', () => {
 
       const result1 = makeResult();
       await indexer.eventProcessorBatch(result1, makeBatch([createEvent]));
+
+      // AM returns the Holding fragment for the archive batch
+      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        fragments: {
+          items: [{
+            name: 'contract-1',
+            address: 'alice::fp',
+            value: '1000000000000',
+            labels: { issuer: 'bank::fp', instrumentId: 'TOK' },
+          }],
+        },
+      });
 
       const result2 = makeResult();
       await indexer.eventProcessorBatch(result2, makeBatch([archiveEvent]));
@@ -498,6 +517,18 @@ describe('CantonCIP56Indexer', () => {
       const result1 = makeResult();
       await indexer.eventProcessorBatch(result1, makeBatch([createEvent]));
 
+      // AM returns the Holding fragment for the exercise batch
+      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        fragments: {
+          items: [{
+            name: 'contract-2',
+            address: 'alice::fp',
+            value: '500000000000',
+            labels: { issuer: 'bank::fp', instrumentId: 'TOK' },
+          }],
+        },
+      });
+
       const result2 = makeResult();
       await indexer.eventProcessorBatch(result2, makeBatch([exerciseEvent]));
 
@@ -520,7 +551,7 @@ describe('CantonCIP56Indexer', () => {
       });
     });
 
-    it('resolves owner via bulk AM fragment query when cache is empty', async () => {
+    it('resolves owner via bulk AM fragment query when contract is unknown', async () => {
       (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         fragments: {
           items: [{ name: 'orphan-contract', address: 'recovered-owner::fp' }],
@@ -681,6 +712,20 @@ describe('CantonCIP56Indexer', () => {
       const r1 = makeResult();
       await indexer.eventProcessorBatch(r1, makeBatch([tiCreate]));
 
+      const oldHoldingCreate = makeEvent({
+        contractId: 'old-holding',
+        transactionId: 'tx-old',
+        offset: 0,
+        interfaceViews: [
+          holdingInterfaceView({
+            owner: 'alice::fp',
+            amount: '100',
+            instrumentId: { admin: 'bank::fp', id: 'TestInstId' },
+          }),
+        ],
+      });
+      await indexer.eventProcessorBatch(makeResult(), makeBatch([oldHoldingCreate]));
+
       const tiExercise = makeEvent({
         eventType: 'exercised',
         consuming: true,
@@ -707,19 +752,24 @@ describe('CantonCIP56Indexer', () => {
         offset: 12,
       });
 
-      const oldHoldingCreate = makeEvent({
-        contractId: 'old-holding',
-        transactionId: 'tx-old',
-        offset: 0,
-        interfaceViews: [
-          holdingInterfaceView({
-            owner: 'alice::fp',
-            amount: '100',
-            instrumentId: { admin: 'bank::fp', id: 'TestInstId' },
-          }),
-        ],
+      // AM returns TI fragment (for exercise miss) and Holding fragment (for archive miss)
+      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        fragments: {
+          items: [
+            {
+              name: 'ti-enrich',
+              address: 'alice::fp',
+              labels: { sender: 'alice::fp', receiver: 'bob::fp', instrumentId: 'TestInstId', type: 'transfer_instruction' },
+            },
+            {
+              name: 'old-holding',
+              address: 'alice::fp',
+              value: '1000000000000',
+              labels: { issuer: 'bank::fp', instrumentId: 'TestInstId', type: 'holding' },
+            },
+          ],
+        },
       });
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([oldHoldingCreate]));
 
       const r2 = makeResult();
       await indexer.eventProcessorBatch(
@@ -752,11 +802,7 @@ describe('CantonCIP56Indexer', () => {
     });
 
     it('falls back to AM fragment query when TI not in cache (restart scenario)', async () => {
-      // First bulkQuery: archive cache miss lookup (returns nothing for the exercised contract)
-      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        fragments: { items: [] },
-      });
-      // Second bulkQuery: preScan TI cache miss lookup
+      // Single AM query returns the TI fragment with sender/receiver labels
       (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         fragments: {
           items: [{
@@ -829,7 +875,7 @@ describe('CantonCIP56Indexer', () => {
       expect(call.transfers[0].from).toBeUndefined();
     });
 
-    it('cleans up TI cache on archive', async () => {
+    it('does not enrich holdings after TI is archived (not exercised)', async () => {
       const tiCreate = makeEvent({
         contractId: 'ti-cleanup',
         entityName: 'TransferInstruction',
@@ -845,6 +891,13 @@ describe('CantonCIP56Indexer', () => {
         },
       });
       await indexer.eventProcessorBatch(makeResult(), makeBatch([tiCreate]));
+
+      // AM returns the TI fragment for the archive batch
+      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        fragments: {
+          items: [{ name: 'ti-cleanup', address: 'alice::fp' }],
+        },
+      });
 
       const tiArchive = makeEvent({
         eventType: 'archived',
