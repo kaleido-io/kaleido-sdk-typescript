@@ -14,12 +14,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/**
- * TypeScript types matching the Go structs emitted by the Canton connector.
- *
- * Go source: cantonconnect/pkg/cantontypes/event_types.go
- *            cantonconnect/pkg/cantontypes/contract_types.go
- */
+import type {
+  Address,
+  Asset,
+  Fragment,
+  Pool,
+  Transfer,
+} from '../clients/asset-manager/models.js';
+
+// ── Canton contract event types ─────────────────────────────────────
 
 export type CantonContractEvent = {
   eventType: 'created' | 'archived' | 'exercised';
@@ -68,4 +71,75 @@ export type CantonContractEventsConfig = {
   interfaceIds?: string[];
   includeCreatedEventBlob?: boolean | null;
   userId?: string;
+};
+
+// ── CIP-56 interface view types ─────────────────────────────────────
+
+export const HOLDING_INTERFACE = 'Splice.Api.Token.HoldingV1:Holding';
+export const TRANSFER_INSTRUCTION_INTERFACE =
+  'Splice.Api.Token.TransferInstructionV1:TransferInstruction';
+
+export type HoldingView = {
+  owner: string;
+  amount: string;
+  instrumentId?: {
+    admin?: string;
+    id?: string;
+  };
+  lock?: unknown;
+  meta?: {
+    values?: Record<string, string>;
+  };
+};
+
+export type TransferData = {
+  sender: string;
+  receiver: string;
+  amount: string;
+  instrumentId?: {
+    admin?: string;
+    id?: string;
+  };
+};
+
+// ── Indexer batch context types ─────────────────────────────────────
+
+export type ContractInfo = {
+  owner: string;
+  amount?: string;
+  asset?: string;
+  poolRef?: string;
+};
+
+export type TransferContext = {
+  sender: string;
+  receiver: string;
+  amount?: string;
+  instrumentId?: string;
+  contractId?: string;
+};
+
+export type BatchContext = {
+  fragmentMap: Map<string, Fragment>;
+  transfers: Transfer[];
+  addressMap: Map<string, Address>;
+  assetMap: Map<string, Asset>;
+  poolMap: Map<string, Pool>;
+  addressSet: Set<string>;
+  txContext: Map<string, TransferContext>;
+  contracts: Map<string, ContractInfo>;
+  addAddress: (addr: Address) => void;
+};
+
+export type ScanCreatesResult = {
+  contracts: Map<string, ContractInfo>;
+  batchTI: Map<string, TransferContext>;
+};
+
+export type ScanContextResult = {
+  txContext: Map<string, TransferContext>;
+  archiveMisses: Set<string>;
+  tiMisses: string[];
+  exerciseEvents: CantonContractEvent[];
+  txIdsInBatch: Set<string>;
 };

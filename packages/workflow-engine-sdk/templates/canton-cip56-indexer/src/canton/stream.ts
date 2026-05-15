@@ -36,8 +36,8 @@ const eventSourceConfig: CantonContractEventsConfig = {
  * WFE event stream definition for the Canton CIP-56 indexer.
  *
  * Connects two handlers:
- *   Source:    "cantonContractEvents" from the Canton Connector — polls for
- *             contract lifecycle events matching CIP-56 interface IDs.
+ *   Source:    "cantonContractEvents" — polls for contract lifecycle events
+ *             matching CIP-56 interface IDs.
  *   Processor: "canton-cip56-indexer" from this provider — maps contract events
  *             into Asset Manager bulk upserts.
  *
