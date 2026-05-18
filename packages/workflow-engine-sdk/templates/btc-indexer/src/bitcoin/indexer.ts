@@ -23,7 +23,7 @@ import {
 
 // import type { BTCTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/btc';
 import { AssetManagerClient } from '../clients/asset-manager/client.js';
-import type { Address, BalanceChange, Fragment, Transfer } from '../clients/asset-manager/models.js';
+import type { Address, BalanceChange, Fragment, Pool, Transfer } from '../clients/asset-manager/models.js';
 import type { BTCConfig } from '../config/provider-config.js';
 import { BTCTransactionEvent, TxSummary, TxSummaryVOut } from '../../../../dist/src/types/btc/index.js';
 import { BulkQueryInput, BulkQueryOutput } from '../clients/asset-manager/bulkquery.js';
@@ -41,11 +41,8 @@ import { BulkQueryInput, BulkQueryOutput } from '../clients/asset-manager/bulkqu
 export class BTCIndexer {
   private amClient!: AssetManagerClient;
   private networkId!: number;
-  private networkIdHex!: string;
   private tokenName!: string;
   private networkName!: string;
-  private poolName!: string;
-  private assetName!: string;
 
   name(): string {
     return 'bitcoin-indexer';
@@ -68,35 +65,32 @@ export class BTCIndexer {
   async setup(amClient: AssetManagerClient, bitcoinConfig: BTCConfig): Promise<void> {
     this.amClient = amClient;
     this.networkId = bitcoinConfig.netId;
-    this.networkIdHex = `0x${bitcoinConfig.netId.toString(16)}`;
-    this.tokenName = bitcoinConfig.tokenName;
-    this.networkName = bitcoinConfig.networkName;
-    this.poolName = this.tokenName.toLowerCase();
+    this.tokenName = bitcoinConfig.tokenName.toLowerCase();
+    this.networkName = bitcoinConfig.chain;
 
     const symbol = bitcoinConfig.tokenSymbol ?? this.tokenName;
-    this.assetName = `bitcoin_${this.tokenName.toLowerCase()}_${this.networkIdHex.toLowerCase()}`;
 
     await this.amClient.bulkUpsert({
       assets: [
         {
-          name: this.assetName,
+          name: this.tokenName,
           displayName: this.tokenName,
-          info: { symbol, contractAddress: this.networkIdHex },
+          info: { symbol },
           updateType: 'create_or_ignore',
         },
       ],
       addresses: [
         {
-          address: this.networkIdHex,
+          address: this.tokenName,
           contract: true,
           updateType: 'create_or_ignore',
         },
       ],
       pools: [
         {
-          name: this.poolName,
-          asset: this.assetName,
-          address: this.networkIdHex,
+          name: this.tokenName,
+          asset: this.tokenName,
+          address: this.tokenName,
           standard: 'bitcoin',
           displayName: `${this.tokenName} on ${this.networkName}`,
           labels: { networkName: this.networkName, symbol },
@@ -206,12 +200,12 @@ export class BTCIndexer {
 
       // This is a misconfiguration, we don't want to miss events or fail to insert
       if (network.name != this.networkName || network.net != this.networkId) {
-        throw new Error(`Network mismatch configured[name='${this.networkName}',net=${this.networkIdHex}] event[name='${network.name}',net=0x${network.net.toString(16)}}]`)
+        throw new Error(`Network mismatch configured[name='${this.networkName}',net=${this.networkId}] event[name='${network.name}',net=0x${network.net.toString(16)}}]`)
       }
 
       const xferOrdered: Transfer[] = []
       const xferByWallet: Record<string,Transfer> = {};
-      const xferForAddr = (addr?: string): (Transfer|undefined) => {
+      const xferForAddr = (addr?: string): ({walletId: string, transfer: Transfer}|undefined) => {
         const walletId = addr && addressWallets[addr];
         if (!walletId) {
           return undefined;
@@ -226,13 +220,17 @@ export class BTCIndexer {
             balanceChanges: [],
             parent: {
               type: "pool",
-              ref: `testnet4-btc/${safeWallet}`
+              ref: `${this.tokenName}/${this.tokenName}`
             }
           }
           xferOrdered.push(xfer);
           xferByWallet[safeWallet] = xfer;
         }
-        return xfer;
+
+        return {
+          walletId: safeWallet,
+          transfer: xfer,
+        };
       }
 
       for (let iInput = 0; iInput < tx.vin.length; iInput++) {
@@ -240,9 +238,9 @@ export class BTCIndexer {
         const name = `${this.networkName}_${vin.txid}_${vin.vout}`;
         fragments.push({
           updateType: 'create_or_update',
-          address: this.networkIdHex,
+          address: this.tokenName,
           name,
-          asset: this.assetName,
+          asset: this.tokenName,
           labels: {
             networkName: this.networkName,
             mint_tx: vin.txid,
@@ -260,11 +258,12 @@ export class BTCIndexer {
               value = String(Math.floor(detail.value * 100_000_000))
             }
             if (value) {
-              xfer.balanceChanges.push({
-                address: detail.scriptPubKey?.address!,
+              xfer.transfer.balanceChanges.push({
+                address: `${this.tokenName}_${xfer.walletId}`,
                 amount: value,
                 operation: "subtract",
               })
+              xfer.transfer.from = `${this.tokenName}_${xfer.walletId}`;
             }
           }
         }
@@ -288,20 +287,21 @@ export class BTCIndexer {
         }
         fragments.push({
           updateType: 'create_or_update',
-          address: this.networkIdHex,
+          address: this.tokenName,
           info: vout,
           name: `${this.networkName}_${tx.txid}_${vout.n}`,
-          asset: this.assetName,
+          asset: this.tokenName,
           value,   
           labels,
         })
         const xfer = xferForAddr(vout.scriptPubKey?.address);
         if (value && xfer) {
-          xfer.balanceChanges.push({
-            address: vout.scriptPubKey?.address!,
+          xfer.transfer.balanceChanges.push({
+            address: `${this.tokenName}_${xfer.walletId}`,
             amount: value,
             operation: "add",
           })
+          xfer.transfer.to = `${this.tokenName}_${xfer.walletId}`;
         }
       }
 
