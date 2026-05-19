@@ -17,8 +17,8 @@
 import { NewWorkflowEngineClient, HandlerSetFor } from '@kaleido-io/workflow-engine-sdk';
 import dotenv from 'dotenv';
 
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
 import { loadProviderConfig } from './config/provider-config.js';
-import { AssetManagerClient } from './clients/asset-manager/client.js';
 import { bitcoinIndexer } from './bitcoin/indexer.js';
 
 dotenv.config();
@@ -27,13 +27,16 @@ const providerConfig = loadProviderConfig();
 
 const am = providerConfig.assetManager;
 const amUrl = `https://${am.account}/endpoint/${am.environment}/${am.serviceName}/rest`;
-const authToken = `Basic ${Buffer.from(`${am.auth.keyName}:${am.auth.keyValue}`).toString('base64')}`;
-const amClient = new AssetManagerClient({ url: amUrl, authToken });
+const amClient = new AssetManagerClient({
+  transport: 'http',
+  url: amUrl,
+  auth: { type: 'basic', username: am.auth.keyName, password: am.auth.keyValue },
+});
 
 await bitcoinIndexer.setup(amClient, providerConfig.bitcoin);
 
 const client = await NewWorkflowEngineClient(
-  HandlerSetFor(bitcoinIndexer),
+  HandlerSetFor(bitcoinIndexer.handler),
   process.env.WFE_CONFIG_FILE ?? './config/wfe-config.yaml',
 );
 

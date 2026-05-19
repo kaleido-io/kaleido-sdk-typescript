@@ -15,54 +15,47 @@
 // limitations under the License.
 
 import {
-  EngineAPI,
-  ListenerEvent,
-  WSEventProcessorBatchRequest,
-  WSEventProcessorBatchResult,
+  newEventProcessor,
+  newLogger,
+  EventProcessorEvent,
+  EventProcessorFactory,
 } from '@kaleido-io/workflow-engine-sdk';
-
-// import type { BTCTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/btc';
-import { AssetManagerClient } from '../clients/asset-manager/client.js';
-import type { Address, Fragment, Transfer } from '../clients/asset-manager/models.js';
+import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
+import type {
+  AssetManagerClient,
+  Address,
+  BulkQueryInput,
+  BulkQueryOutput,
+  Fragment,
+  FragmentBulkInput,
+  TransferBulkInput,
+} from '@kaleido-io/asset-manager-sdk';
 import type { BTCConfig } from '../config/provider-config.js';
-import { BTCTransactionEvent, TxSummary, TxSummaryVOut } from '../../../../dist/src/types/btc/index.js';
-import { BulkQueryInput, BulkQueryOutput } from '../clients/asset-manager/bulkquery.js';
 
-/**
- * BTC Transfer event processor.
- *
- * Receives decoded BTC transaction batches from a WFE `btcTransactions` stream,
- * maps Transfer(address,address,uint256) events to Asset Manager data models,
- * and bulk-upserts addresses + transfers into the Asset Manager.
- *
- * Call `setup()` once before registering with the WFE client to create the
- * asset and pool definitions in the Asset Manager.
- */
+const log = newLogger('bitcoin-indexer');
+
+type IIndexerClient = Pick<AssetManagerClient, 'bulkUpsert' | 'bulkQuery'>;
+
+interface BTCCheckpoint {
+  lastPollTime: number;
+}
+
 export class BTCIndexer {
-  private amClient!: AssetManagerClient;
+  private amClient!: IIndexerClient;
   private networkId!: number;
   private tokenName!: string;
   private networkName!: string;
 
-  name(): string {
-    return 'bitcoin-indexer';
+  readonly handler: EventProcessorFactory<BTCTransactionEvent, BTCCheckpoint>;
+
+  constructor() {
+    this.handler = newEventProcessor<BTCTransactionEvent, BTCCheckpoint>(
+      'bitcoin-indexer',
+      (events) => this.process(events),
+    );
   }
 
-  init(_engAPI: EngineAPI): Promise<void> {
-    return Promise.resolve();
-  }
-
-  close(): void {}
-
-  log(s: string, ...args: any) {
-    console.log(`${new Date().toUTCString()}: ${s}`, ...args)
-  }
-
-  /**
-   * One-time setup: register the asset and pool in Asset Manager.
-   * Must be called before the processor starts receiving batches.
-   */
-  async setup(amClient: AssetManagerClient, bitcoinConfig: BTCConfig): Promise<void> {
+  async setup(amClient: IIndexerClient, bitcoinConfig: BTCConfig): Promise<void> {
     this.amClient = amClient;
     this.networkId = bitcoinConfig.netId;
     this.tokenName = bitcoinConfig.tokenName.toLowerCase();
@@ -100,7 +93,7 @@ export class BTCIndexer {
     });
   }
 
-  async batchLookup<T>(
+  private async batchLookup<T>(
     lookups: string[],
     buildQuery: (batch: string[]) => BulkQueryInput,
     extractResults: (output: BulkQueryOutput) => T[],
@@ -114,38 +107,27 @@ export class BTCIndexer {
     }
   }
 
-  /**
-   * Process a batch of BTC transaction events.
-   * Filters for Transfer events, builds balance changes, and bulk-upserts to AM.
-   */
-  async eventProcessorBatch(
-    result: WSEventProcessorBatchResult,
-    batch: WSEventProcessorBatchRequest,
-  ): Promise<void> {
+  private async process(
+    events: EventProcessorEvent<BTCTransactionEvent>[],
+  ): Promise<{
+    events: EventProcessorEvent<BTCTransactionEvent>[];
+    checkpointOut?: BTCCheckpoint;
+  }> {
+    if (events.length === 0) {
+      return { events };
+    }
 
-    // this.log(JSON.stringify(batch.events[0], null, "  "))
+    const startTime = Date.now();
+    log.info(`Received batch of ${events.length} events`);
 
-    const startTime = new Date();
-    this.log('Received batch of', batch.events.length, 'events');
-
-    const forEachTX = (fn: (tx: TxSummary, ed: BTCTransactionEvent, e: ListenerEvent) => void) => {
-      for (const event of batch.events) {
-        const eventData = event.data as BTCTransactionEvent;
-        const { tx } = eventData;
-        fn(tx, eventData, event);
+    // Pass 1: look up fragments for all UTXOs spent as inputs across the batch
+    const fragmentsToLookup: string[] = [];
+    for (const event of events) {
+      for (const vin of event.data.tx.vin) {
+        fragmentsToLookup.push(`${this.networkName}_${vin.txid}_${vin.vout}`);
       }
     }
 
-    // Pass 1: Build a lookup for all the previous bitcoins that are used as inputs
-    let txCount = 0;
-    const fragmentsToLookup: string[] = [];
-    forEachTX((tx, ed) => {
-      txCount++;
-      this.log(`Indexing TX ${tx.txid} in block ${ed.block.height}`);
-      for (const vin of tx.vin) {
-        fragmentsToLookup.push(`${this.networkName}_${vin.txid}_${vin.vout}`);
-      }
-    });
     const inputDetail: Record<string, TxSummaryVOut> = {};
     await this.batchLookup<Fragment>(
       fragmentsToLookup,
@@ -153,154 +135,125 @@ export class BTCIndexer {
       (output) => output.fragments?.items ?? [],
       (fragments) => {
         for (const fragment of fragments) {
-          if (fragment.info) {
+          if (fragment.info && fragment.name) {
             inputDetail[fragment.name] = fragment.info as TxSummaryVOut;
           }
         }
       },
     );
 
-    // Pass 2: identify all the addresses we know about, across both the
-    // outputs, and the inputs where we've indexed the previous outpoint.
-    const addressMap: Record<string, boolean> = {};
-    forEachTX((tx) => {
-      for (const vout of tx.vout) {
-        if (vout.scriptPubKey?.address) {
-          addressMap[vout.scriptPubKey.address] = true;
-        }
-      }
-    });
-    for (const utxo of Object.values(inputDetail)) {
-      if (utxo.scriptPubKey?.address) {
-        addressMap[utxo.scriptPubKey.address] = true;
+    // Pass 2: look up wallet labels for all addresses referenced in outputs and known inputs
+    const addressSet = new Set<string>();
+    for (const event of events) {
+      for (const vout of event.data.tx.vout) {
+        if (vout.scriptPubKey?.address) addressSet.add(vout.scriptPubKey.address);
       }
     }
+    for (const utxo of Object.values(inputDetail)) {
+      if (utxo.scriptPubKey?.address) addressSet.add(utxo.scriptPubKey.address);
+    }
 
-    // Do the lookup of info for all those addresses
     const addressWallets: Record<string, string> = {};
     await this.batchLookup<Address>(
-      Object.keys(addressMap),
+      [...addressSet],
       (batch) => ({ addresses: { limit: batch.length, in: [{ field: 'address', values: batch }] } }),
       (output) => output.addresses?.items ?? [],
       (addresses) => {
         for (const addr of addresses) {
           if (addr.labels?.wallet) {
-            // The wallet backend tags addresses with the wallet ID when they are created.
             addressWallets[addr.address] = addr.labels.wallet;
           }
         }
       },
     );
 
-    // Pass 3: Build the upsert
-    for (const event of batch.events) {
-      const eventData = event.data as BTCTransactionEvent;
-      const { tx, network } = eventData;
-      const fragments: Fragment[] = [];
+    // Pass 3: build and upsert fragments + wallet-scoped transfers per event
+    let txCount = 0;
+    for (const event of events) {
+      const { tx, block, network } = event.data;
 
-      // This is a misconfiguration, we don't want to miss events or fail to insert
-      if (network.name != this.networkName || network.net != this.networkId) {
-        throw new Error(`Network mismatch configured[name='${this.networkName}',net=${this.networkId}] event[name='${network.name}',net=0x${network.net.toString(16)}}]`)
+      if (network.name !== this.networkName || network.net !== this.networkId) {
+        throw new Error(
+          `Network mismatch configured[name='${this.networkName}',net=${this.networkId}] ` +
+          `event[name='${network.name}',net=0x${network.net.toString(16)}]`,
+        );
       }
 
-      const xferOrdered: Transfer[] = []
-      const xferByWallet: Record<string,Transfer> = {};
-      const xferForAddr = (addr?: string): ({walletId: string, transfer: Transfer}|undefined) => {
+      log.debug(`Indexing TX ${tx.txid} in block ${block.height}`);
+      txCount++;
+
+      const fragments: FragmentBulkInput[] = [];
+      const xferOrdered: TransferBulkInput[] = [];
+      const xferByWallet: Record<string, TransferBulkInput> = {};
+
+      const xferForAddr = (addr?: string): { walletId: string; transfer: TransferBulkInput } | undefined => {
         const walletId = addr && addressWallets[addr];
-        if (!walletId) {
-          return undefined;
-        }
-        const safeWallet = walletId.replace(':','-');
+        if (!walletId) return undefined;
+        const safeWallet = walletId.replace(':', '-');
         let xfer = xferByWallet[safeWallet];
         if (!xfer) {
           xfer = {
-            protocolId: `tx.txid.${safeWallet}`,
-            amount: "0",
+            protocolId: `${tx.txid}.${safeWallet}`,
+            amount: '0',
             transactionHash: tx.txid,
             balanceChanges: [],
-            parent: {
-              type: "pool",
-              ref: `${this.tokenName}/${this.tokenName}`
-            }
-          }
+            parent: { type: 'pool', ref: `${this.tokenName}/${this.tokenName}` },
+          };
           xferOrdered.push(xfer);
           xferByWallet[safeWallet] = xfer;
         }
+        return { walletId: safeWallet, transfer: xfer };
+      };
 
-        return {
-          walletId: safeWallet,
-          transfer: xfer,
-        };
-      }
-
-      for (let iInput = 0; iInput < tx.vin.length; iInput++) {
-        const vin = tx.vin[iInput];
+      for (const vin of tx.vin) {
         const name = `${this.networkName}_${vin.txid}_${vin.vout}`;
         fragments.push({
           updateType: 'create_or_update',
           address: this.tokenName,
           name,
           asset: this.tokenName,
-          labels: {
-            networkName: this.networkName,
-            mint_tx: vin.txid,
-            spend_tx: tx.txid,
-          },
-        })
+          labels: { networkName: this.networkName, mint_tx: vin.txid, spend_tx: tx.txid },
+        });
+
         const detail = inputDetail[name];
         if (detail) {
           const xfer = xferForAddr(detail.scriptPubKey?.address);
           if (xfer) {
-            let value: string | undefined;
-            if (typeof detail.valueSat == 'number') {
-              value = String(detail.valueSat)
-            } else if (typeof detail.value == 'number') {
-              value = String(Math.floor(detail.value * 100_000_000))
-            }
+            const value = satoshiValue(detail);
             if (value) {
-              xfer.transfer.balanceChanges.push({
+              xfer.transfer.balanceChanges!.push({
                 address: `${this.tokenName}_${xfer.walletId}`,
                 amount: value,
-                operation: "subtract",
-              })
+                operation: 'subtract',
+              });
               xfer.transfer.from = `${this.tokenName}_${xfer.walletId}`;
             }
           }
         }
       }
 
-      for (let iOutput = 0; iOutput < tx.vout.length; iOutput++) {
-        const vout = tx.vout[iOutput];
-        const labels: Record<string, string> = {
-          networkName: this.networkName,
-          mint_tx: tx.txid,
-        }
-        const ownerAddress = vout.scriptPubKey?.address;
-        if (typeof ownerAddress == 'string' && ownerAddress.length > 0) {
-          labels.ownerAddress = ownerAddress;
-        }
-        let value: string | undefined;
-        if (typeof vout.valueSat == 'number') {
-          value = String(vout.valueSat)
-        } else if (typeof vout.value == 'number') {
-          value = String(Math.floor(vout.value * 100_000_000))
-        }
+      for (const vout of tx.vout) {
+        const labels: Record<string, string> = { networkName: this.networkName, mint_tx: tx.txid };
+        if (vout.scriptPubKey?.address) labels.ownerAddress = vout.scriptPubKey.address;
+
+        const value = satoshiValue(vout);
         fragments.push({
           updateType: 'create_or_update',
           address: this.tokenName,
           info: vout,
           name: `${this.networkName}_${tx.txid}_${vout.n}`,
           asset: this.tokenName,
-          value,   
+          value,
           labels,
-        })
+        });
+
         const xfer = xferForAddr(vout.scriptPubKey?.address);
         if (value && xfer) {
-          xfer.transfer.balanceChanges.push({
+          xfer.transfer.balanceChanges!.push({
             address: `${this.tokenName}_${xfer.walletId}`,
             amount: value,
-            operation: "add",
-          })
+            operation: 'add',
+          });
           xfer.transfer.to = `${this.tokenName}_${xfer.walletId}`;
         }
       }
@@ -310,9 +263,15 @@ export class BTCIndexer {
       }
     }
 
-    this.log(`Indexed ${txCount} transactions in ${new Date().getTime()-startTime.getTime()}ms`)
-    result.checkpoint = { lastPollTime: Date.now() };
+    log.info(`Indexed ${txCount} transactions in ${Date.now() - startTime}ms`);
+    return { events, checkpointOut: { lastPollTime: Date.now() } };
   }
+}
+
+function satoshiValue(utxo: TxSummaryVOut): string | undefined {
+  if (typeof utxo.valueSat === 'number') return String(utxo.valueSat);
+  if (typeof utxo.value === 'number') return String(Math.floor(utxo.value * 100_000_000));
+  return undefined;
 }
 
 export const bitcoinIndexer = new BTCIndexer();
