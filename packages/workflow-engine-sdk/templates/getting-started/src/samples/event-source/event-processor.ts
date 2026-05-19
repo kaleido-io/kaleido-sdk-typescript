@@ -15,11 +15,10 @@
 // limitations under the License.
 
 import { newEventProcessor, newLogger } from '@kaleido-io/workflow-engine-sdk';
-import type { MyEventData } from './event-source.js';
 
 const log = newLogger('echo-event-processor');
 
-export const echoEventProcessor = newEventProcessor<MyEventData>(
+export const echoEventProcessor = newEventProcessor(
   'echo',
   async (events) => {
     for (const event of events) {
