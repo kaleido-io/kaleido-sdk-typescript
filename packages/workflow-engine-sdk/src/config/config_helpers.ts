@@ -99,6 +99,18 @@ export function cfgObjField(
   return undefined;
 }
 
+/** Plain object (not array) at record[key], or undefined. */
+export function cfgStringMapField(
+  rec: Record<string, unknown>,
+  key: string,
+): Record<string, string> | undefined {
+  const v = rec[key];
+  if (v != null && typeof v === "object" && !Array.isArray(v)) {
+    return v as Record<string, string>;
+  }
+  return undefined;
+}
+
 /** Parsed server address + port for inbound mode; undefined if invalid. */
 export function parseInboundServerAddressPort(
   server: Record<string, unknown>,

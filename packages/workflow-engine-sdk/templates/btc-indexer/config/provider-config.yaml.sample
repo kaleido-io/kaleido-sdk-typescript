@@ -1,0 +1,22 @@
+# Provider configuration for the BTC Indexer.
+# Set CONFIG_FILE env var to point to this file (default: ./config/provider-config.yaml).
+
+# Asset Manager connection — where indexed transfers are written.
+assetManager:
+  account: my-account.my-kaleido.io
+  environment: my-environment
+  serviceName: my-assets
+  auth:
+    keyName: my-api-key-name
+    keyValue: my-api-key
+
+# BTC contract to index
+bitcoin:
+  fromBlock: latest
+  netId: 0x283f161c
+  tokenSymbol: tBTC
+  tokenName: test_bitcoin
+  chain: testnet4          # Informational label attached to indexed transfers (e.g. "ethereum", "polygon", "base", "besu")
+
+# Service ID of the BTC Connector provider (used when creating the event stream)
+btcConnector: s:my-btc-connector-service-id

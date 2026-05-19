@@ -23,6 +23,7 @@ import {
   cfgNumField,
   cfgObjField,
   parseInboundServerAddressPort,
+  cfgStringMapField,
 } from "./config_helpers";
 import { newLogger } from "../log/logger";
 import { SDKErrors, newError } from "../i18n/errors";
@@ -47,6 +48,7 @@ export const ConfigWorkflowEngineAuth = "auth";
 export const ConfigWorkflowEngineMaxRetries = "maxRetries";
 export const ConfigWorkflowEngineRetryDelay = "retryDelay";
 export const ConfigWorkflowEngineServer = "server";
+export const ConfigWorkflowEngineHeaders = "headers";
 
 /**
  * Config key names for server subsection
@@ -144,6 +146,7 @@ export interface WorkflowEngineConfig {
   workflowEngine: {
     url: string;
     auth: AuthConfig;
+    headers?: Record<string, string>;
     maxRetries?: number;
     retryDelay?: string;
   };
@@ -197,6 +200,7 @@ export class ConfigLoader {
 
     return {
       url: ConfigLoader.httpUrlToWsUrl(config.workflowEngine.url),
+      headers: config.workflowEngine.headers,
       providerName,
       options: {
         headers: {
@@ -288,6 +292,8 @@ export class ConfigLoader {
 
     const url =
       cfgStrField(section, ConfigWorkflowEngineUrl) || undefined;
+    const headers =
+      cfgStringMapField(section, ConfigWorkflowEngineHeaders) || undefined;
     const auth = section[ConfigWorkflowEngineAuth] as
       | WorkflowEngineConfig["workflowEngine"]["auth"]
       | undefined;
@@ -311,6 +317,7 @@ export class ConfigLoader {
         }
         const clientConfig: WorkflowEngineClientConfig = {
           server: serverConfig,
+          headers,
           providerName,
           maxAttempts: cfgNumField(
             section,
@@ -333,6 +340,7 @@ export class ConfigLoader {
         workflowEngine: {
           url,
           auth,
+          headers,
           maxRetries: cfgNumField(
             section,
             ConfigWorkflowEngineMaxRetries,

@@ -94,6 +94,11 @@
       "import": "./dist-esm/src/types/evm/index.js",
       "require": "./dist/src/types/evm/index.js",
       "types": "./dist/src/types/evm/index.d.ts"
+    },
+    "./types/btc": {
+      "import": "./dist-esm/src/types/btc/index.js",
+      "require": "./dist/src/types/btc/index.js",
+      "types": "./dist/src/types/btc/index.d.ts"
     }
   }
 }
