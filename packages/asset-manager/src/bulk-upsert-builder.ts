@@ -1,5 +1,4 @@
 import deepmerge from "deepmerge";
-import { AssetManagerClient } from "./asset-manager.js";
 import {
   ActivityBulkInput,
   AddressBulkInput,
@@ -13,6 +12,14 @@ import {
   PoolBulkInput,
   TransferBulkInput,
 } from "./asset-manager.interfaces.js";
+
+/**
+ * Minimal interface satisfied by AssetManagerClient (and any mock).
+ * BulkUpsertBuilder depends only on this method.
+ */
+export interface IBulkUpsertClient {
+  bulkUpsert(input: BulkUpsertInput): Promise<unknown>;
+}
 
 /**
  * We must ensure that each bulk update touches a given record at most once,
@@ -36,7 +43,7 @@ export class BulkUpsertBuilder {
   private updates: BulkUpsertInput = {};
   private finalizers: (() => void | Promise<void>)[] = [];
 
-  constructor(private client: AssetManagerClient) {}
+  constructor(private client: IBulkUpsertClient) {}
 
   hasUpdates() {
     for (const val of Object.values(this.updates)) {

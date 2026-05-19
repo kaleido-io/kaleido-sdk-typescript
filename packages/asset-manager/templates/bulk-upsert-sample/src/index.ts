@@ -23,6 +23,7 @@
  *   - Automatic address deduplication: each wallet address appears only once
  *     in the payload regardless of how many transfers reference it
  *   - A finalizer that runs after execution and prints a per-address summary
+ *   - bulkQuery to read back the demo asset, pool, and a page of transfers in one request
  *
  * Configuration:
  *   Copy config/provider-config.yaml.example → config/provider-config.yaml
@@ -246,5 +247,54 @@ console.log(
 );
 
 await builder.execute();
+
+// ─── Step 6: bulkQuery — read back several collections in one round-trip ─────
+//
+// BulkQueryInput accepts optional query specs per collection (assets, pools,
+// transfers, …). Each uses DataModelQueryJSON filters (equal / eq / labels / …).
+
+console.log('\n[bulk-upsert-demo] Running bulkQuery (asset + pool + demo transfers)…');
+
+const queryResult = await amClient.bulkQuery({
+  assets: {
+    equal: [{ field: 'name', value: DEMO_ASSET_NAME }],
+    limit: 1,
+  },
+  pools: {
+    equal: [{ field: 'name', value: DEMO_POOL_NAME }],
+    limit: 1,
+  },
+  transfers: {
+    labels: {
+      equal: [{ field: 'demo', value: 'true' }],
+    },
+    limit: 10,
+    sort: ['created'],
+  },
+});
+
+console.log(
+  `[bulk-upsert-demo] bulkQuery counts — assets: ${queryResult.assets?.count ?? 0}, ` +
+    `pools: ${queryResult.pools?.count ?? 0}, transfers (page): ${queryResult.transfers?.count ?? 0}` +
+    (queryResult.transfers?.total != null ? ` (reported total=${queryResult.transfers.total})` : ''),
+);
+
+const assetRow = queryResult.assets?.items?.[0];
+const poolRow = queryResult.pools?.items?.[0];
+if (assetRow) {
+  console.log(`[bulk-upsert-demo]   asset: ${assetRow.name} (${assetRow.id})`);
+}
+if (poolRow) {
+  console.log(`[bulk-upsert-demo]   pool: ${poolRow.name} (${poolRow.id})`);
+}
+
+const transferItems = queryResult.transfers?.items ?? [];
+if (transferItems.length > 0) {
+  const t = transferItems[0];
+  const tx = t.transactionHash ?? '';
+  console.log(
+    `[bulk-upsert-demo]   first transfer in page: protocolId=${t.protocolId} tx=${tx.slice(0, 18)}…`,
+  );
+}
 
 console.log('[bulk-upsert-demo] Done.');

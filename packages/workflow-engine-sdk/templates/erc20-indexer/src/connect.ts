@@ -15,10 +15,10 @@
 // limitations under the License.
 
 import { NewWorkflowEngineClient, HandlerSetFor } from '@kaleido-io/workflow-engine-sdk';
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
 import dotenv from 'dotenv';
 
 import { loadProviderConfig } from './config/provider-config.js';
-import { AssetManagerClient } from './clients/asset-manager/client.js';
 import { erc20Indexer } from './erc20/indexer.js';
 
 dotenv.config();
@@ -27,8 +27,11 @@ const providerConfig = loadProviderConfig();
 
 const am = providerConfig.assetManager;
 const amUrl = `https://${am.account}/endpoint/${am.environment}/${am.serviceName}/rest`;
-const authToken = `Basic ${Buffer.from(`${am.auth.keyName}:${am.auth.keyValue}`).toString('base64')}`;
-const amClient = new AssetManagerClient({ url: amUrl, authToken });
+const amClient = new AssetManagerClient({
+  transport: 'http',
+  url: amUrl,
+  auth: { type: 'basic', username: am.auth.keyName, password: am.auth.keyValue },
+});
 
 await erc20Indexer.setup(amClient, providerConfig.erc20);
 

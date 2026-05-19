@@ -110,17 +110,23 @@ jobs:
         working-directory: .
         run: npm install
 
-      - name: Build core and SDK
+      - name: Build core
         working-directory: packages/core
         run: npm run build
 
-      - name: Build SDK
+      - name: Build asset-manager SDK
+        working-directory: packages/asset-manager
+        run: npm run build
+
+      - name: Build workflow-engine SDK
         working-directory: packages/workflow-engine-sdk
         run: npm run build
 
       - run: npm install
 
       - run: npm run build
+
+      - run: npm test
 
   template-getting-started:
     name: Build & Test (getting-started template)

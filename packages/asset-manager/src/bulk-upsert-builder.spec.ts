@@ -1,14 +1,13 @@
-import { BulkUpsertBuilder, DuplicateStrategy } from "./bulk-upsert-builder.js";
-import { AssetManagerClient } from "./asset-manager.js";
+import { BulkUpsertBuilder, DuplicateStrategy, IBulkUpsertClient } from "./bulk-upsert-builder.js";
 
 describe("BulkUpsertBuilder", () => {
   let builder: BulkUpsertBuilder;
-  let mockClient: jest.Mocked<AssetManagerClient>;
+  let mockClient: jest.Mocked<IBulkUpsertClient>;
 
   beforeEach(() => {
     mockClient = {
       bulkUpsert: jest.fn().mockResolvedValue({}),
-    } as any;
+    };
     builder = new BulkUpsertBuilder(mockClient);
   });
 
