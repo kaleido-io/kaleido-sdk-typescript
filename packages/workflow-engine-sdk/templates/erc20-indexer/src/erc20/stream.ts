@@ -32,13 +32,18 @@ import provider from '../provider.js';
  */
 const providerConfig = loadProviderConfig();
 
+// Kaleido platform service IDs are displayed as "s:xxxxx" but the WFE API only
+// accepts alphanumerics, dots, dashes, and underscores for provider names.
+// Strip the type-prefix (e.g. "s:") so users can paste the platform ID directly.
+const evmConnectorProvider = providerConfig.evmConnector.replace(/^[a-z]+:/, '');
+
 export const stream = {
   name: 'erc20-indexer',
   eventSource: {
     type: 'handler',
     handler: {
       name: 'evmTransactions',
-      provider: providerConfig.evmConnector,
+      provider: evmConnectorProvider,
       config: {
         fromBlock: 'latest',
         batchSize: 50,

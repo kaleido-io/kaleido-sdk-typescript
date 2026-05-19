@@ -15,6 +15,17 @@
 // limitations under the License.
 
 /**
+ * Minimal logging interface accepted by SDK clients.
+ * Compatible with `console` and most logging libraries.
+ */
+export interface Logger {
+  log: (message: string, ...args: unknown[]) => void;
+  error: (message: string, ...args: unknown[]) => void;
+  debug: (message: string, ...args: unknown[]) => void;
+  warn: (message: string, ...args: unknown[]) => void;
+}
+
+/**
  * Authentication configuration for a service binding.
  */
 export interface ServiceBindingAuth {

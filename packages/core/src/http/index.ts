@@ -18,8 +18,8 @@ export {
   createServiceTransport,
 } from "./service_client";
 
-// Auth type (used by HTTPTransportOptions)
-export { ServiceBindingAuth } from "./types";
+// Auth and logging types
+export { Logger, ServiceBindingAuth } from "./types";
 
 // HTTP client configuration
 export {

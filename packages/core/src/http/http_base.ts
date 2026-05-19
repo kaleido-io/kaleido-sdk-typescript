@@ -14,8 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
-import { ServiceBindingAuth } from "./types";
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
+import { Logger, ServiceBindingAuth } from "./types";
 import { configureHttpClient, RequestConfigWithRetry } from "./http_client";
 import { ServiceTransport } from "./transport";
 
@@ -35,6 +35,9 @@ export interface HTTPTransportOptions {
   rejectUnauthorized?: boolean;
   /** Additional Axios request config merged into the instance defaults */
   requestConfig?: AxiosRequestConfig;
+  /** Optional logger. When provided, each request is logged at debug level with
+   *  method, URL, status, and elapsed ms. Errors include the response body. */
+  logger?: Logger;
 }
 
 function isSuccess(status: number): boolean {
@@ -63,6 +66,35 @@ export class HTTPTransport implements ServiceTransport {
       timeout: options.timeout,
       rejectUnauthorized: options.rejectUnauthorized,
     });
+
+    if (options.logger) {
+      const logger = options.logger;
+      this.http.interceptors.request.use((config) => {
+        (config as any)._startMs = Date.now();
+        return config;
+      });
+      this.http.interceptors.response.use(
+        (response) => {
+          const ms = Date.now() - ((response.config as any)._startMs ?? Date.now());
+          const method = (response.config.method ?? "GET").toUpperCase();
+          logger.debug(`${method} ${response.config.url} ${response.status} ${ms}ms`);
+          return response;
+        },
+        (error: AxiosError) => {
+          const ms = Date.now() - ((error.config as any)?._startMs ?? Date.now());
+          const method = ((error.config?.method ?? "GET")).toUpperCase();
+          const url = error.config?.url ?? "";
+          if (error.response) {
+            const { status, data } = error.response;
+            const body = typeof data === "string" ? data : JSON.stringify(data);
+            logger.error(`${method} ${url} failed (${status}) ${ms}ms: ${body}`);
+          } else {
+            logger.error(`${method} ${url} failed ${ms}ms: ${error.message}`);
+          }
+          return Promise.reject(error);
+        },
+      );
+    }
   }
 
   /** Expose the underlying Axios instance for advanced use cases. */

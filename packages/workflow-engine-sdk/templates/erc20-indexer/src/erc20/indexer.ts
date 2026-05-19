@@ -112,6 +112,7 @@ export class ERC20Indexer {
   ): Promise<{ events: EventProcessorEvent<EVMTransactionEvent>[]; checkpointOut?: IndexerCheckpoint }> {
     const builder = new BulkUpsertBuilder(this.amClient);
     let highestBlock = 0;
+    let transferCount = 0;
 
     log.info(`Received batch of ${events.length} events`);
 
@@ -155,6 +156,7 @@ export class ERC20Indexer {
         if (isMint)  balanceChanges.push({ address: 'circulation', operation: 'add' as const, amount: String(value) });
         if (isBurn)  balanceChanges.push({ address: 'circulation', operation: 'subtract' as const, amount: String(value) });
 
+        transferCount++;
         builder.upsertTransfer({
           protocolId: `${tx.block.number}/${tx.transactionHash}/${decoded.logIndex}`,
           from: isMint ? undefined : from,
@@ -173,6 +175,12 @@ export class ERC20Indexer {
           updateType: 'create_or_replace',
         });
       }
+    }
+
+    if (transferCount > 0) {
+      log.info(`Upserting ${transferCount} transfer(s) up to block ${highestBlock}`);
+    } else {
+      log.info(`No matching Transfer events in batch (highest block ${highestBlock})`);
     }
 
     await builder.execute();
