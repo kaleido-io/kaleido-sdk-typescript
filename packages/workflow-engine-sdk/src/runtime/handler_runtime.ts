@@ -15,30 +15,30 @@
 // limitations under the License.
 
 
+import { backOff } from 'exponential-backoff';
 import https from 'https';
 import WebSocket, { ClientOptions, WebSocketServer } from 'ws';
-import { backOff } from 'exponential-backoff';
+import { newError, SDKErrors } from '../i18n/errors';
 import {
-  WSMessageType,
-  WSHandlerType,
-  WSHandlerEnvelope,
-  WSHandleTransactions,
-  WSHandleTransactionsResult,
-  WSEventSourceConfig,
-  WSListenerPollResult,
-  WSEventProcessorBatchResult,
-  WSEventProcessorBatchRequest,
-} from '../types/core';
-import {
+  EventProcessor,
+  EventSource,
   Handler,
   TransactionHandler,
-  EventSource,
-  EventProcessor,
 } from '../interfaces/handlers';
-import { EngineClient } from './engine_client';
 import { newLogger } from '../log/logger';
+import {
+  WSEventProcessorBatchRequest,
+  WSEventProcessorBatchResult,
+  WSEventSourceConfig,
+  WSHandlerEnvelope,
+  WSHandlerType,
+  WSHandleTransactions,
+  WSHandleTransactionsResult,
+  WSListenerPollResult,
+  WSMessageType,
+} from '../types/core';
 import { getErrorMessage } from '../utils/errors';
-import { newError, SDKErrors } from '../i18n/errors';
+import { EngineClient } from './engine_client';
 
 const log = newLogger('handler_runtime');
 
@@ -576,7 +576,6 @@ export class HandlerRuntime {
       messageType: WSMessageType.EVENT_PROCESSOR_BATCH_RESULT,
       id: batch.id,
       handler: batch.handler,
-      events: batch.events,
     };
     try {
       const eventProcessor = this.eventProcessors.get(batch.handler || '');
