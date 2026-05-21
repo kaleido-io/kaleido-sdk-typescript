@@ -184,7 +184,6 @@ export interface WSEventProcessorBatchRequest extends WSHandlerEnvelope {
 }
 
 export interface WSEventProcessorBatchResult extends WSHandlerEnvelope {
-  checkpoint?: any;
   events: ListenerEvent[];
 }
 

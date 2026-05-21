@@ -158,9 +158,6 @@ describe('ERC20Indexer.process()', () => {
       labels: { chain: 'besu' },
       updateType: 'create_or_replace',
     });
-
-    // Checkpoint
-    expect(result.checkpointOut).toEqual({ highestBlock: 1000001 });
   });
 
   it('processes a mint (from = zero address)', async () => {
@@ -218,24 +215,6 @@ describe('ERC20Indexer.process()', () => {
     // Despite 3 transfers (6 address references), only 3 unique addresses
     expect(payload.addresses).toHaveLength(3);
     expect(payload.transfers).toHaveLength(3);
-  });
-
-  it('tracks the highest block number in the checkpoint', async () => {
-    const events = [
-      makeEvent(makeTxEvent({ blockNumber: '1000005', txHash: '0xtx01' })),
-      makeEvent(makeTxEvent({ blockNumber: '1000003', txHash: '0xtx02' })),
-      makeEvent(makeTxEvent({ blockNumber: '1000009', txHash: '0xtx03' })),
-    ];
-
-    const result = await (indexer as any).process(events);
-    expect(result.checkpointOut).toEqual({ highestBlock: 1000009 });
-  });
-
-  it('returns no checkpoint when all events lack decodedEvents', async () => {
-    const tx = makeTxEvent({});
-    delete (tx as any).decodedEvents;
-    const result = await (indexer as any).process([makeEvent(tx)]);
-    expect(result.checkpointOut).toBeUndefined();
   });
 
   it('calls bulkUpsert exactly once per batch regardless of transfer count', async () => {

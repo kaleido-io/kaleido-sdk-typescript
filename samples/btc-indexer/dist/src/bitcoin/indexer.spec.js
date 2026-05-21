@@ -226,13 +226,13 @@ describe('BTCIndexer.process()', () => {
         const receiverXfer = transfers.find((t) => t.protocolId === 'tx004.wallet1');
         expect(receiverXfer.balanceChanges[0]).toMatchObject({ operation: 'add', amount: '49000' });
     });
-    it('calls bulkUpsert once per event in the batch', async () => {
+    it('calls bulkUpsert once for the batch', async () => {
         const events = [
             makeEvent(makeTxEvent({ txid: 'tx005', vout: [makeVOut(0, 10000, 'a1')] })),
             makeEvent(makeTxEvent({ txid: 'tx006', vout: [makeVOut(0, 20000, 'a2')] })),
         ];
         await indexer.process(events);
-        expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(2);
+        expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
     });
     it('uses valueSat over value when both are present', async () => {
         const event = makeEvent(makeTxEvent({

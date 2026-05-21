@@ -55,7 +55,7 @@ function makeResult(): WSEventProcessorBatchResult {
 describe('createEventProcessor', () => {
 
   it('should create an event processor', () => {
-    const processor = createEventProcessor<TestEventData, TestCheckpoint>(
+    const processor = createEventProcessor<TestEventData>(
       'test-processor',
       async (events) => ({ events })
     );
@@ -74,7 +74,7 @@ describe('createEventProcessor', () => {
     } as any as EngineClientRuntime;
     const engineClient = new EngineClient(engineClientRuntime);
 
-    const processor = createEventProcessor<TestEventData, TestCheckpoint>(
+    const processor = createEventProcessor<TestEventData>(
       'test-processor',
       async (events) => ({ events })
     )
@@ -94,7 +94,7 @@ describe('createEventProcessor', () => {
       checkpointOut: { lastProcessedTime: 12345 },
     }));
 
-    const processor = createEventProcessor<TestEventData, TestCheckpoint>('test-processor', batchFn);
+    const processor = createEventProcessor<TestEventData>('test-processor', batchFn);
 
     const batch = makeBatch([
       { idempotencyKey: 'key1', topic: 'test-topic', data: { id: 1, value: 'a' } },
@@ -113,11 +113,10 @@ describe('createEventProcessor', () => {
     expect(result.events).toHaveLength(2);
     expect(result.events[0].idempotencyKey).toBe('key1');
     expect(result.events[0].data).toEqual({ id: 1, value: 'a' });
-    expect(result.checkpoint).toEqual({ lastProcessedTime: 12345 });
   });
 
   it('should allow filtering events from the batch', async () => {
-    const processor = createEventProcessor<TestEventData, TestCheckpoint>(
+    const processor = createEventProcessor<TestEventData>(
       'test-processor',
       async (events) => ({
         events: events.filter(e => e.data.id % 2 === 0),
@@ -149,8 +148,6 @@ describe('createEventProcessor', () => {
     await processor.eventProcessorBatch(result, makeBatch([
       { idempotencyKey: 'key1', topic: 'test-topic', data: { id: 1, value: 'a' } },
     ]));
-
-    expect(result.checkpoint).toBeUndefined();
   });
 
   it('should handle batch errors and set error on result', async () => {

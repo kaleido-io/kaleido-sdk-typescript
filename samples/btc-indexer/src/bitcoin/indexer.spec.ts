@@ -281,7 +281,7 @@ describe('BTCIndexer.process()', () => {
     expect(receiverXfer.balanceChanges[0]).toMatchObject({ operation: 'add', amount: '49000' });
   });
 
-  it('calls bulkUpsert once per event in the batch', async () => {
+  it('calls bulkUpsert once per batch', async () => {
     const events = [
       makeEvent(makeTxEvent({ txid: 'tx005', vout: [makeVOut(0, 10000, 'a1')] })),
       makeEvent(makeTxEvent({ txid: 'tx006', vout: [makeVOut(0, 20000, 'a2')] })),
@@ -289,7 +289,7 @@ describe('BTCIndexer.process()', () => {
 
     await (indexer as any).process(events);
 
-    expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(2);
+    expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
   });
 
   it('uses valueSat over value when both are present', async () => {
