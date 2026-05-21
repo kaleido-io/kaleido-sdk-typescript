@@ -1,5 +1,5 @@
 {
-    "name": "{{PROVIDER_NAME}}",
+    "name": "getting-started",
     "version": "0.0.1",
     "scripts": {
         "prebuild": "npm run clean",
@@ -34,7 +34,7 @@
         "README.md"
     ],
     "dependencies": {
-        "@kaleido-io/workflow-engine-sdk": "file:../..",
+        "@kaleido-io/workflow-engine-sdk": "*",
         "dotenv": "^17.2.3",
         "js-yaml": "^4.1.1",
         "web3": "^4.16.0",

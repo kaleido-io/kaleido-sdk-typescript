@@ -12,6 +12,7 @@
     "!src/**/index.ts"
   ],
   "moduleNameMapper": {
+    "^@kaleido-io/core/(.+)$": "<rootDir>/../core/src/$1/index.ts",
     "^(\\.{1,2}/.*)\\.js$": "$1"
   },
   "maxWorkers": 1,

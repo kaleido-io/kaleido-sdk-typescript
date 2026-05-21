@@ -3,21 +3,17 @@ name: Kaleido Workflow Engine TypeScript SDK CI
 on:
   pull_request:
     paths:
-      - 'packages/workflow-engine-sdk/**'
-      - 'packages/core/**'
-      - 'packages/asset-manager/**'
+      - 'packages/**'
+      - 'samples/**'
       - '.github/workflows/ci-workflow-engine-sdk.yaml'
 
 permissions:
   contents: read
 
 jobs:
-  sdk:
-    name: Lint, Build & Test (SDK)
+  packages:
+    name: Lint, Build & Test (packages)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/workflow-engine-sdk
     steps:
       - uses: actions/checkout@v4
 
@@ -26,25 +22,19 @@ jobs:
           node-version: '22.x'
 
       - name: Install workspace dependencies
-        working-directory: .
         run: npm install
 
-      - name: Build core
-        working-directory: packages/core
-        run: npm run build
+      - run: npm run lint -w packages/workflow-engine-sdk
 
-      - run: npm run lint
+      - name: Build packages (dependency order)
+        run: npm run build:packages
 
-      - run: npm run build
+      - run: npm test -w packages/asset-manager -w packages/workflow-engine-sdk
 
-      - run: npm test
-
-  asset-manager-sdk:
-    name: Build & Test (asset-manager SDK)
+  samples:
+    name: Build & Test (samples)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/asset-manager
+    needs: packages
     steps:
       - uses: actions/checkout@v4
 
@@ -53,108 +43,13 @@ jobs:
           node-version: '22.x'
 
       - name: Install workspace dependencies
-        working-directory: .
         run: npm install
 
-      - name: Build core
-        working-directory: packages/core
-        run: npm run build
+      - name: Build packages (required by samples)
+        run: npm run build:packages
 
-      - run: npm run build
+      - name: Build samples
+        run: npm run build:samples
 
-      - run: npm test
-
-  template-bulk-upsert-sample:
-    name: Build (bulk-upsert-sample template)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/asset-manager/templates/bulk-upsert-sample
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
-
-      - name: Install workspace dependencies
-        working-directory: .
-        run: npm install
-
-      - name: Build core
-        working-directory: packages/core
-        run: npm run build
-
-      - name: Build asset-manager SDK
-        working-directory: packages/asset-manager
-        run: npm run build
-
-      - run: npm install
-
-      - run: npm run build
-
-  template-erc20-indexer:
-    name: Build & Test (erc20-indexer template)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/workflow-engine-sdk/templates/erc20-indexer
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
-
-      - name: Install workspace dependencies
-        working-directory: .
-        run: npm install
-
-      - name: Build core
-        working-directory: packages/core
-        run: npm run build
-
-      - name: Build asset-manager SDK
-        working-directory: packages/asset-manager
-        run: npm run build
-
-      - name: Build workflow-engine SDK
-        working-directory: packages/workflow-engine-sdk
-        run: npm run build
-
-      - run: npm install
-
-      - run: npm run build
-
-      - run: npm test
-
-  template-getting-started:
-    name: Build & Test (getting-started template)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/workflow-engine-sdk/templates/getting-started
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
-
-      - name: Install workspace dependencies
-        working-directory: .
-        run: npm install
-
-      - name: Build core
-        working-directory: packages/core
-        run: npm run build
-
-      - name: Build SDK
-        working-directory: packages/workflow-engine-sdk
-        run: npm run build
-
-      - run: npm install
-
-      - run: npm run build
-
-      - run: npm test
+      - name: Test samples
+        run: npm test -w samples/getting-started -w samples/erc20-indexer -w samples/btc-indexer --if-present

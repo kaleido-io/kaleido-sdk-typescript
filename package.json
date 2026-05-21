@@ -17,14 +17,22 @@
     "kaleido",
     "sdk",
     "typescript",
+    "blockchain",
+    "evm",
+    "bitcoin",
+    "canton",
     "workflows",
-    "workflow-engine",
-    "handlers",
-    "providers"
+    "workflow-engine"
   ],
   "workspaces": [
-    "packages/workflow-engine-sdk",
-    "packages/core",
-    "packages/asset-manager"
-  ]
+    "packages/*",
+    "samples/*"
+  ],
+  "scripts": {
+    "build:packages": "npm run build -w packages/core && npm run build -w packages/asset-manager -w packages/workflow-engine-sdk",
+    "build:samples": "npm run build -w samples/getting-started -w samples/erc20-indexer -w samples/btc-indexer -w samples/bulk-upsert-sample -w samples/dependency-ordering-sample --if-present",
+    "build": "npm run build:packages && npm run build:samples",
+    "test": "npm test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  }
 }

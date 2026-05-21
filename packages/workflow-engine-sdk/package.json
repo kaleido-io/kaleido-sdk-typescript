@@ -4,7 +4,6 @@
   "description": "TypeScript SDK for Kaleido Workflow Engine",
   "type": "module",
   "main": "dist/src/index.js",
-  "module": "dist-esm/src/index.js",
   "types": "dist/src/index.d.ts",
   "repository": {
     "type": "git",
@@ -12,11 +11,9 @@
   },
   "scripts": {
     "prebuild": "npm run clean && npm run lint",
-    "build": "tsc && npm run build:cjs && npm run build:esm",
-    "build:cjs": "tsc && cp cjs-package-template.json dist/package.json",
-    "build:esm": "tsc -p tsconfig.esm.json",
-    "postbuild": "tsc-esm-fix --target='dist-esm'",
-    "clean": "rm -rf dist && rm -rf dist-esm",
+    "build": "tsc",
+    "postbuild": "tsc-esm-fix --target='dist'",
+    "clean": "rm -rf dist",
     "dev": "tsc --watch",
     "test": "jest --testPathIgnorePatterns=tests/componenttest --coverage",
     "test:unit": "jest tests/unit",
@@ -77,27 +74,21 @@
   },
   "files": [
     "dist/**/*",
-    "dist-esm/**/*",
     "bin/**/*",
-    "templates/**/*",
-    "!templates/**/node_modules/**/*",
     "README.md",
     "LICENSE"
   ],
   "exports": {
     ".": {
-      "import": "./dist-esm/src/index.js",
-      "require": "./dist/src/index.js",
+      "import": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
     },
     "./types/evm": {
-      "import": "./dist-esm/src/types/evm/index.js",
-      "require": "./dist/src/types/evm/index.js",
+      "import": "./dist/src/types/evm/index.js",
       "types": "./dist/src/types/evm/index.d.ts"
     },
     "./types/btc": {
-      "import": "./dist-esm/src/types/btc/index.js",
-      "require": "./dist/src/types/btc/index.js",
+      "import": "./dist/src/types/btc/index.js",
       "types": "./dist/src/types/btc/index.d.ts"
     }
   }

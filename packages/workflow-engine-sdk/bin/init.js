@@ -15,47 +15,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { spawnSync } from 'child_process';
+import { tmpdir } from 'os';
+
+const GITHUB_REPO = 'https://github.com/kaleido-io/kaleido-sdk-typescript.git';
+const AVAILABLE_TEMPLATES = ['getting-started', 'erc20-indexer', 'btc-indexer'];
 
 const projectNameRegex = /^(?:@[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*|[a-z0-9][a-z0-9-]*)$/;
-
-const templateConfig = {
-  'variables': {
-    'PROVIDER_NAME': {
-      'description': 'The npm package name for the provider',
-      'default': 'my-provider',
-      'required': true
-    }
-  },
-  'files': {
-    'package.json': {
-      'replace': [
-        'PROVIDER_NAME'
-      ]
-    },
-    'src/provider.ts': {
-      'replace': [
-        'PROVIDER_NAME',
-      ]
-    }
-  }
-}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Get the project root (parent of bin directory)
-// When installed via npm, this will be in node_modules/@kaleido-io/workflow-engine-sdk
+// Read the SDK version from our own package.json so we can pin it in generated projects
 const PROJECT_ROOT = resolve(__dirname, '..');
-const TEMPLATES_DIR = join(PROJECT_ROOT, 'templates');
-
-// Files and directories to exclude when copying template
-const EXCLUDE_PATTERNS = [
-  '.git',
-];
+const sdkPkg = JSON.parse(readFileSync(join(PROJECT_ROOT, 'package.json'), 'utf-8'));
+const SDK_VERSION = `^${sdkPkg.version}`;
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -77,134 +54,124 @@ Examples:
 
 const projectName = args[0];
 
-// Validate project name (npm package name rules: unscoped or @scope/name)
 if (!projectNameRegex.test(projectName)) {
   console.error(`Error: Project name "${projectName}" is invalid.`);
   console.error('Project names must contain only lowercase letters, numbers, and hyphens, and optionally a scope prefix.');
   process.exit(1);
 }
 
-// Parse --template flag (required)
 const templateIdx = args.indexOf('--template');
 if (templateIdx === -1 || templateIdx + 1 >= args.length) {
   console.error('Error: --template <name> is required.');
-  console.error('Available templates: getting-started, erc20-indexer');
+  console.error(`Available templates: ${AVAILABLE_TEMPLATES.join(', ')}`);
   process.exit(1);
 }
 const templateName = args[templateIdx + 1];
 
-// Resolve source directory from the chosen template
-const sourceDir = join(TEMPLATES_DIR, templateName);
-if (!existsSync(sourceDir)) {
-  console.error(`Error: Template "${templateName}" not found at ${sourceDir}`);
-  console.error('Available templates: getting-started, erc20-indexer');
+if (!AVAILABLE_TEMPLATES.includes(templateName)) {
+  console.error(`Error: Unknown template "${templateName}".`);
+  console.error(`Available templates: ${AVAILABLE_TEMPLATES.join(', ')}`);
   process.exit(1);
 }
 
-// Get current working directory
 const cwd = process.cwd();
 const targetDir = join(cwd, projectName);
 
-// Check if target directory already exists
 if (existsSync(targetDir)) {
   console.error(`Error: Directory "${projectName}" already exists.`);
   console.error('Please choose a different name or remove the existing directory.');
   process.exit(1);
 }
 
-// Collect variable values
-const variables = {};
-
-// Set default values from config
-for (const [key, config] of Object.entries(templateConfig.variables || {})) {
-  if (config.default !== undefined) {
-    variables[key] = config.default;
-  }
+// Check git is available
+const gitCheck = spawnSync('git', ['--version'], { stdio: 'ignore' });
+if (gitCheck.status !== 0) {
+  console.error('Error: git is required to fetch templates but was not found on PATH.');
+  process.exit(1);
 }
-
-// Override with project name
-variables.PROVIDER_NAME = projectName;
 
 console.log(`\nCreating new provider project: ${projectName} (from template: ${templateName})`);
 console.log(`Location: ${targetDir}\n`);
 
-// Create target directory
-mkdirSync(targetDir, { recursive: true });
-
-// Copy template files (excluding certain patterns)
-function shouldExclude(filePath, relativePath) {
-  for (const pattern of EXCLUDE_PATTERNS) {
-    if (pattern.startsWith('*.')) {
-      // File extension pattern (e.g., "*.tgz")
-      const ext = pattern.slice(1);
-      if (filePath.endsWith(ext)) {
-        return true;
-      }
-    } else if (relativePath.includes(pattern)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function copyTemplate(src, dest, basePath = '') {
-  const entries = readdirSync(src, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const srcPath = join(src, entry.name);
-    const relativePath = join(basePath, entry.name);
-
-    if (shouldExclude(srcPath, relativePath)) {
-      continue;
-    }
-
-    const destPath = join(dest, entry.name);
-
-    if (entry.isDirectory()) {
-      mkdirSync(destPath, { recursive: true });
-      copyTemplate(srcPath, destPath, relativePath);
-    } else if (entry.isFile()) {
-      try {
-        // Read file content
-        let content = readFileSync(srcPath, 'utf-8');
-
-        // Check if this file needs variable replacement
-        const fileConfig = templateConfig.files?.[relativePath];
-        if (fileConfig && fileConfig.replace) {
-          // Replace all template variables
-          for (const varName of fileConfig.replace) {
-            const value = variables[varName];
-            if (value !== undefined) {
-              const regex = new RegExp(`\\{\\{${varName}\\}\\}`, 'g');
-              content = content.replace(regex, value);
-            }
-          }
-        } else {
-          // Replace all known variables in any file (in case template.config.json is incomplete)
-          for (const [varName, value] of Object.entries(variables)) {
-            const regex = new RegExp(`\\{\\{${varName}\\}\\}`, 'g');
-            content = content.replace(regex, value);
-          }
-        }
-
-        writeFileSync(destPath, content, 'utf-8');
-      } catch (error) {
-        // Skip files that can't be read (permissions, symlinks, etc.)
-        console.warn(`Warning: Skipping ${relativePath}: ${error.message}`);
-      }
-    }
-  }
-}
-
-// Copy source (template) to target directory
+// Fetch the template from GitHub using sparse checkout so we only download what we need
+const tmpDir = mkdtempSync(join(tmpdir(), 'wesdk-'));
 try {
-  copyTemplate(sourceDir, targetDir);
-} catch (error) {
-  console.error(`Error copying template files: ${error.message}`);
+  console.log('Fetching template from GitHub...');
+
+  const clone = spawnSync(
+    'git',
+    ['clone', '--depth=1', '--filter=blob:none', '--sparse', '--quiet', GITHUB_REPO, tmpDir],
+    { stdio: ['ignore', 'ignore', 'pipe'] }
+  );
+  if (clone.status !== 0) {
+    throw new Error(`git clone failed: ${clone.stderr?.toString().trim()}`);
+  }
+
+  const sparse = spawnSync(
+    'git',
+    ['sparse-checkout', 'set', `samples/${templateName}`],
+    { cwd: tmpDir, stdio: ['ignore', 'ignore', 'pipe'] }
+  );
+  if (sparse.status !== 0) {
+    throw new Error(`git sparse-checkout failed: ${sparse.stderr?.toString().trim()}`);
+  }
+
+  const sourceDir = join(tmpDir, 'samples', templateName);
+  if (!existsSync(sourceDir)) {
+    throw new Error(`Template "${templateName}" was not found in the repository.`);
+  }
+
+  mkdirSync(targetDir, { recursive: true });
+  cpSync(sourceDir, targetDir, { recursive: true });
+} catch (err) {
+  rmSync(tmpDir, { recursive: true, force: true });
+  console.error(`Error fetching template: ${err.message}`);
   process.exit(1);
 }
+rmSync(tmpDir, { recursive: true, force: true });
 
-console.log(`Project ${projectName} initialized\n\n`);
+// Walk the copied project and apply variable substitutions
+const variables = { PROVIDER_NAME: projectName };
+
+function applyVariables(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      applyVariables(fullPath);
+    } else if (entry.isFile()) {
+      try {
+        let content = readFileSync(fullPath, 'utf-8');
+        for (const [key, value] of Object.entries(variables)) {
+          content = content.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+        }
+        writeFileSync(fullPath, content, 'utf-8');
+      } catch {
+        // skip binary or unreadable files
+      }
+    }
+  }
+}
+
+applyVariables(targetDir);
+
+// Fix package.json: set the project name and pin @kaleido-io/* versions
+const pkgPath = join(targetDir, 'package.json');
+if (existsSync(pkgPath)) {
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+  pkg.name = projectName;
+  for (const section of ['dependencies', 'devDependencies', 'peerDependencies']) {
+    if (pkg[section]) {
+      for (const dep of Object.keys(pkg[section])) {
+        if (dep.startsWith('@kaleido-io/') && pkg[section][dep] === '*') {
+          pkg[section][dep] = SDK_VERSION;
+        }
+      }
+    }
+  }
+  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+}
+
+console.log(`Project ${projectName} initialized\n`);
 console.log('Next steps:');
 console.log(`\tcd ${projectName}`);
 console.log('\tnpm install');
