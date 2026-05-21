@@ -4,6 +4,7 @@ export {
   BulkUpsertBuilderOptions,
   BulkUpsertInvalidRefError,
   DuplicateStrategy,
+  IBulkQueryClient,
   IBulkUpsertClient,
 } from "./bulk-upsert-builder.js";
 export * from "./asset-manager.interfaces.js";

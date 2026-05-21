@@ -3,6 +3,8 @@ import {
   ActivityBulkInput,
   AddressBulkInput,
   AssetBulkInput,
+  BulkQueryInput,
+  BulkQueryOutput,
   BulkUpsertInput,
   CollectionBulkInput,
   DataBulkInput,
@@ -13,12 +15,12 @@ import {
   TransferBulkInput,
 } from "./asset-manager.interfaces.js";
 
-/**
- * Minimal interface satisfied by AssetManagerClient (and any mock).
- * BulkUpsertBuilder depends only on this method.
- */
 export interface IBulkUpsertClient {
   bulkUpsert(input: BulkUpsertInput): Promise<unknown>;
+}
+
+export interface IBulkQueryClient {
+  bulkQuery(input: BulkQueryInput): Promise<BulkQueryOutput>;
 }
 
 /**

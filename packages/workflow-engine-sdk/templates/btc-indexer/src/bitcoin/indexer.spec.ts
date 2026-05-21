@@ -155,7 +155,7 @@ describe('BTCIndexer.process()', () => {
     }));
 
     // No transfers — neither address has a wallet label
-    expect(transfers).toHaveLength(0);
+    expect(transfers).toBeUndefined();
   });
 
   it('creates a transfer with an add balance change for a known receiver wallet', async () => {
