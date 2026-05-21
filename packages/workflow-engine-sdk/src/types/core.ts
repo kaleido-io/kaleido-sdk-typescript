@@ -181,10 +181,7 @@ export interface WSEventProcessorBatchRequest extends WSHandlerEnvelope {
   authRef?: string;
 }
 
-export interface WSEventProcessorBatchResult extends WSHandlerEnvelope {
-  checkpoint?: any;
-  events: ListenerEvent[];
-}
+export interface WSEventProcessorBatchResult extends WSHandlerEnvelope {}
 
 /**
  * Transaction handling transaction (batch of evaluate transactions).

@@ -178,8 +178,6 @@ export class ERC20Indexer {
       }));
       await this.amClient.bulkUpsert({ addresses, transfers });
     }
-
-    result.checkpoint = { lastPollTime: Date.now() };
   }
 }
 

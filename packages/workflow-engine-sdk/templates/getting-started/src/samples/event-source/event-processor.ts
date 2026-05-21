@@ -36,9 +36,6 @@ export class MyEventProcessor {
         for (const event of batch.events) {
             console.log(`Event received: ${event.topic} - ${JSON.stringify(event.data, null, '\t')}`);
         }
-        result.checkpoint = {
-            lastPollTime: Date.now()
-        };
         return Promise.resolve();
     }
 }
