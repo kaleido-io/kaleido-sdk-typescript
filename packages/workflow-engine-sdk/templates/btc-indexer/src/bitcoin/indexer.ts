@@ -21,20 +21,22 @@ import {
   EventProcessorBuilder,
 } from '@kaleido-io/workflow-engine-sdk';
 import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
+import { BulkUpsertBuilder } from '@kaleido-io/asset-manager-sdk';
 import type {
-  AssetManagerClient,
   Address,
   BulkQueryInput,
   BulkQueryOutput,
   Fragment,
   FragmentBulkInput,
+  IBulkQueryClient,
+  IBulkUpsertClient,
   TransferBulkInput,
 } from '@kaleido-io/asset-manager-sdk';
 import type { BTCConfig } from '../config/provider-config.js';
 
 const log = newLogger('bitcoin-indexer');
 
-type IIndexerClient = Pick<AssetManagerClient, 'bulkUpsert' | 'bulkQuery'>;
+type IIndexerClient = IBulkUpsertClient & IBulkQueryClient;
 
 interface BTCCheckpoint {
   lastPollTime: number;
@@ -63,34 +65,19 @@ export class BTCIndexer {
 
     const symbol = bitcoinConfig.tokenSymbol ?? this.tokenName;
 
-    await this.amClient.bulkUpsert({
-      assets: [
-        {
-          name: this.tokenName,
-          displayName: this.tokenName,
-          info: { symbol },
-          updateType: 'create_or_ignore',
-        },
-      ],
-      addresses: [
-        {
-          address: this.tokenName,
-          contract: true,
-          updateType: 'create_or_ignore',
-        },
-      ],
-      pools: [
-        {
-          name: this.tokenName,
-          asset: this.tokenName,
-          address: this.tokenName,
-          standard: 'bitcoin',
-          displayName: `${this.tokenName} on ${this.networkName}`,
-          labels: { networkName: this.networkName, symbol },
-          updateType: 'create_or_ignore',
-        },
-      ],
+    const builder = new BulkUpsertBuilder(this.amClient);
+    builder.upsertAsset({ name: this.tokenName, displayName: this.tokenName, info: { symbol }, updateType: 'create_or_ignore' });
+    builder.upsertAddress({ address: this.tokenName, contract: true, updateType: 'create_or_ignore' });
+    builder.upsertPool({
+      name: this.tokenName,
+      asset: this.tokenName,
+      address: this.tokenName,
+      standard: 'bitcoin',
+      displayName: `${this.tokenName} on ${this.networkName}`,
+      labels: { networkName: this.networkName, symbol },
+      updateType: 'create_or_ignore',
     });
+    await builder.execute();
   }
 
   private async batchLookup<T>(
@@ -258,9 +245,10 @@ export class BTCIndexer {
         }
       }
 
-      if (fragments.length > 0) {
-        await this.amClient.bulkUpsert({ fragments, transfers: xferOrdered });
-      }
+      const builder = new BulkUpsertBuilder(this.amClient);
+      for (const fragment of fragments) builder.upsertFragment(fragment);
+      for (const xfer of xferOrdered) builder.upsertTransfer(xfer);
+      await builder.execute();
     }
 
     log.info(`Indexed ${txCount} transactions in ${Date.now() - startTime}ms`);

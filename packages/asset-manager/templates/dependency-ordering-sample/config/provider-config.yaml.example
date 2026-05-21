@@ -1,0 +1,11 @@
+# Asset Manager connection details.
+# Copy this file to provider-config.yaml and fill in your values.
+# provider-config.yaml is gitignored — never commit real credentials.
+
+assetManager:
+  # Full REST endpoint URL for the Asset Manager service
+  url: https://<account>.kaleido.io/endpoint/<environment>/<service>/rest
+  auth:
+    # API key name and value (used as HTTP Basic auth credentials)
+    username: <api-key-name>
+    password: <api-key-value>
