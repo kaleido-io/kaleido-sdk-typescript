@@ -292,17 +292,6 @@ describe('BTCIndexer.process()', () => {
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(2);
   });
 
-  it('returns a checkpoint with lastPollTime after processing events', async () => {
-    const event = makeEvent(makeTxEvent({ txid: 'tx007', vout: [makeVOut(0, 1000)] }));
-    const before = Date.now();
-    const result = await (indexer as any).process([event]);
-    const after = Date.now();
-
-    expect(result.checkpointOut).toBeDefined();
-    expect(result.checkpointOut.lastPollTime).toBeGreaterThanOrEqual(before);
-    expect(result.checkpointOut.lastPollTime).toBeLessThanOrEqual(after);
-  });
-
   it('uses valueSat over value when both are present', async () => {
     const event = makeEvent(makeTxEvent({
       txid: 'tx008',

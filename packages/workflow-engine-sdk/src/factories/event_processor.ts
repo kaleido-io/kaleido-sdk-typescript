@@ -50,25 +50,25 @@ export interface EventProcessorEvent<DT> {
  * source checkpoint, not here. Use an ordered, incrementing value such as a
  * block number so that progress is meaningful to operators.
  */
-export type EventProcessorBatchFn<DT, CP = unknown> = (
+export type EventProcessorBatchFn<DT = unknown> = (
   events: EventProcessorEvent<DT>[]
-) => Promise<{ events: EventProcessorEvent<DT>[]; checkpointOut?: CP }>;
+) => Promise<{ events: EventProcessorEvent<DT>[] }>;
 
 /**
  * Builder interface for configuring event processors with optional lifecycle hooks.
  */
-export interface EventProcessorBuilder<DT, CP = unknown> extends EventProcessor {
-  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventProcessorBuilder<DT, CP>;
-  withCloseFn(closeFn: () => void): EventProcessorBuilder<DT, CP>;
+export interface EventProcessorBuilder<DT = unknown> extends EventProcessor {
+  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventProcessorBuilder<DT>;
+  withCloseFn(closeFn: () => void): EventProcessorBuilder<DT>;
 }
 
-class EventProcessorBase<DT, CP> implements EventProcessorBuilder<DT, CP> {
+class EventProcessorBase<DT> implements EventProcessorBuilder<DT> {
   private _name: string;
-  private batchFn: EventProcessorBatchFn<DT, CP>;
+  private batchFn: EventProcessorBatchFn<DT>;
   private initFn?: (engAPI: EngineAPI) => Promise<void>;
   private closeFn?: () => void;
 
-  constructor(name: string, batchFn: EventProcessorBatchFn<DT, CP>) {
+  constructor(name: string, batchFn: EventProcessorBatchFn<DT>) {
     this._name = name;
     this.batchFn = batchFn;
   }
@@ -77,12 +77,12 @@ class EventProcessorBase<DT, CP> implements EventProcessorBuilder<DT, CP> {
     return this._name;
   }
 
-  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventProcessorBuilder<DT, CP> {
+  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventProcessorBuilder<DT> {
     this.initFn = initFn;
     return this;
   }
 
-  withCloseFn(closeFn: () => void): EventProcessorBuilder<DT, CP> {
+  withCloseFn(closeFn: () => void): EventProcessorBuilder<DT> {
     this.closeFn = closeFn;
     return this;
   }
@@ -118,9 +118,6 @@ class EventProcessorBase<DT, CP> implements EventProcessorBuilder<DT, CP> {
         data: evt.data,
       }));
 
-      if (batchResult.checkpointOut !== undefined) {
-        result.checkpoint = batchResult.checkpointOut;
-      }
     } catch (error) {
       log.error('Event processor batch failed', { error });
       result.error = getErrorMessage(error);
@@ -144,9 +141,9 @@ class EventProcessorBase<DT, CP> implements EventProcessorBuilder<DT, CP> {
  *   }
  * );
  */
-export function createEventProcessor<DT, CP = unknown>(
+export function createEventProcessor<DT = unknown>(
   name: string,
-  batchFn: EventProcessorBatchFn<DT, CP>
-): EventProcessorBuilder<DT, CP> {
-  return new EventProcessorBase<DT, CP>(name, batchFn);
+  batchFn: EventProcessorBatchFn<DT>
+): EventProcessorBuilder<DT> {
+  return new EventProcessorBase<DT>(name, batchFn);
 }

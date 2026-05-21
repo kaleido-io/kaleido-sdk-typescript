@@ -57,6 +57,7 @@ export class BTCIndexer {
         if (events.length === 0) {
             return { events };
         }
+        const builder = new BulkUpsertBuilder(this.amClient);
         const startTime = Date.now();
         log.info(`Received batch of ${events.length} events`);
         // Pass 1: look up fragments for all UTXOs spent as inputs across the batch
@@ -175,15 +176,15 @@ export class BTCIndexer {
                     xfer.transfer.to = `${this.tokenName}_${xfer.walletId}`;
                 }
             }
-            const builder = new BulkUpsertBuilder(this.amClient);
-            for (const fragment of fragments)
-                builder.upsertFragment(fragment);
-            for (const xfer of xferOrdered)
-                builder.upsertTransfer(xfer);
-            await builder.execute();
+            for (const fragment of fragments) builder.upsertFragment(fragment);
+            for (const xfer of xferOrdered) builder.upsertTransfer(xfer);
         }
+
+        // Do the upsert
+        await builder.execute();
+
         log.info(`Indexed ${txCount} transactions in ${Date.now() - startTime}ms`);
-        return { events, checkpointOut: { lastPollTime: Date.now() } };
+        return { events };
     }
 }
 function satoshiValue(utxo) {

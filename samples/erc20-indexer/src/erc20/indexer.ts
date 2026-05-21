@@ -109,7 +109,7 @@ export class ERC20Indexer {
 
   private async process(
     events: EventProcessorEvent<EVMTransactionEvent>[],
-  ): Promise<{ events: EventProcessorEvent<EVMTransactionEvent>[]; checkpointOut?: IndexerCheckpoint }> {
+  ): Promise<{ events: EventProcessorEvent<EVMTransactionEvent>[] }> {
     const builder = new BulkUpsertBuilder(this.amClient);
     let highestBlock = 0;
     let transferCount = 0;
@@ -185,10 +185,7 @@ export class ERC20Indexer {
 
     await builder.execute();
 
-    return {
-      events,
-      checkpointOut: highestBlock > 0 ? { highestBlock } : undefined,
-    };
+    return { events };
   }
 }
 

@@ -38,20 +38,16 @@ const log = newLogger('bitcoin-indexer');
 
 type IIndexerClient = IBulkUpsertClient & IBulkQueryClient;
 
-interface BTCCheckpoint {
-  lastPollTime: number;
-}
-
 export class BTCIndexer {
   private amClient!: IIndexerClient;
   private networkId!: number;
   private tokenName!: string;
   private networkName!: string;
 
-  readonly handler: EventProcessorBuilder<BTCTransactionEvent, BTCCheckpoint>;
+  readonly handler: EventProcessorBuilder<BTCTransactionEvent>;
 
   constructor() {
-    this.handler = createEventProcessor<BTCTransactionEvent, BTCCheckpoint>(
+    this.handler = createEventProcessor<BTCTransactionEvent>(
       'bitcoin-indexer',
       (events) => this.process(events),
     );
@@ -98,12 +94,12 @@ export class BTCIndexer {
     events: EventProcessorEvent<BTCTransactionEvent>[],
   ): Promise<{
     events: EventProcessorEvent<BTCTransactionEvent>[];
-    checkpointOut?: BTCCheckpoint;
   }> {
     if (events.length === 0) {
       return { events };
     }
 
+    const builder = new BulkUpsertBuilder(this.amClient);
     const startTime = Date.now();
     log.info(`Received batch of ${events.length} events`);
 
@@ -245,14 +241,15 @@ export class BTCIndexer {
         }
       }
 
-      const builder = new BulkUpsertBuilder(this.amClient);
       for (const fragment of fragments) builder.upsertFragment(fragment);
       for (const xfer of xferOrdered) builder.upsertTransfer(xfer);
-      await builder.execute();
     }
 
+    // Commit the upserts we built
+    await builder.execute();
+
     log.info(`Indexed ${txCount} transactions in ${Date.now() - startTime}ms`);
-    return { events, checkpointOut: { lastPollTime: Date.now() } };
+    return { events };
   }
 }
 
