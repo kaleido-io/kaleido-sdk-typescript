@@ -35,15 +35,51 @@ export enum DuplicateStrategy {
 }
 
 /**
- * BulkUpsertBuilder is a helper class that allows you to build a bulk upsert request.
- * It ensures that each update touches a given record at most once.
- * It also allows you to add finalizers that will be executed after the bulk upsert is executed.
+ * Options for configuring BulkUpsertBuilder behaviour at construction time.
+ */
+export interface BulkUpsertBuilderOptions {
+  /**
+   * When `true` (default), if a bulk upsert fails with an invalid-reference
+   * error (KA090801), the builder retries each item individually in repeated
+   * passes to resolve dependency ordering within the batch. If a full pass
+   * produces no progress, {@link BulkUpsertInvalidRefError} is thrown.
+   *
+   * Set to `false` if you are managing item ordering yourself and want a fast
+   * throw on any invalid-reference error rather than the retry loop.
+   */
+  retryOnInvalidRef?: boolean;
+}
+
+/**
+ * Thrown by {@link BulkUpsertBuilder.execute} when `retryOnInvalidRef` is
+ * enabled and individual retries reach a state where no item can make
+ * progress — i.e. every remaining item fails with KA090801 in a full pass.
+ *
+ * The `stuck` property carries the items that could not be persisted so the
+ * caller can log or inspect them.
+ */
+export class BulkUpsertInvalidRefError extends Error {
+  constructor(public readonly stuck: BulkUpsertInput) {
+    super("Bulk upsert failed: unresolvable invalid reference(s)");
+    this.name = "BulkUpsertInvalidRefError";
+  }
+}
+
+/**
+ * BulkUpsertBuilder accumulates data-model updates and executes them as a
+ * single bulk upsert, ensuring each record is touched at most once per call.
+ *
+ * Finalizers registered via {@link addFinalizer} run after a successful
+ * upsert. They are **not** called if the upsert throws.
  */
 export class BulkUpsertBuilder {
   private updates: BulkUpsertInput = {};
   private finalizers: (() => void | Promise<void>)[] = [];
 
-  constructor(private client: IBulkUpsertClient) {}
+  constructor(
+    private client: IBulkUpsertClient,
+    private options: BulkUpsertBuilderOptions = {},
+  ) {}
 
   hasUpdates() {
     for (const val of Object.values(this.updates)) {
@@ -197,13 +233,79 @@ export class BulkUpsertBuilder {
     return this;
   }
 
-  async execute() {
+  /**
+   * Executes the accumulated bulk upsert, then runs all registered finalizers.
+   *
+   * Finalizers run only when the upsert succeeds. If the upsert throws for
+   * any reason, finalizers are skipped and the error propagates to the caller.
+   *
+   * When `retryOnInvalidRef` is `true` (default) and the bulk upsert fails
+   * with KA090801, items are retried individually in repeated passes. If a
+   * complete pass makes no progress, {@link BulkUpsertInvalidRefError} is
+   * thrown carrying the stuck items.
+   *
+   * When `retryOnInvalidRef` is `false`, any KA090801 error is rethrown
+   * immediately without retrying.
+   */
+  async execute(): Promise<void> {
     if (this.hasUpdates()) {
-      await this.client.bulkUpsert(this.updates);
+      try {
+        await this.client.bulkUpsert(this.updates);
+      } catch (err) {
+        if ((this.options.retryOnInvalidRef ?? true) && isInvalidRefError(err)) {
+          await this.retryIndividually();
+        } else {
+          throw err;
+        }
+      }
     }
 
     if (this.finalizers.length > 0) {
       await Promise.all(this.finalizers.map((f) => Promise.resolve(f())));
     }
   }
+
+  private async retryIndividually(): Promise<void> {
+    while (true) {
+      let anySucceeded = false;
+      let anyFailed = false;
+      for (const key of Object.keys(this.updates) as (keyof BulkUpsertInput)[]) {
+        const items = this.updates[key];
+        if (!Array.isArray(items)) continue;
+        for (let i = 0; i < items.length; i++) {
+          try {
+            await this.client.bulkUpsert({ [key]: [items[i]] });
+            items.splice(i--, 1);
+            anySucceeded = true;
+          } catch (err) {
+            if (isInvalidRefError(err)) {
+              anyFailed = true;
+            } else {
+              throw err;
+            }
+          }
+        }
+      }
+      if (!anyFailed) break;
+      if (!anySucceeded) throw new BulkUpsertInvalidRefError(this.updates);
+    }
+  }
+}
+
+/**
+ * Returns true if the error is an invalid-reference error from the Asset
+ * Manager (error code KA090801). Handles both AxiosError response bodies
+ * and plain Error messages.
+ */
+function isInvalidRefError(err: unknown): boolean {
+  if (err instanceof Error && err.message.includes("KA090801")) return true;
+  const axiosErr = err as { response?: { data?: unknown } };
+  if (axiosErr?.response?.data != null) {
+    const body =
+      typeof axiosErr.response.data === "string"
+        ? axiosErr.response.data
+        : JSON.stringify(axiosErr.response.data);
+    return body.includes("KA090801");
+  }
+  return false;
 }

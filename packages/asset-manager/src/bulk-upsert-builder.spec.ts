@@ -1,4 +1,10 @@
-import { BulkUpsertBuilder, DuplicateStrategy, IBulkUpsertClient } from "./bulk-upsert-builder.js";
+import {
+  BulkUpsertBuilder,
+  BulkUpsertBuilderOptions,
+  BulkUpsertInvalidRefError,
+  DuplicateStrategy,
+  IBulkUpsertClient,
+} from "./bulk-upsert-builder.js";
 
 describe("BulkUpsertBuilder", () => {
   let builder: BulkUpsertBuilder;
@@ -517,6 +523,160 @@ describe("BulkUpsertBuilder", () => {
         .addFinalizer(() => {});
 
       expect(builder.hasUpdates()).toBe(true);
+    });
+  });
+
+  describe("retryOnInvalidRef (default: true)", () => {
+    function invalidRefError(message = "KA090801 invalid reference") {
+      const err = Object.assign(new Error(message), {
+        response: { data: { message } },
+      });
+      return err;
+    }
+
+    function makeBuilder(options?: BulkUpsertBuilderOptions) {
+      mockClient = { bulkUpsert: jest.fn() };
+      return new BulkUpsertBuilder(mockClient, options);
+    }
+
+    it("resolves dependency ordering: succeeds when retries make progress", async () => {
+      // activity-1 must be created before event-1 (which references it).
+      // The bulk upsert fails with KA090801; retryIndividually processes
+      // each item alone — activity-1 succeeds first, then event-1 succeeds.
+      builder = makeBuilder();
+      builder.upsertActivity({ name: "activity-1", updateType: "create_only" });
+      builder.upsertEvent({ name: "event-1", activity: "activity-1", updateType: "create_only" });
+
+      let callCount = 0;
+      mockClient.bulkUpsert.mockImplementation(async (input: any) => {
+        callCount++;
+        if (callCount === 1) {
+          // First call: full batch — fail to simulate ordering problem
+          throw invalidRefError();
+        }
+        // Subsequent individual calls: succeed for activity, fail for event
+        // until activity is persisted (simulated by callCount > 2)
+        if (input.events && callCount < 4) {
+          throw invalidRefError();
+        }
+        return {};
+      });
+
+      await builder.execute();
+
+      // First attempt (bulk) + at least one pass of individual retries
+      expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(callCount);
+    });
+
+    it("throws BulkUpsertInvalidRefError when no item can make progress", async () => {
+      builder = makeBuilder();
+      builder.upsertActivity({ name: "activity-1" });
+      builder.upsertEvent({ name: "event-1", activity: "activity-1" });
+
+      // Every call fails — nothing can ever succeed
+      mockClient.bulkUpsert.mockRejectedValue(invalidRefError());
+
+      await expect(builder.execute()).rejects.toThrow(BulkUpsertInvalidRefError);
+    });
+
+    it("BulkUpsertInvalidRefError carries the stuck items", async () => {
+      builder = makeBuilder();
+      builder.upsertActivity({ name: "activity-stuck" });
+
+      mockClient.bulkUpsert.mockRejectedValue(invalidRefError());
+
+      const err = await builder.execute().catch((e) => e);
+      expect(err).toBeInstanceOf(BulkUpsertInvalidRefError);
+      expect((err as BulkUpsertInvalidRefError).stuck.activities).toHaveLength(1);
+      expect((err as BulkUpsertInvalidRefError).stuck.activities?.[0]?.name).toBe("activity-stuck");
+    });
+
+    it("does not run finalizers when BulkUpsertInvalidRefError is thrown", async () => {
+      builder = makeBuilder();
+      builder.upsertActivity({ name: "activity-1" });
+      const finalizer = jest.fn();
+      builder.addFinalizer(finalizer);
+
+      mockClient.bulkUpsert.mockRejectedValue(invalidRefError());
+
+      await expect(builder.execute()).rejects.toThrow(BulkUpsertInvalidRefError);
+      expect(finalizer).not.toHaveBeenCalled();
+    });
+
+    it("rethrows non-reference errors immediately without retrying", async () => {
+      builder = makeBuilder();
+      builder.upsertActivity({ name: "activity-1" });
+
+      const networkError = new Error("network timeout");
+      mockClient.bulkUpsert.mockRejectedValue(networkError);
+
+      await expect(builder.execute()).rejects.toThrow("network timeout");
+      // Only one call — no retry loop entered
+      expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
+    });
+
+    it("rethrows non-reference errors encountered during individual retries", async () => {
+      builder = makeBuilder();
+      builder.upsertActivity({ name: "activity-1" });
+      builder.upsertEvent({ name: "event-1", activity: "activity-1" });
+
+      let callCount = 0;
+      mockClient.bulkUpsert.mockImplementation(async (input: any) => {
+        callCount++;
+        if (callCount === 1) throw invalidRefError();
+        // During retry loop, activity succeeds but event hits a different error
+        if (input.events) throw new Error("unexpected server error");
+        return {};
+      });
+
+      await expect(builder.execute()).rejects.toThrow("unexpected server error");
+    });
+
+    it("detects KA090801 in axios-style response body", async () => {
+      builder = makeBuilder();
+      builder.upsertActivity({ name: "activity-1" });
+
+      // Simulate AxiosError shape: message not in Error.message but in response.data
+      const axiosErr = Object.assign(new Error("Request failed with status code 409"), {
+        response: { data: { message: "KA090801 invalid reference for field 'asset'" } },
+      });
+      mockClient.bulkUpsert.mockRejectedValue(axiosErr);
+
+      // Should enter retry loop, not rethrow immediately
+      await expect(builder.execute()).rejects.toThrow(BulkUpsertInvalidRefError);
+    });
+  });
+
+  describe("retryOnInvalidRef: false", () => {
+    function invalidRefError() {
+      return Object.assign(new Error("KA090801 invalid reference"), {
+        response: { data: { message: "KA090801 invalid reference" } },
+      });
+    }
+
+    beforeEach(() => {
+      mockClient = { bulkUpsert: jest.fn() };
+      builder = new BulkUpsertBuilder(mockClient, { retryOnInvalidRef: false });
+    });
+
+    it("rethrows KA090801 immediately without retrying", async () => {
+      builder.upsertActivity({ name: "activity-1" });
+
+      mockClient.bulkUpsert.mockRejectedValue(invalidRefError());
+
+      await expect(builder.execute()).rejects.toThrow("KA090801 invalid reference");
+      expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not run finalizers when KA090801 is thrown", async () => {
+      builder.upsertActivity({ name: "activity-1" });
+      const finalizer = jest.fn();
+      builder.addFinalizer(finalizer);
+
+      mockClient.bulkUpsert.mockRejectedValue(invalidRefError());
+
+      await expect(builder.execute()).rejects.toThrow("KA090801");
+      expect(finalizer).not.toHaveBeenCalled();
     });
   });
 
