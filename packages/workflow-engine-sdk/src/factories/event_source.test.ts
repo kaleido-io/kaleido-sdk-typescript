@@ -20,7 +20,7 @@ import { describe, it, expect, jest } from '@jest/globals';
 //quietens the console during tests
 import '../../tests/mock-logger';
 
-import { EventSourceConf, newEventSource } from './event_source';
+import { EventSourceConf, createEventSource } from './event_source';
 import { WSEventSourceConfig, WSListenerPollRequest, WSListenerPollResult, WSHandlerEnvelope, WSMessageType, WSEventStreamInfo } from '../types/core';
 import { EngineClient, EngineClientRuntime } from '../runtime/engine_client';
 
@@ -38,7 +38,7 @@ interface TestEventData {
     message: string;
 }
 
-describe('newEventSource', () => {
+describe('createEventSource', () => {
 
     it('should create an event source', () => {
         const pollFn = jest.fn(async () => {
@@ -47,7 +47,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
 
         expect(eventSource).toBeDefined();
         expect(eventSource.name()).toBe('test-event-source');
@@ -69,7 +69,7 @@ describe('newEventSource', () => {
             generateId: jest.fn(() => 'test'),
         } as any as EngineClientRuntime;
         const engineClient = new EngineClient(engineClientRuntime);
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
             .withInitFn(initFn)
             .withCloseFn(closeFn);
         await eventSource.init(engineClient);
@@ -88,7 +88,7 @@ describe('newEventSource', () => {
                 ]
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
 
         const config: WSEventSourceConfig = {
             messageType: WSMessageType.EVENT_SOURCE_CONFIG,
@@ -133,7 +133,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
 
         const config: WSEventSourceConfig = {
             messageType: WSMessageType.EVENT_SOURCE_CONFIG,
@@ -167,7 +167,7 @@ describe('newEventSource', () => {
         const pollFn = jest.fn(async () => {
             throw new Error('Poll failed');
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
 
         const config: WSEventSourceConfig = {
             messageType: WSMessageType.EVENT_SOURCE_CONFIG,
@@ -207,7 +207,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
             .withInitialCheckpoint(buildInitialCheckpointFn);
 
         const result: WSHandlerEnvelope = {
@@ -240,7 +240,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
             .withConfigParser(configParserFn);
 
         const result: WSHandlerEnvelope = {
@@ -273,7 +273,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
             .withConfigParser(configParserFn);
 
         const config: WSEventSourceConfig = {
@@ -315,7 +315,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
             .withDeleteFn(deleteFn);
 
         const result: WSHandlerEnvelope = {
@@ -346,7 +346,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
             .withDeleteFn(deleteFn);
 
         const result: WSHandlerEnvelope = {
@@ -374,7 +374,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
 
         const config: WSEventSourceConfig = {
             messageType: WSMessageType.EVENT_SOURCE_CONFIG,

@@ -15,7 +15,7 @@
 // limitations under the License.
 
 
-import { EventSourceConf, EventSourceEvent, newEventSource, newLogger, WSEventStreamInfo } from '@kaleido-io/workflow-engine-sdk';
+import { EventSourceConf, EventSourceEvent, createEventSource, newLogger, WSEventStreamInfo } from '@kaleido-io/workflow-engine-sdk';
 
 const log = newLogger('event-source');
 
@@ -33,7 +33,7 @@ interface MyEventData {
   timestamp: number;
 }
 
-export const eventSource = newEventSource<MyEventSourceCheckpoint, MyEventSourceConfig, MyEventData>(
+export const eventSource = createEventSource<MyEventSourceCheckpoint, MyEventSourceConfig, MyEventData>(
   'my-listener',
   async (config: EventSourceConf<MyEventSourceConfig>, checkpoint: MyEventSourceCheckpoint | null) => {
     log.info('Polling for events with config:', config.config);

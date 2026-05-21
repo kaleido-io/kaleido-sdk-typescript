@@ -15,10 +15,10 @@
 // limitations under the License.
 
 import {
-  newEventProcessor,
+  createEventProcessor,
   newLogger,
   EventProcessorEvent,
-  EventProcessorFactory,
+  EventProcessorBuilder,
 } from '@kaleido-io/workflow-engine-sdk';
 
 import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
@@ -54,10 +54,10 @@ export class ERC20Indexer {
   private chain!: string;
   private poolName!: string;
 
-  readonly handler: EventProcessorFactory<EVMTransactionEvent, IndexerCheckpoint>;
+  readonly handler: EventProcessorBuilder<EVMTransactionEvent, IndexerCheckpoint>;
 
   constructor() {
-    this.handler = newEventProcessor<EVMTransactionEvent, IndexerCheckpoint>(
+    this.handler = createEventProcessor<EVMTransactionEvent, IndexerCheckpoint>(
       'erc20-indexer',
       (events) => this.process(events),
     );

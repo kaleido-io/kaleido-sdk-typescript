@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { newEventProcessor, newLogger } from '@kaleido-io/workflow-engine-sdk';
+import { createEventProcessor, newLogger } from '@kaleido-io/workflow-engine-sdk';
 
 const log = newLogger('block-indexer');
 
@@ -46,7 +46,7 @@ export interface IndexerCheckpoint {
   highestBlock: number;
 }
 
-export const tokenTransferIndexer = newEventProcessor<TokenTransferEvent, IndexerCheckpoint>(
+export const tokenTransferIndexer = createEventProcessor<TokenTransferEvent, IndexerCheckpoint>(
   'token-transfer-indexer',
   async (events) => {
     if (events.length === 0) {

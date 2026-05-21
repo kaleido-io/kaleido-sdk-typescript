@@ -43,6 +43,7 @@ export const stream = {
         unfiltered: true,
         fromBlock: providerConfig.bitcoin.fromBlock,
         batchSize: 50,
+        batchTimeout: '10s',
         pollTimeout: '30s',
         requiredConfirmations: 5
       }

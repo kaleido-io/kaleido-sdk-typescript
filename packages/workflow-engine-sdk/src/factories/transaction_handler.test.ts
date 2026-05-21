@@ -22,15 +22,15 @@ jest.mock('../helpers/stage_director', () => ({
 }));
 
 import { DirectedActionConfig } from '../interfaces/handlers';
-import { newDirectedTransactionHandler } from './transaction_handler';
+import { createDirectedTransactionHandler } from './transaction_handler';
 import { WithStageDirector, WSHandleTransactions, WSHandleTransactionsResult, WSMessageType } from '../types/core';
 import { EngineClient, EngineClientRuntime } from '../runtime/engine_client';
 import { evalDirected } from '../helpers/stage_director';
 
-describe('newDirectedTransactionHandler', () => {
+describe('createDirectedTransactionHandler', () => {
 
     it('should create a transaction handler', () => {
-        const transactionHandler = newDirectedTransactionHandler('test-transaction-handler', new Map<string, DirectedActionConfig<WithStageDirector>>());
+        const transactionHandler = createDirectedTransactionHandler('test-transaction-handler', new Map<string, DirectedActionConfig<WithStageDirector>>());
         expect(transactionHandler).toBeDefined();
         expect(transactionHandler.name()).toBe('test-transaction-handler');
     })
@@ -44,7 +44,7 @@ describe('newDirectedTransactionHandler', () => {
             generateId: jest.fn(() => 'test'),
         } as any as EngineClientRuntime;
         const engineClient = new EngineClient(engineClientRuntime);
-        const transactionHandler = newDirectedTransactionHandler('test-transaction-handler', new Map<string, DirectedActionConfig<WithStageDirector>>())
+        const transactionHandler = createDirectedTransactionHandler('test-transaction-handler', new Map<string, DirectedActionConfig<WithStageDirector>>())
             .withInitFn(initFn)
             .withCloseFn(closeFn);
         await transactionHandler.init(engineClient);

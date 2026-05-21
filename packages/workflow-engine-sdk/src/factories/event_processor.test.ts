@@ -19,7 +19,7 @@ import { describe, it, expect, jest } from '@jest/globals';
 // quietens the console during tests
 import '../../tests/mock-logger';
 
-import { newEventProcessor, EventProcessorEvent } from './event_processor';
+import { createEventProcessor, EventProcessorEvent } from './event_processor';
 import { WSEventProcessorBatchRequest, WSEventProcessorBatchResult, WSMessageType } from '../types/core';
 import { EngineClient, EngineClientRuntime } from '../runtime/engine_client';
 
@@ -52,10 +52,10 @@ function makeResult(): WSEventProcessorBatchResult {
   };
 }
 
-describe('newEventProcessor', () => {
+describe('createEventProcessor', () => {
 
   it('should create an event processor', () => {
-    const processor = newEventProcessor<TestEventData, TestCheckpoint>(
+    const processor = createEventProcessor<TestEventData, TestCheckpoint>(
       'test-processor',
       async (events) => ({ events })
     );
@@ -74,7 +74,7 @@ describe('newEventProcessor', () => {
     } as any as EngineClientRuntime;
     const engineClient = new EngineClient(engineClientRuntime);
 
-    const processor = newEventProcessor<TestEventData, TestCheckpoint>(
+    const processor = createEventProcessor<TestEventData, TestCheckpoint>(
       'test-processor',
       async (events) => ({ events })
     )
@@ -94,7 +94,7 @@ describe('newEventProcessor', () => {
       checkpointOut: { lastProcessedTime: 12345 },
     }));
 
-    const processor = newEventProcessor<TestEventData, TestCheckpoint>('test-processor', batchFn);
+    const processor = createEventProcessor<TestEventData, TestCheckpoint>('test-processor', batchFn);
 
     const batch = makeBatch([
       { idempotencyKey: 'key1', topic: 'test-topic', data: { id: 1, value: 'a' } },
@@ -117,7 +117,7 @@ describe('newEventProcessor', () => {
   });
 
   it('should allow filtering events from the batch', async () => {
-    const processor = newEventProcessor<TestEventData, TestCheckpoint>(
+    const processor = createEventProcessor<TestEventData, TestCheckpoint>(
       'test-processor',
       async (events) => ({
         events: events.filter(e => e.data.id % 2 === 0),
@@ -140,7 +140,7 @@ describe('newEventProcessor', () => {
   });
 
   it('should not set checkpoint when checkpointOut is not returned', async () => {
-    const processor = newEventProcessor<TestEventData>(
+    const processor = createEventProcessor<TestEventData>(
       'test-processor',
       async (events) => ({ events })
     );
@@ -154,7 +154,7 @@ describe('newEventProcessor', () => {
   });
 
   it('should handle batch errors and set error on result', async () => {
-    const processor = newEventProcessor<TestEventData>(
+    const processor = createEventProcessor<TestEventData>(
       'test-processor',
       async () => { throw new Error('processing failed'); }
     );
@@ -170,7 +170,7 @@ describe('newEventProcessor', () => {
 
   it('should pass empty batch to function when no events', async () => {
     const batchFn = jest.fn(async (events: EventProcessorEvent<TestEventData>[]) => ({ events }));
-    const processor = newEventProcessor<TestEventData>('test-processor', batchFn);
+    const processor = createEventProcessor<TestEventData>('test-processor', batchFn);
 
     const result = makeResult();
     await processor.eventProcessorBatch(result, makeBatch([]));
@@ -188,7 +188,7 @@ describe('newEventProcessor', () => {
     } as any as EngineClientRuntime;
     const engineClient = new EngineClient(engineClientRuntime);
 
-    const processor = newEventProcessor<TestEventData>(
+    const processor = createEventProcessor<TestEventData>(
       'test-processor',
       async (events) => ({ events })
     );

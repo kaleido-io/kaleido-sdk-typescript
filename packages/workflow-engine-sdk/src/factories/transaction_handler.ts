@@ -37,15 +37,15 @@ import { evalDirected } from '../helpers/stage_director';
 /**
  * Transaction handler factory interface.
  */
-export interface TransactionHandlerFactory extends TransactionHandler {
-  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): TransactionHandlerFactory;
-  withCloseFn(closeFn: () => void): TransactionHandlerFactory;
+export interface TransactionHandlerBuilder extends TransactionHandler {
+  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): TransactionHandlerBuilder;
+  withCloseFn(closeFn: () => void): TransactionHandlerBuilder;
 }
 
 /**
  * Internal base implementation for directed transaction handlers.
  */
-class TransactionHandlerBase<T extends WithStageDirector> implements TransactionHandlerFactory {
+class TransactionHandlerBase<T extends WithStageDirector> implements TransactionHandlerBuilder {
   private _name: string;
   private actionMap: Map<string, DirectedActionConfig<T>>;
   private initFn?: (engAPI: EngineAPI) => Promise<void>;
@@ -60,12 +60,12 @@ class TransactionHandlerBase<T extends WithStageDirector> implements Transaction
     return this._name;
   }
 
-  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): TransactionHandlerFactory {
+  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): TransactionHandlerBuilder {
     this.initFn = initFn;
     return this;
   }
 
-  withCloseFn(closeFn: () => void): TransactionHandlerFactory {
+  withCloseFn(closeFn: () => void): TransactionHandlerBuilder {
     this.closeFn = closeFn;
     return this;
   }
@@ -98,11 +98,11 @@ class TransactionHandlerBase<T extends WithStageDirector> implements Transaction
  * 
  * @param name Handler name
  * @param actionMap Map of action names to their configurations
- * @returns A TransactionHandlerFactory for chaining
+ * @returns A TransactionHandlerBuilder for chaining
  */
-export function newDirectedTransactionHandler<T extends WithStageDirector>(
+export function createDirectedTransactionHandler<T extends WithStageDirector>(
   name: string,
   actionMap: Map<string, DirectedActionConfig<T>>
-): TransactionHandlerFactory {
+): TransactionHandlerBuilder {
   return new TransactionHandlerBase<T>(name, actionMap);
 }

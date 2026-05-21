@@ -15,10 +15,10 @@
 // limitations under the License.
 
 import {
-  newEventProcessor,
+  createEventProcessor,
   newLogger,
   EventProcessorEvent,
-  EventProcessorFactory,
+  EventProcessorBuilder,
 } from '@kaleido-io/workflow-engine-sdk';
 import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
 import type {
@@ -46,10 +46,10 @@ export class BTCIndexer {
   private tokenName!: string;
   private networkName!: string;
 
-  readonly handler: EventProcessorFactory<BTCTransactionEvent, BTCCheckpoint>;
+  readonly handler: EventProcessorBuilder<BTCTransactionEvent, BTCCheckpoint>;
 
   constructor() {
-    this.handler = newEventProcessor<BTCTransactionEvent, BTCCheckpoint>(
+    this.handler = createEventProcessor<BTCTransactionEvent, BTCCheckpoint>(
       'bitcoin-indexer',
       (events) => this.process(events),
     );

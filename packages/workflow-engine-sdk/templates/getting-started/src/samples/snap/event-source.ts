@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { EventSourceConf, newEventSource, newLogger, WSEventStreamInfo } from '@kaleido-io/workflow-engine-sdk';
+import { EventSourceConf, createEventSource, newLogger, WSEventStreamInfo } from '@kaleido-io/workflow-engine-sdk';
 
 const log = newLogger('dealer-event-source');
 
@@ -61,7 +61,7 @@ interface DealerEventSourceCheckpoint {
     dealt: number;
 }
 
-export const dealerEventSource = newEventSource<DealerEventSourceCheckpoint, DealerEventSourceConfig, PlayingCard>(
+export const dealerEventSource = createEventSource<DealerEventSourceCheckpoint, DealerEventSourceConfig, PlayingCard>(
     'snap-dealer',
     async (_config: EventSourceConf<DealerEventSourceConfig>, _checkpoint: DealerEventSourceCheckpoint | null) => {
         const toDeal = Math.min(Math.floor(Math.random() * 9) + 1, deck.length - dealt);

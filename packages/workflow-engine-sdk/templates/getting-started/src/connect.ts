@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import {
-  newDirectedTransactionHandler,
+  createDirectedTransactionHandler,
   NewWorkflowEngineClient,
   HandlerSetFor,
 } from "@kaleido-io/workflow-engine-sdk";
@@ -30,12 +30,12 @@ import { eventSource as dealerEventSource } from "./samples/snap/event-source.js
 
 dotenv.config();
 
-const helloHandler = newDirectedTransactionHandler("hello", helloActionMap);
-const httpInvokeHandler = newDirectedTransactionHandler(
+const helloHandler = createDirectedTransactionHandler("hello", helloActionMap);
+const httpInvokeHandler = createDirectedTransactionHandler(
   "http-invoke",
   httpInvokeActionMap,
 );
-const snapHandler = newDirectedTransactionHandler(
+const snapHandler = createDirectedTransactionHandler(
   "snap-watcher",
   snapActionMap,
 );

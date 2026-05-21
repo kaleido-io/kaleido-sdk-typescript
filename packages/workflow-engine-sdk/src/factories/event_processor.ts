@@ -55,14 +55,14 @@ export type EventProcessorBatchFn<DT, CP = unknown> = (
 ) => Promise<{ events: EventProcessorEvent<DT>[]; checkpointOut?: CP }>;
 
 /**
- * Factory interface for building event processors with optional lifecycle hooks.
+ * Builder interface for configuring event processors with optional lifecycle hooks.
  */
-export interface EventProcessorFactory<DT, CP = unknown> extends EventProcessor {
-  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventProcessorFactory<DT, CP>;
-  withCloseFn(closeFn: () => void): EventProcessorFactory<DT, CP>;
+export interface EventProcessorBuilder<DT, CP = unknown> extends EventProcessor {
+  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventProcessorBuilder<DT, CP>;
+  withCloseFn(closeFn: () => void): EventProcessorBuilder<DT, CP>;
 }
 
-class EventProcessorBase<DT, CP> implements EventProcessorFactory<DT, CP> {
+class EventProcessorBase<DT, CP> implements EventProcessorBuilder<DT, CP> {
   private _name: string;
   private batchFn: EventProcessorBatchFn<DT, CP>;
   private initFn?: (engAPI: EngineAPI) => Promise<void>;
@@ -77,12 +77,12 @@ class EventProcessorBase<DT, CP> implements EventProcessorFactory<DT, CP> {
     return this._name;
   }
 
-  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventProcessorFactory<DT, CP> {
+  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventProcessorBuilder<DT, CP> {
     this.initFn = initFn;
     return this;
   }
 
-  withCloseFn(closeFn: () => void): EventProcessorFactory<DT, CP> {
+  withCloseFn(closeFn: () => void): EventProcessorBuilder<DT, CP> {
     this.closeFn = closeFn;
     return this;
   }
@@ -133,10 +133,10 @@ class EventProcessorBase<DT, CP> implements EventProcessorFactory<DT, CP> {
  *
  * @param name - Handler name to register with the workflow engine
  * @param batchFn - Function that processes a typed batch of events
- * @returns EventProcessorFactory for chaining optional configuration
+ * @returns EventProcessorBuilder for chaining optional configuration
  *
  * @example
- * const processor = newEventProcessor<TokenTransfer, IndexerCheckpoint>(
+ * const processor = createEventProcessor<TokenTransfer, IndexerCheckpoint>(
  *   'token-indexer',
  *   async (events) => {
  *     const processed = events.filter(e => e.data.value > 0n);
@@ -144,9 +144,9 @@ class EventProcessorBase<DT, CP> implements EventProcessorFactory<DT, CP> {
  *   }
  * );
  */
-export function newEventProcessor<DT, CP = unknown>(
+export function createEventProcessor<DT, CP = unknown>(
   name: string,
   batchFn: EventProcessorBatchFn<DT, CP>
-): EventProcessorFactory<DT, CP> {
+): EventProcessorBuilder<DT, CP> {
   return new EventProcessorBase<DT, CP>(name, batchFn);
 }

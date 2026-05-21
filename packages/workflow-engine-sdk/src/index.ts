@@ -69,14 +69,14 @@ export * from "./interfaces/messages";
 
 // Transaction handler factory
 export {
-  newDirectedTransactionHandler,
-  TransactionHandlerFactory,
+  createDirectedTransactionHandler,
+  TransactionHandlerBuilder,
 } from "./factories/transaction_handler";
 
 // Event source factory
 export {
-  newEventSource,
-  EventSourceFactory,
+  createEventSource,
+  EventSourceBuilder,
   EventSourceConf,
   EventSourceEvent,
   EventSourcePollFn,
@@ -87,8 +87,8 @@ export {
 
 // Event processor factory
 export {
-  newEventProcessor,
-  EventProcessorFactory,
+  createEventProcessor,
+  EventProcessorBuilder,
   EventProcessorEvent,
   EventProcessorBatchFn,
 } from './factories/event_processor';

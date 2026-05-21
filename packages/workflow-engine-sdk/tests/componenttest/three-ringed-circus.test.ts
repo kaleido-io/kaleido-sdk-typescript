@@ -20,7 +20,7 @@ import * as path from 'path';
 import {
   WorkflowEngineClient,
   ConfigLoader,
-  newDirectedTransactionHandler,
+  createDirectedTransactionHandler,
   BasicStageDirector,
   InvocationMode,
   EvalResult,
@@ -174,7 +174,7 @@ describe('Three-Ringed Circus Component Test', () => {
       }
     });
 
-    const handler = newDirectedTransactionHandler('handler1', actionMap);
+    const handler = createDirectedTransactionHandler('handler1', actionMap);
     client.registerTransactionHandler('handler1', handler);
 
     await client.connect();

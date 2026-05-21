@@ -75,20 +75,20 @@ export type EventSourceConfigParserFn<CF> = (
 ) => Promise<CF>;
 
 /**
- * Factory interface for building event sources with optional configuration.
+ * Builder interface for configuring event sources with optional lifecycle hooks.
  */
-export interface EventSourceFactory<CP, CF, DT> extends EventSource {
-  withDeleteFn(deleteFn: EventSourceDeleteFn): EventSourceFactory<CP, CF, DT>;
-  withConfigParser(parserFn: EventSourceConfigParserFn<CF>): EventSourceFactory<CP, CF, DT>;
-  withInitialCheckpoint(buildFn: EventSourceBuildInitialCheckpointFn<CP, CF>): EventSourceFactory<CP, CF, DT>;
-  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventSourceFactory<CP, CF, DT>;
-  withCloseFn(closeFn: () => void): EventSourceFactory<CP, CF, DT>;
+export interface EventSourceBuilder<CP, CF, DT> extends EventSource {
+  withDeleteFn(deleteFn: EventSourceDeleteFn): EventSourceBuilder<CP, CF, DT>;
+  withConfigParser(parserFn: EventSourceConfigParserFn<CF>): EventSourceBuilder<CP, CF, DT>;
+  withInitialCheckpoint(buildFn: EventSourceBuildInitialCheckpointFn<CP, CF>): EventSourceBuilder<CP, CF, DT>;
+  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventSourceBuilder<CP, CF, DT>;
+  withCloseFn(closeFn: () => void): EventSourceBuilder<CP, CF, DT>;
 }
 
 /**
  * Internal event source implementation.
  */
-class EventSourceBase<CP, CF, DT> implements EventSourceFactory<CP, CF, DT> {
+class EventSourceBase<CP, CF, DT> implements EventSourceBuilder<CP, CF, DT> {
   private _name: string;
   private pollFn: EventSourcePollFn<CP, CF, DT>;
   private deleteFn?: EventSourceDeleteFn;
@@ -108,27 +108,27 @@ class EventSourceBase<CP, CF, DT> implements EventSourceFactory<CP, CF, DT> {
     return this._name;
   }
 
-  withDeleteFn(deleteFn: EventSourceDeleteFn): EventSourceFactory<CP, CF, DT> {
+  withDeleteFn(deleteFn: EventSourceDeleteFn): EventSourceBuilder<CP, CF, DT> {
     this.deleteFn = deleteFn;
     return this;
   }
 
-  withConfigParser(parserFn: EventSourceConfigParserFn<CF>): EventSourceFactory<CP, CF, DT> {
+  withConfigParser(parserFn: EventSourceConfigParserFn<CF>): EventSourceBuilder<CP, CF, DT> {
     this.configParserFn = parserFn;
     return this;
   }
 
-  withInitialCheckpoint(buildFn: EventSourceBuildInitialCheckpointFn<CP, CF>): EventSourceFactory<CP, CF, DT> {
+  withInitialCheckpoint(buildFn: EventSourceBuildInitialCheckpointFn<CP, CF>): EventSourceBuilder<CP, CF, DT> {
     this.buildInitialCheckpointFn = buildFn;
     return this;
   }
 
-  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventSourceFactory<CP, CF, DT> {
+  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventSourceBuilder<CP, CF, DT> {
     this.initFn = initFn;
     return this;
   }
 
-  withCloseFn(closeFn: () => void): EventSourceFactory<CP, CF, DT> {
+  withCloseFn(closeFn: () => void): EventSourceBuilder<CP, CF, DT> {
     this.closeFn = closeFn;
     return this;
   }
@@ -268,11 +268,11 @@ class EventSourceBase<CP, CF, DT> implements EventSourceFactory<CP, CF, DT> {
  *
  * @param name - Handler name to register with the workflow engine
  * @param pollFn - Function that polls for new events
- * @returns EventSourceFactory for chaining configuration
+ * @returns EventSourceBuilder for chaining configuration
  */
-export function newEventSource<CP, CF, DT>(
+export function createEventSource<CP, CF, DT>(
   name: string,
   pollFn: EventSourcePollFn<CP, CF, DT>
-): EventSourceFactory<CP, CF, DT> {
+): EventSourceBuilder<CP, CF, DT> {
   return new EventSourceBase<CP, CF, DT>(name, pollFn);
 }
