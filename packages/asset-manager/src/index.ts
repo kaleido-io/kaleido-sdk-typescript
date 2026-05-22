@@ -4,6 +4,7 @@ export {
   BulkUpsertBuilderOptions,
   BulkUpsertInvalidRefError,
   DuplicateStrategy,
+  IDataModelClient,
   IBulkQueryClient,
   IBulkUpsertClient,
 } from "./bulk-upsert-builder.js";

@@ -20,6 +20,7 @@ import type {
   BulkQueryOutput,
   Fragment,
   FragmentBulkInput,
+  IDataModelClient,
   IndexerConfig,
   TransferBulkInput
 } from '@kaleido-io/asset-manager-sdk';
@@ -29,7 +30,6 @@ import {
   newLogger
 } from '@kaleido-io/workflow-engine-sdk';
 import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
-import { IDataModelClient } from '../../../packages/asset-manager/dist/src/bulk-upsert-builder.js';
 import { BTCIndexerConfig } from './config.js';
 
 const log = newLogger('bitcoin-indexer');
