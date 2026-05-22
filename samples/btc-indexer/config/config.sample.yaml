@@ -1,0 +1,21 @@
+# Provider configuration for the BTC Indexer.
+# Set CONFIG_FILE env var to point to this file (default: ./config/provider-config.yaml).
+
+assetManagerNameOrId: my-assets
+
+config:
+  netId: 0x283f161c
+  tokenSymbol: tBTC
+  tokenName: test_bitcoin
+  chain: testnet4          # Informational label attached to indexed transfers (e.g. "ethereum", "polygon", "base", "besu")
+
+btcConnector: s:my-btc-connector-service-id
+
+stream:
+  config:
+    unfiltered: true,
+    fromBlock: latest,
+    batchSize: 500
+    batchTimeout: '10s'
+    pollTimeout: '30s'
+    requiredConfirmations: 5
