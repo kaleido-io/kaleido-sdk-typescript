@@ -23,10 +23,6 @@ import { createEventProcessor, EventProcessorEvent } from './event_processor';
 import { WSEventProcessorBatchRequest, WSEventProcessorBatchResult, WSMessageType } from '../types/core';
 import { EngineClient, EngineClientRuntime } from '../runtime/engine_client';
 
-interface TestCheckpoint {
-  lastProcessedTime: number;
-}
-
 interface TestEventData {
   id: number;
   value: string;

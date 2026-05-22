@@ -23,6 +23,8 @@ export interface IBulkQueryClient {
   bulkQuery(input: BulkQueryInput): Promise<BulkQueryOutput>;
 }
 
+export interface IDataModelClient extends IBulkUpsertClient, IBulkQueryClient {};
+
 /**
  * We must ensure that each bulk update touches a given record at most once,
  * otherwise the bulk upsert will fail.

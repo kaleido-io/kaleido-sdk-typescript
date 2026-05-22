@@ -48,6 +48,16 @@ export {
 } from './config/config';
 
 export {
+  ProviderBase,
+  ProviderConfig,
+} from './provider/provider-base';
+
+export {
+  kidColon,
+  kidDash,
+} from './utils/kidutils';
+
+export {
   HandlerSet,
   HandlerSetFor,
   NewWorkflowEngineClient,
@@ -137,6 +147,10 @@ export {
   copyOp,
   testOp,
 } from "./utils/patch";
+
+export {
+  formatError
+} from "./utils/errors";
 
 // Logger
 export * from "./log/logger";

@@ -33,10 +33,6 @@ const TRANSFER_SIG = 'Transfer(address,address,uint256)';
 /** ABI-decoded fields from a Transfer(address,address,uint256) log event */
 type ERC20TransferData = { from: string; to: string; value: string };
 
-interface IndexerCheckpoint {
-  highestBlock: number;
-}
-
 /**
  * ERC20 Transfer event processor.
  *
@@ -54,10 +50,10 @@ export class ERC20Indexer {
   private chain!: string;
   private poolName!: string;
 
-  readonly handler: EventProcessorBuilder<EVMTransactionEvent, IndexerCheckpoint>;
+  readonly handler: EventProcessorBuilder<EVMTransactionEvent>;
 
   constructor() {
-    this.handler = createEventProcessor<EVMTransactionEvent, IndexerCheckpoint>(
+    this.handler = createEventProcessor<EVMTransactionEvent>(
       'erc20-indexer',
       (events) => this.process(events),
     );

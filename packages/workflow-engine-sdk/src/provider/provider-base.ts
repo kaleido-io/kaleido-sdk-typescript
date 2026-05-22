@@ -14,10 +14,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import axios, { AxiosInstance } from "axios";
+import axios, { AxiosInstance, CreateAxiosDefaults } from "axios";
 import { WorkflowEngineClient, WorkflowEngineClientConfig } from "../client/client";
-import { configureHttpClient } from "../service";
-import { kidColon, ProviderConfig } from "./config";
+import { configureHttpClient, HttpClientOptions } from "../service";
+import { kidColon } from "../utils/kidutils";
+import { newLogger } from "../log/logger";
+
+export interface PlatformConfig extends HttpClientOptions {
+    url?: string;
+}
+
+export interface ProviderConfig<CustomConfig> {
+
+    platform?: PlatformConfig;
+
+    providerName?: string;
+
+    environmentNameOrId?: string;
+
+    workflowEngineNameOrId?: string;
+
+    config?: CustomConfig;
+
+}
+
+const log = newLogger("ProviderBase");
 
 export class ProviderBase<CustomConfig> {
 
@@ -25,9 +46,10 @@ export class ProviderBase<CustomConfig> {
 
     async createClient(): Promise<WorkflowEngineClient> {
         // Connect to the workflow engine
-        const wsURL = `${this.getWorkflowEngineRESTEndpoint()}/ws`;
+        const platformURLWsScheme = this.getPlatformURL().replace(/^http/, 'ws');;
+        const wsURL = `${platformURLWsScheme}${this.getWorkflowEngineRESTEndpoint()}/ws`;
         if (!this.providerConfig.providerName) {
-            throw new Error(`providerName and platform.url are required`);
+            throw new Error(`providerName is required`);
         }
         const wfeConfig: WorkflowEngineClientConfig = {
             url: wsURL,
@@ -43,12 +65,24 @@ export class ProviderBase<CustomConfig> {
         return new WorkflowEngineClient(wfeConfig);
      }
 
-    newPlatformClient(urlPrefix: string): AxiosInstance {
-        const platformURL = this.providerConfig.platform?.url;
+    getPlatformURL(): string {
+        const platformURL = this.providerConfig.platform?.url?.replace(/\/+$/, '');
         if (!platformURL) {
             throw new Error(`platform.url is required`);
         }
-        const axiosInstance = axios.create({ baseURL: `${platformURL.replace(/\/+$/, '')}/${urlPrefix.replace(/^\/+/, '')}` });
+        return platformURL;
+    }
+
+    newPlatformClient(urlPrefix: string): AxiosInstance {
+        const config: CreateAxiosDefaults<any> = {
+            baseURL: `${this.getPlatformURL()}/${urlPrefix.replace(/^\/+/, '')}`,
+        }
+        log.debug(`Created client to ${config.baseURL}`);
+        const { username, password } = this.providerConfig.platform?.auth || {};
+        if (username && password) {
+            config.auth = {username, password};
+        }
+        const axiosInstance = axios.create(config);
         return configureHttpClient(axiosInstance, this.providerConfig.platform)
     }
 
@@ -57,11 +91,9 @@ export class ProviderBase<CustomConfig> {
             environmentNameOrId,
             workflowEngineNameOrId
         } = this.providerConfig;
-        const platformURL = this.providerConfig.platform?.url;
         if (!environmentNameOrId || !workflowEngineNameOrId) {
             throw new Error(`environmentNameOrId, workflowEngineNameOrId are required`);
         }
         return `/endpoint/${kidColon('e', environmentNameOrId)}/${kidColon('s', workflowEngineNameOrId)}/rest`;
     }
-
 }

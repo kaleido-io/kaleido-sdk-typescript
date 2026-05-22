@@ -42,11 +42,8 @@ export interface TokenTransferEvent {
  * Using the highest block number seen in the batch gives operators a
  * meaningful, incrementing signal of indexing progress.
  */
-export interface IndexerCheckpoint {
-  highestBlock: number;
-}
 
-export const tokenTransferIndexer = createEventProcessor<TokenTransferEvent, IndexerCheckpoint>(
+export const tokenTransferIndexer = createEventProcessor<TokenTransferEvent>(
   'token-transfer-indexer',
   async (events) => {
     if (events.length === 0) {

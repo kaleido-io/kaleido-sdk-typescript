@@ -14,7 +14,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import axios, { AxiosError } from "axios";
+
 
 export const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);
+}
+
+export const formatError = (error: any): string => {
+    let message: string;
+    if (axios.isAxiosError(error)) {
+      const axiosErr = error as AxiosError;
+      const data: any = axiosErr.response?.data as any;
+      const dataMessage = data.message || data.error || JSON.stringify(data);
+      message = `${axiosErr.request?.method} ${axiosErr.request?.url} failed [${axiosErr?.status}] ${error.message}: ${dataMessage}`
+    } else {
+      message = error.message || (typeof error);
+    }
+    if (typeof error.stack == 'string') {
+      message = message + '\n' + error.stack;
+    }
+    return message;
+
 }

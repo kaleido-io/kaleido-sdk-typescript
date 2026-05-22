@@ -13,3 +13,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+export function kidColon(prefix: string, value: string): string {
+    return value.replace(new RegExp(`^${prefix}-`), `${prefix}:`);
+}
+
+export function kidDash(prefix: string, value: string): string {
+    return value.replace(new RegExp(`^${prefix}:`), `${prefix}-`);
+}

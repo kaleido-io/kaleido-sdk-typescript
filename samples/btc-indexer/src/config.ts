@@ -14,11 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The provider name must match `workflow-engine.providerName` in config/wfe-config.yaml.
-export default {
-  name: 'bitcoin-indexer',
-  metadata: {
-    displayName: 'BTC Indexer',
-    description: 'Indexes BTC Transfer events into the Kaleido Asset Manager',
-  },
-};
+export interface BTCIndexerConfig {
+  netId: string;
+  tokenSymbol: string;
+  tokenName: string;
+  chain: string;
+}

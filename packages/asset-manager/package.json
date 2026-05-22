@@ -25,7 +25,8 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "@kaleido-io/core": "file:../core",
+    "@kaleido-io/core": "*",
+    "@kaleido-io/workflow-engine-sdk": "*",
     "deepmerge": "^4.3.1",
     "zod": "^3.0.0"
   },

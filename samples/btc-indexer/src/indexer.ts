@@ -14,14 +14,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {
-  createEventProcessor,
-  newLogger,
-  EventProcessorEvent,
-  EventProcessorBuilder,
-} from '@kaleido-io/workflow-engine-sdk';
-import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
-import { BulkUpsertBuilder } from '@kaleido-io/asset-manager-sdk';
 import type {
   Address,
   BulkQueryInput,
@@ -30,38 +22,42 @@ import type {
   FragmentBulkInput,
   IBulkQueryClient,
   IBulkUpsertClient,
+  IndexerConfig,
   TransferBulkInput,
 } from '@kaleido-io/asset-manager-sdk';
-import type { BTCConfig } from '../config/provider-config.js';
+import { BulkUpsertBuilder, Indexer } from '@kaleido-io/asset-manager-sdk';
+import {
+  EventProcessorEvent,
+  newLogger
+} from '@kaleido-io/workflow-engine-sdk';
+import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
+import { IDataModelClient } from '../../../packages/asset-manager/dist/src/bulk-upsert-builder.js';
+import { BTCIndexerConfig } from './config.js';
 
 const log = newLogger('bitcoin-indexer');
 
 type IIndexerClient = IBulkUpsertClient & IBulkQueryClient;
 
-export class BTCIndexer {
-  private amClient!: IIndexerClient;
+export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
   private networkId!: number;
   private tokenName!: string;
   private networkName!: string;
 
-  readonly handler: EventProcessorBuilder<BTCTransactionEvent>;
-
-  constructor() {
-    this.handler = createEventProcessor<BTCTransactionEvent>(
-      'bitcoin-indexer',
-      (events) => this.process(events),
-    );
+  constructor(config: IndexerConfig<BTCIndexerConfig>) {
+    super(config);
   }
 
-  async setup(amClient: IIndexerClient, bitcoinConfig: BTCConfig): Promise<void> {
-    this.amClient = amClient;
-    this.networkId = bitcoinConfig.netId;
+  override async setup(
+    bitcoinConfig: BTCIndexerConfig,
+    dmClient: IDataModelClient,
+  ): Promise<void> {
+    this.networkId = Number(bitcoinConfig.netId);
     this.tokenName = bitcoinConfig.tokenName.toLowerCase();
     this.networkName = bitcoinConfig.chain;
 
     const symbol = bitcoinConfig.tokenSymbol ?? this.tokenName;
 
-    const builder = new BulkUpsertBuilder(this.amClient);
+    const builder = new BulkUpsertBuilder(dmClient);
     builder.upsertAsset({ name: this.tokenName, displayName: this.tokenName, info: { symbol }, updateType: 'create_or_ignore' });
     builder.upsertAddress({ address: this.tokenName, contract: true, updateType: 'create_or_ignore' });
     builder.upsertPool({
@@ -77,6 +73,7 @@ export class BTCIndexer {
   }
 
   private async batchLookup<T>(
+    dmClient: IDataModelClient,
     lookups: string[],
     buildQuery: (batch: string[]) => BulkQueryInput,
     extractResults: (output: BulkQueryOutput) => T[],
@@ -85,13 +82,14 @@ export class BTCIndexer {
     const BATCH_SIZE = 100;
     for (let i = 0; i < lookups.length; i += BATCH_SIZE) {
       const batch = lookups.slice(i, i + BATCH_SIZE);
-      const result = await this.amClient.bulkQuery(buildQuery(batch));
+      const result = await dmClient.bulkQuery(buildQuery(batch));
       handleResults(extractResults(result));
     }
   }
 
-  private async process(
+  override async indexBatch(
     events: EventProcessorEvent<BTCTransactionEvent>[],
+    dmClient: IDataModelClient,
   ): Promise<{
     events: EventProcessorEvent<BTCTransactionEvent>[];
   }> {
@@ -99,7 +97,7 @@ export class BTCIndexer {
       return { events };
     }
 
-    const builder = new BulkUpsertBuilder(this.amClient);
+    const builder = new BulkUpsertBuilder(dmClient);
     const startTime = Date.now();
     log.info(`Received batch of ${events.length} events`);
 
@@ -113,6 +111,7 @@ export class BTCIndexer {
 
     const inputDetail: Record<string, TxSummaryVOut> = {};
     await this.batchLookup<Fragment>(
+      dmClient,
       fragmentsToLookup,
       (batch) => ({ fragments: { limit: batch.length, in: [{ field: 'name', values: batch }] } }),
       (output) => output.fragments?.items ?? [],
@@ -138,6 +137,7 @@ export class BTCIndexer {
 
     const addressWallets: Record<string, string> = {};
     await this.batchLookup<Address>(
+      dmClient,
       [...addressSet],
       (batch) => ({ addresses: { limit: batch.length, in: [{ field: 'address', values: batch }] } }),
       (output) => output.addresses?.items ?? [],
@@ -258,5 +258,3 @@ function satoshiValue(utxo: TxSummaryVOut): string | undefined {
   if (typeof utxo.value === 'number') return String(Math.floor(utxo.value * 100_000_000));
   return undefined;
 }
-
-export const bitcoinIndexer = new BTCIndexer();
