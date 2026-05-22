@@ -1,0 +1,41 @@
+# Build from monorepo root: docker build -f samples/btc-indexer/Dockerfile .
+FROM node:22-bookworm-slim AS builder
+
+WORKDIR /app
+
+# Copy workspace manifests first for layer caching
+COPY package.json package-lock.json ./
+COPY packages/core/package.json ./packages/core/
+COPY packages/asset-manager/package.json ./packages/asset-manager/
+COPY packages/workflow-engine-sdk/package.json ./packages/workflow-engine-sdk/
+COPY samples/btc-indexer/package.json ./samples/btc-indexer/
+
+RUN npm ci
+
+# Copy workspace package sources
+COPY packages ./packages
+COPY samples/btc-indexer/tsconfig.json ./samples/btc-indexer/
+COPY samples/btc-indexer/src ./samples/btc-indexer/src
+
+# Build in dependency order
+RUN npm run build -w packages/core && \
+    npm run build -w packages/asset-manager && \
+    npm run build -w packages/workflow-engine-sdk && \
+    npm run build -w samples/btc-indexer
+
+# Runtime stage — distroless for minimal attack surface and image size
+# No shell, no package manager: only the Node runtime and your compiled JS.
+FROM gcr.io/distroless/nodejs22-debian12
+
+WORKDIR /app
+
+COPY --from=builder /app/samples/btc-indexer/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/samples/btc-indexer/package.json ./
+
+ENV CONFIG_FILE=./config/config.yaml
+
+# distroless node images use nonroot (uid 65532) by default
+USER nonroot
+
+CMD ["dist/src/indexer.js"]

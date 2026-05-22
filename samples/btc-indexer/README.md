@@ -22,57 +22,29 @@ into the [Kaleido Asset Manager](https://docs.kaleido.io/platform/digital-assets
   - A **BTC connector** stack connected to your chosen Bitcoin chain
   - An **Asset manager** service
 
-## Quick start
+## Running locally - within SDK repo
 
 ```bash
-# 1. Install dependencies
-npm install
+# 1. Build the SDK repo at the top level
+npm run build
 
-# 2. Edit the config files
-# Edit config/wfe-config.yaml — set providerName, url, and auth
-# Edit config/provider-config.yaml — set assetManager, bitcoin, and btcConnector values
-# See the Configuration section below for details on each field
+# 2. Change into the sample directory
+cd samples/btc-indexer
 
-# 3. Run in dev mode (no build step needed)
+# 3. Edit the config file
+# Edit config/config.yaml — set up your platform
+
+# 4. Run in dev mode (no build step needed)
 npm run start:dev
-
-# 4. In a second terminal: create the event stream in the Workflow Engine
-npm run create-stream
 ```
 
 ## Configuration
 
-### `config/wfe-config.yaml`
+### `config/config.yaml`
 
-> Copy `config/wfe-config.yaml.sample` to `config/wfe-config.yaml`
+> Copy `config/config.yaml.sample` to `config/config.yaml`
 
-Workflow Engine connection. `providerName` must match `src/provider.ts`.
-
-### `config/provider-config.yaml`
-
-| Key | Description |
-|-----|-------------|
-| `assetManager.account` | Your Kaleido account hostname |
-| `assetManager.environment` | Environment ID |
-| `assetManager.serviceName` | Asset Manager service ID |
-| `assetManager.auth.keyName` | API key name |
-| `assetManager.auth.keyValue` | API key value |
-| `bitcoin.netName` | Chain label attached to indexed data (e.g. `testnet4`) |
-| `bitcoin.netId` | ID of the network - checked against the actual network if supplied |
-| `btcConnector` | Service ID of your BTC Connector provider |
-
-## Customizing
-
-This sample is yours to fork. Common customizations:
-
-- **Scoped event filtering** — edit `logFilters` in `src/bitcoin/stream.ts` to filter events for indexed fields within the event signature i.e. index certain minters and spenders.
-- **Additional event types** — extend `eventProcessorBatch` in `src/bitcoin/indexer.ts`.
-
-## Asset Manager client
-
-`src/clients/asset-manager/` contains a lightweight REST client for the Asset Manager
-bulk upsert API. This will be replaced by `@kaleido-io/asset-manager-sdk` once that
-package is available. Until then, you own this code and can modify it freely.
+See comments in the YAML for details of the changes to make
 
 ## Hosting on the Kaleido platform
 
@@ -86,7 +58,21 @@ package is available. Until then, you own this code and can modify it freely.
     yq -o=json config/provider-config.yaml > config/provider-config.json
     ```
 
-### 1. Building an OCI image
+### Building an OCI image
+
+There are two Dockerfile examples provided:
+
+- `Dockerfile` - builds the sample standalone, pulling the SDK from npm
+  ```sh
+  # From the btc-indexer directory
+  docker build --platform linux/amd64 -t btc-indexer .
+  ```
+- `Dockerfile.withsdk` - builds the sample including building the SDK locally
+  ```sh
+  # From root directory of repo
+  docker build --platform linux/amd64 -t btc-indexer -f ./samples/btc-indexer/Dockerfile.withsdk .
+  ```
+
 
 ```bash
 npm install --save-dev @types/node
