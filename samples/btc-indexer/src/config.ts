@@ -15,8 +15,8 @@
 // limitations under the License.
 
 export interface BTCIndexerConfig {
-  netId: string;
+  networkId: string;
+  networkName: string;
   tokenSymbol: string;
   tokenName: string;
-  chain: string;
 }

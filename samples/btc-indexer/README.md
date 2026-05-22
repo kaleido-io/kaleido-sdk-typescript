@@ -57,7 +57,8 @@ Workflow Engine connection. `providerName` must match `src/provider.ts`.
 | `assetManager.serviceName` | Asset Manager service ID |
 | `assetManager.auth.keyName` | API key name |
 | `assetManager.auth.keyValue` | API key value |
-| `bitcoin.chain` | Chain label attached to indexed data (e.g. `testnet4`) |
+| `bitcoin.netName` | Chain label attached to indexed data (e.g. `testnet4`) |
+| `bitcoin.netId` | ID of the network - checked against the actual network if supplied |
 | `btcConnector` | Service ID of your BTC Connector provider |
 
 ## Customizing

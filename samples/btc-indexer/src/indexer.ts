@@ -20,10 +20,8 @@ import type {
   BulkQueryOutput,
   Fragment,
   FragmentBulkInput,
-  IBulkQueryClient,
-  IBulkUpsertClient,
   IndexerConfig,
-  TransferBulkInput,
+  TransferBulkInput
 } from '@kaleido-io/asset-manager-sdk';
 import { BulkUpsertBuilder, Indexer } from '@kaleido-io/asset-manager-sdk';
 import {
@@ -35,8 +33,6 @@ import { IDataModelClient } from '../../../packages/asset-manager/dist/src/bulk-
 import { BTCIndexerConfig } from './config.js';
 
 const log = newLogger('bitcoin-indexer');
-
-type IIndexerClient = IBulkUpsertClient & IBulkQueryClient;
 
 export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
   private networkId!: number;
@@ -51,9 +47,9 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
     bitcoinConfig: BTCIndexerConfig,
     dmClient: IDataModelClient,
   ): Promise<void> {
-    this.networkId = Number(bitcoinConfig.netId);
+    this.networkId = Number(bitcoinConfig.networkId);
+    this.networkName = bitcoinConfig.networkName;
     this.tokenName = bitcoinConfig.tokenName.toLowerCase();
-    this.networkName = bitcoinConfig.chain;
 
     const symbol = bitcoinConfig.tokenSymbol ?? this.tokenName;
 

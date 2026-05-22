@@ -1,21 +1,40 @@
 # Provider configuration for the BTC Indexer.
 # Set CONFIG_FILE env var to point to this file (default: ./config/provider-config.yaml).
 
-assetManagerNameOrId: my-assets
+platform:
+  url: https://myaccount.myinstance.kaleido.io/
+  auth:
+    username: myuser
+    password: my-api-key
 
+providerName: bitcoin-indexer
+providerMetadata:
+  displayName: BTC Indexer
+  description: Indexes BTC Transfer events into the Kaleido Asset Manager
+
+environmentNameOrId: my-bitcoin-env
+
+assetManagerNameOrId: my-asset-manager
+
+connectorNameOrId: my-bitcoin-connector
+
+workflowEngineNameOrId: workflow-engine
+
+# BTC contract to index
 config:
-  netId: 0x283f161c
+  networkName: testnet4
+  networkId: 0x283f161c
   tokenSymbol: tBTC
-  tokenName: test_bitcoin
-  chain: testnet4          # Informational label attached to indexed transfers (e.g. "ethereum", "polygon", "base", "besu")
-
-btcConnector: s:my-btc-connector-service-id
+  tokenName: testnet4-btc
 
 stream:
-  config:
-    unfiltered: true,
-    fromBlock: latest,
-    batchSize: 500
+  autoCreate: true
+  factory: transactionEvents
+  name: btc-indexer
+  eventSourceConfig:
+    unfiltered: true
+    fromBlock: '0'
+    batchSize: 50
     batchTimeout: '10s'
     pollTimeout: '30s'
     requiredConfirmations: 5
