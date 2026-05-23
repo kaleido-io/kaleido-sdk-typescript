@@ -3,6 +3,7 @@
 
 platform:
   url: https://myaccount.myinstance.kaleido.io/
+  timeout: 120000
   auth:
     username: myuser
     password: my-api-key

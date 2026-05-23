@@ -29,13 +29,13 @@ FROM gcr.io/distroless/nodejs22-debian12
 
 WORKDIR /app
 
-COPY --from=builder /app/samples/btc-indexer/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/samples/btc-indexer/package.json ./
+COPY --from=builder /app/ ./
+
+ADD ./samples/btc-indexer/config/config.yaml ./config/config.yaml
 
 ENV CONFIG_FILE=./config/config.yaml
 
 # distroless node images use nonroot (uid 65532) by default
 USER nonroot
 
-CMD ["dist/src/indexer.js"]
+CMD ["/app/samples/btc-indexer/dist/src/main.js"]

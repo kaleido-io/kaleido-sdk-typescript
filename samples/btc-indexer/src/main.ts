@@ -23,7 +23,7 @@ import fs from 'fs';
 import { formatError } from "@kaleido-io/workflow-engine-sdk";
 
 // Synchronously load config and export the indexer
-const configPath = process.env.WFE_CONFIG_FILE ?? './config/config.yaml';
+const configPath = process.env.CONFIG_FILE ?? './config/config.yaml';
 const config: IndexerConfig<BTCIndexerConfig> = yaml.load(fs.readFileSync(configPath, 'utf-8')) as any;
 const bitcoinIndexer = new BTCIndexer(config);
 bitcoinIndexer.connect().catch((err: any) => {

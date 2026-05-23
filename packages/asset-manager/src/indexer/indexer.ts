@@ -151,6 +151,7 @@ export abstract class Indexer<CustomConfig, EventDataType> extends ProviderBase<
         const url = `${this.getPlatformURL()}/endpoint/${kidColon('e', environmentNameOrId)}/${kidColon('s', assetManagerNameOrId)}/rest`;
 
         const amClient = new AssetManagerClient({
+            ...this.esConfig.platform,
             transport: 'http',
             url,
             auth: { type: 'basic', ...this.esConfig.platform?.auth },
