@@ -172,6 +172,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
         let xfer = xferByWallet[safeWallet];
         if (!xfer) {
           xfer = {
+            updateType: 'create_or_replace',
             protocolId: `${tx.txid}.${safeWallet}`,
             amount: '0',
             transactionHash: tx.txid,
@@ -187,7 +188,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
       for (const vin of tx.vin) {
         const name = `${this.networkName}_${vin.txid}_${vin.vout}`;
         fragments.push({
-          updateType: 'create_or_update',
+          updateType: 'create_or_replace',
           address: this.tokenName,
           name,
           asset: this.tokenName,
@@ -217,7 +218,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
 
         const value = satoshiValue(vout);
         fragments.push({
-          updateType: 'create_or_update',
+          updateType: 'create_or_replace',
           address: this.tokenName,
           info: vout,
           name: `${this.networkName}_${tx.txid}_${vout.n}`,
