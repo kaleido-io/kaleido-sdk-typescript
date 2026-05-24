@@ -245,14 +245,14 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
 
       if (builder.getCount() > this.upsertTriggerCount) {
         // Flush the upserts
+        log.info(`Flushing ${builder.getCount()} updates`);
         await builder.execute();
       }
     }
 
-    if (builder.getCount() > 0) {
-      // Flush the remainder
-      await builder.execute();
-    }
+    // Flush the remainder
+    log.info(`Finalizing remaining ${builder.getCount()} updates`);
+    await builder.execute();
 
     log.info(`Indexed ${txCount} transactions in ${Date.now() - startTime}ms`);
     return { events };
