@@ -59,13 +59,13 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
     builder.upsertAsset({ name: this.tokenName, displayName: this.tokenName, info: { symbol }, updateType: 'create_or_ignore' });
     builder.upsertAddress({ address: this.tokenName, contract: true, updateType: 'create_or_ignore' });
     builder.upsertPool({
+      updateType: 'create_or_ignore',
       name: this.tokenName,
       asset: this.tokenName,
       address: this.tokenName,
       standard: 'bitcoin',
       displayName: `${this.tokenName} on ${this.networkName}`,
       labels: { networkName: this.networkName, symbol },
-      updateType: 'create_or_ignore',
     });
     await builder.execute();
   }
@@ -149,6 +149,8 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
     );
 
     // Pass 3: build and upsert fragments + wallet-scoped transfers per event
+    let totalUpdates = 0;
+    let txSinceFlush = 0;
     let txCount = 0;
     for (const event of events) {
       const { tx, block, network } = event.data;
@@ -174,7 +176,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
         let xfer = xferByWallet[safeWallet];
         if (!xfer) {
           xfer = {
-            updateType: 'create_or_replace',
+            updateType: 'create_or_ignore',
             protocolId: `${tx.txid}.${safeWallet}`,
             amount: '0',
             transactionHash: tx.txid,
@@ -190,7 +192,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
       for (const vin of tx.vin) {
         const name = `${this.networkName}_${vin.txid}_${vin.vout}`;
         fragments.push({
-          updateType: 'create_or_replace',
+          updateType: 'create_or_ignore',
           address: this.tokenName,
           name,
           asset: this.tokenName,
@@ -220,7 +222,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
 
         const value = satoshiValue(vout);
         fragments.push({
-          updateType: 'create_or_replace',
+          updateType: 'create_or_ignore',
           address: this.tokenName,
           info: vout,
           name: `${this.networkName}_${tx.txid}_${vout.n}`,
@@ -243,18 +245,22 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
       for (const fragment of fragments) builder.upsertFragment(fragment);
       for (const xfer of xferOrdered) builder.upsertTransfer(xfer);
 
+      txSinceFlush++;
       if (builder.getCount() > this.upsertTriggerCount) {
         // Flush the upserts
-        log.info(`Flushing ${builder.getCount()} updates`);
+        totalUpdates += builder.getCount();
+        log.info(`Flushing ${builder.getCount()} updates with ${txSinceFlush} txns`);
         await builder.execute();
+        txSinceFlush = 0;
       }
     }
 
     // Flush the remainder
-    log.info(`Finalizing remaining ${builder.getCount()} updates`);
+    totalUpdates += builder.getCount();
+    log.info(`Finalizing remaining ${builder.getCount()} updates for ${txSinceFlush} txns`);
     await builder.execute();
 
-    log.info(`Indexed ${txCount} transactions in ${Date.now() - startTime}ms`);
+    log.info(`Indexed ${txCount} transactions with a total of ${totalUpdates} updates in ${Date.now() - startTime}ms`);
     return { events };
   }
 }
