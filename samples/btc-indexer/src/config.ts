@@ -15,6 +15,7 @@
 // limitations under the License.
 
 export interface BTCIndexerConfig {
+  upsertTriggerCount?: number;
   networkId: string;
   networkName: string;
   tokenSymbol: string;

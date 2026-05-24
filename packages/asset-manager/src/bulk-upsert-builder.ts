@@ -79,6 +79,7 @@ export class BulkUpsertInvalidRefError extends Error {
 export class BulkUpsertBuilder {
   private updates: BulkUpsertInput = {};
   private finalizers: (() => void | Promise<void>)[] = [];
+  private count: number = 0;
 
   constructor(
     private client: IBulkUpsertClient,
@@ -224,12 +225,17 @@ export class BulkUpsertBuilder {
   }
 
   private append<T>(oldItems: T[] | undefined, newItem: T) {
+    this.count++;
     if (oldItems === undefined) {
       return [newItem];
     } else {
       oldItems.push(newItem);
       return oldItems;
     }
+  }
+
+  getCount(): number {
+    return this.count;
   }
 
   addFinalizer(finalizer: () => void | Promise<void>) {
@@ -267,6 +273,9 @@ export class BulkUpsertBuilder {
     if (this.finalizers.length > 0) {
       await Promise.all(this.finalizers.map((f) => Promise.resolve(f())));
     }
+    
+    // Reset the count
+    this.count = 0;
   }
 
   private async retryIndividually(): Promise<void> {

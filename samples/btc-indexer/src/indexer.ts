@@ -38,9 +38,11 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
   private networkId!: number;
   private tokenName!: string;
   private networkName!: string;
+  private upsertTriggerCount: number;
 
   constructor(config: IndexerConfig<BTCIndexerConfig>) {
     super(config);
+    this.upsertTriggerCount = config.config?.upsertTriggerCount || 500;
   }
 
   override async setup(
@@ -240,10 +242,17 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
 
       for (const fragment of fragments) builder.upsertFragment(fragment);
       for (const xfer of xferOrdered) builder.upsertTransfer(xfer);
+
+      if (builder.getCount() > this.upsertTriggerCount) {
+        // Flush the upserts
+        await builder.execute();
+      }
     }
 
-    // Commit the upserts we built
-    await builder.execute();
+    if (builder.getCount() > 0) {
+      // Flush the remainder
+      await builder.execute();
+    }
 
     log.info(`Indexed ${txCount} transactions in ${Date.now() - startTime}ms`);
     return { events };
