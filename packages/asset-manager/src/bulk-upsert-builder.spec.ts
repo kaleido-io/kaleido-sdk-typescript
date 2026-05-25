@@ -5,6 +5,7 @@ import {
   DuplicateStrategy,
   IBulkUpsertClient,
 } from "./bulk-upsert-builder.js";
+import { BulkUpsertAutoFlush } from "./bulk-upsert-autoflush.js";
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
@@ -223,6 +224,24 @@ describe("BulkUpsertBuilder", () => {
       const callArg = mockClient.bulkUpsert.mock.calls[0][0];
       expect(callArg.addresses).toHaveLength(1);
       expect(callArg.addresses?.[0]?.contract).toBe(false);
+    });
+  });
+
+  describe("upsertCollection", () => {
+    it("should add collection and return builder for chaining", () => {
+      const result = builder.upsertCollection({ name: "collection1" });
+      expect(result).toBe(builder);
+      expect(builder.hasUpdates()).toBe(true);
+    });
+
+    it("should merge collections with same name", () => {
+      builder.upsertCollection({ name: "collection1", labels: { key1: "value1" } });
+      builder.upsertCollection({ name: "collection1", labels: { key2: "value2" } });
+      builder.execute();
+
+      const callArg = mockClient.bulkUpsert.mock.calls[0][0];
+      expect(callArg.collections).toHaveLength(1);
+      expect(callArg.collections?.[0]?.labels).toEqual({ key1: "value1", key2: "value2" });
     });
   });
 
@@ -513,6 +532,33 @@ describe("BulkUpsertBuilder", () => {
       builder.upsertAsset({ name: "asset1" });
 
       await expect(builder.execute()).rejects.toThrow("Bulk upsert error");
+    });
+  });
+
+  describe("getCount", () => {
+    it("should return 0 when no items added", () => {
+      expect(builder.getCount()).toBe(0);
+    });
+
+    it("should increment with each new item added", () => {
+      builder.upsertAsset({ name: "asset1" });
+      expect(builder.getCount()).toBe(1);
+      builder.upsertActivity({ name: "activity1" });
+      expect(builder.getCount()).toBe(2);
+    });
+
+    it("should reset to 0 after execute", async () => {
+      builder.upsertAsset({ name: "asset1" });
+      expect(builder.getCount()).toBe(1);
+      await builder.execute();
+      expect(builder.getCount()).toBe(0);
+    });
+  });
+
+  describe("autoFlush", () => {
+    it("should return a BulkUpsertAutoFlush wrapping this builder", () => {
+      const af = builder.autoFlush(5);
+      expect(af).toBeInstanceOf(BulkUpsertAutoFlush);
     });
   });
 
