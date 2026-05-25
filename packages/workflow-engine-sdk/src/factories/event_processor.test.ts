@@ -64,7 +64,6 @@ describe('createEventProcessor', () => {
     const closeFn = jest.fn();
     const engineClientRuntime = {
       sendMessage: jest.fn(),
-      getActiveHandlerContext: jest.fn(() => ({ requestId: 'test', authTokens: { test: 'test' } })),
       isWebSocketConnected: jest.fn(() => true),
       generateId: jest.fn(() => 'test'),
     } as any as EngineClientRuntime;
@@ -175,7 +174,6 @@ describe('createEventProcessor', () => {
   it('should not call init or close when no functions are registered', async () => {
     const engineClientRuntime = {
       sendMessage: jest.fn(),
-      getActiveHandlerContext: jest.fn(() => ({ requestId: 'test', authTokens: {} })),
       isWebSocketConnected: jest.fn(() => true),
       generateId: jest.fn(() => 'test'),
     } as any as EngineClientRuntime;

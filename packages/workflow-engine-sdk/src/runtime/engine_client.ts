@@ -33,7 +33,6 @@ const log = newLogger('engine_client');
  */
 export interface EngineClientRuntime {
   sendMessage(message: any): void;
-  getActiveHandlerContext(): { requestId: string; authTokens: Record<string, string> } | undefined;
   isWebSocketConnected(): boolean;
 }
 
@@ -57,16 +56,12 @@ export class EngineClient implements EngineAPI {
    * Submit async transactions to the workflow engine
    */
   async submitAsyncTransactions(
+    activeRequestId: string,
     authRef: string,
     transactions: AsyncTransactionInput[]
   ): Promise<IdempotentSubmitResult[]> {
     if (!this.runtime.isWebSocketConnected()) {
       throw newError(SDKErrors.MsgSDKEngineNotConnected);
-    }
-
-    const activeContext = this.runtime.getActiveHandlerContext();
-    if (!activeContext) {
-      throw newError(SDKErrors.MsgSDKEngineReqNoActiveRequest);
     }
 
     const requestId = this.generateId();
@@ -79,7 +74,7 @@ export class EngineClient implements EngineAPI {
     const request: WSEngineAPISubmitTransactions = {
       messageType: WSMessageType.ENGINE_API_SUBMIT_TRANSACTIONS,
       id: requestId,
-      activeRequestId: activeContext.requestId,
+      activeRequestId,
       authRef: authRef,
       transactions: transactions,
     };

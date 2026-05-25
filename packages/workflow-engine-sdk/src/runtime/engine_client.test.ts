@@ -15,7 +15,7 @@
 // limitations under the License.
 
 
-import { describe, it, expect, jest } from '@jest/globals';
+import { beforeEach, describe, it, expect, jest } from '@jest/globals';
 
 import { mockLogger } from '../../tests/mock-logger';
 
@@ -29,7 +29,6 @@ describe('EngineClient', () => {
     beforeEach(() => {
         mockEngineClientRuntime = {
             sendMessage: jest.fn(),
-            getActiveHandlerContext: jest.fn(() => ({ requestId: 'test', authTokens: { 'test': 'test' } })),
             isWebSocketConnected: jest.fn(() => true),
             generateId: jest.fn(() => 'test'),
         } as any as EngineClientRuntime;
@@ -41,31 +40,22 @@ describe('EngineClient', () => {
     it('should throw an error if the runtime is not connected', async () => {
         mockEngineClientRuntime.isWebSocketConnected = jest.fn(() => false);
         const engineClient = new EngineClient(mockEngineClientRuntime);
-        await expect(engineClient.submitAsyncTransactions('test', [{
+        await expect(engineClient.submitAsyncTransactions('req1', 'test', [{
             workflow: 'test',
             operation: 'test',
         }])).rejects.toThrow(/KA140627/);
 
     })
-    it('should throw an error if the active handler context is not set', async () => {
-        mockEngineClientRuntime.getActiveHandlerContext = jest.fn(() => undefined);
-        const engineClient = new EngineClient(mockEngineClientRuntime);
-        await expect(engineClient.submitAsyncTransactions('test', [{
-            workflow: 'test',
-            operation: 'test',
-        }])).rejects.toThrow(/KA140616/);
-
-    })
     it('should submit asynchronous transactions', () => {
         const engineClient = new EngineClient(mockEngineClientRuntime);
-        engineClient.submitAsyncTransactions('test', [{
+        engineClient.submitAsyncTransactions('req1', 'test', [{
             workflow: 'test',
             operation: 'test',
         }]);
         expect(mockEngineClientRuntime.sendMessage).toHaveBeenCalledTimes(1);
         const message: any = (mockEngineClientRuntime.sendMessage as jest.Mock).mock.calls[0][0];
         expect(message).toBeDefined();
-        expect(message.activeRequestId).toBe('test');
+        expect(message.activeRequestId).toBe('req1');
         expect(message.authRef).toBe('test');
         expect(message.id).toBeDefined();
         expect(message.messageType).toBe('engineapi_submit_transactions');
@@ -74,7 +64,7 @@ describe('EngineClient', () => {
     })
     it('should handle an inflight response from the engine', async () => {
         const engineClient = new EngineClient(mockEngineClientRuntime);
-        const resultPromise = engineClient.submitAsyncTransactions('test', [{
+        const resultPromise = engineClient.submitAsyncTransactions('req1', 'test', [{
             workflow: 'test',
             operation: 'test',
         }]);
@@ -91,7 +81,7 @@ describe('EngineClient', () => {
     })
     it('should handle an inflight response with missing submissions from the engine', async () => {
         const engineClient = new EngineClient(mockEngineClientRuntime);
-        const resultPromise = engineClient.submitAsyncTransactions('test', [{
+        const resultPromise = engineClient.submitAsyncTransactions('req1', 'test', [{
             workflow: 'test',
             operation: 'test',
         }]);
@@ -116,7 +106,7 @@ describe('EngineClient', () => {
     })
     it('should handle an error response from the engine', async () => {
         const engineClient = new EngineClient(mockEngineClientRuntime);
-        const resultPromise = engineClient.submitAsyncTransactions('test', [{
+        const resultPromise = engineClient.submitAsyncTransactions('req1', 'test', [{
             workflow: 'test',
             operation: 'test',
         }]);

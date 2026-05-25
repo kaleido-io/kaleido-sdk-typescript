@@ -64,7 +64,6 @@ describe('createEventSource', () => {
         });
         const engineClientRuntime = {
             sendMessage: jest.fn(),
-            getActiveHandlerContext: jest.fn(() => ({ requestId: 'test', authTokens: { 'test': 'test' } })),
             isWebSocketConnected: jest.fn(() => true),
             generateId: jest.fn(() => 'test'),
         } as any as EngineClientRuntime;
