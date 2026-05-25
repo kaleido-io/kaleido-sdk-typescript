@@ -152,7 +152,7 @@ describe('BTCIndexer.process()', () => {
     expect(fragments).toHaveLength(2);
     expect(fragments).toContainEqual(expect.objectContaining({
       name: 'mainnet_prevtx_0',
-      updateType: 'create_or_update',
+      updateType: 'create_or_ignore',
       labels: expect.objectContaining({ spend_tx: 'tx001', mint_tx: 'prevtx' }),
     }));
     expect(fragments).toContainEqual(expect.objectContaining({

@@ -95,7 +95,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
       return { events };
     }
 
-    const builder = new BulkUpsertBuilder(dmClient);
+    const builder = new BulkUpsertBuilder(dmClient).autoFlush(this.upsertTriggerCount);
     const startTime = Date.now();
     log.info(`Received batch of ${events.length} events`);
 
@@ -149,8 +149,6 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
     );
 
     // Pass 3: build and upsert fragments + wallet-scoped transfers per event
-    let totalUpdates = 0;
-    let txSinceFlush = 0;
     let txCount = 0;
     for (const event of events) {
       const { tx, block, network } = event.data;
@@ -242,25 +240,14 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
         }
       }
 
-      for (const fragment of fragments) builder.upsertFragment(fragment);
-      for (const xfer of xferOrdered) builder.upsertTransfer(xfer);
-
-      txSinceFlush++;
-      if (builder.getCount() > this.upsertTriggerCount) {
-        // Flush the upserts
-        totalUpdates += builder.getCount();
-        log.info(`Flushing ${builder.getCount()} updates with ${txSinceFlush} txns`);
-        await builder.execute();
-        txSinceFlush = 0;
-      }
+      for (const fragment of fragments) await builder.upsertFragment(fragment);
+      for (const xfer of xferOrdered) await builder.upsertTransfer(xfer);
     }
 
     // Flush the remainder
-    totalUpdates += builder.getCount();
-    log.info(`Finalizing remaining ${builder.getCount()} updates for ${txSinceFlush} txns`);
     await builder.execute();
 
-    log.info(`Indexed ${txCount} transactions with a total of ${totalUpdates} updates in ${Date.now() - startTime}ms`);
+    log.info(`Indexed ${txCount} transactions with a total of ${builder.getTotalCount()} updates in ${Date.now() - startTime}ms`);
     return { events };
   }
 }

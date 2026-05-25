@@ -6,13 +6,15 @@ import {
   IBulkUpsertClient,
 } from "./bulk-upsert-builder.js";
 
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+
 describe("BulkUpsertBuilder", () => {
   let builder: BulkUpsertBuilder;
   let mockClient: jest.Mocked<IBulkUpsertClient>;
 
   beforeEach(() => {
     mockClient = {
-      bulkUpsert: jest.fn().mockResolvedValue({}),
+      bulkUpsert: jest.fn<IBulkUpsertClient['bulkUpsert']>().mockResolvedValue({}),
     };
     builder = new BulkUpsertBuilder(mockClient);
   });
@@ -432,14 +434,14 @@ describe("BulkUpsertBuilder", () => {
 
   describe("addFinalizer", () => {
     it("should add finalizer and return builder for chaining", () => {
-      const finalizer = jest.fn();
+      const finalizer = jest.fn<() => void | Promise<void>>();
       const result = builder.addFinalizer(finalizer);
       expect(result).toBe(builder);
     });
 
     it("should execute finalizers after bulkUpsert", async () => {
-      const finalizer1 = jest.fn().mockResolvedValue(undefined);
-      const finalizer2 = jest.fn().mockResolvedValue(undefined);
+      const finalizer1 = jest.fn<() => void | Promise<void>>();
+      const finalizer2 = jest.fn<() => void | Promise<void>>();
 
       builder.upsertAsset({ name: "asset1" });
       builder.addFinalizer(finalizer1);
@@ -453,7 +455,7 @@ describe("BulkUpsertBuilder", () => {
     });
 
     it("should execute finalizers even if no updates", async () => {
-      const finalizer = jest.fn().mockResolvedValue(undefined);
+      const finalizer = jest.fn<() => void | Promise<void>>();
       builder.addFinalizer(finalizer);
 
       await builder.execute();
@@ -463,7 +465,7 @@ describe("BulkUpsertBuilder", () => {
     });
 
     it("should handle finalizer errors", async () => {
-      const finalizer = jest.fn().mockRejectedValue(new Error("Finalizer error"));
+      const finalizer = jest.fn<() => Promise<void>>().mockRejectedValue(new Error("Finalizer error"));
       builder.addFinalizer(finalizer);
 
       await expect(builder.execute()).rejects.toThrow("Finalizer error");
@@ -535,7 +537,7 @@ describe("BulkUpsertBuilder", () => {
     }
 
     function makeBuilder(options?: BulkUpsertBuilderOptions) {
-      mockClient = { bulkUpsert: jest.fn() };
+      mockClient = { bulkUpsert: jest.fn<IBulkUpsertClient['bulkUpsert']>() };
       return new BulkUpsertBuilder(mockClient, options);
     }
 
@@ -594,7 +596,7 @@ describe("BulkUpsertBuilder", () => {
     it("does not run finalizers when BulkUpsertInvalidRefError is thrown", async () => {
       builder = makeBuilder();
       builder.upsertActivity({ name: "activity-1" });
-      const finalizer = jest.fn();
+      const finalizer = jest.fn<() => void | Promise<void>>();
       builder.addFinalizer(finalizer);
 
       mockClient.bulkUpsert.mockRejectedValue(invalidRefError());
@@ -655,7 +657,7 @@ describe("BulkUpsertBuilder", () => {
     }
 
     beforeEach(() => {
-      mockClient = { bulkUpsert: jest.fn() };
+      mockClient = { bulkUpsert: jest.fn<IBulkUpsertClient['bulkUpsert']>() };
       builder = new BulkUpsertBuilder(mockClient, { retryOnInvalidRef: false });
     });
 
@@ -670,7 +672,7 @@ describe("BulkUpsertBuilder", () => {
 
     it("does not run finalizers when KA090801 is thrown", async () => {
       builder.upsertActivity({ name: "activity-1" });
-      const finalizer = jest.fn();
+      const finalizer = jest.fn<() => void | Promise<void>>();
       builder.addFinalizer(finalizer);
 
       mockClient.bulkUpsert.mockRejectedValue(invalidRefError());
