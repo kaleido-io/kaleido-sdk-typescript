@@ -397,13 +397,6 @@ describe('HandlerRuntime', () => {
         expect(() => new HandlerRuntime(handlerRuntimeConfig)).toThrow('KA140631: WEBSOCKET_PORT is required in inbound mode');
         delete process.env.WORKFLOW_ENGINE_MODE;
     })
-    it('should allow setting and getting the active handler context', async () => {
-        handlerRuntime = new HandlerRuntime(handlerRuntimeConfig);
-        handlerRuntime.setActiveHandlerContext('test-request-id', { 'test-token': 'test-token' });
-        expect(handlerRuntime.getActiveHandlerContext()).toEqual({ requestId: 'test-request-id', authTokens: { 'test-token': 'test-token' } });
-        handlerRuntime.clearActiveHandlerContext();
-        expect(handlerRuntime.getActiveHandlerContext()).toBeUndefined();
-    })
     it('should throw an error sending a message when not started', async () => {
         handlerRuntime = new HandlerRuntime(handlerRuntimeConfig);
         handlerRuntime.sendMessage({ messageType: 'test-message' });

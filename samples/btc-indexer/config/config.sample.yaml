@@ -36,7 +36,7 @@ stream:
   eventSourceConfig:
     unfiltered: true
     fromBlock: '0'
-    batchSize: 500 # the number of transactions to collect from the blockchain
+    batchSize: 25 # the number of transactions to collect from the blockchain
     batchTimeout: '10s'
     pollTimeout: '30s'
     requiredConfirmations: 5

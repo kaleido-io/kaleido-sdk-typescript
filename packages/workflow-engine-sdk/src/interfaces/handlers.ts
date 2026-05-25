@@ -16,29 +16,33 @@
 
 
 import {
-  EvalResult,
-  InvocationMode,
-  WSEvaluateTransaction,
-  WSHandleTransactionsResult,
-  WSHandleTransactions,
-  WSEventSourceConfig,
-  WSListenerPollRequest,
-  WSListenerPollResult,
-  WithStageDirector,
-  Trigger,
-  Patch,
   AsyncTransactionInput,
-  IdempotentSubmitResult,
+  EvalResult,
   HandlerEvent,
+  IdempotentSubmitResult,
+  InvocationMode,
+  Patch,
+  Trigger,
+  WSEvaluateTransaction,
   WSEventProcessorBatchRequest,
   WSEventProcessorBatchResult,
+  WSEventSourceConfig,
+  WSHandleTransactions,
+  WSHandleTransactionsResult,
+  WSListenerPollRequest,
+  WSListenerPollResult,
+  WithStageDirector
 } from '../types/core';
 
 /**
  * EngineAPI interface
  */
 export interface EngineAPI {
-  submitAsyncTransactions(authRef: string, transactions: AsyncTransactionInput[]): Promise<IdempotentSubmitResult[]>;
+  submitAsyncTransactions(
+    activeRequestId: string,
+    authRef: string,
+    transactions: AsyncTransactionInput[],
+  ): Promise<IdempotentSubmitResult[]>;
 }
 
 export interface Handler {

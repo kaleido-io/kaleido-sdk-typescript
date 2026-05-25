@@ -138,7 +138,6 @@ export class HandlerRuntime {
 
   private engineClient: EngineClient;
   private wsProxyAdapter: WSProxyAdapter;
-  private activeHandlerContext?: { requestId: string; authTokens: Record<string, string> };
 
   constructor(config: HandlerRuntimeConfig) {
     if (config.server) {
@@ -281,27 +280,6 @@ export class HandlerRuntime {
    */
   isWebSocketConnected(): boolean {
     return this.isConnected && this.ws?.readyState === WebSocket.OPEN;
-  }
-
-  /**
-   * Set active handler context for EngineAPI calls
-   */
-  setActiveHandlerContext(requestId: string, authTokens: Record<string, string>): void {
-    this.activeHandlerContext = { requestId, authTokens };
-  }
-
-  /**
-   * Clear active handler context
-   */
-  clearActiveHandlerContext(): void {
-    this.activeHandlerContext = undefined;
-  }
-
-  /**
-   * Get active handler context
-   */
-  getActiveHandlerContext(): { requestId: string; authTokens: Record<string, string> } | undefined {
-    return this.activeHandlerContext;
   }
 
   /**
@@ -565,7 +543,6 @@ export class HandlerRuntime {
     try {
       const handler = this.transactionHandlers.get(batch.handler);
       if (handler) {
-        this.setActiveHandlerContext(batch.id, batch.authTokens || {});
         await handler.transactionHandlerBatch(response, batch);
       } else {
         response.error = `No transaction handler registered: ${batch.handler}`;
@@ -576,8 +553,6 @@ export class HandlerRuntime {
       response.results = batch.transactions.map(() => ({
         error: getErrorMessage(error)
       }));
-    } finally {
-      this.clearActiveHandlerContext();
     }
 
     this.sendMessage(response);
@@ -599,7 +574,6 @@ export class HandlerRuntime {
     try {
       const eventProcessor = this.eventProcessors.get(batch.handler || '');
       if (eventProcessor) {
-        this.setActiveHandlerContext(batch.id, batch.authTokens || {});
         await eventProcessor.eventProcessorBatch(response, batch);
       } else {
         response.error = `No event processor registered: ${batch.handler}`;
@@ -608,8 +582,6 @@ export class HandlerRuntime {
     } catch (error) {
       log.error('Event processor batch failed', { handler: batch.handler, error });
       response.error = getErrorMessage(error);
-    } finally {
-      this.clearActiveHandlerContext();
     }
 
     this.sendMessage(response);
@@ -639,7 +611,6 @@ export class HandlerRuntime {
       const config = this.eventSourceConfigs.get(request.streamId);
 
       if (eventSource && config) {
-        this.setActiveHandlerContext(request.id, request.authTokens || {});
         await eventSource.eventSourcePoll(config, response, request);
       } else {
         response.error = `No event source or config: ${request.handler}/${request.streamId}`;
@@ -648,8 +619,6 @@ export class HandlerRuntime {
     } catch (error) {
       log.error('Event source poll failed', { handler: request.handler, error });
       response.error = getErrorMessage(error);
-    } finally {
-      this.clearActiveHandlerContext();
     }
 
     this.sendMessage(response);
@@ -667,7 +636,6 @@ export class HandlerRuntime {
     try {
       const eventSource = this.eventSources.get(request.handler || '');
       if (eventSource) {
-        this.setActiveHandlerContext(request.id, request.authTokens || {});
         await eventSource.eventSourceValidateConfig(response, request);
       } else {
         response.error = `No event source registered: ${request.handler}`;
@@ -679,8 +647,6 @@ export class HandlerRuntime {
         error
       });
       response.error = getErrorMessage(error);
-    } finally {
-      this.clearActiveHandlerContext();
     }
 
     this.sendMessage(response);
@@ -701,7 +667,6 @@ export class HandlerRuntime {
     try {
       const eventSource = this.eventSources.get(request.handler || '');
       if (eventSource) {
-        this.setActiveHandlerContext(request.id, request.authTokens || {});
         await eventSource.eventSourceDelete(response, request);
         this.eventSourceConfigs.delete(request.streamId);
       } else {
@@ -711,8 +676,6 @@ export class HandlerRuntime {
     } catch (error) {
       log.error('Event source delete failed', { handler: request.handler, error });
       response.error = getErrorMessage(error);
-    } finally {
-      this.clearActiveHandlerContext();
     }
 
     this.sendMessage(response);

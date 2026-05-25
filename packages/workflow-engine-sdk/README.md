@@ -713,7 +713,9 @@ The `EngineAPI` interface allows handlers to make synchronous API calls back to 
 ```typescript
 async function myHandler(transaction, input, engAPI: EngineAPI) {
   // Submit transactions to the engine
-  const results = await engAPI.submitAsyncTransactions(transaction.authRef, [
+  const results = await engAPI.submitAsyncTransactions(
+    input.id,
+    transaction.authRef, [
     {
       workflowId: "flw:abc123",
       operation: "process",
