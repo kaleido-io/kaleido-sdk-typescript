@@ -14,6 +14,7 @@ import {
   PoolBulkInput,
   TransferBulkInput,
 } from "./asset-manager.interfaces.js";
+import { BulkUpsertAutoFlush } from "./bulk-upsert-autoflush.js";
 
 export interface IBulkUpsertClient {
   bulkUpsert(input: BulkUpsertInput): Promise<unknown>;
@@ -85,6 +86,10 @@ export class BulkUpsertBuilder {
     private client: IBulkUpsertClient,
     private options: BulkUpsertBuilderOptions = {},
   ) {}
+
+  autoFlush(flushAt: number): BulkUpsertAutoFlush {
+    return new BulkUpsertAutoFlush(this, flushAt);
+  }
 
   hasUpdates() {
     for (const val of Object.values(this.updates)) {
@@ -277,7 +282,7 @@ export class BulkUpsertBuilder {
     // Reset the count
     this.count = 0;
   }
-
+  
   private async retryIndividually(): Promise<void> {
     while (true) {
       let anySucceeded = false;
