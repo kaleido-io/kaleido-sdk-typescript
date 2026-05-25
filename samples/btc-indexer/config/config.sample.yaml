@@ -23,7 +23,7 @@ workflowEngineNameOrId: workflow-engine
 
 # BTC contract to index
 config:
-  upsertTriggerCount: 200 # the amount of individual objects to trigger an upsert
+  upsertTriggerCount: 250 # the amount of individual objects to trigger an upsert
   networkName: testnet4
   networkId: 0x283f161c
   tokenSymbol: tBTC
@@ -36,7 +36,7 @@ stream:
   eventSourceConfig:
     unfiltered: true
     fromBlock: '0'
-    batchSize: 25 # the number of transactions to collect from the blockchain
+    batchSize: 5 # the number of transactions to collect from the blockchain
     batchTimeout: '10s'
     pollTimeout: '30s'
     requiredConfirmations: 5
