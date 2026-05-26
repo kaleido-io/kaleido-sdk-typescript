@@ -54,6 +54,7 @@ import {
   TaskVersionUpdate,
   Transfer,
   TransferInput,
+  UpsertManyResult,
 } from "./asset-manager.interfaces";
 import { newLogger } from "@kaleido-io/workflow-engine-sdk";
 
@@ -423,8 +424,12 @@ export class AssetManagerClient extends ServiceClient {
     return res;
   }
 
-  bulkUpsert(input: BulkUpsertInput, options?: AxiosRequestConfig) {
-    return this.put<BulkUpsertOutput>(`${API_VERSION}/bulk/datamodel`, input, options);
+  async bulkUpsert(input: BulkUpsertInput, options?: AxiosRequestConfig) {
+    const startTime = new Date().getTime();
+    const res = await this.put<BulkUpsertOutput>(`${API_VERSION}/bulk/datamodel`, input, options);
+    const countFor = (set?: UpsertManyResult) => (typeof set === 'object') ? `[c=${set.created || 0},r=${set.replaced || 0},u=${set.updated || 0},i=${set.ignored || 0}]` : 0;
+    log.debug(`bulkQuery assets=${countFor(res?.assets)} activities=${countFor(res?.activities)} addresses=${countFor(res?.addresses)} collections=${countFor(res?.collections)} data=${countFor(res?.data)} events=${countFor(res?.events)} fragments=${countFor(res?.fragments)} nfts=${countFor(res?.nfts)} pools=${countFor(res?.pools)} transfers=${countFor(res?.transfers)}} (${new Date().getTime()-startTime}ms)`)
+    return res;
   }
 
   // Policy Operations
