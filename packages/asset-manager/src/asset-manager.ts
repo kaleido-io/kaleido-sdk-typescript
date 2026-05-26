@@ -54,6 +54,10 @@ import {
   Transfer,
   TransferInput,
 } from "./asset-manager.interfaces";
+import { newLogger } from "@kaleido-io/workflow-engine-sdk";
+
+const log = newLogger("AssetManagerClient");
+
 /**
  * Typed client for the Asset Manager REST API.
  *
@@ -408,10 +412,13 @@ export class AssetManagerClient extends ServiceClient {
   }
 
   // Bulk Operations
-  bulkQuery(input: BulkQueryInput) {
-    return this.post<BulkQueryOutput>(`${API_VERSION}/bulk/query`, input, {
+  async bulkQuery(input: BulkQueryInput) {
+    const startTime = new Date().getTime();
+    const res = await this.post<BulkQueryOutput>(`${API_VERSION}/bulk/query`, input, {
       retryOn5xx: true,
     });
+    log.debug(`bulkQuery assets=${res?.assets?.count} activities=${res?.activities?.count} addresses=${res?.addresses?.count} collections=${res?.collections?.count} data=${res?.data?.count} events=${res?.events?.count} fragments=${res?.fragments?.count} nfts=${res?.nfts?.count} pools=${res?.pools?.count} transfers=${res?.transfers?.count} balanceChanges=${res?.balanceChanges?.count} (${new Date().getTime()-startTime}ms)`)
+    return res;
   }
 
   bulkUpsert(input: BulkUpsertInput, options?: AxiosRequestConfig) {
