@@ -419,16 +419,21 @@ export class AssetManagerClient extends ServiceClient {
     const res = await this.post<BulkQueryOutput>(`${API_VERSION}/bulk/query`, input, {
       retryOn5xx: true,
     });
-    const countFor = (set?: FilterResult<unknown>) => (typeof set === 'object') ? set.count : 0;
-    log.debug(`bulkQuery assets=${countFor(res?.assets)} activities=${countFor(res?.activities)} addresses=${countFor(res?.addresses)} collections=${countFor(res?.collections)} data=${countFor(res?.data)} events=${countFor(res?.events)} fragments=${countFor(res?.fragments)} nfts=${countFor(res?.nfts)} pools=${countFor(res?.pools)} transfers=${countFor(res?.transfers)} balanceChanges=${countFor(res?.balanceChanges)} (${new Date().getTime()-startTime}ms)`)
+    const countFor = (collection: string, set?: FilterResult<unknown>) =>
+      (typeof set === 'object' && set.count) ? ` ${collection}=${set.count}` : '';
+    log.debug(`bulkQuery${countFor('assets', res?.assets)}${countFor('activities', res?.activities)}${countFor('addresses', res?.addresses)}${countFor('collections', res?.collections)}${countFor('data', res?.data)}${countFor('events', res?.events)}${countFor('fragments', res?.fragments)}${countFor('nfts', res?.nfts)}${countFor('pools', res?.pools)}${countFor('transfers', res?.transfers)}${countFor('balanceChanges', res?.balanceChanges)} (${new Date().getTime()-startTime}ms)`)
     return res;
   }
 
   async bulkUpsert(input: BulkUpsertInput, options?: AxiosRequestConfig) {
     const startTime = new Date().getTime();
     const res = await this.put<BulkUpsertOutput>(`${API_VERSION}/bulk/datamodel`, input, options);
-    const countFor = (set?: UpsertManyResult) => (typeof set === 'object') ? `[c=${set.created || 0},r=${set.replaced || 0},u=${set.updated || 0},i=${set.ignored || 0}]` : 0;
-    log.debug(`bulkQuery assets=${countFor(res?.assets)} activities=${countFor(res?.activities)} addresses=${countFor(res?.addresses)} collections=${countFor(res?.collections)} data=${countFor(res?.data)} events=${countFor(res?.events)} fragments=${countFor(res?.fragments)} nfts=${countFor(res?.nfts)} pools=${countFor(res?.pools)} transfers=${countFor(res?.transfers)}} (${new Date().getTime()-startTime}ms)`)
+    const countFor = (collection: string, set?: UpsertManyResult) => {
+      if (typeof set !== 'object') return '-';
+      const c = set.created?.length ?? 0, r = set.replaced?.length ?? 0, u = set.updated?.length ?? 0, i = set.ignored?.length ?? 0;
+      return (c || r || u || i) ? ` ${collection}=[c=${c},r=${r},u=${u},i=${i}]` : '';
+    };
+    log.debug(`bulkUpsert${countFor('assets', res?.assets)}${countFor('activities', res?.activities)}${countFor('addresses', res?.addresses)}${countFor('collections', res?.collections)}${countFor('data', res?.data)}${countFor('events', res?.events)}${countFor('fragments', res?.fragments)}${countFor('nfts', res?.nfts)}${countFor('pools', res?.pools)}${countFor('transfers', res?.transfers)} (${new Date().getTime()-startTime}ms)`)
     return res;
   }
 
