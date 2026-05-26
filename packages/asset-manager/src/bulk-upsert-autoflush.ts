@@ -100,8 +100,9 @@ export class BulkUpsertAutoFlush {
   }
 
   async execute(): Promise<void> {
-    log.debug(`Flushing ${this.builder.getCount()} updates (total=${this.getTotalCount()})`)
+    const countToFlush = this.builder.getCount();
+    log.debug(`Flushing ${countToFlush} updates (total=${this.getTotalCount()})`)
     await this.builder.execute();
-    this.flushedCount += this.builder.getCount();
+    this.flushedCount += countToFlush;
   }
 }
