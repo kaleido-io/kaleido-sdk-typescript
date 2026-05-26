@@ -1,3 +1,4 @@
+import { AxiosRequestConfig } from "axios";
 import {
   ServiceClient,
   ServiceClientOptions,
@@ -413,8 +414,8 @@ export class AssetManagerClient extends ServiceClient {
     });
   }
 
-  bulkUpsert(input: BulkUpsertInput) {
-    return this.put<BulkUpsertOutput>(`${API_VERSION}/bulk/datamodel`, input);
+  bulkUpsert(input: BulkUpsertInput, options?: AxiosRequestConfig) {
+    return this.put<BulkUpsertOutput>(`${API_VERSION}/bulk/datamodel`, input, options);
   }
 
   // Policy Operations
