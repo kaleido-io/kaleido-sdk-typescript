@@ -15,16 +15,18 @@
 // limitations under the License.
 
 
-import { beforeEach, describe, it, expect, jest } from '@jest/globals';
+import { beforeEach, describe, it, expect, jest, afterEach } from '@jest/globals';
 
 import { mockLogger } from '../../tests/mock-logger';
 
 import { EngineClient } from './engine_client';
 import { EngineClientRuntime } from './engine_client';
-import { WSEngineAPISubmitTransactionsResult, WSMessageType } from '../types/core';
+import { RequestContext, WSEngineAPISubmitTransactionsResult, WSMessageType } from '../types/core';
 
 describe('EngineClient', () => {
     let mockEngineClientRuntime: EngineClientRuntime;
+    let mockReqContext: RequestContext;
+    let abortController: AbortController; 
 
     beforeEach(() => {
         mockEngineClientRuntime = {
@@ -32,7 +34,16 @@ describe('EngineClient', () => {
             isWebSocketConnected: jest.fn(() => true),
             generateId: jest.fn(() => 'test'),
         } as any as EngineClientRuntime;
+        abortController = new AbortController();
+        mockReqContext = {
+            requestId: 'test-request-id',
+            signal: abortController.signal,
+            cancel: jest.fn(),
+        };
     });
+    afterEach(() => {
+        abortController.abort("done");
+    })
     it('should create an engine client', () => {
         const engineClient = new EngineClient(mockEngineClientRuntime);
         expect(engineClient).toBeDefined();
@@ -40,7 +51,7 @@ describe('EngineClient', () => {
     it('should throw an error if the runtime is not connected', async () => {
         mockEngineClientRuntime.isWebSocketConnected = jest.fn(() => false);
         const engineClient = new EngineClient(mockEngineClientRuntime);
-        await expect(engineClient.submitAsyncTransactions('req1', 'test', [{
+        await expect(engineClient.submitAsyncTransactions(mockReqContext, 'test', [{
             workflow: 'test',
             operation: 'test',
         }])).rejects.toThrow(/KA140627/);
@@ -48,14 +59,14 @@ describe('EngineClient', () => {
     })
     it('should submit asynchronous transactions', () => {
         const engineClient = new EngineClient(mockEngineClientRuntime);
-        engineClient.submitAsyncTransactions('req1', 'test', [{
+        engineClient.submitAsyncTransactions(mockReqContext,'test', [{
             workflow: 'test',
             operation: 'test',
         }]);
         expect(mockEngineClientRuntime.sendMessage).toHaveBeenCalledTimes(1);
         const message: any = (mockEngineClientRuntime.sendMessage as jest.Mock).mock.calls[0][0];
         expect(message).toBeDefined();
-        expect(message.activeRequestId).toBe('req1');
+        expect(message.activeRequestId).toBe('test-request-id');
         expect(message.authRef).toBe('test');
         expect(message.id).toBeDefined();
         expect(message.messageType).toBe('engineapi_submit_transactions');
@@ -64,7 +75,7 @@ describe('EngineClient', () => {
     })
     it('should handle an inflight response from the engine', async () => {
         const engineClient = new EngineClient(mockEngineClientRuntime);
-        const resultPromise = engineClient.submitAsyncTransactions('req1', 'test', [{
+        const resultPromise = engineClient.submitAsyncTransactions(mockReqContext,'test', [{
             workflow: 'test',
             operation: 'test',
         }]);
@@ -81,7 +92,7 @@ describe('EngineClient', () => {
     })
     it('should handle an inflight response with missing submissions from the engine', async () => {
         const engineClient = new EngineClient(mockEngineClientRuntime);
-        const resultPromise = engineClient.submitAsyncTransactions('req1', 'test', [{
+        const resultPromise = engineClient.submitAsyncTransactions(mockReqContext,'test', [{
             workflow: 'test',
             operation: 'test',
         }]);
@@ -106,7 +117,7 @@ describe('EngineClient', () => {
     })
     it('should handle an error response from the engine', async () => {
         const engineClient = new EngineClient(mockEngineClientRuntime);
-        const resultPromise = engineClient.submitAsyncTransactions('req1', 'test', [{
+        const resultPromise = engineClient.submitAsyncTransactions(mockReqContext,'test', [{
             workflow: 'test',
             operation: 'test',
         }]);

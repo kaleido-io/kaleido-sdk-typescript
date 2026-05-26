@@ -20,7 +20,7 @@ const log = newLogger('echo-event-processor');
 
 export const echoEventProcessor = createEventProcessor(
   'echo',
-  async (events) => {
+  async (_reqContext, events) => {
     for (const event of events) {
       log.info(`Event received: ${event.topic} - ${JSON.stringify(event.data, null, '\t')}`);
     }

@@ -36,7 +36,6 @@ export class BulkUpsertAutoFlush {
 
   private async flushIfNeeded(): Promise<void> {
     if (this.builder.getCount() >= this.flushAt) {
-      this.flushedCount += this.builder.getCount();
       await this.execute();
     }
   }
@@ -103,5 +102,6 @@ export class BulkUpsertAutoFlush {
   async execute(): Promise<void> {
     log.debug(`Flushing ${this.builder.getCount()} updates (total=${this.getTotalCount()})`)
     await this.builder.execute();
+    this.flushedCount += this.builder.getCount();
   }
 }

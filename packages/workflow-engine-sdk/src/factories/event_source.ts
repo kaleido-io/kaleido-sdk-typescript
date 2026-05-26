@@ -20,6 +20,7 @@ import {
   EngineAPI,
 } from '../interfaces/handlers';
 import {
+  RequestContext,
   WSEventSourceConfig,
   WSListenerPollRequest,
   WSListenerPollResult,
@@ -186,7 +187,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceBuilder<CP, CF, DT> {
   /**
    * Validate config and optionally set initial checkpoint.
    */
-  async eventSourceValidateConfig(result: any, request: any): Promise<void> {
+  async eventSourceValidateConfig(_reqContext: RequestContext, result: any, request: any): Promise<void> {
     try {
       const parsedConfig = await this.buildConf(
         {
@@ -211,6 +212,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceBuilder<CP, CF, DT> {
    * Mutates the `result` parameter to match the engine's output-by-reference API.
    */
   async eventSourcePoll(
+    _reqContext: RequestContext,
     config: WSEventSourceConfig,
     result: WSListenerPollResult,
     request: WSListenerPollRequest
@@ -246,7 +248,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceBuilder<CP, CF, DT> {
   /**
    * Delete event source and clear cached config.
    */
-  async eventSourceDelete(result: WSHandlerEnvelope, request: any): Promise<void> {
+  async eventSourceDelete(_reqContext: RequestContext, result: WSHandlerEnvelope, request: any): Promise<void> {
     try {
       if (this.deleteFn) {
         await this.deleteFn({

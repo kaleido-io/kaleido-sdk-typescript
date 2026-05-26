@@ -21,6 +21,7 @@ import {
   WSMessageType,
   WSEngineAPISubmitTransactions,
   WSEngineAPISubmitTransactionsResult,
+  RequestContext,
 } from '../types/core';
 import { EngineAPI } from '../interfaces/handlers';
 import { newLogger } from '../log/logger';
@@ -56,13 +57,16 @@ export class EngineClient implements EngineAPI {
    * Submit async transactions to the workflow engine
    */
   async submitAsyncTransactions(
-    activeRequestId: string,
+    reqContext: RequestContext,
     authRef: string,
     transactions: AsyncTransactionInput[]
   ): Promise<IdempotentSubmitResult[]> {
     if (!this.runtime.isWebSocketConnected()) {
       throw newError(SDKErrors.MsgSDKEngineNotConnected);
     }
+
+    // Check the context is still active
+    reqContext.signal?.throwIfAborted();
 
     const requestId = this.generateId();
     log.debug('Submitting async transactions', { 
@@ -74,7 +78,7 @@ export class EngineClient implements EngineAPI {
     const request: WSEngineAPISubmitTransactions = {
       messageType: WSMessageType.ENGINE_API_SUBMIT_TRANSACTIONS,
       id: requestId,
-      activeRequestId,
+      activeRequestId: reqContext.requestId,      
       authRef: authRef,
       transactions: transactions,
     };

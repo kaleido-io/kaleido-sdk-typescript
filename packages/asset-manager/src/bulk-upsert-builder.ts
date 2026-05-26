@@ -1,4 +1,5 @@
 import deepmerge from "deepmerge";
+import { AxiosRequestConfig } from "axios";
 import {
   ActivityBulkInput,
   AddressBulkInput,
@@ -15,13 +16,14 @@ import {
   TransferBulkInput,
 } from "./asset-manager.interfaces.js";
 import { BulkUpsertAutoFlush } from "./bulk-upsert-autoflush.js";
+import { RequestContext } from "@kaleido-io/workflow-engine-sdk";
 
 export interface IBulkUpsertClient {
-  bulkUpsert(input: BulkUpsertInput): Promise<unknown>;
+  bulkUpsert(input: BulkUpsertInput, options?: AxiosRequestConfig): Promise<unknown>;
 }
 
 export interface IBulkQueryClient {
-  bulkQuery(input: BulkQueryInput): Promise<BulkQueryOutput>;
+  bulkQuery(input: BulkQueryInput, options?: AxiosRequestConfig): Promise<BulkQueryOutput>;
 }
 
 export interface IDataModelClient extends IBulkUpsertClient, IBulkQueryClient {};
@@ -43,6 +45,13 @@ export enum DuplicateStrategy {
  * Options for configuring BulkUpsertBuilder behaviour at construction time.
  */
 export interface BulkUpsertBuilderOptions {
+
+  /**
+   * Primary use case is to use this within the indexer, where we are working
+   * within the request context of an active workflow engine request.
+   */
+  reqContext?: RequestContext;
+
   /**
    * When `true` (default), if a bulk upsert fails with an invalid-reference
    * error (KA090801), the builder retries each item individually in repeated
@@ -81,11 +90,14 @@ export class BulkUpsertBuilder {
   private updates: BulkUpsertInput = {};
   private finalizers: (() => void | Promise<void>)[] = [];
   private count: number = 0;
+  private reqContext: RequestContext | undefined;
 
   constructor(
     private client: IBulkUpsertClient,
     private options: BulkUpsertBuilderOptions = {},
-  ) {}
+  ) {
+    this.reqContext= options?.reqContext;
+  }
 
   autoFlush(flushAt: number): BulkUpsertAutoFlush {
     return new BulkUpsertAutoFlush(this, flushAt);
@@ -265,7 +277,7 @@ export class BulkUpsertBuilder {
   async execute(): Promise<void> {
     if (this.hasUpdates()) {
       try {
-        await this.client.bulkUpsert(this.updates);
+        await this.client.bulkUpsert(this.updates, { signal: this.reqContext?.signal });
       } catch (err) {
         if ((this.options.retryOnInvalidRef ?? true) && isInvalidRefError(err)) {
           await this.retryIndividually();
@@ -292,7 +304,7 @@ export class BulkUpsertBuilder {
         if (!Array.isArray(items)) continue;
         for (let i = 0; i < items.length; i++) {
           try {
-            await this.client.bulkUpsert({ [key]: [items[i]] });
+            await this.client.bulkUpsert({ [key]: [items[i]] }, { signal: this.reqContext?.signal });
             items.splice(i--, 1);
             anySucceeded = true;
           } catch (err) {

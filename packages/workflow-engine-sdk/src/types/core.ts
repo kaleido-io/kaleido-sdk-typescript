@@ -164,12 +164,20 @@ export interface WSEvaluateReplyResult {
   deadline?: string;
 }
 
+export interface RequestContext {
+  requestId: string;
+  authTokens?: Record<string, string>;
+  signal: AbortSignal;
+  cancel(): void;
+}
+
 /**
  * WebSocket message envelope
  */
 export interface WSHandlerEnvelope {
   messageType: WSMessageType;
   id: string;
+  deadline?: string | null;
   handlerType?: WSHandlerType;
   handler?: string;
   error?: string;

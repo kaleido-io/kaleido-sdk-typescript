@@ -22,6 +22,7 @@ import {
   IdempotentSubmitResult,
   InvocationMode,
   Patch,
+  RequestContext,
   Trigger,
   WSEvaluateTransaction,
   WSEventProcessorBatchRequest,
@@ -39,7 +40,7 @@ import {
  */
 export interface EngineAPI {
   submitAsyncTransactions(
-    activeRequestId: string,
+    reqContext: RequestContext,
     authRef: string,
     transactions: AsyncTransactionInput[],
   ): Promise<IdempotentSubmitResult[]>;
@@ -59,17 +60,17 @@ export interface EventSource extends Handler {
   /**
    * Poll for events and update the result object
    */
-  eventSourcePoll(config: WSEventSourceConfig, result: WSListenerPollResult, request: WSListenerPollRequest): Promise<void>;
+  eventSourcePoll(reqContext: RequestContext, config: WSEventSourceConfig, result: WSListenerPollResult, request: WSListenerPollRequest): Promise<void>;
 
   /**
    * Validate the event source config
    */
-  eventSourceValidateConfig(result: any, request: any): Promise<void>;
+  eventSourceValidateConfig(reqContext: RequestContext, result: any, request: any): Promise<void>;
 
   /**
    * Delete the event source
   */
-  eventSourceDelete(result: any, request: any): Promise<void>;
+  eventSourceDelete(reqContext: RequestContext, result: any, request: any): Promise<void>;
 }
 
 /**
@@ -77,6 +78,7 @@ export interface EventSource extends Handler {
  */
 export interface TransactionHandler extends Handler {
   transactionHandlerBatch(
+    reqContext: RequestContext,
     result: WSHandleTransactionsResult,
     batch: WSHandleTransactions
   ): Promise<void>;
@@ -87,6 +89,7 @@ export interface TransactionHandler extends Handler {
  */
 export interface EventProcessor extends Handler {
   eventProcessorBatch(
+    reqContext: RequestContext,
     result: WSEventProcessorBatchResult,
     batch: WSEventProcessorBatchRequest
   ): Promise<void>;
