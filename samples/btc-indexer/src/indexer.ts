@@ -197,7 +197,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
           address: this.tokenName,
           name,
           asset: this.tokenName,
-          labels: { networkName: this.networkName, mint_tx: vin.txid, spend_tx: tx.txid },
+          labels: { mint_tx: vin.txid, spend_tx: tx.txid },
         });
 
         const detail = inputDetail[name];
@@ -218,14 +218,20 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
       }
 
       for (const vout of tx.vout) {
-        const labels: Record<string, string> = { networkName: this.networkName, mint_tx: tx.txid };
+        const labels: Record<string, string> = { mint_tx: tx.txid };
         if (vout.scriptPubKey?.address) labels.ownerAddress = vout.scriptPubKey.address;
 
         const value = satoshiValue(vout);
         fragments.push({
           updateType: 'create_or_ignore',
           address: this.tokenName,
-          info: vout,
+          info: {
+            ...vout,
+            networkName: this.networkName,
+            txid: tx.txid,
+            blockHash: block.hash,
+            blockHeight: block.height
+          },
           name: `${this.networkName}_${tx.txid}_${vout.n}`,
           asset: this.tokenName,
           value,
