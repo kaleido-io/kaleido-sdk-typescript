@@ -55,7 +55,7 @@ export class ERC20Indexer {
   constructor() {
     this.handler = createEventProcessor<EVMTransactionEvent>(
       'erc20-indexer',
-      (events) => this.process(events),
+      (_reqContext, events) => this.process(events),
     );
   }
 

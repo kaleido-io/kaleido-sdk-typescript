@@ -114,7 +114,7 @@ describe('createEventSource', () => {
             checkpoint: { lastId: 0 }
         };
 
-        await eventSource.eventSourcePoll(config, result, request);
+        await eventSource.eventSourcePoll({} as any, config, result, request);
 
         expect(pollFn).toHaveBeenCalledTimes(1);
         expect(result.events).toHaveLength(2);
@@ -158,7 +158,7 @@ describe('createEventSource', () => {
             streamId: 'stream-1'
         };
 
-        await eventSource.eventSourcePoll(config, result, request);
+        await eventSource.eventSourcePoll({} as any, config, result, request);
         expect(pollFn).toHaveBeenCalledTimes(1);
     })
 
@@ -192,7 +192,7 @@ describe('createEventSource', () => {
             streamId: 'stream-1'
         };
 
-        await eventSource.eventSourcePoll(config, result, request);
+        await eventSource.eventSourcePoll({} as any, config, result, request);
         expect(result.error).toBe('Poll failed');
     })
 
@@ -224,7 +224,7 @@ describe('createEventSource', () => {
             config: { endpoint: 'http://test.com' }
         };
 
-        await eventSource.eventSourceValidateConfig(result, request);
+        await eventSource.eventSourceValidateConfig({} as any, result, request);
         expect(buildInitialCheckpointFn).toHaveBeenCalledTimes(1);
         expect(buildInitialCheckpointFn).toHaveBeenCalled();
     })
@@ -257,7 +257,7 @@ describe('createEventSource', () => {
             config: { invalid: 'config' }
         };
 
-        await eventSource.eventSourceValidateConfig(result, request);
+        await eventSource.eventSourceValidateConfig({} as any, result, request);
         expect(result.error).toBe('Invalid config');
     })
 
@@ -299,7 +299,7 @@ describe('createEventSource', () => {
             streamId: 'stream-1'
         };
 
-        await eventSource.eventSourcePoll(config, result, request);
+        await eventSource.eventSourcePoll({} as any, config, result, request);
         expect(configParserFn).toHaveBeenCalledTimes(1);
     })
 
@@ -331,7 +331,7 @@ describe('createEventSource', () => {
             streamId: 'stream-1'
         };
 
-        await eventSource.eventSourceDelete(result, request);
+        await eventSource.eventSourceDelete({} as any, result, request);
         expect(deleteFn).toHaveBeenCalledTimes(1);
     })
 
@@ -362,7 +362,7 @@ describe('createEventSource', () => {
             streamId: 'stream-1'
         };
 
-        await eventSource.eventSourceDelete(result, request);
+        await eventSource.eventSourceDelete({} as any, result, request);
         expect(result.error).toBe('Delete failed');
     })
 
@@ -399,7 +399,7 @@ describe('createEventSource', () => {
             streamId: 'stream-1'
         };
 
-        await eventSource.eventSourcePoll(config, result1, request1);
+        await eventSource.eventSourcePoll({} as any, config, result1, request1);
 
         const result2: WSListenerPollResult = {
             messageType: WSMessageType.EVENT_SOURCE_POLL_RESULT,
@@ -417,7 +417,7 @@ describe('createEventSource', () => {
         };
 
         // Second poll should use cached config, so we don't pass config again
-        await eventSource.eventSourcePoll(config, result2, request2);
+        await eventSource.eventSourcePoll({} as any, config, result2, request2);
 
         // Poll function should be called twice, but config should be cached
         expect(pollFn).toHaveBeenCalledTimes(2);

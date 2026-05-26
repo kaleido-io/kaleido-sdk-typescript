@@ -45,7 +45,7 @@ export interface TokenTransferEvent {
 
 export const tokenTransferIndexer = createEventProcessor<TokenTransferEvent>(
   'token-transfer-indexer',
-  async (events) => {
+  async (_reqContext, events) => {
     if (events.length === 0) {
       return { events };
     }

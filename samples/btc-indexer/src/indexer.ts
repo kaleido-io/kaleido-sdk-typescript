@@ -27,7 +27,8 @@ import type {
 import { BulkUpsertBuilder, Indexer } from '@kaleido-io/asset-manager-sdk';
 import {
   EventProcessorEvent,
-  newLogger
+  newLogger,
+  RequestContext
 } from '@kaleido-io/workflow-engine-sdk';
 import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
 import { BTCIndexerConfig } from './config.js';
@@ -86,6 +87,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
   }
 
   override async indexBatch(
+    reqContext: RequestContext,
     events: EventProcessorEvent<BTCTransactionEvent>[],
     dmClient: IDataModelClient,
   ): Promise<{
@@ -95,7 +97,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
       return { events };
     }
 
-    const builder = new BulkUpsertBuilder(dmClient).autoFlush(this.upsertTriggerCount);
+    const builder = new BulkUpsertBuilder(dmClient, { reqContext }).autoFlush(this.upsertTriggerCount);
     const startTime = Date.now();
     log.info(`Received batch of ${events.length} events`);
 

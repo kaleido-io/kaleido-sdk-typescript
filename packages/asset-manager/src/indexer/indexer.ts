@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { createEventProcessor, EventProcessorEvent, kidColon, newLogger, ProviderBase, ProviderConfig } from "@kaleido-io/workflow-engine-sdk";
+import { createEventProcessor, EventProcessorEvent, kidColon, newLogger, ProviderBase, ProviderConfig, RequestContext } from "@kaleido-io/workflow-engine-sdk";
 import { AssetManagerClient } from "../asset-manager";
 import { IDataModelClient } from "../bulk-upsert-builder";
 
@@ -54,12 +54,13 @@ export abstract class Indexer<CustomConfig, EventDataType> extends ProviderBase<
     ): Promise<void>;
 
     abstract indexBatch(
+        reqContext: RequestContext,
         events: EventProcessorEvent<EventDataType>[],
         dmClient: IDataModelClient,
     ): Promise<{ events: EventProcessorEvent<EventDataType>[]}>;
 
-    private async process(events: EventProcessorEvent<EventDataType>[]): Promise<{ events: EventProcessorEvent<EventDataType>[]}> {
-        return await this.indexBatch(events, this.dmClient);
+    private async process(reqContext: RequestContext, events: EventProcessorEvent<EventDataType>[]): Promise<{ events: EventProcessorEvent<EventDataType>[]}> {
+        return await this.indexBatch(reqContext, events, this.dmClient);
     }
 
     async connect() {

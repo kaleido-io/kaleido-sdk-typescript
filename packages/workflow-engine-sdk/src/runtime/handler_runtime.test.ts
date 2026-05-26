@@ -41,7 +41,7 @@ import {
 } from './handler_runtime';
 import { EngineClient } from './engine_client';
 import { EventProcessor, EventSource, TransactionHandler } from '../interfaces/handlers';
-import { WSEventProcessorBatchRequest, WSMessageType } from '../types/core';
+import { RequestContext, WSEventProcessorBatchRequest, WSMessageType } from '../types/core';
 
 const handlerRuntimeConfig: HandlerRuntimeConfig = {
     providerName: 'test-provider',
@@ -493,7 +493,7 @@ describe('HandlerRuntime', () => {
         expect(mockLogger.warn).not.toHaveBeenCalled();
         expect(mockLogger.error).not.toHaveBeenCalled();
         expect(mockEventProcessor.eventProcessorBatch).toHaveBeenCalledTimes(1);
-        expect(mockEventProcessor.eventProcessorBatch).toHaveBeenCalledWith(expect.any(Object), request);
+        expect(mockEventProcessor.eventProcessorBatch).toHaveBeenCalledWith(expect.any(Object), expect.any(Object), request);
     })
     it('should handle an error for a missing event processor', async () => {
         handlerRuntime = new HandlerRuntime(handlerRuntimeConfig);
@@ -585,6 +585,30 @@ describe('HandlerRuntime', () => {
         handlerRuntime.stop();
         await new Promise(resolve => setTimeout(resolve, 100));
         expect(mockLogger.error).toHaveBeenCalledWith('Handler failed', { handler: 'test-transaction-handler', error: expect.any(Error) });
+    })
+    it('should handle a cancelled context from a transaction handler by checking for a signal abort', async () => {
+        let capturedReqContext: RequestContext | undefined;
+        const handlerWithContext: TransactionHandler = {
+            name: () => 'test-transaction-handler',
+            init: jest.fn(() => Promise.resolve()),
+            close: jest.fn(),
+            transactionHandlerBatch: jest.fn(async (reqContext: RequestContext) => {
+                capturedReqContext = reqContext;
+                expect(reqContext.signal.aborted).toBe(false);
+            }),
+        };
+        handlerRuntime = new HandlerRuntime(handlerRuntimeConfig);
+        handlerRuntime.registerTransactionHandler('test-transaction-handler', handlerWithContext);
+        handlerRuntime.start();
+        await new Promise(resolve => setTimeout(resolve, 100));
+        expect(handlerRuntime.isWebSocketConnected()).toBe(true);
+        connectedSocket?.send(JSON.stringify({ messageType: WSMessageType.HANDLE_TRANSACTIONS, id: 'test-request-id', handler: 'test-transaction-handler', transactions: [{ id: 'test-transaction-id', operation: 'test-operation' }] }));
+        handlerRuntime.stop();
+        await new Promise(resolve => setTimeout(resolve, 100));
+        expect(mockLogger.warn).not.toHaveBeenCalled();
+        expect(mockLogger.error).not.toHaveBeenCalled();
+        expect(capturedReqContext).toBeDefined();
+        expect(capturedReqContext!.signal.aborted).toBe(true);
     })
     it('should handle a non-JSON message', async () => {
         handlerRuntime = new HandlerRuntime(handlerRuntimeConfig);

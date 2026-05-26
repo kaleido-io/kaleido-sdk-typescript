@@ -60,7 +60,7 @@ describe('createDirectedTransactionHandler', () => {
             id: 'test-id',
         };
 
-        await transactionHandler.transactionHandlerBatch(reply, batch);
+        await transactionHandler.transactionHandlerBatch({} as any, reply, batch);
         expect(evalDirected).toHaveBeenCalledTimes(1);
         transactionHandler.close();
         expect(closeFn).toHaveBeenCalledTimes(1);

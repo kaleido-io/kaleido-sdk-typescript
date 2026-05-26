@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import { IndexerConfig } from '@kaleido-io/asset-manager-sdk';
-import type { EventProcessorEvent } from '@kaleido-io/workflow-engine-sdk';
+import type { EventProcessorEvent, RequestContext } from '@kaleido-io/workflow-engine-sdk';
 import type { BTCTransactionEvent, TxSummaryVIn, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BTCIndexerConfig } from './config.js';
@@ -38,6 +38,12 @@ const MOCK_INDEXER_CONFIG: IndexerConfig<BTCIndexerConfig> = {
     environmentNameOrId: 'test-env', assetManagerNameOrId: 'test-am',
     config: BTC_CONFIG,
 }
+
+const mockReqContext: RequestContext = {
+  requestId: 'test-request-id',
+  signal: new AbortController().signal,
+  cancel: () => {},
+};
 
 function makeVIn(txid: string, vout: number): TxSummaryVIn {
   return { txid, vout, scriptSig: { hex: '' }, sequence: 0xffffffff };
@@ -117,7 +123,7 @@ describe('BTCIndexer.process()', () => {
   });
 
   it('makes no calls for an empty batch', async () => {
-    const result = await indexer.indexBatch([], mockClient as any);
+    const result = await indexer.indexBatch(mockReqContext, [], mockClient as any);
     expect(mockClient.bulkUpsert).not.toHaveBeenCalled();
     expect(mockClient.bulkQuery).not.toHaveBeenCalled();
     expect(result.events).toHaveLength(0);
@@ -125,12 +131,12 @@ describe('BTCIndexer.process()', () => {
 
   it('throws on network name mismatch', async () => {
     const event = makeEvent(makeTxEvent({ network: { name: 'testnet4', net: NETWORK.net } }));
-    await expect((indexer as any).indexBatch([event], mockClient as any)).rejects.toThrow(/Network mismatch/);
+    await expect((indexer as any).indexBatch(mockReqContext, [event], mockClient as any)).rejects.toThrow(/Network mismatch/);
   });
 
   it('throws on network id mismatch', async () => {
     const event = makeEvent(makeTxEvent({ network: { name: NETWORK.name, net: 0x00000001 } }));
-    await expect((indexer as any).indexBatch([event], mockClient as any)).rejects.toThrow(/Network mismatch/);
+    await expect((indexer as any).indexBatch(mockReqContext, [event], mockClient as any)).rejects.toThrow(/Network mismatch/);
   });
 
   it('upserts input and output fragments when no wallets are involved', async () => {
@@ -140,7 +146,7 @@ describe('BTCIndexer.process()', () => {
       vout: [makeVOut(0, 50000, 'addr1')],
     }));
 
-    await (indexer as any).indexBatch([event], mockClient as any);
+    await (indexer as any).indexBatch(mockReqContext, [event], mockClient as any);
 
     // Fragment query for the spent input, address query for the output address
     expect(mockClient.bulkQuery).toHaveBeenCalledTimes(2);
@@ -184,7 +190,7 @@ describe('BTCIndexer.process()', () => {
         },
       });
 
-    await (indexer as any).indexBatch([event], mockClient as any);
+    await (indexer as any).indexBatch(mockReqContext, [event], mockClient as any);
 
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
     const { transfers } = mockClient.bulkUpsert.mock.calls[0][0];
@@ -229,7 +235,7 @@ describe('BTCIndexer.process()', () => {
         },
       });
 
-    await (indexer as any).indexBatch([event], mockClient as any);
+    await (indexer as any).indexBatch(mockReqContext, [event], mockClient as any);
 
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
     const { transfers } = mockClient.bulkUpsert.mock.calls[0][0];
@@ -274,7 +280,7 @@ describe('BTCIndexer.process()', () => {
         },
       });
 
-    await (indexer as any).indexBatch([event], mockClient as any);
+    await (indexer as any).indexBatch(mockReqContext, [event], mockClient as any);
 
     const { transfers } = mockClient.bulkUpsert.mock.calls[0][0];
 
@@ -294,7 +300,7 @@ describe('BTCIndexer.process()', () => {
       makeEvent(makeTxEvent({ txid: 'tx006', vout: [makeVOut(0, 20000, 'a2')] })),
     ];
 
-    await indexer.indexBatch(events, mockClient as any);
+    await indexer.indexBatch(mockReqContext, events, mockClient as any);
 
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
   });
@@ -305,7 +311,7 @@ describe('BTCIndexer.process()', () => {
       vout: [{ n: 0, valueSat: 99000, value: 0.001, scriptPubKey: { hex: '', type: 'p2pkh' } }],
     }));
 
-    await (indexer as any).indexBatch([event], mockClient as any);
+    await (indexer as any).indexBatch(mockReqContext, [event], mockClient as any);
 
     const { fragments } = mockClient.bulkUpsert.mock.calls[0][0];
     expect(fragments[0].value).toBe('99000');
@@ -317,7 +323,7 @@ describe('BTCIndexer.process()', () => {
       vout: [{ n: 0, value: 0.00123456, scriptPubKey: { hex: '', type: 'p2pkh' } }],
     }));
 
-    await (indexer as any).indexBatch([event], mockClient as any);
+    await (indexer as any).indexBatch(mockReqContext, [event], mockClient as any);
 
     const { fragments } = mockClient.bulkUpsert.mock.calls[0][0];
     expect(fragments[0].value).toBe('123456');

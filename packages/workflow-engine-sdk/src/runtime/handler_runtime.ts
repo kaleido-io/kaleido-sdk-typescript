@@ -29,6 +29,7 @@ import {
   WSEventProcessorBatchResult,
   WSEventProcessorBatchRequest,
   ServiceProxyResponse,
+  RequestContext,
 } from '../types/core';
 import {
   Handler,
@@ -533,6 +534,7 @@ export class HandlerRuntime {
       count: batch.transactions.length
     });
 
+    const reqContext = this.newRequestContext(batch);
     const response: WSHandleTransactionsResult = {
       messageType: WSMessageType.HANDLE_TRANSACTIONS_RESULT,
       handler: batch.handler,
@@ -543,7 +545,7 @@ export class HandlerRuntime {
     try {
       const handler = this.transactionHandlers.get(batch.handler);
       if (handler) {
-        await handler.transactionHandlerBatch(response, batch);
+        await handler.transactionHandlerBatch(reqContext, response, batch);
       } else {
         response.error = `No transaction handler registered: ${batch.handler}`;
         log.error(response.error);
@@ -553,9 +555,32 @@ export class HandlerRuntime {
       response.results = batch.transactions.map(() => ({
         error: getErrorMessage(error)
       }));
+    } finally {
+      reqContext.cancel();
     }
 
     this.sendMessage(response);
+  }
+
+  newRequestContext(envelope: WSHandlerEnvelope): RequestContext {
+    const controller = new AbortController();
+    let timeoutId: NodeJS.Timeout | undefined;
+    if (typeof envelope?.deadline == 'string' && envelope.deadline.length > 0) {
+      const startTime = new Date().getTime();
+      const deadlineTimeout = new Date(envelope.deadline).getTime() - startTime;
+      timeoutId = setTimeout(() => {
+        controller.abort(`deadline exceeded after ${new Date().getTime() - startTime}ms`);
+      }, deadlineTimeout);
+    }
+    return {
+      requestId: envelope.id,
+      authTokens: envelope.authTokens,
+      signal: controller.signal,
+      cancel: () => {
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+        controller.abort();
+      },
+    }
   }
 
   private async handleEventProcessorBatch(batch: WSEventProcessorBatchRequest): Promise<void> {
@@ -565,6 +590,7 @@ export class HandlerRuntime {
       count: batch.events.length
     });
 
+    const reqContext = this.newRequestContext(batch);
     const response: WSEventProcessorBatchResult = {
       messageType: WSMessageType.EVENT_PROCESSOR_BATCH_RESULT,
       id: batch.id,
@@ -574,7 +600,7 @@ export class HandlerRuntime {
     try {
       const eventProcessor = this.eventProcessors.get(batch.handler || '');
       if (eventProcessor) {
-        await eventProcessor.eventProcessorBatch(response, batch);
+        await eventProcessor.eventProcessorBatch(reqContext, response, batch);
       } else {
         response.error = `No event processor registered: ${batch.handler}`;
         log.error(response.error);
@@ -582,6 +608,8 @@ export class HandlerRuntime {
     } catch (error) {
       log.error('Event processor batch failed', { handler: batch.handler, error });
       response.error = getErrorMessage(error);
+    } finally {
+      reqContext.cancel();
     }
 
     this.sendMessage(response);
@@ -599,6 +627,7 @@ export class HandlerRuntime {
 
   private async handleEventSourcePoll(request: any): Promise<void> {
 
+    const reqContext = this.newRequestContext(request);
     const response: WSListenerPollResult = {
       messageType: WSMessageType.EVENT_SOURCE_POLL_RESULT,
       id: request.id,
@@ -611,7 +640,7 @@ export class HandlerRuntime {
       const config = this.eventSourceConfigs.get(request.streamId);
 
       if (eventSource && config) {
-        await eventSource.eventSourcePoll(config, response, request);
+        await eventSource.eventSourcePoll(reqContext, config, response, request);
       } else {
         response.error = `No event source or config: ${request.handler}/${request.streamId}`;
         log.error(response.error);
@@ -619,6 +648,8 @@ export class HandlerRuntime {
     } catch (error) {
       log.error('Event source poll failed', { handler: request.handler, error });
       response.error = getErrorMessage(error);
+    } finally {
+      reqContext.cancel();
     }
 
     this.sendMessage(response);
@@ -627,6 +658,7 @@ export class HandlerRuntime {
   private async handleEventSourceValidateConfig(request: any): Promise<void> {
     log.debug('Event source validate config', { handler: request.handler });
 
+    const reqContext = this.newRequestContext(request);
     const response: WSHandlerEnvelope = {
       messageType: WSMessageType.EVENT_SOURCE_VALIDATE_CONFIG_RESULT,
       id: request.id,
@@ -636,7 +668,7 @@ export class HandlerRuntime {
     try {
       const eventSource = this.eventSources.get(request.handler || '');
       if (eventSource) {
-        await eventSource.eventSourceValidateConfig(response, request);
+        await eventSource.eventSourceValidateConfig(reqContext, response, request);
       } else {
         response.error = `No event source registered: ${request.handler}`;
         log.error(response.error);
@@ -647,6 +679,8 @@ export class HandlerRuntime {
         error
       });
       response.error = getErrorMessage(error);
+    } finally {
+      reqContext.cancel();
     }
 
     this.sendMessage(response);
@@ -658,6 +692,7 @@ export class HandlerRuntime {
       stream: request.streamId
     });
 
+    const reqContext = this.newRequestContext(request);
     const response: WSHandlerEnvelope = {
       messageType: WSMessageType.EVENT_SOURCE_DELETE_RESULT,
       id: request.id,
@@ -667,7 +702,7 @@ export class HandlerRuntime {
     try {
       const eventSource = this.eventSources.get(request.handler || '');
       if (eventSource) {
-        await eventSource.eventSourceDelete(response, request);
+        await eventSource.eventSourceDelete(reqContext, response, request);
         this.eventSourceConfigs.delete(request.streamId);
       } else {
         response.error = `No event source registered: ${request.handler}`;
@@ -676,6 +711,8 @@ export class HandlerRuntime {
     } catch (error) {
       log.error('Event source delete failed', { handler: request.handler, error });
       response.error = getErrorMessage(error);
+    } finally {
+      reqContext.cancel();
     }
 
     this.sendMessage(response);

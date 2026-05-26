@@ -23,6 +23,7 @@
  */
 
 import {
+  RequestContext,
   WithStageDirector,
   WSHandleTransactions,
   WSHandleTransactionsResult,
@@ -83,6 +84,7 @@ class TransactionHandlerBase<T extends WithStageDirector> implements Transaction
   }
 
   async transactionHandlerBatch(
+    _reqContext: RequestContext,
     reply: WSHandleTransactionsResult,
     batch: WSHandleTransactions
   ): Promise<void> {

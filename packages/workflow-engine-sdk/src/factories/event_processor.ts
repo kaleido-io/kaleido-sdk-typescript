@@ -19,6 +19,7 @@ import {
   EngineAPI,
 } from '../interfaces/handlers';
 import {
+  RequestContext,
   WSEventProcessorBatchRequest,
   WSEventProcessorBatchResult,
   ListenerEvent,
@@ -51,6 +52,7 @@ export interface EventProcessorEvent<DT> {
  * block number so that progress is meaningful to operators.
  */
 export type EventProcessorBatchFn<DT = unknown> = (
+  reqContext: RequestContext,
   events: EventProcessorEvent<DT>[]
 ) => Promise<{ events: EventProcessorEvent<DT>[] }>;
 
@@ -100,6 +102,7 @@ class EventProcessorBase<DT> implements EventProcessorBuilder<DT> {
   }
 
   async eventProcessorBatch(
+    reqContext: RequestContext,
     result: WSEventProcessorBatchResult,
     batch: WSEventProcessorBatchRequest
   ): Promise<void> {
@@ -110,7 +113,7 @@ class EventProcessorBase<DT> implements EventProcessorBuilder<DT> {
         data: evt.data as DT,
       }));
 
-      const batchResult = await this.batchFn(events);
+      const batchResult = await this.batchFn(reqContext, events);
 
       result.events = batchResult.events.map((evt): ListenerEvent => ({
         idempotencyKey: evt.idempotencyKey,

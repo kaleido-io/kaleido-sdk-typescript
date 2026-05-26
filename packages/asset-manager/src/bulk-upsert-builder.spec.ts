@@ -6,8 +6,15 @@ import {
   IBulkUpsertClient,
 } from "./bulk-upsert-builder.js";
 import { BulkUpsertAutoFlush } from "./bulk-upsert-autoflush.js";
+import { RequestContext } from "@kaleido-io/workflow-engine-sdk";
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+
+const mockReqContext: RequestContext = {
+  requestId: 'test-request-id',
+  signal: new AbortController().signal,
+  cancel: () => {},
+};
 
 describe("BulkUpsertBuilder", () => {
   let builder: BulkUpsertBuilder;
@@ -704,7 +711,10 @@ describe("BulkUpsertBuilder", () => {
 
     beforeEach(() => {
       mockClient = { bulkUpsert: jest.fn<IBulkUpsertClient['bulkUpsert']>() };
-      builder = new BulkUpsertBuilder(mockClient, { retryOnInvalidRef: false });
+      builder = new BulkUpsertBuilder(mockClient, {
+        retryOnInvalidRef: false,
+        reqContext: mockReqContext,
+      });
     });
 
     it("rethrows KA090801 immediately without retrying", async () => {
