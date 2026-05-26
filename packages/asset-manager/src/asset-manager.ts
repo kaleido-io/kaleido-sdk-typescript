@@ -26,6 +26,7 @@ import {
   DataModelSubscription,
   DataModelSubscriptionInput,
   EventInput,
+  FilterResult,
   FireFlyListener,
   FireFlyListenerInput,
   Fragment,
@@ -417,7 +418,8 @@ export class AssetManagerClient extends ServiceClient {
     const res = await this.post<BulkQueryOutput>(`${API_VERSION}/bulk/query`, input, {
       retryOn5xx: true,
     });
-    log.debug(`bulkQuery assets=${res?.assets?.count} activities=${res?.activities?.count} addresses=${res?.addresses?.count} collections=${res?.collections?.count} data=${res?.data?.count} events=${res?.events?.count} fragments=${res?.fragments?.count} nfts=${res?.nfts?.count} pools=${res?.pools?.count} transfers=${res?.transfers?.count} balanceChanges=${res?.balanceChanges?.count} (${new Date().getTime()-startTime}ms)`)
+    const countFor = (set?: FilterResult<unknown>) => (typeof set === 'object') ? set.count : 0;
+    log.debug(`bulkQuery assets=${countFor(res?.assets)} activities=${countFor(res?.activities)} addresses=${countFor(res?.addresses)} collections=${countFor(res?.collections)} data=${countFor(res?.data)} events=${countFor(res?.events)} fragments=${countFor(res?.fragments)} nfts=${countFor(res?.nfts)} pools=${countFor(res?.pools)} transfers=${countFor(res?.transfers)} balanceChanges=${countFor(res?.balanceChanges)} (${new Date().getTime()-startTime}ms)`)
     return res;
   }
 
