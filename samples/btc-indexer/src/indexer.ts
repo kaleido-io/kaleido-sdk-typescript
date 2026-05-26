@@ -40,9 +40,11 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
   private tokenName!: string;
   private networkName!: string;
   private upsertTriggerCount: number;
+  private bulkQueryLimit: number;
 
   constructor(config: IndexerConfig<BTCIndexerConfig>) {
     super(config);
+    this.bulkQueryLimit = config.config?.bulkQueryLimit || 100;
     this.upsertTriggerCount = config.config?.upsertTriggerCount || 500;
   }
 
@@ -78,9 +80,8 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
     extractResults: (output: BulkQueryOutput) => T[],
     handleResults: (values: T[]) => void,
   ): Promise<void> {
-    const BATCH_SIZE = 100;
-    for (let i = 0; i < lookups.length; i += BATCH_SIZE) {
-      const batch = lookups.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < lookups.length; i += this.bulkQueryLimit) {
+      const batch = lookups.slice(i, i + this.bulkQueryLimit);
       const result = await dmClient.bulkQuery(buildQuery(batch));
       handleResults(extractResults(result));
     }

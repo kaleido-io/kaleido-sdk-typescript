@@ -23,6 +23,7 @@ workflowEngineNameOrId: workflow-engine
 
 # BTC contract to index
 config:
+  bulkQueryLimit: 100 # when retrieving fragments/addresses to build a picture of spends to inform the update
   upsertTriggerCount: 100 # the amount of individual objects to trigger an upsert
   networkName: testnet4
   networkId: 0x283f161c

@@ -16,6 +16,7 @@
 
 export interface BTCIndexerConfig {
   upsertTriggerCount?: number;
+  bulkQueryLimit?: number;
   networkId: string;
   networkName: string;
   tokenSymbol: string;
