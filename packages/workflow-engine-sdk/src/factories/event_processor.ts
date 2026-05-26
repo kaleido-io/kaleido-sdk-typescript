@@ -25,7 +25,7 @@ import {
   ListenerEvent,
 } from '../types/core';
 import { newLogger } from '../log/logger';
-import { getErrorMessage } from '../utils/errors';
+import { formatError, getErrorMessage } from '../utils/errors';
 
 const log = newLogger('event_processor_factory');
 
@@ -121,8 +121,8 @@ class EventProcessorBase<DT> implements EventProcessorBuilder<DT> {
         data: evt.data,
       }));
 
-    } catch (error) {
-      log.error('Event processor batch failed', { error });
+    } catch (error: any) {
+      log.error('Event processor batch failed', { error: formatError(error) });
       result.error = getErrorMessage(error);
     }
   }

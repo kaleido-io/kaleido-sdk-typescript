@@ -40,7 +40,7 @@ import {
 import { EngineClient } from './engine_client';
 import { WSProxyAdapter } from '../service/ws_proxy_adapter';
 import { newLogger } from '../log/logger';
-import { getErrorMessage } from '../utils/errors';
+import { formatError, getErrorMessage } from '../utils/errors';
 import { newError, SDKErrors } from '../i18n/errors';
 
 const log = newLogger('handler_runtime');
@@ -429,7 +429,7 @@ export class HandlerRuntime {
         log.warn('Received non-string message data, ignoring');
       }
     } catch (error) {
-      log.error('Error processing message', { error });
+      log.error('Error processing message', { error: formatError(error) });
     }
   }
 

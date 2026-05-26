@@ -622,7 +622,7 @@ describe('HandlerRuntime', () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         expect(mockLogger.error).toHaveBeenCalledWith(
             expect.stringMatching(/Error processing message/),
-            expect.objectContaining({ error: expect.any(SyntaxError) })
+            expect.objectContaining({ error: expect.any(String) })
         );
     })
     it('should reject a binary message', async () => {

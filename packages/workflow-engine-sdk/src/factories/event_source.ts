@@ -29,7 +29,7 @@ import {
   WSEventStreamInfo,
 } from '../types/core';
 import { newLogger } from '../log/logger';
-import { getErrorMessage } from '../utils/errors';
+import { formatError, getErrorMessage } from '../utils/errors';
 
 const log = newLogger('event_source_factory');
 
@@ -240,7 +240,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceBuilder<CP, CF, DT> {
       // Set checkpoint
       result.checkpoint = pollResult.checkpointOut;
     } catch (error) {
-      log.error('Poll failed', { error });
+      log.error('Poll failed', { error: formatError(error) });
       result.error = getErrorMessage(error);
     }
   }
@@ -259,7 +259,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceBuilder<CP, CF, DT> {
 
       this.confs.delete(request.streamId);
     } catch (error) {
-      log.error('Delete failed', { error });
+      log.error('Delete failed', { error: formatError(error) });
       result.error = getErrorMessage(error);
     }
   }
