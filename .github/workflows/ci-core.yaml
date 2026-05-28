@@ -3,7 +3,7 @@ name: Core CI
 on:
   pull_request:
     paths:
-      - 'packages/core/**'
+      - 'internal/core/**'
       - '.github/workflows/ci-core.yaml'
 
 permissions:
@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: packages/core
+        working-directory: internal/core
     steps:
       - uses: actions/checkout@v4
 

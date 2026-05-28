@@ -29,10 +29,10 @@
     "samples/*"
   ],
   "scripts": {
-    "build:packages": "npm run build -w packages/core && npm run build -w packages/asset-manager -w packages/workflow-engine-sdk",
+    "build:packages": "npm run build --prefix internal/core && npm run build -w packages/asset-manager -w packages/workflow-engine-sdk",
     "build:samples": "npm run build -w samples/getting-started -w samples/erc20-indexer -w samples/btc-indexer -w samples/bulk-upsert-sample -w samples/dependency-ordering-sample --if-present",
     "build": "npm run build:packages && npm run build:samples",
-    "test:packages": "npm test -w packages/core -w packages/asset-manager -w packages/workflow-engine-sdk",
+    "test:packages": "npm run test --prefix internal/core && npm test -w packages/asset-manager -w packages/workflow-engine-sdk",
     "test:samples": "npm test -w samples/getting-started -w samples/erc20-indexer -w samples/btc-indexer",
     "test": "npm run test:packages && npm run test:samples",
     "lint": "npm run lint -w packages/workflow-engine-sdk"

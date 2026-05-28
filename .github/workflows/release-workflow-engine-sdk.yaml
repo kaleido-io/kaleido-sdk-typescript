@@ -97,7 +97,7 @@ jobs:
           } >> $GITHUB_OUTPUT
 
       - name: Build core dependency
-        working-directory: packages/core
+        working-directory: internal/core
         shell: bash
         run: npm install && npm run build
 
