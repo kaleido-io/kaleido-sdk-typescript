@@ -19,8 +19,8 @@ COPY samples/btc-indexer/src ./samples/btc-indexer/src
 
 # Build in dependency order
 RUN npm run build -w packages/core && \
-    npm run build -w packages/asset-manager && \
     npm run build -w packages/workflow-engine-sdk && \
+    npm run build -w packages/asset-manager && \
     npm run build -w samples/btc-indexer
 
 # Runtime stage — distroless for minimal attack surface and image size
