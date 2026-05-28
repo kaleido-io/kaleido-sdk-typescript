@@ -15,14 +15,16 @@
 // limitations under the License.
 
 import {
-  createEventProcessor,
-  newLogger,
+  BulkUpsertBuilder,
+  IDataModelClient,
+  Indexer,
+  IndexerConfig,
+} from '@kaleido-io/asset-manager-sdk';
+import {
   EventProcessorEvent,
-  EventProcessorBuilder,
+  newLogger,
 } from '@kaleido-io/workflow-engine-sdk';
-
 import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
-import { BulkUpsertBuilder, type IBulkUpsertClient } from '@kaleido-io/asset-manager-sdk';
 import type { ERC20Config } from '../config/provider-config.js';
 
 const log = newLogger('erc20-indexer');
@@ -43,28 +45,21 @@ type ERC20TransferData = { from: string; to: string; value: string };
  * Call `setup()` once before registering with the WFE client to create the
  * asset and pool definitions in the Asset Manager.
  */
-export class ERC20Indexer {
-  private amClient!: IBulkUpsertClient;
+export class ERC20Indexer extends Indexer<ERC20Config, EVMTransactionEvent> {
   private contractAddress!: string;
   private contractName!: string;
   private chain!: string;
   private poolName!: string;
 
-  readonly handler: EventProcessorBuilder<EVMTransactionEvent>;
-
-  constructor() {
-    this.handler = createEventProcessor<EVMTransactionEvent>(
-      'erc20-indexer',
-      (_reqContext, events) => this.process(events),
-    );
+  constructor(config: IndexerConfig<ERC20Config>) {
+    super(config);
   }
 
   /**
    * One-time setup: register the asset and pool in Asset Manager.
    * Must be called before the processor starts receiving batches.
    */
-  async setup(amClient: IBulkUpsertClient, erc20Config: ERC20Config): Promise<void> {
-    this.amClient = amClient;
+  override async setup(erc20Config: ERC20Config, dmClient: IDataModelClient): Promise<void> {
     this.contractAddress = (erc20Config.contractAddress ?? '').toLowerCase();
     this.contractName = erc20Config.contractName ?? 'ERC20';
     this.chain = erc20Config.chain ?? 'ethereum';
@@ -73,40 +68,18 @@ export class ERC20Indexer {
     const symbol = erc20Config.contractSymbol ?? this.contractName;
     const assetName = `${this.contractName.toLowerCase()}_${this.contractAddress.toLowerCase()}`;
 
-    await this.amClient.bulkUpsert({
-      assets: [
-        {
-          name: assetName,
-          displayName: this.contractName,
-          info: { symbol, contractAddress: this.contractAddress },
-          updateType: 'create_or_ignore',
-        },
-      ],
-      addresses: [
-        {
-          address: this.contractAddress,
-          contract: true,
-          updateType: 'create_or_ignore',
-        },
-      ],
-      pools: [
-        {
-          name: this.poolName,
-          asset: assetName,
-          address: this.contractAddress,
-          standard: 'ERC20',
-          displayName: `${this.contractName} on ${this.chain}`,
-          labels: { chain: this.chain, symbol },
-          updateType: 'create_or_ignore',
-        },
-      ],
-    });
+    const builder = new BulkUpsertBuilder(dmClient);
+    builder.upsertAsset({ name: assetName, displayName: this.contractName, info: { symbol, contractAddress: this.contractAddress }, updateType: 'create_or_ignore' });
+    builder.upsertAddress({ address: this.contractAddress, contract: true, updateType: 'create_or_ignore' });
+    builder.upsertPool({ name: this.poolName, asset: assetName, address: this.contractAddress, standard: 'ERC20', displayName: `${this.contractName} on ${this.chain}`, labels: { chain: this.chain, symbol }, updateType: 'create_or_ignore' });
+    await builder.execute();
   }
 
-  private async process(
+  override async indexBatch(
     events: EventProcessorEvent<EVMTransactionEvent>[],
+    dmClient: IDataModelClient,
   ): Promise<{ events: EventProcessorEvent<EVMTransactionEvent>[] }> {
-    const builder = new BulkUpsertBuilder(this.amClient);
+    const builder = new BulkUpsertBuilder(dmClient);
     let highestBlock = 0;
     let transferCount = 0;
 
@@ -184,5 +157,3 @@ export class ERC20Indexer {
     return { events };
   }
 }
-
-export const erc20Indexer = new ERC20Indexer();

@@ -15,10 +15,11 @@
 // limitations under the License.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { IBulkUpsertClient } from '@kaleido-io/asset-manager-sdk';
+import { IndexerConfig } from '@kaleido-io/asset-manager-sdk';
 import type { EventProcessorEvent } from '@kaleido-io/workflow-engine-sdk';
 import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
 import { ERC20Indexer } from './indexer.js';
+import type { ERC20Config } from '../config/provider-config.js';
 
 // ─── Shared fixtures ─────────────────────────────────────────────────────────
 
@@ -27,12 +28,21 @@ const ZERO    = '0x0000000000000000000000000000000000000000';
 const WALLET_A = '0xaaaa000000000000000000000000000000000001';
 const WALLET_B = '0xbbbb000000000000000000000000000000000002';
 
-const ERC20_CONFIG = {
+const ERC20_CONFIG: ERC20Config = {
   contractAddress: CONTRACT,
   contractName: 'TestToken',
   contractSymbol: 'TTK',
   chain: 'besu',
 };
+
+const MOCK_INDEXER_CONFIG: IndexerConfig<ERC20Config> = {
+  platform: { url: 'http://unused.example.com' },
+  environmentNameOrId: 'test-env',
+  assetManagerNameOrId: 'test-am',
+  config: ERC20_CONFIG,
+};
+
+type MockClient = { bulkUpsert: ReturnType<typeof vi.fn>; bulkQuery: ReturnType<typeof vi.fn> };
 
 function makeTxEvent(overrides: {
   blockNumber?: string;
