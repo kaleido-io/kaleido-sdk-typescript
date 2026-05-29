@@ -1,0 +1,33 @@
+name: Docker Build (Samples)
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  btc-indexer:
+    name: Docker Build (btc-indexer)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: docker build -f samples/btc-indexer/Dockerfile.withsdk .
+
+  erc20-indexer:
+    name: Docker Build (erc20-indexer)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: docker build -f samples/erc20-indexer/Dockerfile.withsdk .
+
+  getting-started:
+    name: Docker Build (getting-started)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: docker build -f samples/getting-started/Dockerfile .

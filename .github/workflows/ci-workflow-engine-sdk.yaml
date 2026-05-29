@@ -4,8 +4,10 @@ on:
   pull_request:
     paths:
       - 'packages/**'
+      - 'internal/**'
       - 'samples/**'
       - '.github/workflows/ci-workflow-engine-sdk.yaml'
+      - '.github/workflows/ci-docker-samples.yaml'
 
 permissions:
   contents: read
@@ -53,3 +55,8 @@ jobs:
 
       - name: Test samples
         run: npm test -w samples/getting-started -w samples/erc20-indexer -w samples/btc-indexer --if-present
+
+  docker:
+    name: Docker Builds (Samples)
+    needs: packages
+    uses: ./.github/workflows/ci-docker-samples.yaml
