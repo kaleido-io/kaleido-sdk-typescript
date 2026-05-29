@@ -58,18 +58,28 @@ export type ContractInterfaceView = {
   viewValue?: Record<string, unknown> | null;
 };
 
+export type CantonContractEventsFilters = {
+  parties?: string[];
+  templateIds?: string[];
+  interfaceIds?: string[];
+};
+
+export type CantonContractEventsStream = {
+  pollTimeout?: string | null;
+  channelBufferSize?: number | null;
+  batchSize?: number | null;
+};
+
 /**
  * Stream configuration accepted by the cantonContractEvents event source.
+ * Mirrors CantonContractEventsConfIn in the Canton Connector.
  */
 export type CantonContractEventsConfig = {
   fromOffset?: number | null;
   fromCurrentOffset?: boolean;
-  pollTimeout?: string | null;
-  batchSize?: number | null;
-  parties?: string[];
-  templateIds?: string[];
-  interfaceIds?: string[];
   includeCreatedEventBlob?: boolean | null;
+  filters?: CantonContractEventsFilters;
+  stream?: CantonContractEventsStream;
   userId?: string;
 };
 

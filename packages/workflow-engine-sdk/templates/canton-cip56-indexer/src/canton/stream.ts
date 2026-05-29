@@ -22,14 +22,18 @@ const providerConfig = loadProviderConfig();
 
 const eventSourceConfig: CantonContractEventsConfig = {
   fromOffset: 0,
-  batchSize: 100,
-  pollTimeout: '5s',
-  parties: [],
-  interfaceIds: [
-    '#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding',
-    '#splice-api-token-transfer-instruction-v1:Splice.Api.Token.TransferInstructionV1:TransferInstruction',
-  ],
   includeCreatedEventBlob: false,
+  filters: {
+    parties: [],
+    interfaceIds: [
+      '#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding',
+      '#splice-api-token-transfer-instruction-v1:Splice.Api.Token.TransferInstructionV1:TransferInstruction',
+    ],
+  },
+  stream: {
+    pollTimeout: '5s',
+    batchSize: 100,
+  },
 };
 
 /**
