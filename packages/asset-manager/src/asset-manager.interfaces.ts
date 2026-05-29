@@ -752,4 +752,4 @@ export interface FireFlyListener extends KldResourceBase, FireFlyListenerInput {
   identity?: string;
 }
 
-export { Logger } from "@kaleido-io/core/http";
+export type { Logger } from "@kaleido-io/core/http";

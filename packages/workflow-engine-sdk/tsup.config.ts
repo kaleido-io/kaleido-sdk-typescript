@@ -26,4 +26,9 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   clean: true,
+  // Keep npm packages external — their CJS internals (e.g. js-yaml) lose
+  // named exports when inlined into an ESM bundle. Bundle @kaleido-io/core
+  // so TypeScript types it exports are erased at compile time, not at runtime.
+  external: [/^[^./]/],
+  noExternal: ['@kaleido-io/core'],
 });

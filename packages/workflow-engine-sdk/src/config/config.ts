@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import * as fs from "fs";
-import * as yaml from "js-yaml";
+import yaml from "js-yaml";
 import { WorkflowEngineClientConfig, ServerConfig } from "../client/client";
 import {
   cfgStrField,
@@ -511,9 +511,11 @@ export class ConfigLoader {
       return {};
     }
 
-    const bindingsSection = parsed["service-bindings"] as
-      | Record<string, unknown>
-      | undefined;
+    // Service bindings may be at the top level or nested under "workflow-engine"
+    // (the latter is the format injected by the kap-operator for hosted providers).
+    const wfeSection = parsed["workflow-engine"] as Record<string, unknown> | undefined;
+    const bindingsSection = (parsed["service-bindings"] ??
+      wfeSection?.["service-bindings"]) as Record<string, unknown> | undefined;
     if (!bindingsSection || typeof bindingsSection !== "object") {
       return {};
     }
