@@ -23,6 +23,7 @@ import {
 import {
   EventProcessorEvent,
   newLogger,
+  RequestContext,
 } from '@kaleido-io/workflow-engine-sdk';
 import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
 import type { ERC20Config } from '../config/provider-config.js';
@@ -76,6 +77,7 @@ export class ERC20Indexer extends Indexer<ERC20Config, EVMTransactionEvent> {
   }
 
   override async indexBatch(
+    _reqContext: RequestContext,
     events: EventProcessorEvent<EVMTransactionEvent>[],
     dmClient: IDataModelClient,
   ): Promise<{ events: EventProcessorEvent<EVMTransactionEvent>[] }> {

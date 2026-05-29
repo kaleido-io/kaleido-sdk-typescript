@@ -14,31 +14,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { NewWorkflowEngineClient, HandlerSetFor } from '@kaleido-io/workflow-engine-sdk';
-import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
-import dotenv from 'dotenv';
+import { IndexerConfig } from '@kaleido-io/asset-manager-sdk';
+import { formatError } from '@kaleido-io/workflow-engine-sdk';
+import yaml from 'js-yaml';
+import fs from 'fs';
+import { ERC20Indexer } from './erc20/indexer.js';
+import type { ERC20Config } from './config/provider-config.js';
 
-import { loadProviderConfig } from './config/provider-config.js';
-import { erc20Indexer } from './erc20/indexer.js';
-
-dotenv.config();
-
-const providerConfig = loadProviderConfig();
-
-const am = providerConfig.assetManager;
-const amUrl = `https://${am.account}/endpoint/${am.environment}/${am.serviceName}/rest`;
-const amClient = new AssetManagerClient({
-  transport: 'http',
-  url: amUrl,
-  auth: { type: 'basic', username: am.auth.keyName, password: am.auth.keyValue },
+const configPath = process.env.CONFIG_FILE ?? './config/config.yaml';
+const config: IndexerConfig<ERC20Config> = yaml.load(fs.readFileSync(configPath, 'utf-8')) as any;
+const erc20Indexer = new ERC20Indexer(config);
+erc20Indexer.connect().catch((err: any) => {
+  console.error(formatError(err));
+  process.exit(1);
 });
-
-await erc20Indexer.setup(amClient, providerConfig.erc20);
-
-const client = await NewWorkflowEngineClient(
-  HandlerSetFor(erc20Indexer.handler),
-  process.env.WFE_CONFIG_FILE ?? './config/wfe-config.yaml',
-);
-
-process.on('SIGINT', () => client.disconnect());
-process.on('SIGTERM', () => client.disconnect());

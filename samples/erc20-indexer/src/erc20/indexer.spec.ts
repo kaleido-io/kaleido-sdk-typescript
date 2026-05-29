@@ -15,8 +15,8 @@
 // limitations under the License.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { IndexerConfig } from '@kaleido-io/asset-manager-sdk';
-import type { EventProcessorEvent } from '@kaleido-io/workflow-engine-sdk';
+import { IDataModelClient, IndexerConfig } from '@kaleido-io/asset-manager-sdk';
+import type { EventProcessorEvent, RequestContext } from '@kaleido-io/workflow-engine-sdk';
 import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
 import { ERC20Indexer } from './indexer.js';
 import type { ERC20Config } from '../config/provider-config.js';
@@ -42,7 +42,8 @@ const MOCK_INDEXER_CONFIG: IndexerConfig<ERC20Config> = {
   config: ERC20_CONFIG,
 };
 
-type MockClient = { bulkUpsert: ReturnType<typeof vi.fn>; bulkQuery: ReturnType<typeof vi.fn> };
+type MockFn = ReturnType<typeof vi.fn>;
+type MockClient = { bulkUpsert: MockFn; bulkQuery: MockFn };
 
 function makeTxEvent(overrides: {
   blockNumber?: string;
@@ -104,44 +105,50 @@ function makeEvent(tx: EVMTransactionEvent): EventProcessorEvent<EVMTransactionE
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe('ERC20Indexer.process()', () => {
-  let mockClient: IBulkUpsertClient;
+const mockReqContext: RequestContext = {
+  requestId: 'test-request-id',
+  signal: AbortSignal.abort(),
+  cancel: () => {},
+};
+
+describe('ERC20Indexer.indexBatch()', () => {
+  let mockClient: MockClient & IDataModelClient;
   let indexer: ERC20Indexer;
 
   beforeEach(async () => {
-    mockClient = { bulkUpsert: vi.fn().mockResolvedValue({}) };
-    indexer = new ERC20Indexer();
-    await indexer.setup(mockClient, ERC20_CONFIG);
+    mockClient = { bulkUpsert: vi.fn().mockResolvedValue({}), bulkQuery: vi.fn().mockResolvedValue({}) } as unknown as MockClient & IDataModelClient;
+    indexer = new ERC20Indexer(MOCK_INDEXER_CONFIG);
+    await indexer.setup(ERC20_CONFIG, mockClient);
     vi.clearAllMocks(); // clear the setup() bulkUpsert call
   });
 
   it('does not call bulkUpsert for an empty batch', async () => {
-    await (indexer as any).process([]);
+    await indexer.indexBatch(mockReqContext, [], mockClient);
     expect(mockClient.bulkUpsert).not.toHaveBeenCalled();
   });
 
   it('does not call bulkUpsert when decodedEvents is absent', async () => {
     const tx = makeTxEvent({});
     delete (tx as any).decodedEvents;
-    await (indexer as any).process([makeEvent(tx)]);
+    await indexer.indexBatch(mockReqContext, [makeEvent(tx)], mockClient);
     expect(mockClient.bulkUpsert).not.toHaveBeenCalled();
   });
 
   it('skips events with a non-Transfer signature', async () => {
     const tx = makeTxEvent({ sig: 'Approval(address,address,uint256)' });
-    await (indexer as any).process([makeEvent(tx)]);
+    await indexer.indexBatch(mockReqContext, [makeEvent(tx)], mockClient);
     expect(mockClient.bulkUpsert).not.toHaveBeenCalled();
   });
 
   it('skips events from a different contract address', async () => {
     const tx = makeTxEvent({ eventsAddress: '0xother000000000000000000000000000000000001' });
-    await (indexer as any).process([makeEvent(tx)]);
+    await indexer.indexBatch(mockReqContext, [makeEvent(tx)], mockClient);
     expect(mockClient.bulkUpsert).not.toHaveBeenCalled();
   });
 
   it('processes a regular transfer correctly', async () => {
     const tx = makeTxEvent({ from: WALLET_A, to: WALLET_B, value: '500', blockNumber: '1000001' });
-    const result = await (indexer as any).process([makeEvent(tx)]);
+    const result = await indexer.indexBatch(mockReqContext, [makeEvent(tx)], mockClient);
 
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
     const payload = (mockClient.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
@@ -172,7 +179,7 @@ describe('ERC20Indexer.process()', () => {
 
   it('processes a mint (from = zero address)', async () => {
     const tx = makeTxEvent({ from: ZERO, to: WALLET_B, value: '1000' });
-    await (indexer as any).process([makeEvent(tx)]);
+    await indexer.indexBatch(mockReqContext, [makeEvent(tx)], mockClient);
 
     const payload = (mockClient.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
 
@@ -192,7 +199,7 @@ describe('ERC20Indexer.process()', () => {
 
   it('processes a burn (to = zero address)', async () => {
     const tx = makeTxEvent({ from: WALLET_A, to: ZERO, value: '250' });
-    await (indexer as any).process([makeEvent(tx)]);
+    await indexer.indexBatch(mockReqContext, [makeEvent(tx)], mockClient);
 
     const payload = (mockClient.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
 
@@ -218,7 +225,7 @@ describe('ERC20Indexer.process()', () => {
       makeEvent(makeTxEvent({ from: WALLET_A, to: WALLET_B, value: '75',  blockNumber: '1000003', txHash: '0xtx03', logIndex: '0' })),
     ];
 
-    await (indexer as any).process(events);
+    await indexer.indexBatch(mockReqContext, events, mockClient);
 
     const payload = (mockClient.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
 
@@ -232,7 +239,7 @@ describe('ERC20Indexer.process()', () => {
       makeEvent(makeTxEvent({ txHash: `0xtx${i.toString().padStart(2, '0')}`, logIndex: '0', blockNumber: String(1000000 + i) }))
     );
 
-    await (indexer as any).process(events);
+    await indexer.indexBatch(mockReqContext, events, mockClient);
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
   });
 });
