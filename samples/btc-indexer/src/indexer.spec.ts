@@ -123,7 +123,7 @@ describe('BTCIndexer.process()', () => {
   });
 
   it('makes no calls for an empty batch', async () => {
-    const result = await indexer.indexBatch(mockReqContext, [], mockClient as any);
+    await indexer.indexBatch(mockReqContext, [], mockClient as any);
     expect(mockClient.bulkUpsert).not.toHaveBeenCalled();
     expect(mockClient.bulkQuery).not.toHaveBeenCalled();
   });

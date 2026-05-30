@@ -16,10 +16,8 @@
 
 export interface ETHIndexerConfig {
   upsertTriggerCount?: number;
-  bulkQueryLimit?: number;
   networkName: string;
   chainId: string;
   tokenSymbol: string;
   tokenName: string;
-  addresses: string[];
 }

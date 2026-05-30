@@ -15,11 +15,6 @@
 // limitations under the License.
 
 import type {
-  Address,
-  BulkQueryInput,
-  BulkQueryOutput,
-  Fragment,
-  FragmentBulkInput,
   IDataModelClient,
   IndexerConfig,
   TransferBulkInput
@@ -40,11 +35,9 @@ export class ETHIndexer extends Indexer<ETHIndexerConfig, any> {
   private tokenName!: string;
   private networkName!: string;
   private upsertTriggerCount: number;
-  private bulkQueryLimit: number;
-
+ 
   constructor(config: IndexerConfig<ETHIndexerConfig>) {
     super(config);
-    this.bulkQueryLimit = config.config?.bulkQueryLimit || 100;
     this.upsertTriggerCount = config.config?.upsertTriggerCount || 500;
   }
 
@@ -77,12 +70,8 @@ export class ETHIndexer extends Indexer<ETHIndexerConfig, any> {
     reqContext: RequestContext,
     events: EventProcessorEvent<EVMTransactionEvent>[],
     dmClient: IDataModelClient,
-  ): Promise<{
-    events: EventProcessorEvent<EVMTransactionEvent>[];
-  }> {
-    if (events.length === 0) {
-      return { events };
-    }
+  ): Promise<void> {
+    if (events.length === 0) return;
 
     const builder = new BulkUpsertBuilder(dmClient, { reqContext }).autoFlush(this.upsertTriggerCount);
     const startTime = Date.now();
@@ -99,7 +88,7 @@ export class ETHIndexer extends Indexer<ETHIndexerConfig, any> {
 
       txCount++;
       log.debug(`Indexing TX ${transactionHash} in block ${block.number}`);
-      for (const ethTransfer of event.data.ethTransfer || []) {
+      for (const ethTransfer of event.data.ethTransfers || []) {
         const transfer: TransferBulkInput = {
           updateType: 'create_or_ignore',
           protocolId: transactionHash,
@@ -130,6 +119,5 @@ export class ETHIndexer extends Indexer<ETHIndexerConfig, any> {
     await builder.execute();
 
     log.info(`Indexed ${txCount} transactions with a total of ${builder.getTotalCount()} updates in ${Date.now() - startTime}ms`);
-    return { events };
   }
 }
