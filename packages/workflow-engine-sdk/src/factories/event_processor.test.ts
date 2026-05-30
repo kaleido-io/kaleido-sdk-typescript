@@ -44,7 +44,6 @@ function makeResult(): WSEventProcessorBatchResult {
     messageType: WSMessageType.EVENT_PROCESSOR_BATCH_RESULT,
     id: 'batch-id',
     handler: 'test-processor',
-    events: [],
   };
 }
 
@@ -53,7 +52,7 @@ describe('createEventProcessor', () => {
   it('should create an event processor', () => {
     const processor = createEventProcessor<TestEventData>(
       'test-processor',
-      async (_reqContext, events) => ({ events })
+      async (_reqContext, _events) => {}
     );
     expect(processor).toBeDefined();
     expect(processor.name()).toBe('test-processor');
@@ -71,7 +70,7 @@ describe('createEventProcessor', () => {
 
     const processor = createEventProcessor<TestEventData>(
       'test-processor',
-      async (_reqContext, events) => ({ events })
+      async (_reqContext, _events) => {}
     )
       .withInitFn(initFn)
       .withCloseFn(closeFn);
@@ -84,10 +83,7 @@ describe('createEventProcessor', () => {
   });
 
   it('should process a batch and return typed events', async () => {
-    const batchFn = jest.fn(async (_reqContext: RequestContext, events: EventProcessorEvent<TestEventData>[]) => ({
-      events,
-      checkpointOut: { lastProcessedTime: 12345 },
-    }));
+    const batchFn = jest.fn(async (_reqContext: RequestContext, _events: EventProcessorEvent<TestEventData>[]) => {});
 
     const processor = createEventProcessor<TestEventData>('test-processor', batchFn);
 
@@ -105,17 +101,12 @@ describe('createEventProcessor', () => {
     expect(receivedEvents[0].data.id).toBe(1);
     expect(receivedEvents[0].data.value).toBe('a');
 
-    expect(result.events).toHaveLength(2);
-    expect(result.events[0].idempotencyKey).toBe('key1');
-    expect(result.events[0].data).toEqual({ id: 1, value: 'a' });
   });
 
   it('should allow filtering events from the batch', async () => {
     const processor = createEventProcessor<TestEventData>(
       'test-processor',
-      async (_reqContext, events) => ({
-        events: events.filter(e => e.data.id % 2 === 0),
-      })
+      async (_reqContext, _events) => {}
     );
 
     const batch = makeBatch([
@@ -127,16 +118,12 @@ describe('createEventProcessor', () => {
     const result = makeResult();
 
     await processor.eventProcessorBatch({} as any, result,batch);
-
-    expect(result.events).toHaveLength(2);
-    expect(result.events[0].idempotencyKey).toBe('key2');
-    expect(result.events[1].idempotencyKey).toBe('key4');
   });
 
   it('should not set checkpoint when checkpointOut is not returned', async () => {
     const processor = createEventProcessor<TestEventData>(
       'test-processor',
-      async (_reqContext, events) => ({ events })
+      async (_reqContext, _events) => {}
     );
 
     const result = makeResult();
@@ -157,18 +144,16 @@ describe('createEventProcessor', () => {
     ]));
 
     expect(result.error).toBe('processing failed');
-    expect(result.events).toHaveLength(0);
   });
 
   it('should pass empty batch to function when no events', async () => {
-    const batchFn = jest.fn(async (reqContext: RequestContext, events: EventProcessorEvent<TestEventData>[]) => ({ events }));
+    const batchFn = jest.fn(async (_reqContext: RequestContext, _events: EventProcessorEvent<TestEventData>[]) => {});
     const processor = createEventProcessor<TestEventData>('test-processor', batchFn);
 
     const result = makeResult();
     await processor.eventProcessorBatch({} as any, result,makeBatch([]));
 
     expect(batchFn).toHaveBeenCalledWith(expect.anything(), []);
-    expect(result.events).toHaveLength(0);
   });
 
   it('should not call init or close when no functions are registered', async () => {
@@ -181,7 +166,7 @@ describe('createEventProcessor', () => {
 
     const processor = createEventProcessor<TestEventData>(
       'test-processor',
-      async (_reqContext, events) => ({ events })
+      async (_reqContext, _events) => {}
     );
 
     await expect(processor.init(engineClient)).resolves.toBeUndefined();

@@ -126,7 +126,6 @@ describe('BTCIndexer.process()', () => {
     const result = await indexer.indexBatch(mockReqContext, [], mockClient as any);
     expect(mockClient.bulkUpsert).not.toHaveBeenCalled();
     expect(mockClient.bulkQuery).not.toHaveBeenCalled();
-    expect(result.events).toHaveLength(0);
   });
 
   it('throws on network name mismatch', async () => {

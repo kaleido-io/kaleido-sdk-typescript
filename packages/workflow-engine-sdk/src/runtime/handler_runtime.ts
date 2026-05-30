@@ -595,7 +595,6 @@ export class HandlerRuntime {
       messageType: WSMessageType.EVENT_PROCESSOR_BATCH_RESULT,
       id: batch.id,
       handler: batch.handler,
-      events: batch.events,
     };
     try {
       const eventProcessor = this.eventProcessors.get(batch.handler || '');
