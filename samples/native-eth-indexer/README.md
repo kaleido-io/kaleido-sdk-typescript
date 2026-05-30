@@ -1,25 +1,22 @@
-# eth-indexer
+# native-eth-indexer
 
-A sample Kaleido Workflow Engine provider that indexes ETH UTXO coin transfer events
+A sample Kaleido Workflow Engine provider that indexes native ETH transfer events
 into the [Kaleido Asset Manager](https://docs.kaleido.io/platform/digital-assets/overview/).
 
 ## What it does
 
-1. Connects to your Workflow Engine as a provider named `eth-indexer`.
-2. Registers an **event processor** (`indexer`) that receives decoded ETH
-   transaction batches from an `ethTransactions`-compatible stream.
+1. Connects to your Workflow Engine as a provider named `native-eth-indexer`.
+2. Registers an **event processor** (`indexer`) that receives decoded EVM
+   transaction batches from a `transactionEvents`-compatible stream.
 3. For every transaction it
-   - Creates new fragments for minted coins
-   - Marks existing coins as spent
-
-> Note this lifecycle is important, but not the full lifecycle of your wallet and coin selection.
-> See the Kaleido documentation for further details.
+   - Creates a transfer record for each native ETH value movement
+   - Records balance changes (subtract from sender, add to receiver)
 
 ## Minimum Prerequisites
 
 - A running Kaleido environment with:
   - A **Workflow engine** service
-  - A **ETH connector** stack connected to your chosen Bitcoin chain
+  - An **EVM connector** stack connected to your chosen EVM-compatible chain
   - An **Asset manager** service
 
 ## Running locally - within SDK repo
@@ -29,7 +26,7 @@ into the [Kaleido Asset Manager](https://docs.kaleido.io/platform/digital-assets
 npm run build
 
 # 2. Change into the sample directory
-cd samples/eth-indexer
+cd samples/native-eth-indexer
 
 # 3. Edit the config file
 # Edit config/config.yaml — set up your platform
@@ -42,7 +39,7 @@ npm run start:dev
 
 ### `config/config.yaml`
 
-> Copy `config/config.yaml.sample` to `config/config.yaml`
+> Copy `config/config.sample.yaml` to `config/config.yaml`
 
 See comments in the YAML for details of the changes to make
 
@@ -64,13 +61,13 @@ There are two Dockerfile examples provided:
 
 - `Dockerfile` - builds the sample standalone, pulling the SDK from npm
   ```sh
-  # From the eth-indexer directory
-  docker build --platform linux/amd64 -t eth-indexer .
+  # From the native-eth-indexer directory
+  docker build --platform linux/amd64 -t native-eth-indexer .
   ```
 - `Dockerfile.withsdk` - builds the sample including building the SDK locally
   ```sh
   # From root directory of repo
-  docker build --platform linux/amd64 -t eth-indexer -f ./samples/eth-indexer/Dockerfile.withsdk .
+  docker build --platform linux/amd64 -t native-eth-indexer -f ./samples/native-eth-indexer/Dockerfile.withsdk .
   ```
 
 
@@ -117,8 +114,8 @@ npm run promote:docker # or promote:podman for Podman users, or promote:crane if
 
 ### 4.Streaming events to the provider
 
-You can then either use `npm run create-stream` to create a new stream pointed at your hosted provider, or go to your **ETH connector** service
-and create a new stream pointed at your hosted provider via the `transactionEvents` stream factory and a copy of an ETH-compatible ABI.
+You can then either use `npm run create-stream` to create a new stream pointed at your hosted provider, or go to your **EVM connector** service
+and create a new stream pointed at your hosted provider via the `transactionEvents` stream factory.
 
 ### 5. Upgrading the provider
 
@@ -135,7 +132,7 @@ Then, you can patch the existing provider either in the UI by editing the servic
 ```bash
 # NOTE: this will extract the platform URL and API credentials from the WFE config file,
 #       your API credentials will need privileges to patch the provider runtime if they do not already have them.
-export RUNTIME_NAME=eth-indexer-runtime
+export RUNTIME_NAME=native-eth-indexer-runtime
 export IMAGE_REPOSITORY=my-namespace/{{PROVIDER_NAME}}
 npm run patch-provider-runtime
 ```
@@ -145,8 +142,8 @@ If with your edits, you need to update the `config.json` for your provider, you 
 Otherwise, we encourage you to use https://github.com/kaleido-io/terraform-provider-kaleido to manage your provider runtime and service configurations as code, such as:
 
 ```hcl
-resource "kaleido_platform_runtime" "eth_indexer_runtime" {
-  name = "eth-indexer-runtime"
+resource "kaleido_platform_runtime" "native_eth_indexer_runtime" {
+  name = "native-eth-indexer-runtime"
   type = "Provider"
   environment = var.environment_id
   image = {
@@ -156,11 +153,11 @@ resource "kaleido_platform_runtime" "eth_indexer_runtime" {
   config_json = jsonencode({})
 }
 
-resource "kaleido_platform_service" "eth_indexer_service" {
-  name = "eth-indexer"
+resource "kaleido_platform_service" "native_eth_indexer_service" {
+  name = "native-eth-indexer"
   type = "Provider"
   environment = var.environment_id
-  runtime = kaleido_platform_runtime.eth_indexer_runtime.id
+  runtime = kaleido_platform_runtime.native_eth_indexer_runtime.id
   config_json = jsonencode({
     configFileJSON = {
       fileRef = "#provider-config#config.json"
@@ -197,10 +194,10 @@ resource "kaleido_platform_service" "eth_indexer_service" {
    - See the logs of the Provider proxy service to watch for it forwarding events to the Provider
    - Use the Provider proxy Swagger UI to `PUT /providers/{name}/reconnect` to force a reconnect of the Provider
    - See the Workflow engine logs, searching by your stream ID, to watch for it polling the event source, and sending them to event processor for the Provider
-   - If the Workflow engine is unsuccesfully polling the ETH connector, see the ETH connector logs for any errors. It could be there are JSONRPC connectivity issues, or you need to decrease the `catchupPageSize` in the stream configuration to reduce the number of events polled from the chain at once.
+   - If the Workflow engine is unsuccessfully polling the EVM connector, see the EVM connector logs for any errors. It could be there are JSONRPC connectivity issues, or you need to decrease the `catchupPageSize` in the stream configuration to reduce the number of events polled from the chain at once.
 
 3. Asset manager is not receiving transfers:
    - See the Provider logs for any errors when calling the Asset Manager APIs
-   - Common causes are bad API key credentials, but if the indexer is receiving events from a misconfigured stream (multiple ETH contracts for example) it
+   - Common causes are bad API key credentials, but if the indexer is receiving events from a misconfigured stream it
      may be trying to upsert addresses and transfers for an unknown contract address.
    - Bulk upsert API has limits on the number of addresses and transfers that can be upserted in a single call. If you are indexing a large number of addresses and transfers, you may need to split the upsert into multiple calls, or decrease the `batchSize` in the stream configuration to reduce the number of events processed at once.
