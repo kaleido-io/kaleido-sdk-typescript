@@ -57,9 +57,9 @@ export abstract class Indexer<CustomConfig, EventDataType> extends ProviderBase<
         reqContext: RequestContext,
         events: EventProcessorEvent<EventDataType>[],
         dmClient: IDataModelClient,
-    ): Promise<{ events: EventProcessorEvent<EventDataType>[]}>;
+    ): Promise<void>;
 
-    private async process(reqContext: RequestContext, events: EventProcessorEvent<EventDataType>[]): Promise<{ events: EventProcessorEvent<EventDataType>[]}> {
+    private async process(reqContext: RequestContext, events: EventProcessorEvent<EventDataType>[]): Promise<void> {
         return await this.indexBatch(reqContext, events, this.dmClient);
     }
 

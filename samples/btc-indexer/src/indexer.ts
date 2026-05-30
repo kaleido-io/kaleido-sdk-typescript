@@ -91,12 +91,8 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
     reqContext: RequestContext,
     events: EventProcessorEvent<BTCTransactionEvent>[],
     dmClient: IDataModelClient,
-  ): Promise<{
-    events: EventProcessorEvent<BTCTransactionEvent>[];
-  }> {
-    if (events.length === 0) {
-      return { events };
-    }
+  ): Promise<void> {
+    if (events.length === 0) return;
 
     const builder = new BulkUpsertBuilder(dmClient, { reqContext }).autoFlush(this.upsertTriggerCount);
     const startTime = Date.now();
@@ -257,7 +253,6 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
     await builder.execute();
 
     log.info(`Indexed ${txCount} transactions with a total of ${builder.getTotalCount()} updates in ${Date.now() - startTime}ms`);
-    return { events };
   }
 }
 
