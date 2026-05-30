@@ -1,0 +1,48 @@
+# Provider configuration for the ETH Indexer.
+# Set CONFIG_FILE env var to point to this file (default: ./config/provider-config.yaml).
+
+platform:
+  url: https://myaccount.myinstance.kaleido.io/
+  timeout: 120000
+  auth:
+    username: myuser
+    password: my-api-key
+
+providerName: native-eth-indexer
+providerMetadata:
+  displayName: Native ETH Indexer
+  description: Indexes Native ETH Transfer events into the Kaleido Asset Manager
+
+environmentNameOrId: my-eth-env
+
+assetManagerNameOrId: my-asset-manager
+
+connectorNameOrId: my-eth-connector
+
+workflowEngineNameOrId: workflow-engine
+
+config:
+  upsertTriggerCount: 200
+  chainId: 11155111
+  networkName: Sepolia
+  tokenSymbol: ETH
+  tokenName: sepolia-eth
+
+stream:
+  autoCreate: true
+  factory: transactionEvents
+  name: native-eth-indexer
+  eventSourceConfig:
+    fromBlock: '2630433' # TX 0x59c8f66edfdd68e2e54b6d5ce6aa5923d8aa3063560cf96cbe19734cc5c5374f
+    catchupPageSize: 100
+    batchSize: 100
+    batchTimeout: '10s'
+    pollTimeout: '30s'
+    enableBlockTrace: true # for native eth transfers
+    requiredConfirmations: 19
+    traceFilters:
+    - addresses: # selection of addresses with interesting number of transfers on Sepolia
+      - '0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5'
+      - '0x49f53e41452C74589E85cA1677426Ba426459e85'
+      - '0xE276Bc378A527A8792B353cdCA5b5E53263DfB9e'
+      - '0x610866c6089768dA95524bcc4cE7dB61eDa3931c'

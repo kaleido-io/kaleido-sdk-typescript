@@ -31,7 +31,7 @@ export type EVMTransactionEvent = {
   decodedEvents?: EVMDecodedLogEvent[];
   decodedError?: EVMDecodedError;
   decodedInput?: EVMDecodedFunctionInput;
-  ethTransfer?: EVMNativeETHTransfer[];
+  ethTransfers?: EVMNativeETHTransfer[];
 };
 
 export type EVMBlockInfo = {
