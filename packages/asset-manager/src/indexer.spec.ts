@@ -39,14 +39,15 @@ const baseConfig: IndexerConfig<TestConfig> = {
 };
 
 class TestIndexer extends Indexer<TestConfig, TestEvent> {
-    setup = jest.fn<(config: TestConfig, dmClient: IDataModelClient) => Promise<void>>()
+    setup = jest.fn<(config: TestConfig) => Promise<void>>()
         .mockResolvedValue(undefined);
-    indexBatch = jest.fn<(reqContext: RequestContext, events: EventProcessorEvent<TestEvent>[], dmClient: IDataModelClient) => Promise<void>>()
+    indexBatch = jest.fn<(reqContext: RequestContext, events: EventProcessorEvent<TestEvent>[]) => Promise<void>>()
         .mockResolvedValue(undefined);
 }
 
 describe('Indexer', () => {
 
+    let mockDmClient: IDataModelClient;
     let mockWfeClient: {
         registerEventProcessor: jest.Mock;
         connect: jest.Mock;
@@ -54,6 +55,8 @@ describe('Indexer', () => {
 
     beforeEach(() => {
         jest.restoreAllMocks();
+        mockDmClient = {} as IDataModelClient;
+        jest.spyOn(ProviderAssetMgrBase.prototype, 'newAssetManagerClient').mockReturnValue(mockDmClient);
         mockWfeClient = {
             registerEventProcessor: jest.fn(),
             connect: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
@@ -74,11 +77,6 @@ describe('Indexer', () => {
     });
 
     describe('getConnectorServiceDetail()', () => {
-        beforeEach(() => {
-            // newAssetManagerClient is called in the constructor so we bypass it to test getConnectorServiceDetail independently
-            jest.spyOn(ProviderAssetMgrBase.prototype, 'newAssetManagerClient').mockReturnValue({} as IDataModelClient);
-        });
-
         it('returns environmentNameOrId and connectorNameOrId', () => {
             const indexer = new TestIndexer(baseConfig);
             expect(indexer.getConnectorServiceDetail()).toEqual({
@@ -172,7 +170,7 @@ describe('Indexer', () => {
         it('calls setup, registerEventProcessor, and connect on success', async () => {
             const indexer = new TestIndexer(baseConfig);
             await indexer.connect();
-            expect(indexer.setup).toHaveBeenCalledWith(baseConfig.config!, expect.anything());
+            expect(indexer.setup).toHaveBeenCalledWith(baseConfig.config!);
             expect(mockWfeClient.registerEventProcessor).toHaveBeenCalledWith('indexer', expect.anything());
             expect(mockWfeClient.connect).toHaveBeenCalled();
         });
@@ -238,7 +236,6 @@ describe('Indexer', () => {
                     { idempotencyKey: 'ik-1', topic: 'topic1', data: { data: 'tx-1' } },
                     { idempotencyKey: 'ik-2', topic: 'topic2', data: { data: 'tx-2' } },
                 ],
-                expect.anything(), // dmClient injected from constructor
             );
         });
     });

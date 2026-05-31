@@ -44,17 +44,15 @@ export abstract class Indexer<CustomConfig, EventDataType> extends ProviderAsset
 
     abstract setup(
         config: CustomConfig,
-        dmClient: IDataModelClient,
     ): Promise<void>;
 
     abstract indexBatch(
         reqContext: RequestContext,
         events: EventProcessorEvent<EventDataType>[],
-        dmClient: IDataModelClient,
     ): Promise<void>;
 
     private async process(reqContext: RequestContext, events: EventProcessorEvent<EventDataType>[]): Promise<void> {
-        return await this.indexBatch(reqContext, events, this.dmClient);
+        return await this.indexBatch(reqContext, events);
     }
 
     async connect() {
@@ -70,7 +68,7 @@ export abstract class Indexer<CustomConfig, EventDataType> extends ProviderAsset
         if (!this.esConfig.config) {
             throw new Error('Config is required');
         }
-        await this.setup(this.esConfig.config, this.dmClient);
+        await this.setup(this.esConfig.config);
 
         // Register our indexer
         wfeClient.registerEventProcessor(this.handlerName(), createEventProcessor(this.handlerName(), this.process.bind(this)));

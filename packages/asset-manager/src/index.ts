@@ -1,4 +1,4 @@
-export { AssetManagerClient } from "./asset-manager.js";
+export { AssetManagerClient } from "./asset-manager";
 export {
   BulkUpsertBuilder,
   BulkUpsertBuilderOptions,
@@ -7,8 +7,8 @@ export {
   IDataModelClient,
   IBulkQueryClient,
   IBulkUpsertClient,
-} from "./bulk-upsert-builder.js";
-export * from "./asset-manager.interfaces.js";
+} from "./bulk-upsert-builder";
+export * from "./asset-manager.interfaces";
 
 export {
   Indexer,
@@ -16,6 +16,6 @@ export {
 } from './indexer.js';
 
 export {
-  ProviderAssetMgrBase as ProviderWithDatamodel,
-  ProviderAssetMgrConfig as ProviderWithDatamodelConfig,
-} from './provider-with-datamodel.js';
+  ProviderAssetMgrBase,
+  ProviderAssetMgrConfig,
+} from './provider-asset-mgr-base';
