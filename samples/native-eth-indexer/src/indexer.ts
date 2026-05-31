@@ -28,7 +28,7 @@ import {
 import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
 import { ETHIndexerConfig } from './config.js';
 
-const log = newLogger('eth-indexer');
+const log = newLogger('native-eth-indexer');
 
 export class ETHIndexer extends Indexer<ETHIndexerConfig, any> {
   private chainId!: number;
