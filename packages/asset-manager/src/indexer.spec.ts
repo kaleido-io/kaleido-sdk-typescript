@@ -18,7 +18,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { EventProcessorEvent, ProviderBase, RequestContext, WSEventProcessorBatchRequest, WSEventProcessorBatchResult, WSMessageType } from '@kaleido-io/workflow-engine-sdk';
 import { IDataModelClient } from './bulk-upsert-builder.js';
 import { Indexer, IndexerConfig } from './indexer.js';
-import { ProviderAssetMgrBase } from './provider-with-datamodel.js';
+import { ProviderAssetMgrBase } from './provider-asset-mgr-base';
 
 interface TestConfig {
     someOption: string;

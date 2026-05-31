@@ -15,8 +15,8 @@
 // limitations under the License.
 
 import { kidColon, ProviderBase, ProviderConfig } from "@kaleido-io/workflow-engine-sdk";
-import { AssetManagerClient } from "./asset-manager.js";
-import { IDataModelClient } from "./bulk-upsert-builder.js";
+import { AssetManagerClient } from "./asset-manager";
+import { IDataModelClient } from "./bulk-upsert-builder";
 
 export interface ProviderAssetMgrConfig<CustomConfig> extends ProviderConfig<CustomConfig> {
     assetManagerNameOrId?: string;

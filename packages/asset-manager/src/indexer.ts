@@ -15,8 +15,8 @@
 // limitations under the License.
 
 import { createEventProcessor, EventProcessorEvent, kidColon, newLogger, RequestContext } from "@kaleido-io/workflow-engine-sdk";
-import { IDataModelClient } from "./bulk-upsert-builder.js";
-import { ProviderAssetMgrBase, ProviderAssetMgrConfig } from "./provider-asset-mgr-base.js";
+import { IDataModelClient } from "./bulk-upsert-builder";
+import { ProviderAssetMgrBase, ProviderAssetMgrConfig } from "./provider-asset-mgr-base";
 
 export interface IndexerConfig<CustomConfig> extends ProviderAssetMgrConfig<CustomConfig> {
 

@@ -15,8 +15,8 @@
 // limitations under the License.
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { AssetManagerClient } from './asset-manager.js';
-import { ProviderAssetMgrBase, ProviderAssetMgrConfig } from './provider-with-datamodel.js';
+import { AssetManagerClient } from './asset-manager';
+import { ProviderAssetMgrBase, ProviderAssetMgrConfig } from './provider-asset-mgr-base';
 
 jest.mock('./asset-manager.js');
 
