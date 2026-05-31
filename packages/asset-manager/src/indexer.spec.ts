@@ -16,11 +16,9 @@
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { EventProcessorEvent, ProviderBase, RequestContext, WSEventProcessorBatchRequest, WSEventProcessorBatchResult, WSMessageType } from '@kaleido-io/workflow-engine-sdk';
-import { AssetManagerClient } from '../asset-manager.js';
-import { IDataModelClient } from '../bulk-upsert-builder.js';
+import { IDataModelClient } from './bulk-upsert-builder.js';
 import { Indexer, IndexerConfig } from './indexer.js';
-
-jest.mock('../asset-manager.js');
+import { ProviderAssetMgrBase } from './provider-with-datamodel.js';
 
 interface TestConfig {
     someOption: string;
@@ -78,8 +76,8 @@ describe('Indexer', () => {
     describe('getConnectorServiceDetail()', () => {
         beforeEach(() => {
             // newAssetManagerClient is called in the constructor so we bypass it to test getConnectorServiceDetail independently
-            jest.spyOn(Indexer.prototype, 'newAssetManagerClient').mockReturnValue({} as IDataModelClient);
-        })
+            jest.spyOn(ProviderAssetMgrBase.prototype, 'newAssetManagerClient').mockReturnValue({} as IDataModelClient);
+        });
 
         it('returns environmentNameOrId and connectorNameOrId', () => {
             const indexer = new TestIndexer(baseConfig);
@@ -104,29 +102,6 @@ describe('Indexer', () => {
         it('builds the correct REST endpoint path using kidColon transforms', () => {
             const indexer = new TestIndexer(baseConfig);
             expect(indexer.getConnectorRESTEndpoint()).toBe('/endpoint/e:abcde12345/s:abcde12345/rest');
-        });
-    });
-
-    describe('newAssetManagerClient()', () => {
-        it('throws when environmentNameOrId is missing', () => {
-            expect(() => new TestIndexer({ ...baseConfig, environmentNameOrId: undefined }))
-                .toThrow('environmentNameOrId, assetManagerNameOrId are required');
-        });
-
-        it('throws when assetManagerNameOrId is missing', () => {
-            expect(() => new TestIndexer({ ...baseConfig, assetManagerNameOrId: undefined }))
-                .toThrow('environmentNameOrId, assetManagerNameOrId are required');
-        });
-
-        it('constructs AssetManagerClient with the correct URL and auth', () => {
-            new TestIndexer(baseConfig);
-            expect(AssetManagerClient).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    url: 'https://platform.example.com/endpoint/e:abcde12345/s:abcde12345/rest',
-                    transport: 'http',
-                    auth: expect.objectContaining({ type: 'basic' }),
-                })
-            );
         });
     });
 

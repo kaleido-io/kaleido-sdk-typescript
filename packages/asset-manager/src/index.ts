@@ -13,4 +13,9 @@ export * from "./asset-manager.interfaces.js";
 export {
   Indexer,
   IndexerConfig,
-} from './indexer/indexer';
+} from './indexer.js';
+
+export {
+  ProviderAssetMgrBase as ProviderWithDatamodel,
+  ProviderAssetMgrConfig as ProviderWithDatamodelConfig,
+} from './provider-with-datamodel.js';

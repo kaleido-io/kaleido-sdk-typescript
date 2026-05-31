@@ -14,16 +14,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { createEventProcessor, EventProcessorEvent, kidColon, newLogger, ProviderBase, ProviderConfig, RequestContext } from "@kaleido-io/workflow-engine-sdk";
-import { AssetManagerClient } from "../asset-manager";
-import { IDataModelClient } from "../bulk-upsert-builder";
+import { createEventProcessor, EventProcessorEvent, kidColon, newLogger, RequestContext } from "@kaleido-io/workflow-engine-sdk";
+import { IDataModelClient } from "./bulk-upsert-builder.js";
+import { ProviderAssetMgrBase, ProviderAssetMgrConfig } from "./provider-asset-mgr-base.js";
 
-
-export interface IndexerConfig<CustomConfig> extends ProviderConfig<CustomConfig> {
+export interface IndexerConfig<CustomConfig> extends ProviderAssetMgrConfig<CustomConfig> {
 
     connectorNameOrId?: string;
-
-    assetManagerNameOrId?: string;
 
     handlerName?: string; // defaults to 'indexer'
 
@@ -32,20 +29,17 @@ export interface IndexerConfig<CustomConfig> extends ProviderConfig<CustomConfig
         factory?: string;
         name?: string;
         description?: string;
-        eventSourceConfig?: any; // we user server-side validation here
+        eventSourceConfig?: any; // we use server-side validation here
     };
 
 }
 
 const log = newLogger("Indexer");
 
-export abstract class Indexer<CustomConfig, EventDataType> extends ProviderBase<CustomConfig> {
-
-    private readonly dmClient: IDataModelClient;
+export abstract class Indexer<CustomConfig, EventDataType> extends ProviderAssetMgrBase<CustomConfig> {
 
     constructor(private esConfig: IndexerConfig<CustomConfig>) {
         super(esConfig);
-        this.dmClient = this.newAssetManagerClient();
     }
 
     abstract setup(
@@ -79,7 +73,7 @@ export abstract class Indexer<CustomConfig, EventDataType> extends ProviderBase<
         await this.setup(this.esConfig.config, this.dmClient);
 
         // Register our indexer
-        wfeClient.registerEventProcessor(this.handlerName(), createEventProcessor(this.handlerName(), this.process.bind(this)))
+        wfeClient.registerEventProcessor(this.handlerName(), createEventProcessor(this.handlerName(), this.process.bind(this)));
 
         // Connect
         await wfeClient.connect();
@@ -104,11 +98,11 @@ export abstract class Indexer<CustomConfig, EventDataType> extends ProviderBase<
     handlerName(): string {
         return this.esConfig.handlerName || 'indexer';
     }
-    
+
     async ensureStream() {
 
         const connectorClient = this.newPlatformClient(this.getConnectorRESTEndpoint());
-        
+
         const {
             factory,
             name,
@@ -138,27 +132,6 @@ export abstract class Indexer<CustomConfig, EventDataType> extends ProviderBase<
         log.info(`Upserting stream '${name}' on factory ${factory}:\n${JSON.stringify(streamToCreate, null, '  ')}`);
         const {data: stream} = await connectorClient.put(`/api/v1/stream-factories/${factory}/api/streams/${name}`, streamToCreate);
         log.info(`Stream ID: ${stream.id}`);
-
-    }
-
-    newAssetManagerClient(): IDataModelClient {
-         const {
-            environmentNameOrId,
-            assetManagerNameOrId
-        } = this.esConfig;
-        if (!environmentNameOrId || !assetManagerNameOrId) {
-            throw new Error(`environmentNameOrId, assetManagerNameOrId are required`);
-        }
-        const url = `${this.getPlatformURL()}/endpoint/${kidColon('e', environmentNameOrId)}/${kidColon('s', assetManagerNameOrId)}/rest`;
-
-        const amClient = new AssetManagerClient({
-            ...this.esConfig.platform,
-            transport: 'http',
-            url,
-            auth: { type: 'basic', ...this.esConfig.platform?.auth },
-        });
-
-        return amClient;
 
     }
 
