@@ -12,32 +12,50 @@ Ensure all tests pass cleanly and all lines are covered.
 
 ### 2. Test a templated provider end-to-end
 
-Build and pack the SDK:
+Build and pack the SDK from the repo root (so workspace packages are resolved):
 
 ```bash
-npm pack
-mv kaleido-io-workflow-engine-sdk-<version>.tgz ~/Desktop
+# From repo root
+npm run build:packages
+npm pack --workspace packages/workflow-engine-sdk
 ```
 
-Create a fresh provider from the pack:
+#### Testing locally (before submitting a PR)
+
+Run `init` directly from the packed tarball. Set `WESDK_REPO_URL` to your local
+checkout so the template clone never hits GitHub and picks up your uncommitted
+changes:
 
 ```bash
-cd ~/Desktop
-npm uninstall @kaleido-io/workflow-engine-sdk
-npm i ./kaleido-io-workflow-engine-sdk-<version>.tgz
+TARBALL=$(ls packages/workflow-engine-sdk/kaleido-io-workflow-engine-sdk-*.tgz)
+mkdir -p /tmp/wesdk-test && cd /tmp/wesdk-test
+WESDK_REPO_URL="$OLDPWD" npx "file:$TARBALL" init my-provider --template getting-started
+```
+
+#### What SDK consumers run (once published to npm)
+
+```bash
 npx @kaleido-io/workflow-engine-sdk init my-provider --template getting-started
 ```
 
-Link your local SDK and run:
+The init script prompts you to choose a template when `--template` is omitted
+and stdin is a TTY. Available templates: `getting-started`, `erc20-indexer`,
+`btc-indexer`.
+
+To test add-to-existing mode, create a minimal `package.json` first and omit
+the project name:
 
 ```bash
-cd my-provider
-npm link @kaleido-io/workflow-engine-sdk
+mkdir -p /tmp/wesdk-add && cd /tmp/wesdk-add
+echo '{"name":"my-project","version":"1.0.0","type":"module","dependencies":{}}' > package.json
+WESDK_REPO_URL="$OLDPWD" npx "file:$TARBALL" init --template erc20-indexer
 ```
 
 Edit the config files to point to a test environment, then:
 
 ```bash
+cd /tmp/wesdk-test/my-provider
+npm install
 npm run start:dev
 ```
 

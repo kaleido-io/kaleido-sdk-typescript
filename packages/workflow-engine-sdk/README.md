@@ -12,7 +12,7 @@ npm install @kaleido-io/workflow-engine-sdk
 
 ### Create a new project
 
-Scaffold a new provider project from a template. The `--template` flag is required:
+Scaffold a new provider project from a template:
 
 ```bash
 # Start from the getting-started template
@@ -20,15 +20,35 @@ npx @kaleido-io/workflow-engine-sdk init <project-name> --template getting-start
 
 # Start from the ERC-20 indexer template
 npx @kaleido-io/workflow-engine-sdk init <project-name> --template erc20-indexer
+
+# Start from the Bitcoin indexer template
+npx @kaleido-io/workflow-engine-sdk init <project-name> --template btc-indexer
 ```
+
+Omit `--template` in an interactive terminal and you'll be prompted to choose one.
 
 Available templates:
 
 - **getting-started** — basic provider with example transaction handlers and event sources
 - **erc20-indexer** — provider that indexes ERC-20 token events from an EVM chain
+- **btc-indexer** — provider that indexes Bitcoin transactions from a Bitcoin node
 
 This creates a new project directory with boilerplate config and a starter
 provider that connects to your Kaleido workflow engine.
+
+### Add a template to an existing project
+
+Omit the project name to copy template source files into the current directory
+instead of creating a new one. Only the `src/` and `config/` directories are
+merged in — root files (`tsconfig.json`, `Dockerfile`, etc.) are left untouched:
+
+```bash
+cd my-existing-project
+npx @kaleido-io/workflow-engine-sdk init --template erc20-indexer
+```
+
+Any `@kaleido-io/*` dependencies required by the template are added to your
+`package.json` automatically. Run `npm install` afterwards.
 
 ### Integrating into an existing project
 
