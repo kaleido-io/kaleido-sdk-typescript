@@ -99,7 +99,11 @@ export class BTCIndexer extends IndexerWithTxnHandler<BTCIndexerConfig, any> {
     const inputDetail: Record<string, TxSummaryVOut> = {};
     await this.batchLookupAggregate<Fragment>(
       fragmentsToLookup,
-      (batch) => ({ fragments: { limit: batch.length, in: [{ field: 'name', values: batch }] } }),
+      (batch) => ({ fragments: {
+        limit: batch.length, // the limit can be the number of items we're looking up - as we're assured to have a max of one per lookup
+        in: [{ field: 'name', values: batch }], // the primary lookup is the name
+        eq: [{ field: 'address', value: this.tokenName }], // but we MUST scope by address to ensure we get 0/1 item per entry (so the limit is sound)
+      } }),
       (output) => output.fragments?.items ?? [],
       (fragments) => {
         for (const fragment of fragments) {
