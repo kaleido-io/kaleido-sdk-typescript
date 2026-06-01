@@ -30,10 +30,10 @@
   ],
   "scripts": {
     "build:packages": "npm run build -w packages/core && npm run build -w packages/workflow-engine-sdk && npm run build -w packages/asset-manager",
-    "build:samples": "npm run build -w samples/getting-started -w samples/erc20-indexer -w samples/btc-indexer -w samples/native-eth-indexer -w samples/bulk-upsert-sample -w samples/dependency-ordering-sample --if-present",
+    "build:samples": "npm run build -w samples/getting-started && npm run build -w samples/erc20-indexer && npm run build -w samples/btc-indexer && npm run build -w samples/native-eth-indexer && npm run build -w samples/bulk-upsert-sample && npm run build -w samples/dependency-ordering-sample",
     "build": "npm run build:packages && npm run build:samples",
-    "test:packages": "npm test -w packages/core -w packages/asset-manager -w packages/workflow-engine-sdk",
-    "test:samples": "npm test -w samples/getting-started -w samples/erc20-indexer -w samples/btc-indexer -w samples/native-eth-indexer",
+    "test:packages": "npm test -w packages/core && npm test -w packages/asset-manager && npm test -w packages/workflow-engine-sdk",
+    "test:samples": "npm test -w samples/getting-started && npm test -w samples/erc20-indexer && npm test -w samples/btc-indexer && npm test -w samples/native-eth-indexer",
     "test": "npm run test:packages && npm run test:samples",
     "lint": "npm run lint -w packages/workflow-engine-sdk"
   }
