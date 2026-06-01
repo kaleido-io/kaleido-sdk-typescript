@@ -15,7 +15,6 @@
 // limitations under the License.
 
 import type {
-  IDataModelClient,
   IndexerConfig,
   TransferBulkInput
 } from '@kaleido-io/asset-manager-sdk';
@@ -37,13 +36,12 @@ export class ETHIndexer extends Indexer<ETHIndexerConfig, any> {
   private upsertTriggerCount: number;
  
   constructor(config: IndexerConfig<ETHIndexerConfig>) {
-    super(config);
+    super('native-eth-indexer', config);
     this.upsertTriggerCount = config.config?.upsertTriggerCount || 500;
   }
 
-  override async setup(
+  override async indexerSetup(
     ethConfig: ETHIndexerConfig,
-    dmClient: IDataModelClient,
   ): Promise<void> {
     this.networkName = ethConfig.networkName;
     this.chainId = Number(ethConfig.chainId);
@@ -51,7 +49,7 @@ export class ETHIndexer extends Indexer<ETHIndexerConfig, any> {
 
     const symbol = ethConfig.tokenSymbol ?? this.tokenName;
 
-    const builder = new BulkUpsertBuilder(dmClient);
+    const builder = new BulkUpsertBuilder(this.dmClient);
     builder.upsertAsset({ name: this.tokenName, displayName: this.tokenName, info: { symbol }, updateType: 'create_or_ignore' });
     builder.upsertAddress({ address: this.tokenName, contract: true, updateType: 'create_or_ignore' });
     builder.upsertPool({
@@ -69,11 +67,10 @@ export class ETHIndexer extends Indexer<ETHIndexerConfig, any> {
   override async indexBatch(
     reqContext: RequestContext,
     events: EventProcessorEvent<EVMTransactionEvent>[],
-    dmClient: IDataModelClient,
   ): Promise<void> {
     if (events.length === 0) return;
 
-    const builder = new BulkUpsertBuilder(dmClient, { reqContext }).autoFlush(this.upsertTriggerCount);
+    const builder = new BulkUpsertBuilder(this.dmClient, { reqContext }).autoFlush(this.upsertTriggerCount);
     const startTime = Date.now();
     log.info(`Received batch of ${events.length} events`);
 

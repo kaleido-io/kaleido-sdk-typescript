@@ -21,7 +21,7 @@ import { actionMap } from './handlers';
 
 describe('Hello handlers', () => {
     it('should return a greeting when name is provided', async () => {
-        const handler = actionMap.get('hello');
+        const handler = actionMap['hello'];
         expect(handler).toBeDefined();
 
         if (!handler || !handler.handler) {
@@ -56,7 +56,7 @@ describe('Hello handlers', () => {
     });
 
     it('should return HARD_FAILURE when name is missing', async () => {
-        const handler = actionMap.get('hello');
+        const handler = actionMap['hello'];
         expect(handler).toBeDefined();
 
         if (!handler || !handler.handler) {
@@ -88,7 +88,7 @@ describe('Hello handlers', () => {
     });
 
     it('should return HARD_FAILURE when state.input is undefined', async () => {
-        const handler = actionMap.get('hello');
+        const handler = actionMap['hello'];
         expect(handler).toBeDefined();
 
         if (!handler || !handler.handler) {
@@ -118,7 +118,7 @@ describe('Hello handlers', () => {
     });
 
     it('should return HARD_FAILURE when state is undefined', async () => {
-        const handler = actionMap.get('hello');
+        const handler = actionMap['hello'];
         expect(handler).toBeDefined();
 
         if (!handler || !handler.handler) {

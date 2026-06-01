@@ -55,17 +55,17 @@ class BatchTestInput implements WithStageDirector {
 
 // Simple batch handler for testing
 export class BatchTestHandler {
-    private actionMap: Map<string, DirectedActionConfig<BatchTestInput>> = new Map();
+    private actionMap: Record<string, DirectedActionConfig<BatchTestInput>> = {};
 
     constructor() {
         this.setupActionMap();
     }
 
     private setupActionMap() {
-        this.actionMap.set('batch-test', {
+        this.actionMap['batch-test'] = {
             invocationMode: InvocationMode.BATCH,
             batchHandler: this.batchProcess.bind(this)
-        });
+        };
     }
 
     private async batchProcess(
@@ -124,7 +124,7 @@ export class BatchTestHandler {
         });
     }
 
-    getActionMap(): Map<string, DirectedActionConfig<BatchTestInput>> {
+    getActionMap(): Record<string, DirectedActionConfig<BatchTestInput>> {
         return this.actionMap;
     }
 
@@ -139,7 +139,7 @@ describe('Batch Processing Test', () => {
         const actionMap = handler.getActionMap();
 
         // Test the batch handler directly
-        const batchAction = actionMap.get('batch-test');
+        const batchAction = actionMap['batch-test'];
         expect(batchAction).toBeDefined();
         expect(batchAction?.batchHandler).toBeDefined();
 
@@ -194,7 +194,7 @@ describe('Batch Processing Test', () => {
     it('should handle errors in batch processing', async () => {
         const handler = new BatchTestHandler();
         const actionMap = handler.getActionMap();
-        const batchAction = actionMap.get('batch-test');
+        const batchAction = actionMap['batch-test'];
 
         if (!batchAction?.batchHandler) {
             throw new Error('Batch handler not found');

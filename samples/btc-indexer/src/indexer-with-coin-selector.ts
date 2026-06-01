@@ -20,11 +20,10 @@ import type {
   BulkQueryOutput,
   Fragment,
   FragmentBulkInput,
-  IDataModelClient,
   IndexerConfig,
   TransferBulkInput
 } from '@kaleido-io/asset-manager-sdk';
-import { BulkUpsertBuilder, Indexer } from '@kaleido-io/asset-manager-sdk';
+import { BulkUpsertBuilder, Indexer, IndexerWithTxnHandler } from '@kaleido-io/asset-manager-sdk';
 import {
   EventProcessorEvent,
   newLogger,
@@ -35,7 +34,7 @@ import { BTCIndexerConfig } from './config.js';
 
 const log = newLogger('bitcoin-indexer');
 
-export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
+export class BTCIndexer extends IndexerWithTxnHandler<BTCIndexerConfig, any> {
   private networkId!: number;
   private tokenName!: string;
   private networkName!: string;
@@ -43,14 +42,20 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
   private bulkQueryLimit: number;
 
   constructor(config: IndexerConfig<BTCIndexerConfig>) {
-    super(config);
+    super('btc-indexer', 'btc-coin-selector', {
+      
+    }, config);
     this.bulkQueryLimit = config.config?.bulkQueryLimit || 100;
     this.upsertTriggerCount = config.config?.upsertTriggerCount || 500;
   }
 
-  override async setup(
+  /**
+   * Performs one-time creation of DataModel objects that do not change, meaning these do not
+   * need to be upserted on every processing cycle.
+   * @param bitcoinConfig The configuration
+   */
+  override async indexerSetup(
     bitcoinConfig: BTCIndexerConfig,
-    dmClient: IDataModelClient,
   ): Promise<void> {
     this.networkId = Number(bitcoinConfig.networkId);
     this.networkName = bitcoinConfig.networkName;
@@ -58,7 +63,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
 
     const symbol = bitcoinConfig.tokenSymbol ?? this.tokenName;
 
-    const builder = new BulkUpsertBuilder(dmClient);
+    const builder = new BulkUpsertBuilder(this.dmClient);
     builder.upsertAsset({ name: this.tokenName, displayName: this.tokenName, info: { symbol }, updateType: 'create_or_ignore' });
     builder.upsertAddress({ address: this.tokenName, contract: true, updateType: 'create_or_ignore' });
     builder.upsertPool({
@@ -73,28 +78,13 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
     await builder.execute();
   }
 
-  private async batchLookup<T>(
-    dmClient: IDataModelClient,
-    lookups: string[],
-    buildQuery: (batch: string[]) => BulkQueryInput,
-    extractResults: (output: BulkQueryOutput) => T[],
-    handleResults: (values: T[]) => void,
-  ): Promise<void> {
-    for (let i = 0; i < lookups.length; i += this.bulkQueryLimit) {
-      const batch = lookups.slice(i, i + this.bulkQueryLimit);
-      const result = await dmClient.bulkQuery(buildQuery(batch));
-      handleResults(extractResults(result));
-    }
-  }
-
   override async indexBatch(
     reqContext: RequestContext,
     events: EventProcessorEvent<BTCTransactionEvent>[],
-    dmClient: IDataModelClient,
   ): Promise<void> {
     if (events.length === 0) return;
 
-    const builder = new BulkUpsertBuilder(dmClient, { reqContext }).autoFlush(this.upsertTriggerCount);
+    const builder = new BulkUpsertBuilder(this.dmClient, { reqContext }).autoFlush(this.upsertTriggerCount);
     const startTime = Date.now();
     log.info(`Received batch of ${events.length} events`);
 
@@ -107,8 +97,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
     }
 
     const inputDetail: Record<string, TxSummaryVOut> = {};
-    await this.batchLookup<Fragment>(
-      dmClient,
+    await this.batchLookupAggregate<Fragment>(
       fragmentsToLookup,
       (batch) => ({ fragments: { limit: batch.length, in: [{ field: 'name', values: batch }] } }),
       (output) => output.fragments?.items ?? [],
@@ -133,8 +122,7 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
     }
 
     const addressWallets: Record<string, string> = {};
-    await this.batchLookup<Address>(
-      dmClient,
+    await this.batchLookupAggregate<Address>(
       [...addressSet],
       (batch) => ({ addresses: { limit: batch.length, in: [{ field: 'address', values: batch }] } }),
       (output) => output.addresses?.items ?? [],
@@ -253,6 +241,29 @@ export class BTCIndexer extends Indexer<BTCIndexerConfig, any> {
     await builder.execute();
 
     log.info(`Indexed ${txCount} transactions with a total of ${builder.getTotalCount()} updates in ${Date.now() - startTime}ms`);
+  }
+
+
+  /**
+   * Helper function to look up a set of objects in the datamodel by a string identifier,
+   * and paginate through the query to download them (noting they do not need to exist,
+   * but the potential for them to exist means we have to limit the query).
+   * @param lookups The complete list of lookup strings
+   * @param buildQuery Build a query for a subset of the lookup strings
+   * @param extractResults Extracts results back from the result set
+   * @param aggregate Aggregation function to handle each batch
+   */
+  private async batchLookupAggregate<T>(
+    lookups: string[],
+    buildQuery: (batch: string[]) => BulkQueryInput,
+    extractResults: (output: BulkQueryOutput) => T[],
+    aggregate: (values: T[]) => void,
+  ): Promise<void> {
+    for (let i = 0; i < lookups.length; i += this.bulkQueryLimit) {
+      const batch = lookups.slice(i, i + this.bulkQueryLimit);
+      const result = await this.dmClient.bulkQuery(buildQuery(batch));
+      aggregate(extractResults(result));
+    }
   }
 }
 

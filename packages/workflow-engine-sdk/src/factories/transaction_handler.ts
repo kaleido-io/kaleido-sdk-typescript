@@ -48,11 +48,11 @@ export interface TransactionHandlerBuilder extends TransactionHandler {
  */
 class TransactionHandlerBase<T extends WithStageDirector> implements TransactionHandlerBuilder {
   private _name: string;
-  private actionMap: Map<string, DirectedActionConfig<T>>;
+  private actionMap: Record<string, DirectedActionConfig<T>>;
   private initFn?: (engAPI: EngineAPI) => Promise<void>;
   private closeFn?: () => void;
 
-  constructor(name: string, actionMap: Map<string, DirectedActionConfig<T>>) {
+  constructor(name: string, actionMap: Record<string, DirectedActionConfig<T>>) {
     this._name = name;
     this.actionMap = actionMap;
   }
@@ -104,7 +104,7 @@ class TransactionHandlerBase<T extends WithStageDirector> implements Transaction
  */
 export function createDirectedTransactionHandler<T extends WithStageDirector>(
   name: string,
-  actionMap: Map<string, DirectedActionConfig<T>>
+  actionMap: Record<string, DirectedActionConfig<T>>
 ): TransactionHandlerBuilder {
   return new TransactionHandlerBase<T>(name, actionMap);
 }

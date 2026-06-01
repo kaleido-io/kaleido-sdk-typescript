@@ -42,8 +42,8 @@ class MyHandlerInput implements WithStageDirector {
     }
 }
 
-const map: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
-    ['hello', {
+const map: Record<string, DirectedActionConfig<MyHandlerInput>> = {
+    'hello': {
         invocationMode: InvocationMode.PARALLEL, handler: async (transaction: WSEvaluateTransaction) => {
             if (transaction.state?.input?.name === undefined) {
                 return {
@@ -66,7 +66,7 @@ const map: Map<string, DirectedActionConfig<MyHandlerInput>> = new Map([
                 }
             }
         }
-    }],
-]);
+    }
+};
 
 export const actionMap = map;

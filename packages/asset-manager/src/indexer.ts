@@ -14,15 +14,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { createEventProcessor, EventProcessorEvent, kidColon, newLogger, RequestContext } from "@kaleido-io/workflow-engine-sdk";
-import { IDataModelClient } from "./bulk-upsert-builder";
+import { createEventProcessor, EventProcessorEvent, kidColon, newLogger, RequestContext, WorkflowEngineClient } from "@kaleido-io/workflow-engine-sdk";
 import { ProviderAssetMgrBase, ProviderAssetMgrConfig } from "./provider-asset-mgr-base";
 
 export interface IndexerConfig<CustomConfig> extends ProviderAssetMgrConfig<CustomConfig> {
 
     connectorNameOrId?: string;
-
-    handlerName?: string; // defaults to 'indexer'
 
     stream?: {
         autoCreate?: boolean;
@@ -38,42 +35,42 @@ const log = newLogger("Indexer");
 
 export abstract class Indexer<CustomConfig, EventDataType> extends ProviderAssetMgrBase<CustomConfig> {
 
-    constructor(private esConfig: IndexerConfig<CustomConfig>) {
+    constructor(
+        private readonly indexerHandlerName: string,
+        private readonly esConfig: IndexerConfig<CustomConfig>) {
         super(esConfig);
     }
 
-    abstract setup(
+    abstract indexerSetup(
         config: CustomConfig,
-        dmClient: IDataModelClient,
     ): Promise<void>;
 
     abstract indexBatch(
         reqContext: RequestContext,
         events: EventProcessorEvent<EventDataType>[],
-        dmClient: IDataModelClient,
     ): Promise<void>;
 
     private async process(reqContext: RequestContext, events: EventProcessorEvent<EventDataType>[]): Promise<void> {
-        return await this.indexBatch(reqContext, events, this.dmClient);
+        return await this.indexBatch(reqContext, events);
     }
 
-    async connect() {
+    override async setupWorkflowEngine(wfeClient: WorkflowEngineClient): Promise<void> {
         // Create/update the stream if requested
         if (this.esConfig.stream?.autoCreate) {
             await this.ensureStream();
         }
 
-        // Create the client
-        const wfeClient = await super.createClient();
-
-        // Call the setup function
+        // Call the setup function intended for indexers
         if (!this.esConfig.config) {
             throw new Error('Config is required');
         }
-        await this.setup(this.esConfig.config, this.dmClient);
+        await this.indexerSetup(this.esConfig.config);
 
         // Register our indexer
-        wfeClient.registerEventProcessor(this.handlerName(), createEventProcessor(this.handlerName(), this.process.bind(this)));
+        wfeClient.registerEventProcessor(
+            this.indexerHandlerName,
+            createEventProcessor(this.indexerHandlerName, this.process.bind(this)),
+        );
 
         // Connect
         await wfeClient.connect();
@@ -93,10 +90,6 @@ export abstract class Indexer<CustomConfig, EventDataType> extends ProviderAsset
     getConnectorRESTEndpoint(): string {
         const {environmentNameOrId, connectorNameOrId} = this.getConnectorServiceDetail();
         return `/endpoint/${kidColon('e', environmentNameOrId)}/${kidColon('s', connectorNameOrId)}/rest`;
-    }
-
-    handlerName(): string {
-        return this.esConfig.handlerName || 'indexer';
     }
 
     async ensureStream() {
@@ -119,7 +112,7 @@ export abstract class Indexer<CustomConfig, EventDataType> extends ProviderAsset
                 type: 'handler',
                 handler: {
                     provider: this.esConfig.providerName,
-                    name: this.handlerName(),
+                    name: this.indexerHandlerName,
                 },
             },
             eventSource: {
