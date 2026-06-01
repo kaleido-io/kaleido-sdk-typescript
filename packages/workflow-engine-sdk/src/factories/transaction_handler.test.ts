@@ -15,22 +15,21 @@
 // limitations under the License.
 
 
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, expect, it, jest } from '@jest/globals';
 
 jest.mock('../helpers/stage_director', () => ({
     evalDirected: jest.fn(() => Promise.resolve()),
 }));
 
-import { DirectedActionConfig } from '../interfaces/handlers';
-import { createDirectedTransactionHandler } from './transaction_handler';
-import { WithStageDirector, WSHandleTransactions, WSHandleTransactionsResult, WSMessageType } from '../types/core';
-import { EngineClient, EngineClientRuntime } from '../runtime/engine_client';
 import { evalDirected } from '../helpers/stage_director';
+import { EngineClient, EngineClientRuntime } from '../runtime/engine_client';
+import { WSHandleTransactions, WSHandleTransactionsResult, WSMessageType } from '../types/core';
+import { createDirectedTransactionHandler } from './transaction_handler';
 
 describe('createDirectedTransactionHandler', () => {
 
     it('should create a transaction handler', () => {
-        const transactionHandler = createDirectedTransactionHandler('test-transaction-handler', new Map<string, DirectedActionConfig<WithStageDirector>>());
+        const transactionHandler = createDirectedTransactionHandler('test-transaction-handler', {});
         expect(transactionHandler).toBeDefined();
         expect(transactionHandler.name()).toBe('test-transaction-handler');
     })
@@ -43,7 +42,7 @@ describe('createDirectedTransactionHandler', () => {
             generateId: jest.fn(() => 'test'),
         } as any as EngineClientRuntime;
         const engineClient = new EngineClient(engineClientRuntime);
-        const transactionHandler = createDirectedTransactionHandler('test-transaction-handler', new Map<string, DirectedActionConfig<WithStageDirector>>())
+        const transactionHandler = createDirectedTransactionHandler('test-transaction-handler', {})
             .withInitFn(initFn)
             .withCloseFn(closeFn);
         await transactionHandler.init(engineClient);

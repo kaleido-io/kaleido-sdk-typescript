@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import { IndexerConfig } from "@kaleido-io/asset-manager-sdk";
-import { BTCIndexer } from "./indexer.js";
+import { BTCIndexer } from "./indexer-with-coin-selector.js";
 import { BTCIndexerConfig } from "./config.js";
 
 import yaml from 'js-yaml';

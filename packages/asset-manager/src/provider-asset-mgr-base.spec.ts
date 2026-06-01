@@ -17,6 +17,7 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { AssetManagerClient } from './asset-manager';
 import { ProviderAssetMgrBase, ProviderAssetMgrConfig } from './provider-asset-mgr-base';
+import { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
 
 jest.mock('./asset-manager.js');
 
@@ -24,7 +25,12 @@ interface TestConfig {
     someOption: string;
 }
 
-class TestProvider extends ProviderAssetMgrBase<TestConfig> {}
+class TestProvider extends ProviderAssetMgrBase<TestConfig> {
+    wfeClient!: WorkflowEngineClient
+    async setupWorkflowEngine(wfeClient: WorkflowEngineClient): Promise<void> {
+        this.wfeClient = wfeClient;
+    }
+}
 
 const baseConfig: ProviderAssetMgrConfig<TestConfig> = {
     environmentNameOrId: 'e-abcde12345',

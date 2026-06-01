@@ -106,7 +106,7 @@ describe('ETHIndexer.setup()', () => {
 
   it('upserts asset, address, and pool with create_or_ignore', async () => {
     const indexer = new ETHIndexer(MOCK_INDEXER_CONFIG);
-    await indexer.setup(ETH_CONFIG);
+    await indexer.indexerSetup(ETH_CONFIG);
 
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
     const payload = mockClient.bulkUpsert.mock.calls[0][0];
@@ -136,7 +136,7 @@ describe('ETHIndexer.process()', () => {
     };
     vi.spyOn(ProviderAssetMgrBase.prototype, 'newAssetManagerClient').mockReturnValue(mockClient as any);
     indexer = new ETHIndexer(MOCK_INDEXER_CONFIG);
-    await indexer.setup(ETH_CONFIG);
+    await indexer.indexerSetup(ETH_CONFIG);
     vi.clearAllMocks();
   });
 

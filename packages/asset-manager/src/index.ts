@@ -19,3 +19,7 @@ export {
   ProviderAssetMgrBase,
   ProviderAssetMgrConfig,
 } from './provider-asset-mgr-base';
+
+export {
+  IndexerWithTxnHandler
+} from './indexer-with-txnhandler';

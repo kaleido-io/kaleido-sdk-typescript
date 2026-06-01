@@ -217,7 +217,7 @@ export class StageDirectorHelper {
 export async function evalDirected<T extends WithStageDirector>(
   reply: WSHandleTransactionsResult,
   batch: WSHandleTransactions,
-  actionMap: Map<string, DirectedActionConfig<T>>
+  actionMap: Record<string, DirectedActionConfig<T>>
 ): Promise<void> {
   reply.results = new Array(batch.transactions.length);
 
@@ -272,7 +272,7 @@ export async function evalDirected<T extends WithStageDirector>(
     }
 
     const sd = execReq.input.getStageDirector();
-    const actionConf = actionMap.get(sd.action);
+    const actionConf = actionMap[sd.action];
 
     if (!actionConf) {
       reply.results[i] = {
@@ -291,7 +291,7 @@ export async function evalDirected<T extends WithStageDirector>(
   const completions: Promise<ExecutableTransaction>[] = [];
 
   for (const [actionName, transactions] of byAction) {
-    const actionConf = actionMap.get(actionName)!;
+    const actionConf = actionMap[actionName]!;
 
     switch (actionConf.invocationMode) {
       case InvocationMode.PARALLEL:

@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { BasicStageDirector, EvalResult, InvocationMode, WithStageDirector, WSEvaluateTransaction } from '@kaleido-io/workflow-engine-sdk';
+import { BasicStageDirector, DirectedActionConfig, EvalResult, InvocationMode, WithStageDirector, WSEvaluateTransaction } from '@kaleido-io/workflow-engine-sdk';
 
 import { newLogger } from '@kaleido-io/workflow-engine-sdk';
 
@@ -42,10 +42,10 @@ class SnapHandlerInput implements WithStageDirector {
 }
 const trapsSet = new Map<string, boolean>();
 
-const map = new Map();
+const map: Record<string, DirectedActionConfig<any>> = {}
 
 // Set trap action
-map.set('set-trap', {
+map['set-trap'] = {
     invocationMode: InvocationMode.PARALLEL,
     handler: async (transaction: WSEvaluateTransaction, input: SnapHandlerInput) => {
         const cardTopic = `suit.${input.suit}.rank.${input.rank}`;
@@ -54,10 +54,10 @@ map.set('set-trap', {
             triggers: [{ topic: cardTopic }]
         };
     }
-});
+};
 
 // Trap set action
-map.set('trap-set', {
+map['trap-set'] = {
     invocationMode: InvocationMode.PARALLEL,
     handler: async (transaction: WSEvaluateTransaction, input: SnapHandlerInput) => {
         const cardTopic = `suit.${input.suit}.rank.${input.rank}`;
@@ -67,10 +67,10 @@ map.set('trap-set', {
             result: EvalResult.WAITING
         };
     }
-});
+};
 
 // Trap fired action
-map.set('trap-fired', {
+map['trap-fired'] = {
     invocationMode: InvocationMode.PARALLEL,
     handler: async (transaction: WSEvaluateTransaction, _input: SnapHandlerInput) => {
         const snap = transaction.events![0];
@@ -79,6 +79,6 @@ map.set('trap-fired', {
             output: snap.data
         };
     }
-});
+};
 
 export const actionMap = map;

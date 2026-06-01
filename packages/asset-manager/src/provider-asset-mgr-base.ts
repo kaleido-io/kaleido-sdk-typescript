@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { kidColon, ProviderBase, ProviderConfig } from "@kaleido-io/workflow-engine-sdk";
+import { kidColon, ProviderBase, ProviderConfig, WorkflowEngineClient } from "@kaleido-io/workflow-engine-sdk";
 import { AssetManagerClient } from "./asset-manager";
 import { IDataModelClient } from "./bulk-upsert-builder";
 
@@ -23,6 +23,12 @@ export interface ProviderAssetMgrConfig<CustomConfig> extends ProviderConfig<Cus
 }
 
 export abstract class ProviderAssetMgrBase<CustomConfig> extends ProviderBase<CustomConfig> {
+
+    /**
+     * Sub-classes register their handlers and perform other initialization in this callback.
+     * @param wfeClient The client ready to initialize, before connection
+     */
+    abstract setupWorkflowEngine(wfeClient: WorkflowEngineClient): Promise<void>;
 
     protected readonly dmClient: IDataModelClient;
 
@@ -47,6 +53,17 @@ export abstract class ProviderAssetMgrBase<CustomConfig> extends ProviderBase<Cu
             url,
             auth: { type: 'basic', ...this.pdmConfig.platform?.auth },
         });
+    }
+
+    async connect() {
+        // Create the client
+        const wfeClient = await super.createClient();
+
+        // Call the setup function
+        await this.setupWorkflowEngine(wfeClient);
+
+        // Connect
+        await wfeClient.connect();
     }
 
 }

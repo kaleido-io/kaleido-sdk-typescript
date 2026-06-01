@@ -87,29 +87,26 @@ const httpInvoke = appConfig.httpInvoke ?? {
   apiKeyHeader: 'X-API-KEY',
 };
 
-const map: Map<string, DirectedActionConfig<HTTPInvokeHandlerInput>> = new Map([
-  [
-    'http-invoke',
-    {
-      invocationMode:
-        InvocationMode[httpInvoke.invocationMode] ?? InvocationMode.PARALLEL,
-      handler: async () => {
-        const response = await fetch(httpInvoke.url, {
-          headers: {
-            [httpInvoke.apiKeyHeader]: process.env.API_KEY ?? '',
-          },
-        });
-        const body = await response.json();
-        return {
-          result: EvalResult.COMPLETE,
-          output: {
-            body,
-            status: response.status,
-          },
-        };
-      },
+const map: Record<string, DirectedActionConfig<HTTPInvokeHandlerInput>> = {
+  'http-invoke': {
+    invocationMode:
+      InvocationMode[httpInvoke.invocationMode] ?? InvocationMode.PARALLEL,
+    handler: async () => {
+      const response = await fetch(httpInvoke.url, {
+        headers: {
+          [httpInvoke.apiKeyHeader]: process.env.API_KEY ?? '',
+        },
+      });
+      const body = await response.json();
+      return {
+        result: EvalResult.COMPLETE,
+        output: {
+          body,
+          status: response.status,
+        },
+      };
     },
-  ],
-]);
+  },
+};
 
 export const actionMap = map;

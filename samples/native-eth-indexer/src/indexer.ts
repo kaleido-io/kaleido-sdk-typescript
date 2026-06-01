@@ -15,7 +15,6 @@
 // limitations under the License.
 
 import type {
-  IDataModelClient,
   IndexerConfig,
   TransferBulkInput
 } from '@kaleido-io/asset-manager-sdk';
@@ -37,11 +36,11 @@ export class ETHIndexer extends Indexer<ETHIndexerConfig, any> {
   private upsertTriggerCount: number;
  
   constructor(config: IndexerConfig<ETHIndexerConfig>) {
-    super(config);
+    super('native-eth-indexer', config);
     this.upsertTriggerCount = config.config?.upsertTriggerCount || 500;
   }
 
-  override async setup(
+  override async indexerSetup(
     ethConfig: ETHIndexerConfig,
   ): Promise<void> {
     this.networkName = ethConfig.networkName;

@@ -19,7 +19,7 @@ import type { EventProcessorEvent, RequestContext } from '@kaleido-io/workflow-e
 import type { BTCTransactionEvent, TxSummaryVIn, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BTCIndexerConfig } from './config.js';
-import { BTCIndexer } from './indexer.js';
+import { BTCIndexer } from './indexer-with-coin-selector.js';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -97,7 +97,7 @@ describe('BTCIndexer.setup()', () => {
 
   it('upserts asset, address, and pool with create_or_ignore', async () => {
     const indexer = new BTCIndexer(MOCK_INDEXER_CONFIG);
-    await indexer.setup(BTC_CONFIG);
+    await indexer.indexerSetup(BTC_CONFIG);
 
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
     const payload = mockClient.bulkUpsert.mock.calls[0][0];
@@ -127,7 +127,7 @@ describe('BTCIndexer.process()', () => {
     };
     vi.spyOn(ProviderAssetMgrBase.prototype, 'newAssetManagerClient').mockReturnValue(mockClient as any);
     indexer = new BTCIndexer(MOCK_INDEXER_CONFIG);
-    await indexer.setup(BTC_CONFIG);
+    await indexer.indexerSetup(BTC_CONFIG);
     vi.clearAllMocks();
   });
 

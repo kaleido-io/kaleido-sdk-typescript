@@ -39,7 +39,7 @@ const baseConfig: IndexerConfig<TestConfig> = {
 };
 
 class TestIndexer extends Indexer<TestConfig, TestEvent> {
-    setup = jest.fn<(config: TestConfig) => Promise<void>>()
+    indexerSetup = jest.fn<(config: TestConfig) => Promise<void>>()
         .mockResolvedValue(undefined);
     indexBatch = jest.fn<(reqContext: RequestContext, events: EventProcessorEvent<TestEvent>[]) => Promise<void>>()
         .mockResolvedValue(undefined);
@@ -64,21 +64,9 @@ describe('Indexer', () => {
         jest.spyOn(ProviderBase.prototype, 'createClient').mockResolvedValue(mockWfeClient as any);
     });
 
-    describe('handlerName()', () => {
-        it('returns "indexer" when handlerName is not configured', () => {
-            const indexer = new TestIndexer(baseConfig);
-            expect(indexer.handlerName()).toBe('indexer');
-        });
-
-        it('returns configured handlerName', () => {
-            const indexer = new TestIndexer({ ...baseConfig, handlerName: 'my-indexer' });
-            expect(indexer.handlerName()).toBe('my-indexer');
-        });
-    });
-
     describe('getConnectorServiceDetail()', () => {
         it('returns environmentNameOrId and connectorNameOrId', () => {
-            const indexer = new TestIndexer(baseConfig);
+            const indexer = new TestIndexer('indexer', baseConfig);
             expect(indexer.getConnectorServiceDetail()).toEqual({
                 environmentNameOrId: 'e-abcde12345',
                 connectorNameOrId: 's-abcde12345',
@@ -86,19 +74,19 @@ describe('Indexer', () => {
         });
 
         it('throws when environmentNameOrId is missing', () => {
-            const indexer = new TestIndexer({ ...baseConfig, environmentNameOrId: undefined });
+            const indexer = new TestIndexer('indexer', { ...baseConfig, environmentNameOrId: undefined });
             expect(() => indexer.getConnectorServiceDetail()).toThrow('environmentNameOrId');
         });
 
         it('throws when connectorNameOrId is missing', () => {
-            const indexer = new TestIndexer({ ...baseConfig, connectorNameOrId: undefined });
+            const indexer = new TestIndexer('indexer', { ...baseConfig, connectorNameOrId: undefined });
             expect(() => indexer.getConnectorServiceDetail()).toThrow('connectorNameOrId');
         });
     });
 
     describe('getConnectorRESTEndpoint()', () => {
         it('builds the correct REST endpoint path using kidColon transforms', () => {
-            const indexer = new TestIndexer(baseConfig);
+            const indexer = new TestIndexer('indexer', baseConfig);
             expect(indexer.getConnectorRESTEndpoint()).toBe('/endpoint/e:abcde12345/s:abcde12345/rest');
         });
     });
@@ -124,22 +112,22 @@ describe('Indexer', () => {
         });
 
         it('throws when factory is missing', async () => {
-            const indexer = new TestIndexer({ ...validStreamConfig, stream: { ...validStreamConfig.stream, factory: undefined } });
+            const indexer = new TestIndexer('indexer', { ...validStreamConfig, stream: { ...validStreamConfig.stream, factory: undefined } });
             await expect(indexer.ensureStream()).rejects.toThrow('stream.factory');
         });
 
         it('throws when name is missing', async () => {
-            const indexer = new TestIndexer({ ...validStreamConfig, stream: { ...validStreamConfig.stream, name: undefined } });
+            const indexer = new TestIndexer('indexer', { ...validStreamConfig, stream: { ...validStreamConfig.stream, name: undefined } });
             await expect(indexer.ensureStream()).rejects.toThrow('stream.name');
         });
 
         it('throws when eventSourceConfig is missing', async () => {
-            const indexer = new TestIndexer({ ...validStreamConfig, stream: { ...validStreamConfig.stream, eventSourceConfig: undefined } });
+            const indexer = new TestIndexer('indexer', { ...validStreamConfig, stream: { ...validStreamConfig.stream, eventSourceConfig: undefined } });
             await expect(indexer.ensureStream()).rejects.toThrow('stream.eventSourceConfig');
         });
 
         it('PUTs the stream to the correct endpoint', async () => {
-            const indexer = new TestIndexer(validStreamConfig);
+            const indexer = new TestIndexer('indexer', validStreamConfig);
             await indexer.ensureStream();
             expect(mockPut).toHaveBeenCalledWith(
                 '/api/v1/stream-factories/factory-1/api/streams/my-stream',
@@ -152,7 +140,7 @@ describe('Indexer', () => {
         });
 
         it('includes providerName and handlerName in the stream eventProcessor', async () => {
-            const indexer = new TestIndexer({ ...validStreamConfig, providerName: 'my-provider', handlerName: 'my-handler' });
+            const indexer = new TestIndexer('my-handler', { ...validStreamConfig, providerName: 'my-provider' });
             await indexer.ensureStream();
             expect(mockPut).toHaveBeenCalledWith(
                 expect.any(String),
@@ -168,34 +156,34 @@ describe('Indexer', () => {
 
     describe('connect()', () => {
         it('calls setup, registerEventProcessor, and connect on success', async () => {
-            const indexer = new TestIndexer(baseConfig);
+            const indexer = new TestIndexer('indexer', baseConfig);
             await indexer.connect();
-            expect(indexer.setup).toHaveBeenCalledWith(baseConfig.config!);
+            expect(indexer.indexerSetup).toHaveBeenCalledWith(baseConfig.config!);
             expect(mockWfeClient.registerEventProcessor).toHaveBeenCalledWith('indexer', expect.anything());
             expect(mockWfeClient.connect).toHaveBeenCalled();
         });
 
         it('throws when config is missing', async () => {
-            const indexer = new TestIndexer({ ...baseConfig, config: undefined });
+            const indexer = new TestIndexer('indexer', { ...baseConfig, config: undefined });
             await expect(indexer.connect()).rejects.toThrow('Config is required');
         });
 
         it('skips ensureStream when stream.autoCreate is not set', async () => {
             const ensureStreamSpy = jest.spyOn(TestIndexer.prototype, 'ensureStream');
-            const indexer = new TestIndexer(baseConfig);
+            const indexer = new TestIndexer('indexer', baseConfig);
             await indexer.connect();
             expect(ensureStreamSpy).not.toHaveBeenCalled();
         });
 
         it('calls ensureStream when stream.autoCreate is true', async () => {
             const ensureStreamSpy = jest.spyOn(TestIndexer.prototype, 'ensureStream').mockResolvedValue(undefined);
-            const indexer = new TestIndexer({ ...baseConfig, stream: { autoCreate: true } });
+            const indexer = new TestIndexer('indexer', { ...baseConfig, stream: { autoCreate: true } });
             await indexer.connect();
             expect(ensureStreamSpy).toHaveBeenCalled();
         });
 
         it('uses configured handlerName when registering the event processor', async () => {
-            const indexer = new TestIndexer({ ...baseConfig, handlerName: 'custom-handler' });
+            const indexer = new TestIndexer('custom-handler', { ...baseConfig });
             await indexer.connect();
             expect(mockWfeClient.registerEventProcessor).toHaveBeenCalledWith('custom-handler', expect.anything());
         });
@@ -203,7 +191,7 @@ describe('Indexer', () => {
 
     describe('process (via registered event processor)', () => {
         it('delegates to indexBatch with reqContext, mapped events, and dmClient', async () => {
-            const indexer = new TestIndexer(baseConfig);
+            const indexer = new TestIndexer('indexer', baseConfig);
             await indexer.connect();
 
             const registeredProcessor = mockWfeClient.registerEventProcessor.mock.calls[0][1] as any;
