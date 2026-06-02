@@ -14,7 +14,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
+import {
+  AxiosError,
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from "axios";
 import axiosRetry, { isNetworkError } from "axios-retry";
 import CacheableLookup from "cacheable-lookup";
 import * as http from "http";
@@ -23,6 +29,18 @@ import { ServiceBindingAuth } from "./types";
 import { newLogger } from "../log/logger";
 
 const log = newLogger("http_client");
+
+/**
+ * Per-request metadata attached by the request interceptor and read back by
+ * the response interceptor. Kept on the request config so it survives retries.
+ */
+interface RequestTrace {
+  startMs: number;
+}
+
+type TracedRequestConfig = InternalAxiosRequestConfig & {
+  __kaleidoTrace?: RequestTrace;
+};
 
 /**
  * Per-request retry override options.
@@ -112,7 +130,6 @@ function resolveAuthHeader(
  * - Per-request retry override
  * - Auth header injection from ServiceBindingAuth
  *
- * Framework-agnostic port of kaleido-studio-nest-base/http configureHttpClient.
  */
 export function configureHttpClient(
   instance: AxiosInstance,
@@ -148,13 +165,31 @@ export function configureHttpClient(
   instance.defaults.httpAgent = httpAgent;
   instance.defaults.timeout = timeout;
 
+  // Header name we expect to see carrying the configured ServiceBindingAuth on
+  // every outbound request. Used by the request interceptor below to verify
+  // that the auth header survived all the way to the wire (e.g. wasn't
+  // accidentally stripped by a per-request `headers` override).
+  let configuredAuthHeader: string | undefined;
+  const authConfigured = options.auth !== undefined;
+
   if (options.auth) {
     const resolved = resolveAuthHeader(options.auth);
     if (resolved) {
       instance.defaults.headers.common[resolved.headerName] =
         resolved.headerValue;
+      configuredAuthHeader = resolved.headerName;
+    } else {
+      log.warn(
+        `ServiceBindingAuth of type '${options.auth.type}' was provided but had no usable credentials; ` +
+          `no auth header will be attached to outbound requests.`,
+      );
     }
   }
+
+  installTracingInterceptors(instance, {
+    authConfigured,
+    configuredAuthHeader,
+  });
 
   // Configure retry logic with exponential backoff
   axiosRetry(instance, {
@@ -193,4 +228,103 @@ export function configureHttpClient(
   });
 
   return instance;
+}
+
+/**
+ * Build the full target URL for logging without leaking query string secrets.
+ * Returns `<method> <baseURL?><url>`.
+ */
+function formatRequestTarget(config: AxiosRequestConfig): string {
+  const method = (config.method ?? "GET").toUpperCase();
+  const base = config.baseURL ?? "";
+  const url = config.url ?? "";
+  return `${method} ${base}${url}`;
+}
+
+/**
+ * Look up a header value on an axios request config in a way that works for
+ * both AxiosHeaders (v1.x) and plain object header maps. Header names are
+ * matched case-insensitively per RFC 7230.
+ */
+function getRequestHeader(
+  config: InternalAxiosRequestConfig,
+  name: string,
+): string | undefined {
+  const headers: any = config.headers;
+  if (!headers) return undefined;
+  if (typeof headers.get === "function") {
+    const v = headers.get(name);
+    return v == null ? undefined : String(v);
+  }
+  const lower = name.toLowerCase();
+  for (const key of Object.keys(headers)) {
+    if (key.toLowerCase() === lower) {
+      const v = headers[key];
+      return v == null ? undefined : String(v);
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Install request/response interceptors that emit per-request debug logs so
+ * callers can verify (a) that axios is actually issuing the requests they
+ * expect and (b) that the configured `ServiceBindingAuth` is still being
+ * attached as an Authorization-style header on every call.
+ *
+ * Auth values are never logged — only the presence/absence of the expected
+ * header and its length are recorded.
+ */
+function installTracingInterceptors(
+  instance: AxiosInstance,
+  ctx: { authConfigured: boolean; configuredAuthHeader?: string },
+): void {
+  instance.interceptors.request.use((config) => {
+    const traced = config as TracedRequestConfig;
+    traced.__kaleidoTrace = { startMs: Date.now() };
+
+    const target = formatRequestTarget(config);
+
+    let authStatus: string;
+    if (!ctx.authConfigured) {
+      authStatus = "no ServiceBindingAuth configured";
+    } else if (!ctx.configuredAuthHeader) {
+      authStatus = "ServiceBindingAuth configured but unresolved (missing creds)";
+    } else {
+      const value = getRequestHeader(config, ctx.configuredAuthHeader);
+      authStatus = value
+        ? `auth header '${ctx.configuredAuthHeader}' present (len=${value.length})`
+        : `auth header '${ctx.configuredAuthHeader}' MISSING from outbound request`;
+    }
+
+    log.debug(`-> ${target} [${authStatus}]`);
+    return config;
+  });
+
+  instance.interceptors.response.use(
+    (response: AxiosResponse) => {
+      const traced = response.config as TracedRequestConfig;
+      const elapsed = traced.__kaleidoTrace
+        ? Date.now() - traced.__kaleidoTrace.startMs
+        : undefined;
+      const target = formatRequestTarget(response.config);
+      const dur = elapsed !== undefined ? ` ${elapsed}ms` : "";
+      log.debug(`<- ${target} ${response.status}${dur}`);
+      return response;
+    },
+    (error: AxiosError) => {
+      const config = error.config as TracedRequestConfig | undefined;
+      const target = config
+        ? formatRequestTarget(config)
+        : "<unknown request>";
+      const elapsed =
+        config?.__kaleidoTrace !== undefined
+          ? Date.now() - config.__kaleidoTrace.startMs
+          : undefined;
+      const dur = elapsed !== undefined ? ` ${elapsed}ms` : "";
+      const status = error.response?.status ?? "network error";
+      log.debug(`<- ${target} ${status}${dur}: ${error.message}`);
+      return Promise.reject(error);
+    },
+  );
 }

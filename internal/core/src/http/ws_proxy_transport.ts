@@ -16,6 +16,9 @@
 
 import { ServiceTransport } from "./transport";
 import { RequestConfigWithRetry } from "./http_client";
+import { newLogger } from "../log/logger";
+
+const log = newLogger("ws_proxy_transport");
 
 /**
  * Minimal response shape returned by a WS proxy adapter.
@@ -42,6 +45,8 @@ export interface IWSProxy {
     id: string,
     body?: any,
     headers?: Record<string, string>,
+    path?: string,
+    authRef?: string,
   ): Promise<WSProxyResponse>;
 }
 
@@ -55,6 +60,8 @@ export interface WSProxyTransportOptions {
   serviceType: string;
   /** Service instance identifier for hosted bindings */
   id: string;
+  /** Auth reference forwarded from WSEvaluateTransaction.authRef so the proxy can attach the cached bearer token. */
+  authRef?: string;
 }
 
 function isSuccess(status: number): boolean {
@@ -89,73 +96,61 @@ export class WSProxyTransport implements ServiceTransport {
   private wsProxy: IWSProxy;
   private serviceType: string;
   private id: string;
+  private authRef?: string;
 
   constructor(options: WSProxyTransportOptions) {
     this.wsProxy = options.wsProxy;
     this.serviceType = options.serviceType;
     this.id = options.id;
+    this.authRef = options.authRef;
+  }
+
+  private async proxyRequest(method: string, url: string, body?: any): Promise<WSProxyResponse> {
+    log.debug(`-> ws-proxy ${method} ${this.serviceType}/${this.id}${url} authRef=${this.authRef ? this.authRef.substring(0, 8) + '...' : '(none)'}`);
+    const response = await this.wsProxy.request(
+      this.serviceType,
+      method,
+      this.id,
+      body,
+      undefined,
+      url,
+      this.authRef,
+    );
+    log.debug(`<- ws-proxy ${method} ${this.serviceType}/${this.id}${url} status=${response.status}${response.error ? ` error=${response.error}` : ''}`);
+    return response;
   }
 
   async get<T>(
-    _url: string,
+    url: string,
     _params?: any,
     config?: RequestConfigWithRetry & { ignore404?: boolean },
   ): Promise<T | undefined> {
-    const response = await this.wsProxy.request(
-      this.serviceType,
-      "GET",
-      this.id,
-      undefined,
-      undefined,
-    );
+    const response = await this.proxyRequest("GET", url);
     if (config?.ignore404 && response.status === 404) return undefined;
     throwOnError(response);
     return decodeProxyResponse<T>(response);
   }
 
-  async post<T>(_url: string, data: any): Promise<T> {
-    const response = await this.wsProxy.request(
-      this.serviceType,
-      "POST",
-      this.id,
-      data,
-      undefined,
-    );
+  async post<T>(url: string, data: any): Promise<T> {
+    const response = await this.proxyRequest("POST", url, data);
     throwOnError(response);
     return decodeProxyResponse<T>(response);
   }
 
-  async put<T>(_url: string, data: any): Promise<T> {
-    const response = await this.wsProxy.request(
-      this.serviceType,
-      "PUT",
-      this.id,
-      data,
-      undefined,
-    );
+  async put<T>(url: string, data: any): Promise<T> {
+    const response = await this.proxyRequest("PUT", url, data);
     throwOnError(response);
     return decodeProxyResponse<T>(response);
   }
 
-  async patch<T>(_url: string, data: any): Promise<T> {
-    const response = await this.wsProxy.request(
-      this.serviceType,
-      "PATCH",
-      this.id,
-      data,
-      undefined,
-    );
+  async patch<T>(url: string, data: any): Promise<T> {
+    const response = await this.proxyRequest("PATCH", url, data);
     throwOnError(response);
     return decodeProxyResponse<T>(response);
   }
 
-  async delete(_url: string): Promise<void> {
-    const response = await this.wsProxy.request(
-      this.serviceType,
-      "DELETE",
-      this.id,
-      undefined,
-    );
+  async delete(url: string): Promise<void> {
+    const response = await this.proxyRequest("DELETE", url);
     throwOnError(response);
   }
 }

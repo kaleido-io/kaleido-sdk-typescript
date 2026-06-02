@@ -111,6 +111,8 @@ export class WSProxyAdapter {
     id: string,
     body?: any,
     headers?: Record<string, string>,
+    path?: string,
+    authRef?: string,
   ): Promise<ServiceProxyResponse> {
     const requestId = generateId();
 
@@ -119,8 +121,10 @@ export class WSProxyAdapter {
       requestId,
       serviceType,
       id,
+      authRef,
       request: {
         method,
+        path,
         headers,
         bodyBase64: body
           ? Buffer.from(JSON.stringify(body)).toString("base64")

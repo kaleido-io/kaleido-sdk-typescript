@@ -72,7 +72,7 @@ const log = newLogger("AssetManagerClient");
  *   const am = new AssetManagerClient(options);
  *   await am.bulkUpsert({ assets: [{ name: 'my-asset', ... }] });
  */
-const API_VERSION = "/api/v1";
+const API_VERSION = "";
 
 export class AssetManagerClient extends ServiceClient {
   constructor(options: ServiceClientOptions) {

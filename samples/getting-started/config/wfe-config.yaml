@@ -14,3 +14,17 @@ workflow-engine:
     password: my-api-key
   # retryDelay: 2s
   # maxRetries: 5   # omit for infinite retries
+
+# Service bindings — required for the list-pools sample.
+# For non-hosted (direct HTTP) use bindingType: non-hosted with url + auth.
+# For hosted (via provider-proxy) use bindingType: hosted with the service instance id.
+#
+# service-bindings:
+#   asset-manager:
+#     type: asset-manager
+#     bindingType: non-hosted
+#     url: https://my-account.my-kaleido.io/endpoint/my-environment/my-asset-manager/rest
+#     auth:
+#       type: basic
+#       username: my-api-key-name
+#       password: my-api-key

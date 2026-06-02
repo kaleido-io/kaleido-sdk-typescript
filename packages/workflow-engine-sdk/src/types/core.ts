@@ -51,8 +51,8 @@ export enum WSMessageType {
   EVENT_PROCESSOR_BATCH_RESULT = 'event_processor_batch_result',
   ENGINE_API_SUBMIT_TRANSACTIONS = 'engineapi_submit_transactions',
   ENGINE_API_SUBMIT_TRANSACTIONS_RESULT = 'engineapi_submit_transactions_result',
-  SERVICE_PROXY_REQUEST = 'service_proxy_request',
-  SERVICE_PROXY_RESPONSE = 'service_proxy_response',
+  SERVICE_PROXY_REQUEST = 'service-proxy-request',
+  SERVICE_PROXY_RESPONSE = 'service-proxy-response',
 }
 
 export enum WSHandlerType {
@@ -333,9 +333,12 @@ export interface ServiceProxyRequest {
   serviceType: string;
   /** Service instance identifier — the proxy resolves this to the actual service URL. */
   id: string;
+  /** Correlates with cached auth tokens on the proxy side (from WSEvaluateTransaction.authRef). */
+  authRef?: string;
   invocationId?: string;
   request: {
     method: string;
+    path?: string;
     headers?: Record<string, string>;
     params?: Record<string, string>;
     bodyBase64?: string;

@@ -1,0 +1,7 @@
+workflow-engine:
+  providerName: local-admin
+  url: https://account1.kaleido.dev/endpoint/hostedproviderstesting/workflow-engine/rest
+  auth:
+    type: basic
+    username: dockerkey
+    password: 3ed6bd1b-9cdd-46ca-9b5b-d6f469403bd4c9699025-0e54-4a80-b13f-f5366669d09a

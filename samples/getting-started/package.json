@@ -13,11 +13,13 @@
         "test": "vitest run",
         "test:watch": "vitest watch",
         "test:coverage": "vitest run --coverage",
-        "package:docker": "docker build --platform linux/amd64 -t {{PROVIDER_NAME}}:latest .",
-        "package:podman": "podman build --platform linux/amd64 -t {{PROVIDER_NAME}}:latest .",
-        "promote:docker": "docker tag {{PROVIDER_NAME}}:latest ${ARTIFACT_REGISTRY}/{{PROVIDER_NAME}}:${IMAGE_TAG} && docker push ${ARTIFACT_REPOSITORY}/{{PROVIDER_NAME}}:${IMAGE_TAG}",
-        "promote:podman": "podman tag {{PROVIDER_NAME}}:latest ${ARTIFACT_REGISTRY}/{{PROVIDER_NAME}}:${IMAGE_TAG} && podman push ${ARTIFACT_REGISTRY}/{{PROVIDER_NAME}}:${IMAGE_TAG}",
-        "promote:crane": "crane copy ${SOURCE_REGISTRY}/{{PROVIDER_NAME}}:${IMAGE_TAG} ${ARTIFACT_REGISTRY}/{{PROVIDER_NAME}}:${IMAGE_TAG}"
+        "package:docker": "docker build --platform linux/amd64 -t getting-started-provider:latest -f Dockerfile ../..",
+        "package:podman": "podman build --platform linux/amd64 -t getting-started-provider:latest -f Dockerfile ../..",
+        "promote:docker": "docker tag getting-started-provider:latest ${ARTIFACT_REGISTRY}/getting-started-provider:${IMAGE_TAG} && docker push ${ARTIFACT_REGISTRY}/getting-started-provider:${IMAGE_TAG}",
+        "promote:podman": "podman tag getting-started-provider:latest ${ARTIFACT_REGISTRY}/getting-started-provider:${IMAGE_TAG} && podman push ${ARTIFACT_REGISTRY}/getting-started-provider:${IMAGE_TAG}",
+        "promote:crane": "crane copy ${SOURCE_REGISTRY}/getting-started-provider:${IMAGE_TAG} ${ARTIFACT_REGISTRY}/getting-started-provider:${IMAGE_TAG}",
+        "promote:crane-local": "crane copy --insecure daemon://getting-started-provider:latest ${ARTIFACT_REGISTRY}/getting-started-provider:${IMAGE_TAG}",
+        "promote:kind-local": "docker tag getting-started-provider:latest localhost:6001/getting-started-provider:${IMAGE_TAG} && docker push localhost:6001/getting-started-provider:${IMAGE_TAG}"
     },
     "private": true,
     "devDependencies": {
@@ -34,7 +36,8 @@
         "README.md"
     ],
     "dependencies": {
-        "@kaleido-io/workflow-engine-sdk": "*",
+        "@kaleido-io/asset-manager-sdk": "*",
+    "@kaleido-io/workflow-engine-sdk": "*",
         "dotenv": "^17.2.3",
         "js-yaml": "^4.1.1",
         "web3": "^4.16.0",
