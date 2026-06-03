@@ -629,6 +629,14 @@ export class AssetManagerStore {
       if (parentRow.asset) t.asset = parentRow.asset;
     }
 
+    // Strip prior balance changes for this transfer (create_or_replace replay).
+    if (t.id) {
+      this._balanceChanges = this._balanceChanges.filter(
+        (bc) => bc.transfer !== t.id,
+      );
+      this.rebuildLatestBalances();
+    }
+
     // Generate balance changes.
     const ctx: BalanceBookkeepingContext = {
       latestBalances: this.latestBalances,
@@ -642,6 +650,15 @@ export class AssetManagerStore {
       const ix = this._balanceChanges.findIndex((b) => b.name === bc.name);
       if (ix >= 0) this._balanceChanges.splice(ix, 1, bc);
       else this._balanceChanges.push(bc);
+    }
+  }
+
+  private rebuildLatestBalances(): void {
+    this.latestBalances.clear();
+    for (const bc of this._balanceChanges) {
+      if (bc.parent?.ref && bc.address) {
+        this.latestBalances.set(balanceKey(bc.parent.ref, bc.address), bc);
+      }
     }
   }
 

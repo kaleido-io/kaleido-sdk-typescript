@@ -15,23 +15,26 @@
   "exports": {
     ".": {
       "import": "./dist/src/index.js",
+      "require": "./dist-cjs/src/index.js",
       "types": "./dist/src/index.d.ts"
     },
     "./http": {
       "import": "./dist/src/http/index.js",
+      "require": "./dist-cjs/src/http/index.js",
       "types": "./dist/src/http/index.d.ts"
     }
   },
   "scripts": {
     "prebuild": "npm run clean",
-    "build": "tsc",
+    "build": "tsc && tsc -p tsconfig.cjs.json && cp cjs-package-template.json dist-cjs/package.json",
     "postbuild": "tsc-esm-fix --target='dist'",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist dist-cjs",
     "test": "jest --coverage",
     "dev": "tsc --watch"
   },
   "files": [
     "dist/**/*",
+    "dist-cjs/**/*",
     "README.md"
   ],
   "license": "Apache-2.0",

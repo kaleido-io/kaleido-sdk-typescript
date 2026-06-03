@@ -1,0 +1,94 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Contract Tests (mock)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--runInBand",
+        "contract/runners/mock.contract.spec.ts"
+      ],
+      "cwd": "${workspaceFolder}/packages/asset-manager",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Debug Contract Tests (mock, by name)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--runInBand",
+        "--testNamePattern",
+        "${input:contractTestName}",
+        "contract/runners/mock.contract.spec.ts"
+      ],
+      "cwd": "${workspaceFolder}/packages/asset-manager",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Debug Contract Tests (integration)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--runInBand",
+        "--testTimeout=0",
+        "contract/runners/integration.contract.spec.ts"
+      ],
+      "cwd": "${workspaceFolder}/packages/asset-manager",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "envFile": "${workspaceFolder}/packages/asset-manager/.env"
+    },
+    {
+      "name": "Debug Contract Tests (integration, by name)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--runInBand",
+        "--testTimeout=0",
+        "--testNamePattern",
+        "${input:contractTestName}",
+        "contract/runners/integration.contract.spec.ts"
+      ],
+      "cwd": "${workspaceFolder}/packages/asset-manager",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "envFile": "${workspaceFolder}/packages/asset-manager/.env"
+    },
+    {
+      "name": "Debug Current Contract Runner",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": ["--runInBand", "${relativeFile}"],
+      "cwd": "${workspaceFolder}/packages/asset-manager",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Debug Current Contract Runner (integration)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": ["--runInBand", "--testTimeout=0", "${relativeFile}"],
+      "cwd": "${workspaceFolder}/packages/asset-manager",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "envFile": "${workspaceFolder}/packages/asset-manager/.env"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "contractTestName",
+      "type": "promptString",
+      "description": "Test name pattern (regex), e.g. denormalizes asset onto pool",
+      "default": ".*"
+    }
+  ]
+}

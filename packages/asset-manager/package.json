@@ -23,12 +23,16 @@
     "postbuild": "tsc-esm-fix --target='dist'",
     "clean": "rm -rf dist dist-cjs",
     "dev": "tsc --watch",
-    "test": "jest --coverage"
+    "test": "jest --coverage",
+    "test:contract": "jest contract/runners/mock.contract.spec.ts",
+    "test:contract:integration": "node --env-file=.env scripts/run-integration-contract.cjs"
   },
   "files": [
     "dist/**/*",
     "dist-cjs/**/*",
-    "README.md"
+    "README.md",
+    "mock/README.md",
+    "contract/README.md"
   ],
   "license": "Apache-2.0",
   "dependencies": {
@@ -51,7 +55,8 @@
     "testEnvironment": "node",
     "roots": [
       "<rootDir>/src",
-      "<rootDir>/mock"
+      "<rootDir>/mock",
+      "<rootDir>/contract"
     ],
     "testMatch": [
       "**/?(*.)+(spec|test).ts"

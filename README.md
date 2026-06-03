@@ -26,6 +26,16 @@ npm install @kaleido-io/workflow-engine-sdk
 
 **[Full documentation](./packages/workflow-engine-sdk/README.md)**
 
+### [@kaleido-io/asset-manager-sdk](./packages/asset-manager)
+
+**TypeScript SDK for the Kaleido Asset Manager service**, with an in-memory mock for integration tests.
+
+```bash
+npm install @kaleido-io/asset-manager-sdk
+```
+
+**[Full documentation](./packages/asset-manager/README.md)**
+
 ## License
 
 All packages in this monorepo are licensed under the Apache-2.0 License.

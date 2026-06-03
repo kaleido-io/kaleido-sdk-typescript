@@ -5,3 +5,4 @@ coverage
 template/node_modules
 *.tgz
 dist-cjs
+.env
