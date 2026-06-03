@@ -14,9 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IndexerConfig } from '@kaleido-io/asset-manager-sdk';
-import type { EventProcessorEvent, RequestContext } from '@kaleido-io/workflow-engine-sdk';
-import type { BTCTransactionEvent, TxSummaryVIn, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
+import { IndexerConfig } from '@kaleido-io/sdk';
+import type { EventProcessorEvent, RequestContext } from '@kaleido-io/sdk';
+import type { BTCTransactionEvent, TxSummaryVIn, TxSummaryVOut } from '@kaleido-io/sdk/types/btc';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BTCIndexerConfig } from './config.js';
 import { BTCIndexer } from './indexer.js';

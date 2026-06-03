@@ -15,7 +15,7 @@
 // limitations under the License.
 
 
-import { WorkflowEngineRestClient, CreateWorkflowRequest, ConfigLoader } from '@kaleido-io/workflow-engine-sdk';
+import { WorkflowEngineRestClient, CreateWorkflowRequest, ConfigLoader } from '@kaleido-io/sdk';
 import dotenv from 'dotenv';
 
 dotenv.config();

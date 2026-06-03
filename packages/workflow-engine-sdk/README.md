@@ -16,13 +16,13 @@ Scaffold a new provider project from a template:
 
 ```bash
 # Start from the getting-started template
-npx @kaleido-io/workflow-engine-sdk init <project-name> --template getting-started
+npx @kaleido-io/sdk init <project-name> --template getting-started
 
 # Start from the ERC-20 indexer template
-npx @kaleido-io/workflow-engine-sdk init <project-name> --template erc20-indexer
+npx @kaleido-io/sdk init <project-name> --template erc20-indexer
 
 # Start from the Bitcoin indexer template
-npx @kaleido-io/workflow-engine-sdk init <project-name> --template btc-indexer
+npx @kaleido-io/sdk init <project-name> --template btc-indexer
 ```
 
 Omit `--template` in an interactive terminal and you'll be prompted to choose one.
@@ -44,7 +44,7 @@ merged in — root files (`tsconfig.json`, `Dockerfile`, etc.) are left untouche
 
 ```bash
 cd my-existing-project
-npx @kaleido-io/workflow-engine-sdk init --template erc20-indexer
+npx @kaleido-io/sdk init --template erc20-indexer
 ```
 
 Any `@kaleido-io/*` dependencies required by the template are added to your

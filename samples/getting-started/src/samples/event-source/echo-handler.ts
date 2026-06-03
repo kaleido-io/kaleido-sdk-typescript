@@ -15,7 +15,7 @@
 // limitations under the License.
 
 
-import { BasicStageDirector, DirectedActionConfig, EvalResult, InvocationMode, WithStageDirector, WSEvaluateTransaction } from '@kaleido-io/workflow-engine-sdk';
+import { BasicStageDirector, DirectedActionConfig, EvalResult, InvocationMode, WithStageDirector, WSEvaluateTransaction } from '@kaleido-io/sdk';
 
 class MyHandlerInput implements WithStageDirector {
     public stageDirector: BasicStageDirector;

@@ -1,0 +1,41 @@
+# Provider configuration for the ERC-20 Indexer.
+# Copy this file to config/config.yaml and fill in your values.
+# Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
+
+platform:
+  url: https://myaccount.myinstance.kaleido.io/
+  timeout: 120000
+  auth:
+    username: myuser
+    password: my-api-key
+
+providerName: erc20-indexer
+providerMetadata:
+  displayName: ERC-20 Indexer
+  description: Indexes ERC-20 Transfer events into the Kaleido Asset Manager
+
+environmentNameOrId: my-evm-env
+
+workflowEngineNameOrId: workflow-engine
+
+assetManagerNameOrId: my-asset-manager
+
+connectorNameOrId: my-evm-connector
+
+# ERC-20 contract to index
+config:
+  contractAddress: '0x0000000000000000000000000000000000000000'
+  contractName: MyToken
+  contractSymbol: TKN
+  chain: ethereum   # Informational label attached to indexed transfers (e.g. "ethereum", "polygon", "base", "besu")
+
+stream:
+  autoCreate: true
+  factory: evmTransactions
+  name: erc20-indexer
+  eventSourceConfig:
+    abi: [] # paste ABI here or use the post-stream utility to create the stream with abi.json
+    fromBlock: '0'
+    batchSize: 50
+    batchTimeout: '5s'
+    requiredConfirmations: 1

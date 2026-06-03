@@ -15,9 +15,9 @@
 // limitations under the License.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { IDataModelClient, IndexerConfig } from '@kaleido-io/asset-manager-sdk';
-import type { EventProcessorEvent, RequestContext } from '@kaleido-io/workflow-engine-sdk';
-import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
+import { IDataModelClient, IndexerConfig } from '@kaleido-io/sdk';
+import type { EventProcessorEvent, RequestContext } from '@kaleido-io/sdk';
+import type { EVMTransactionEvent } from '@kaleido-io/sdk/types/evm';
 import { ERC20Indexer } from './indexer.js';
 import type { ERC20Config } from '../config/provider-config.js';
 

@@ -10,7 +10,6 @@
     "clean": "rm -rf dist",
     "start": "node dist/src/connect.js",
     "start:dev": "tsx ./src/connect.ts",
-    "create-stream": "tsx ./src/utils/post-stream.ts",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
@@ -22,8 +21,7 @@
     "patch-provider-runtime": "tsx ./src/utils/patch-provider-runtime.ts"
   },
   "dependencies": {
-    "@kaleido-io/asset-manager-sdk": "*",
-    "@kaleido-io/workflow-engine-sdk": "*",
+    "@kaleido-io/sdk": "*",
     "axios": "^1.13.0",
     "axios-retry": "^4.5.0",
     "dotenv": "^17.0.0",

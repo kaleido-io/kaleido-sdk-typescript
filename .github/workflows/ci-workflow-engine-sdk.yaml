@@ -8,7 +8,7 @@ on:
       - 'samples/**'
       - '.github/workflows/ci-workflow-engine-sdk.yaml'
       - '.github/workflows/ci-docker-samples.yaml'
-      - '.github/workflows/ci-wesdk-init.yaml'
+      - '.github/workflows/ci-ksdk-init.yaml'
 
 permissions:
   contents: read
@@ -62,7 +62,7 @@ jobs:
     needs: packages
     uses: ./.github/workflows/ci-docker-samples.yaml
 
-  wesdk-init:
-    name: wesdk init (templates)
+  ksdk-init:
+    name: ksdk init (templates)
     needs: packages
-    uses: ./.github/workflows/ci-wesdk-init.yaml
+    uses: ./.github/workflows/ci-ksdk-init.yaml

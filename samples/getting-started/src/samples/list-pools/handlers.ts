@@ -14,14 +14,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+import { AssetManagerClient } from '@kaleido-io/sdk';
 import {
   BasicStageDirector,
   DirectedActionConfig,
   EvalResult,
   InvocationMode,
   WithStageDirector,
-} from '@kaleido-io/workflow-engine-sdk';
+} from '@kaleido-io/sdk';
 
 class ListPoolsInput implements WithStageDirector {
   public stageDirector: BasicStageDirector;

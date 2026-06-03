@@ -1,0 +1,63 @@
+{
+  "name": "@kaleido-io/sdk",
+  "version": "1.0.0",
+  "description": "Kaleido SDK",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaleido-io/kaleido-sdk-typescript.git"
+  },
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "kaleido",
+    "sdk",
+    "typescript",
+    "blockchain",
+    "workflows"
+  ],
+  "author": "Kaleido",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "bin": {
+    "ksdk": "./bin/ksdk.js"
+  },
+  "files": [
+    "dist/**/*",
+    "bin/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    },
+    "./types/evm": {
+      "import": "./dist/src/types/evm/index.js",
+      "types": "./dist/src/types/evm/index.d.ts"
+    },
+    "./types/btc": {
+      "import": "./dist/src/types/btc/index.js",
+      "types": "./dist/src/types/btc/index.d.ts"
+    }
+  },
+  "dependencies": {
+    "@kaleido-io/asset-manager-sdk": "*",
+    "@kaleido-io/workflow-engine-sdk": "*",
+    "js-yaml": "^4.1.1"
+  },
+  "devDependencies": {
+    "@kaleido-io/core": "file:../../internal/core",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.2.0"
+  }
+}

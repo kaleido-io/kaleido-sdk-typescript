@@ -23,7 +23,7 @@ import {
   EvalResult,
   InvocationMode,
   WithStageDirector,
-} from '@kaleido-io/workflow-engine-sdk';
+} from '@kaleido-io/sdk';
 
 export interface HTTPInvokeConfig {
   url: string;

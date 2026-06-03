@@ -14,17 +14,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IndexerConfig } from "@kaleido-io/asset-manager-sdk";
+import { IndexerConfig, formatError } from "@kaleido-io/sdk";
 import { BTCIndexer } from "./indexer.js";
 import { BTCIndexerConfig } from "./config.js";
 
-import yaml from 'js-yaml';
-import fs from 'fs';
-import { formatError } from "@kaleido-io/workflow-engine-sdk";
-
-// Synchronously load config and export the indexer
-const configPath = process.env.CONFIG_FILE ?? './config/config.yaml';
-const config: IndexerConfig<BTCIndexerConfig> = yaml.load(fs.readFileSync(configPath, 'utf-8')) as any;
+const config = IndexerConfig.loadFromFile<BTCIndexerConfig>();
 const bitcoinIndexer = new BTCIndexer(config);
 bitcoinIndexer.connect().catch((err: any) => {
     console.error(formatError(err));

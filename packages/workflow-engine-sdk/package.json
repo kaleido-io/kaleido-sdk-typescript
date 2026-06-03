@@ -69,12 +69,8 @@
   "engines": {
     "node": ">=20.19.0"
   },
-  "bin": {
-    "wesdk": "./bin/wesdk.js"
-  },
   "files": [
     "dist/**/*",
-    "bin/**/*",
     "README.md",
     "LICENSE"
   ],

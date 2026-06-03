@@ -19,7 +19,7 @@ import {
     ConfigLoader,
     CreateStreamRequest,
     WorkflowEngineRestClient
-} from '@kaleido-io/workflow-engine-sdk';
+} from '@kaleido-io/sdk';
 
 import dotenv from 'dotenv';
 

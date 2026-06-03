@@ -27,7 +27,6 @@ const args = process.argv.slice(2);
 const command = args[0];
 
 if (command === 'init') {
-  // Route to init script
   const initScript = join(__dirname, 'init.js');
   const child = spawn('node', [initScript, ...args.slice(1)], {
     stdio: 'inherit',
@@ -39,19 +38,19 @@ if (command === 'init') {
   });
 } else {
   console.log(`
-@kaleido-io/workflow-engine-sdk CLI
+@kaleido-io/sdk CLI
 
 Usage:
-  npx @kaleido-io/workflow-engine-sdk <command> [options]
+  npx @kaleido-io/sdk <command> [options]
 
 Commands:
   init <project-name>    Create a new provider project from template
 
 Examples:
-  npx @kaleido-io/workflow-engine-sdk init my-provider
+  npx @kaleido-io/sdk init my-provider
 
 For more information, run:
-  npx @kaleido-io/workflow-engine-sdk init --help
+  npx @kaleido-io/sdk init --help
 `);
   process.exit(command ? 1 : 0);
 }

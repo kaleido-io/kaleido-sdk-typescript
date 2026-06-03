@@ -1,4 +1,4 @@
-name: Test wesdk init
+name: Test ksdk init
 
 on:
   workflow_call:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   init:
-    name: wesdk init --template ${{ matrix.template }}
+    name: ksdk init --template ${{ matrix.template }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -27,20 +27,20 @@ jobs:
       - name: Build packages
         run: npm run build:packages
 
-      - name: Pack workflow-engine-sdk
+      - name: Pack sdk
         run: npm pack
-        working-directory: packages/workflow-engine-sdk
+        working-directory: packages/sdk
 
-      - name: Run wesdk init from tarball
+      - name: Run ksdk init from tarball
         run: |
-          TARBALL=$(ls "$GITHUB_WORKSPACE"/packages/workflow-engine-sdk/kaleido-io-workflow-engine-sdk-*.tgz)
-          mkdir -p /tmp/wesdk-init-test
-          cd /tmp/wesdk-init-test
+          TARBALL=$(ls "$GITHUB_WORKSPACE"/packages/sdk/kaleido-io-sdk-*.tgz)
+          mkdir -p /tmp/ksdk-init-test
+          cd /tmp/ksdk-init-test
           WESDK_REPO_URL="$GITHUB_WORKSPACE" npx "file:$TARBALL" init my-${{ matrix.template }} --template ${{ matrix.template }}
 
       - name: Verify generated project
         run: |
-          PROJECT=/tmp/wesdk-init-test/my-${{ matrix.template }}
+          PROJECT=/tmp/ksdk-init-test/my-${{ matrix.template }}
           echo "--- Checking structure ---"
           test -f "$PROJECT/package.json" && echo "package.json OK"
           test -f "$PROJECT/tsconfig.json" && echo "tsconfig.json OK"
@@ -64,7 +64,7 @@ jobs:
           "
 
   init-add:
-    name: wesdk init --template ${{ matrix.template }} (add to existing)
+    name: ksdk init --template ${{ matrix.template }} (add to existing)
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -82,25 +82,25 @@ jobs:
       - name: Build packages
         run: npm run build:packages
 
-      - name: Pack workflow-engine-sdk
+      - name: Pack sdk
         run: npm pack
-        working-directory: packages/workflow-engine-sdk
+        working-directory: packages/sdk
 
       - name: Create minimal existing project
         run: |
-          mkdir -p /tmp/wesdk-add-test
+          mkdir -p /tmp/ksdk-add-test
           echo '{"name":"existing-project","version":"1.0.0","type":"module","dependencies":{}}' \
-            > /tmp/wesdk-add-test/package.json
+            > /tmp/ksdk-add-test/package.json
 
-      - name: Run wesdk init in add-to-existing mode
+      - name: Run ksdk init in add-to-existing mode
         run: |
-          TARBALL=$(ls "$GITHUB_WORKSPACE"/packages/workflow-engine-sdk/kaleido-io-workflow-engine-sdk-*.tgz)
-          cd /tmp/wesdk-add-test
+          TARBALL=$(ls "$GITHUB_WORKSPACE"/packages/sdk/kaleido-io-sdk-*.tgz)
+          cd /tmp/ksdk-add-test
           WESDK_REPO_URL="$GITHUB_WORKSPACE" npx "file:$TARBALL" init --template ${{ matrix.template }}
 
       - name: Verify add-to-existing result
         run: |
-          PROJECT=/tmp/wesdk-add-test
+          PROJECT=/tmp/ksdk-add-test
           echo "--- Checking src/ was copied ---"
           test -d "$PROJECT/src" && echo "src/ OK"
           echo "--- Checking root files were NOT copied ---"

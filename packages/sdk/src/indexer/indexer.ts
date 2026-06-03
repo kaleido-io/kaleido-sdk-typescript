@@ -15,8 +15,8 @@
 // limitations under the License.
 
 import { createEventProcessor, EventProcessorEvent, kidColon, newLogger, ProviderBase, ProviderConfig, RequestContext } from "@kaleido-io/workflow-engine-sdk";
-import { AssetManagerClient } from "../asset-manager";
-import { IDataModelClient } from "../bulk-upsert-builder";
+import { AssetManagerClient, IDataModelClient } from "@kaleido-io/asset-manager-sdk";
+import { loadConfig } from "../config/config.js";
 
 
 export interface IndexerConfig<CustomConfig> extends ProviderConfig<CustomConfig> {
@@ -35,6 +35,13 @@ export interface IndexerConfig<CustomConfig> extends ProviderConfig<CustomConfig
         eventSourceConfig?: any; // we user server-side validation here
     };
 
+}
+
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace IndexerConfig {
+    export function loadFromFile<T>(configFilePath?: string): IndexerConfig<T> {
+        return loadConfig<IndexerConfig<T>>(configFilePath);
+    }
 }
 
 const log = newLogger("Indexer");
@@ -104,11 +111,11 @@ export abstract class Indexer<CustomConfig, EventDataType> extends ProviderBase<
     handlerName(): string {
         return this.esConfig.handlerName || 'indexer';
     }
-    
+
     async ensureStream() {
 
         const connectorClient = this.newPlatformClient(this.getConnectorRESTEndpoint());
-        
+
         const {
             factory,
             name,

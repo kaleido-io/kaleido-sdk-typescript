@@ -14,15 +14,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IndexerConfig } from '@kaleido-io/asset-manager-sdk';
-import { formatError } from '@kaleido-io/workflow-engine-sdk';
-import yaml from 'js-yaml';
-import fs from 'fs';
+import { IndexerConfig, formatError } from '@kaleido-io/sdk';
 import { ERC20Indexer } from './erc20/indexer.js';
 import type { ERC20Config } from './config/provider-config.js';
 
-const configPath = process.env.CONFIG_FILE ?? './config/config.yaml';
-const config: IndexerConfig<ERC20Config> = yaml.load(fs.readFileSync(configPath, 'utf-8')) as any;
+const config = IndexerConfig.loadFromFile<ERC20Config>();
 const erc20Indexer = new ERC20Indexer(config);
 erc20Indexer.connect().catch((err: any) => {
   console.error(formatError(err));

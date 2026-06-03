@@ -14,11 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The provider name must match `workflow-engine.providerName` in config/wfe-config.yaml.
-export default {
-  name: 'erc20-indexer',
-  metadata: {
-    displayName: 'ERC-20 Indexer',
-    description: 'Indexes ERC-20 Transfer events into the Kaleido Asset Manager',
-  },
-};
+export * from '@kaleido-io/workflow-engine-sdk';
+export * from '@kaleido-io/asset-manager-sdk';
+export { loadConfig } from './config/config.js';
+export { Indexer, IndexerConfig } from './indexer/indexer.js';
+// Logger is exported by both packages (WFE's logger interface and core's HTTP logger).
+// Explicitly re-export WFE's Logger to resolve the ambiguity.
+export type { Logger } from '@kaleido-io/workflow-engine-sdk';

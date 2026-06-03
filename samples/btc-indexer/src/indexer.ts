@@ -22,15 +22,12 @@ import type {
   FragmentBulkInput,
   IDataModelClient,
   IndexerConfig,
-  TransferBulkInput
-} from '@kaleido-io/asset-manager-sdk';
-import { BulkUpsertBuilder, Indexer } from '@kaleido-io/asset-manager-sdk';
-import {
+  TransferBulkInput,
   EventProcessorEvent,
-  newLogger,
-  RequestContext
-} from '@kaleido-io/workflow-engine-sdk';
-import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
+  RequestContext,
+} from '@kaleido-io/sdk';
+import { BulkUpsertBuilder, Indexer, newLogger } from '@kaleido-io/sdk';
+import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/sdk/types/btc';
 import { BTCIndexerConfig } from './config.js';
 
 const log = newLogger('bitcoin-indexer');

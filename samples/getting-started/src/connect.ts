@@ -18,8 +18,8 @@ import {
   createDirectedTransactionHandler,
   NewWorkflowEngineClient,
   HandlerSetFor,
-} from "@kaleido-io/workflow-engine-sdk";
-import { AssetManagerClient } from "@kaleido-io/asset-manager-sdk";
+  AssetManagerClient,
+} from "@kaleido-io/sdk";
 import { ServiceClientOptions } from "@kaleido-io/core/http";
 import dotenv from "dotenv";
 

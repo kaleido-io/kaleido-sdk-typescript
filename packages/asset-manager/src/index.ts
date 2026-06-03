@@ -9,8 +9,3 @@ export {
   IBulkUpsertClient,
 } from "./bulk-upsert-builder.js";
 export * from "./asset-manager.interfaces.js";
-
-export {
-  Indexer,
-  IndexerConfig,
-} from './indexer/indexer';

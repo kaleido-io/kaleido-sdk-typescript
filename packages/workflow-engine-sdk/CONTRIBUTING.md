@@ -17,7 +17,7 @@ Build and pack the SDK from the repo root (so workspace packages are resolved):
 ```bash
 # From repo root
 npm run build:packages
-npm pack --workspace packages/workflow-engine-sdk
+npm pack --workspace packages/sdk
 ```
 
 #### Testing locally (before submitting a PR)
@@ -27,15 +27,15 @@ checkout so the template clone never hits GitHub and picks up your uncommitted
 changes:
 
 ```bash
-TARBALL=$(ls packages/workflow-engine-sdk/kaleido-io-workflow-engine-sdk-*.tgz)
-mkdir -p /tmp/wesdk-test && cd /tmp/wesdk-test
+TARBALL=$(ls packages/sdk/kaleido-io-sdk-*.tgz)
+mkdir -p /tmp/ksdk-test && cd /tmp/ksdk-test
 WESDK_REPO_URL="$OLDPWD" npx "file:$TARBALL" init my-provider --template getting-started
 ```
 
 #### What SDK consumers run (once published to npm)
 
 ```bash
-npx @kaleido-io/workflow-engine-sdk init my-provider --template getting-started
+npx @kaleido-io/sdk init my-provider --template getting-started
 ```
 
 The init script prompts you to choose a template when `--template` is omitted
@@ -46,7 +46,7 @@ To test add-to-existing mode, create a minimal `package.json` first and omit
 the project name:
 
 ```bash
-mkdir -p /tmp/wesdk-add && cd /tmp/wesdk-add
+mkdir -p /tmp/ksdk-add && cd /tmp/ksdk-add
 echo '{"name":"my-project","version":"1.0.0","type":"module","dependencies":{}}' > package.json
 WESDK_REPO_URL="$OLDPWD" npx "file:$TARBALL" init --template erc20-indexer
 ```

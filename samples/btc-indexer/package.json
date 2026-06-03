@@ -22,8 +22,7 @@
     "patch-provider-runtime": "tsx ./src/utils/patch-provider-runtime.ts"
   },
   "dependencies": {
-    "@kaleido-io/asset-manager-sdk": "*",
-    "@kaleido-io/workflow-engine-sdk": "*",
+    "@kaleido-io/sdk": "*",
     "dotenv": "^17.0.0",
     "js-yaml": "^4.1.1"
   },

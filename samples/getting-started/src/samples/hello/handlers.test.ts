@@ -16,7 +16,7 @@
 
 
 import { describe, it, expect } from 'vitest';
-import { EvalResult, WSEvaluateTransaction } from '@kaleido-io/workflow-engine-sdk';
+import { EvalResult, WSEvaluateTransaction } from '@kaleido-io/sdk';
 import { actionMap } from './handlers';
 
 describe('Hello handlers', () => {

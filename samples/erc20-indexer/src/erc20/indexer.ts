@@ -19,13 +19,11 @@ import {
   IDataModelClient,
   Indexer,
   IndexerConfig,
-} from '@kaleido-io/asset-manager-sdk';
-import {
   EventProcessorEvent,
   newLogger,
   RequestContext,
-} from '@kaleido-io/workflow-engine-sdk';
-import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
+} from '@kaleido-io/sdk';
+import type { EVMTransactionEvent } from '@kaleido-io/sdk/types/evm';
 import type { ERC20Config } from '../config/provider-config.js';
 
 const log = newLogger('erc20-indexer');
