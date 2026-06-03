@@ -33,7 +33,7 @@ import * as yaml from 'js-yaml';
 
 dotenv.config();
 
-const configPath = process.env.WFE_CONFIG_FILE ?? './config/wfe-config.yaml';
+const configPath = process.env.KALEIDO_CONFIG_FILE ?? process.env.WFE_CONFIG_FILE ?? './config/wfe-config.yaml';
 const raw = yaml.load(fs.readFileSync(configPath, 'utf8')) as Record<string, unknown>;
 const section = raw['workflow-engine'] as Record<string, unknown> | undefined;
 if (!section) {

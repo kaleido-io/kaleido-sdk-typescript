@@ -34,8 +34,11 @@ import {
 } from "../service/types";
 
 /**
- * Environment variable name for the workflow engine config file path.
+ * Environment variable name for the Kaleido-managed config file path (service bindings etc.).
  */
+export const KALEIDO_CONFIG_FILE = "KALEIDO_CONFIG_FILE";
+
+/** @deprecated Use KALEIDO_CONFIG_FILE */
 export const WFE_CONFIG_FILE = "WFE_CONFIG_FILE";
 
 /**
@@ -251,7 +254,7 @@ export class ConfigLoader {
 
   /**
    * Load WorkflowEngineClientConfig from a YAML file.
-   * Uses WFE_CONFIG_FILE env if configFilePath is not provided.
+   * Uses KALEIDO_CONFIG_FILE env (or WFE_CONFIG_FILE for backward compatibility) if configFilePath is not provided.
    * Only the root key "workflow-engine" is supported in the config file.
    *
    * - Outbound: use "url" and "auth"; the app connects to the workflow engine.
@@ -262,11 +265,12 @@ export class ConfigLoader {
   ): WorkflowEngineClientConfig {
     const configPath = (
       configFilePath ??
+      process.env[KALEIDO_CONFIG_FILE] ??
       process.env[WFE_CONFIG_FILE] ??
       ""
     ).trim();
     if (!configPath) {
-      throw newError(SDKErrors.MsgSDKConfigFileNotSet, WFE_CONFIG_FILE);
+      throw newError(SDKErrors.MsgSDKConfigFileNotSet, KALEIDO_CONFIG_FILE);
     }
     const raw = fs.readFileSync(configPath, "utf8");
     const parsed = yaml.load(raw) as Record<string, unknown> | undefined;
@@ -492,6 +496,7 @@ export class ConfigLoader {
   static loadServiceBindings(configFilePath?: string): ServiceBindingsMap {
     const configPath = (
       configFilePath ??
+      process.env[KALEIDO_CONFIG_FILE] ??
       process.env[WFE_CONFIG_FILE] ??
       ""
     ).trim();

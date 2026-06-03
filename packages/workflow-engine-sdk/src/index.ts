@@ -44,6 +44,7 @@ export {
 export {
   WorkflowEngineConfig,
   ConfigLoader,
+  KALEIDO_CONFIG_FILE,
   WFE_CONFIG_FILE,
 } from './config/config';
 

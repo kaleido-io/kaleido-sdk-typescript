@@ -42,6 +42,7 @@ COPY --from=builder /app/packages/workflow-engine-sdk/package.json ./packages/wo
 COPY --from=builder /app/packages/asset-manager/dist ./packages/asset-manager/dist
 COPY --from=builder /app/packages/asset-manager/package.json ./packages/asset-manager/package.json
 
+ENV KALEIDO_CONFIG_FILE=./config/wfe-config.yaml
 ENV WFE_CONFIG_FILE=./config/wfe-config.yaml
 ENV CONFIG_FILE=./config/config.yaml
 

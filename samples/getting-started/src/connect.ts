@@ -33,7 +33,7 @@ import { createActionMap as createListPoolsActionMap } from "./samples/list-pool
 
 dotenv.config();
 
-const configFile = process.env.WFE_CONFIG_FILE ?? "./config/wfe-config.yaml";
+const configFile = process.env.KALEIDO_CONFIG_FILE ?? process.env.WFE_CONFIG_FILE ?? "./config/wfe-config.yaml";
 
 const helloHandler = createDirectedTransactionHandler("hello", helloActionMap);
 const httpInvokeHandler = createDirectedTransactionHandler(

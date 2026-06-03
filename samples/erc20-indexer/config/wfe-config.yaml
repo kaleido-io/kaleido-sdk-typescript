@@ -1,9 +1,9 @@
 # Workflow Engine connection config.
-# Set WFE_CONFIG_FILE env var to point to this file (default: ./config/wfe-config.yaml).
+# Set KALEIDO_CONFIG_FILE env var to point to this file (default: ./config/wfe-config.yaml).
 #
 # providerName must match the `name` exported from src/provider.ts.
 # Workflow Engine connection config.
-# Set WFE_CONFIG_FILE env var to point to this file (default: ./config/wfe-config.yaml).
+# Set KALEIDO_CONFIG_FILE env var to point to this file (default: ./config/wfe-config.yaml).
 # providerName must match the `name` exported from src/provider.ts.
 workflow-engine:
   providerName: erc20-indexer

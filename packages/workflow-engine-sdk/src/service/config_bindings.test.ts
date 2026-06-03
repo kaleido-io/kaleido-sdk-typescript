@@ -89,14 +89,19 @@ describe('ConfigLoader.loadServiceBindings', () => {
   });
 
   it('should return empty map when no path given and env not set', () => {
-    const original = process.env.WFE_CONFIG_FILE;
+    const originalKaleido = process.env.KALEIDO_CONFIG_FILE;
+    const originalWfe = process.env.WFE_CONFIG_FILE;
+    delete process.env.KALEIDO_CONFIG_FILE;
     delete process.env.WFE_CONFIG_FILE;
     try {
       const bindings = ConfigLoader.loadServiceBindings();
       expect(Object.keys(bindings)).toHaveLength(0);
     } finally {
-      if (original !== undefined) {
-        process.env.WFE_CONFIG_FILE = original;
+      if (originalKaleido !== undefined) {
+        process.env.KALEIDO_CONFIG_FILE = originalKaleido;
+      }
+      if (originalWfe !== undefined) {
+        process.env.WFE_CONFIG_FILE = originalWfe;
       }
     }
   });

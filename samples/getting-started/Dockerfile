@@ -20,6 +20,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY config ./config
 
+ENV KALEIDO_CONFIG_FILE=./config/wfe-config.yaml
 ENV WFE_CONFIG_FILE=./config/wfe-config.yaml
 ENV CONFIG_FILE=./config/config.yaml
 

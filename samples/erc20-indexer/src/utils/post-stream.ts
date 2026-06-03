@@ -29,7 +29,7 @@ import { stream } from '../erc20/stream.js';
 dotenv.config();
 
 const config = ConfigLoader.loadClientConfigFromFile(
-  process.env.WFE_CONFIG_FILE ?? './config/wfe-config.yaml',
+  process.env.KALEIDO_CONFIG_FILE ?? process.env.WFE_CONFIG_FILE ?? './config/wfe-config.yaml',
 );
 
 const restClient = new WorkflowEngineRestClient(config);

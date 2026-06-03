@@ -56,12 +56,12 @@ export function HandlerSetFor(
 
 /**
  * Create and start a handler provider.
- * Loads WFE config from file when configFile or WFE_CONFIG_FILE is set,
+ * Loads Kaleido config from file when configFile or KALEIDO_CONFIG_FILE is set,
  * then creates the client, registers all handlers, connects, and returns the provider.
  */
 export async function NewWorkflowEngineClient(
   handlerSet: HandlerSet,
-  configFile?: string /** Path to WFE config file; if empty, process.env[WFE_CONFIG_FILE] is used. */,
+  configFile?: string /** Path to Kaleido config file; if empty, process.env[KALEIDO_CONFIG_FILE] is used. */,
 ): Promise<WorkflowEngineClient> {
   const clientConfig = ConfigLoader.loadClientConfigFromFile(configFile);
 

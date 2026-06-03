@@ -28,6 +28,7 @@ import {
   parseTimeStringToMs,
   timeStringUnitToMs,
   WorkflowEngineConfig,
+  KALEIDO_CONFIG_FILE,
   WFE_CONFIG_FILE,
 } from "./config";
 
@@ -303,11 +304,17 @@ describe("ConfigLoader", () => {
   });
 
   describe("loadClientConfigFromFile", () => {
-    const originalEnv = process.env[WFE_CONFIG_FILE];
+    const originalEnv = process.env[KALEIDO_CONFIG_FILE];
+    const originalWfeEnv = process.env[WFE_CONFIG_FILE];
 
     afterEach(() => {
       if (originalEnv !== undefined) {
-        process.env[WFE_CONFIG_FILE] = originalEnv;
+        process.env[KALEIDO_CONFIG_FILE] = originalEnv;
+      } else {
+        delete process.env[KALEIDO_CONFIG_FILE];
+      }
+      if (originalWfeEnv !== undefined) {
+        process.env[WFE_CONFIG_FILE] = originalWfeEnv;
       } else {
         delete process.env[WFE_CONFIG_FILE];
       }
@@ -456,7 +463,8 @@ describe("ConfigLoader", () => {
       }
     });
 
-    it("should throw when path is blank and WFE_CONFIG_FILE is not set", () => {
+    it("should throw when path is blank and KALEIDO_CONFIG_FILE is not set", () => {
+      delete process.env[KALEIDO_CONFIG_FILE];
       delete process.env[WFE_CONFIG_FILE];
       expect(() => ConfigLoader.loadClientConfigFromFile("")).toThrow(
         "Workflow engine config file not set",
@@ -466,8 +474,18 @@ describe("ConfigLoader", () => {
       );
     });
 
-    it("should use WFE_CONFIG_FILE when path is not provided", () => {
+    it("should use KALEIDO_CONFIG_FILE when path is not provided", () => {
       const configPath = path.join(FIXTURES_DIR, "wfe-config.yaml");
+      process.env[KALEIDO_CONFIG_FILE] = configPath;
+      delete process.env[WFE_CONFIG_FILE];
+      const clientConfig = ConfigLoader.loadClientConfigFromFile();
+      expect(clientConfig).toBeDefined();
+      expect(clientConfig.providerName).toBe("test-provider");
+    });
+
+    it("should fall back to WFE_CONFIG_FILE when KALEIDO_CONFIG_FILE is not set", () => {
+      const configPath = path.join(FIXTURES_DIR, "wfe-config.yaml");
+      delete process.env[KALEIDO_CONFIG_FILE];
       process.env[WFE_CONFIG_FILE] = configPath;
       const clientConfig = ConfigLoader.loadClientConfigFromFile();
       expect(clientConfig).toBeDefined();
