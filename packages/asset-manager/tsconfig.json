@@ -16,6 +16,6 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "mock/**/*"],
   "exclude": ["node_modules", "dist"]
 }

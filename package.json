@@ -35,6 +35,7 @@
     "test:packages": "npm test -w packages/core -w packages/asset-manager -w packages/workflow-engine-sdk",
     "test:samples": "npm test -w samples/getting-started -w samples/erc20-indexer -w samples/btc-indexer",
     "test": "npm run test:packages && npm run test:samples",
-    "lint": "npm run lint -w packages/workflow-engine-sdk"
+    "lint": "npm run lint -w packages/workflow-engine-sdk",
+    "pack:vendor": "npm run build:packages && mkdir -p vendor-out && npm pack -w packages/core --pack-destination ./vendor-out && npm pack -w packages/asset-manager --pack-destination ./vendor-out && ls -1 vendor-out/"
   }
 }

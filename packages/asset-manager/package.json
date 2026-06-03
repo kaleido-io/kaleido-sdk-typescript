@@ -8,19 +8,26 @@
   "exports": {
     ".": {
       "import": "./dist/src/index.js",
+      "require": "./dist-cjs/src/index.js",
       "types": "./dist/src/index.d.ts"
+    },
+    "./mock": {
+      "import": "./dist/mock/index.js",
+      "require": "./dist-cjs/mock/index.js",
+      "types": "./dist/mock/index.d.ts"
     }
   },
   "scripts": {
     "prebuild": "npm run clean",
-    "build": "tsc",
+    "build": "tsc && tsc -p tsconfig.cjs.json && cp cjs-package-template.json dist-cjs/package.json",
     "postbuild": "tsc-esm-fix --target='dist'",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist dist-cjs",
     "dev": "tsc --watch",
     "test": "jest --coverage"
   },
   "files": [
     "dist/**/*",
+    "dist-cjs/**/*",
     "README.md"
   ],
   "license": "Apache-2.0",
@@ -42,8 +49,13 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "roots": ["<rootDir>/src"],
-    "testMatch": ["**/?(*.)+(spec|test).ts"],
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/mock"
+    ],
+    "testMatch": [
+      "**/?(*.)+(spec|test).ts"
+    ],
     "transform": {
       "^.+\\.ts$": "ts-jest"
     },
