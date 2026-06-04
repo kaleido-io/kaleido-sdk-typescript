@@ -1,0 +1,20 @@
+# Snippet manifest for MultiSnippetProvider.
+# Copy this file to config/manifest.yaml and set CONFIG_FILE to point at it.
+# Each entry's `name` becomes the WFE handler name and must be unique within this provider.
+
+snippets:
+  - name: hello-indexer
+    path: ./snippets/hello-indexer.js
+    # connectorNameOrId is required only when stream.autoCreate is true.
+    # connectorNameOrId: my-evm-connector
+    # stream:
+    #   autoCreate: true
+    #   factory: evmTransactions
+    #   name: hello-indexer-stream
+    #   description: Hello indexer event stream
+    #   eventSourceConfig:
+    #     fromBlock: 'latest'
+    #     batchSize: 10
+    #     batchTimeout: '5s'
+    #     requiredConfirmations: 1
+    #     abi: []

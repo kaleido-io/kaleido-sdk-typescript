@@ -17,7 +17,9 @@
 export * from '@kaleido-io/workflow-engine-sdk';
 export * from '@kaleido-io/asset-manager-sdk';
 export { loadConfig } from './config/config.js';
-export { Indexer, IndexerConfig } from './indexer/indexer.js';
+export { createAssetManagerClient, Indexer, IndexerConfig, IndexerContext, IndexerSnippetDef } from './indexer/indexer.js';
+export { createSnippetIndexer } from './indexer/snippet.js';
+export { MultiSnippetProvider, SnippetEntry, SnippetManifest } from './multi-snippet-provider.js';
 // Logger is exported by both packages (WFE's logger interface and core's HTTP logger).
 // Explicitly re-export WFE's Logger to resolve the ambiguity.
 export type { Logger } from '@kaleido-io/workflow-engine-sdk';

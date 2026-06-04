@@ -1,0 +1,21 @@
+# Platform configuration for the multi-snippet provider.
+# Copy this file to config/config.yaml and fill in your values.
+# Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
+
+platform:
+  url: https://myaccount.myinstance.kaleido.io/
+  timeout: 120000
+  auth:
+    username: myuser
+    password: my-api-key
+
+providerName: kaleido-hosted-indexers
+providerMetadata:
+  displayName: Multi-Snippet Indexer Provider
+  description: Hosts multiple user-supplied indexer snippets under a single WFE connection
+
+environmentNameOrId: my-env
+
+workflowEngineNameOrId: workflow-engine
+
+assetManagerNameOrId: my-asset-manager
