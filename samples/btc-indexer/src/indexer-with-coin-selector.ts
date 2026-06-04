@@ -23,14 +23,16 @@ import type {
   IndexerConfig,
   TransferBulkInput
 } from '@kaleido-io/asset-manager-sdk';
-import { BulkUpsertBuilder, Indexer, IndexerWithTxnHandler } from '@kaleido-io/asset-manager-sdk';
+import { BulkUpsertBuilder, IndexerWithTxnHandler } from '@kaleido-io/asset-manager-sdk';
 import {
   EventProcessorEvent,
+  InvocationMode,
   newLogger,
   RequestContext
 } from '@kaleido-io/workflow-engine-sdk';
 import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
 import { BTCIndexerConfig } from './config.js';
+import { BTCCoinSelector } from './coin-selector.js';
 
 const log = newLogger('bitcoin-indexer');
 
@@ -43,7 +45,10 @@ export class BTCIndexer extends IndexerWithTxnHandler<BTCIndexerConfig, any> {
 
   constructor(config: IndexerConfig<BTCIndexerConfig>) {
     super('btc-indexer', 'btc-coin-selector', {
-      
+      'selectCoins': {
+        invocationMode: InvocationMode.BATCH,
+        batchHandler: (new BTCCoinSelector(config)).selectCoins,
+      }
     }, config);
     this.bulkQueryLimit = config.config?.bulkQueryLimit || 100;
     this.upsertTriggerCount = config.config?.upsertTriggerCount || 500;
