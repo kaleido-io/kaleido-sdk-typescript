@@ -1,0 +1,26 @@
+{
+  "name": "multi-snippet-provider",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/src/main.js",
+  "scripts": {
+    "prebuild": "npm run clean",
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "start": "node dist/src/main.js",
+    "start:dev": "tsx ./src/main.ts",
+    "validate": "node dist/src/main.js --validate",
+    "validate:dev": "tsx ./src/main.ts --validate",
+    "package:docker": "docker build --platform linux/amd64 -t multi-snippet-provider:latest .",
+    "package:podman": "podman build --platform linux/amd64 -t multi-snippet-provider:latest ."
+  },
+  "dependencies": {
+    "@kaleido-io/sdk": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.0"
+  }
+}

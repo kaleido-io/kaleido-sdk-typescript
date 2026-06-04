@@ -1,5 +1,5 @@
 {
-  "name": "{{PROVIDER_NAME}}",
+  "name": "canton-cip56-indexer",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -22,7 +22,7 @@
     "patch-provider-runtime": "tsx ./src/utils/patch-provider-runtime.ts"
   },
   "dependencies": {
-    "@kaleido-io/workflow-engine-sdk": "^0.9.6",
+    "@kaleido-io/workflow-engine-sdk": "*",
     "axios": "^1.13.0",
     "axios-retry": "^4.5.0",
     "dotenv": "^17.0.0",
