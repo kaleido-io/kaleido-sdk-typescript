@@ -1,0 +1,40 @@
+# Provider configuration for the Canton CIP-56 Indexer.
+# Copy this file to config/config.yaml and fill in your values.
+# Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
+
+platform:
+  url: https://myaccount.myinstance.kaleido.io/
+  timeout: 120000
+  auth:
+    username: myuser
+    password: my-api-key
+
+providerName: canton-cip56-indexer
+providerMetadata:
+  displayName: Canton CIP-56 Indexer
+  description: Indexes Canton CIP-56 token holding and transfer events into the Kaleido Asset Manager
+
+environmentNameOrId: my-canton-env
+
+workflowEngineNameOrId: workflow-engine
+
+assetManagerNameOrId: my-asset-manager
+
+# connectorNameOrId is the service name of the Canton connector, used as the
+# event source provider when stream.autoCreate is true.
+connectorNameOrId: my-canton-connector
+
+stream:
+  autoCreate: true
+  factory: cantonContractEvents
+  name: canton-cip56-indexer
+  description: Canton CIP-56 token holding and transfer events
+  eventSourceConfig:
+    fromOffset: 0
+    batchSize: 100
+    pollTimeout: 5s
+    parties: []
+    interfaceIds:
+      - '#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding'
+      - '#splice-api-token-transfer-instruction-v1:Splice.Api.Token.TransferInstructionV1:TransferInstruction'
+    includeCreatedEventBlob: false

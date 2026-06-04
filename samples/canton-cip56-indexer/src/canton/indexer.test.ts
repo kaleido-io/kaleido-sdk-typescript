@@ -15,31 +15,39 @@
 // limitations under the License.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { IndexerConfig } from '@kaleido-io/sdk';
+import type { CantonConfig } from '../config.js';
 import { CantonCIP56Indexer } from './indexer.js';
-import { makeEvent, makeBatch, makeResult, mockAmClient, holdingInterfaceView } from './test-helpers.js';
+import { makeEvent, wrapEvents, mockAmClient, mockReqContext, holdingInterfaceView } from './test-helpers.js';
+
+const MOCK_CONFIG: IndexerConfig<CantonConfig> = {
+  platform: { url: 'http://unused.example.com' },
+  environmentNameOrId: 'test-env',
+  assetManagerNameOrId: 'test-am',
+  handlerName: 'canton-cip56-indexer',
+  config: {},
+};
 
 describe('CantonCIP56Indexer (integration)', () => {
   let indexer: CantonCIP56Indexer;
   let am: ReturnType<typeof mockAmClient>;
 
-  beforeEach(async () => {
-    indexer = new CantonCIP56Indexer();
+  beforeEach(() => {
+    indexer = new CantonCIP56Indexer(MOCK_CONFIG);
     am = mockAmClient();
-    await indexer.setup(am);
   });
 
-  it('has correct name', () => {
-    expect(indexer.name()).toBe('canton-cip56-indexer');
+  it('has correct handler name', () => {
+    expect(indexer.handlerName()).toBe('canton-cip56-indexer');
   });
 
-  it('sets checkpoint from last event offset', async () => {
+  it('returns the input events from indexBatch', async () => {
     const event = makeEvent({
       offset: 42,
       interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '1', instrumentId: { id: 'TOK', admin: 'b::fp' } })],
     });
-    const result = makeResult();
-    await indexer.eventProcessorBatch(result, makeBatch([event]));
-    expect(result.checkpoint).toEqual({ offset: 42 });
+    const result = await indexer.indexBatch(mockReqContext, wrapEvents([event]), am);
+    expect(result.events).toHaveLength(1);
   });
 
   it('does not call bulkUpsert when no relevant events', async () => {
@@ -48,15 +56,13 @@ describe('CantonCIP56Indexer (integration)', () => {
       consuming: false,
       choice: 'SomeNonConsumingChoice',
     });
-    const result = makeResult();
-    await indexer.eventProcessorBatch(result, makeBatch([event]));
+    await indexer.indexBatch(mockReqContext, wrapEvents([event]), am);
     expect(am.bulkUpsert).not.toHaveBeenCalled();
   });
 
   it('skips events without Holding interface view and no TI data', async () => {
     const event = makeEvent({ arguments: { owner: 'alice::fp', amount: '500' } });
-    const result = makeResult();
-    await indexer.eventProcessorBatch(result, makeBatch([event]));
+    await indexer.indexBatch(mockReqContext, wrapEvents([event]), am);
     expect(am.bulkUpsert).not.toHaveBeenCalled();
   });
 
@@ -69,8 +75,7 @@ describe('CantonCIP56Indexer (integration)', () => {
         })],
       });
 
-      const result = makeResult();
-      await indexer.eventProcessorBatch(result, makeBatch([event]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([event]), am);
 
       expect(am.bulkUpsert).toHaveBeenCalledTimes(1);
       const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
@@ -95,14 +100,12 @@ describe('CantonCIP56Indexer (integration)', () => {
         }),
       ];
 
-      const result = makeResult();
-      await indexer.eventProcessorBatch(result, makeBatch(events));
+      await indexer.indexBatch(mockReqContext, wrapEvents(events), am);
 
       const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
       expect(call.fragments).toHaveLength(2);
       expect(call.pools).toHaveLength(1);
       expect(call.transfers).toHaveLength(2);
-      expect(result.checkpoint).toEqual({ offset: 11 });
     });
 
     it('create + archive in same batch produces add and subtract transfers', async () => {
@@ -114,8 +117,7 @@ describe('CantonCIP56Indexer (integration)', () => {
         makeEvent({ eventType: 'archived', contractId: 'h1', offset: 11, transactionId: 'tx-archive' }),
       ];
 
-      const result = makeResult();
-      await indexer.eventProcessorBatch(result, makeBatch(events));
+      await indexer.indexBatch(mockReqContext, wrapEvents(events), am);
 
       const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
       expect(call.fragments).toHaveLength(1);
@@ -131,15 +133,14 @@ describe('CantonCIP56Indexer (integration)', () => {
       const createEvent = makeEvent({
         interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '100', instrumentId: { admin: 'bank::fp', id: 'TOK' } })],
       });
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([createEvent]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([createEvent]), am);
 
       (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         fragments: { items: [{ name: 'contract-1', address: 'alice::fp', value: '1000000000000', labels: { issuer: 'bank::fp', instrumentId: 'TOK' } }] },
       });
 
       const archiveEvent = makeEvent({ eventType: 'archived', contractId: 'contract-1', offset: 200, transactionId: 'tx-archive' });
-      const result = makeResult();
-      await indexer.eventProcessorBatch(result, makeBatch([archiveEvent]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([archiveEvent]), am);
 
       const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[1][0];
       expect(call.fragments[0]).toMatchObject({ name: 'contract-1', labels: { spent: 'true' } });
@@ -152,7 +153,7 @@ describe('CantonCIP56Indexer (integration)', () => {
       });
 
       const archiveEvent = makeEvent({ eventType: 'archived', contractId: 'orphan-contract', offset: 400 });
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([archiveEvent]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([archiveEvent]), am);
 
       const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
       expect(call.fragments[0]).toMatchObject({ name: 'orphan-contract', address: 'recovered-owner::fp' });
@@ -161,7 +162,7 @@ describe('CantonCIP56Indexer (integration)', () => {
     it('skips archive when AM query returns nothing', async () => {
       (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ fragments: { items: [] } });
       const archiveEvent = makeEvent({ eventType: 'archived', contractId: 'truly-unknown', offset: 500 });
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([archiveEvent]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([archiveEvent]), am);
       expect(am.bulkUpsert).not.toHaveBeenCalled();
     });
 
@@ -170,14 +171,14 @@ describe('CantonCIP56Indexer (integration)', () => {
         contractId: 'to-2', entityName: 'TransferInstruction',
         arguments: { transfer: { sender: 'alice::fp1', receiver: 'bob::fp2', amount: '5.0', instrumentId: { admin: 'bank::fp3', id: 'TestInstId' } } },
       });
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([createEvent]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([createEvent]), am);
 
       (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         fragments: { items: [{ name: 'to-2', address: 'alice::fp1' }] },
       });
 
       const archiveEvent = makeEvent({ eventType: 'archived', contractId: 'to-2', offset: 200 });
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([archiveEvent]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([archiveEvent]), am);
 
       const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[1][0];
       expect(call.fragments[0]).toMatchObject({ name: 'to-2', labels: { spent: 'true' } });
@@ -190,13 +191,13 @@ describe('CantonCIP56Indexer (integration)', () => {
         contractId: 'ti-enrich', entityName: 'TransferInstruction', transactionId: 'tx-ti-create', offset: 1,
         arguments: { transfer: { sender: 'alice::fp', receiver: 'bob::fp', amount: '100', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } } },
       });
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([tiCreate]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([tiCreate]), am);
 
       const oldHolding = makeEvent({
         contractId: 'old-holding', transactionId: 'tx-old', offset: 0,
         interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '100', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } })],
       });
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([oldHolding]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([oldHolding]), am);
 
       (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         fragments: { items: [
@@ -212,7 +213,7 @@ describe('CantonCIP56Indexer (integration)', () => {
       });
       const holdingArchived = makeEvent({ eventType: 'archived', contractId: 'old-holding', transactionId: 'tx-accept', offset: 12 });
 
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([tiExercise, holdingCreated, holdingArchived]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([tiExercise, holdingCreated, holdingArchived]), am);
 
       const calls = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls;
       const enrichedCall = calls[calls.length - 1][0];
@@ -235,7 +236,7 @@ describe('CantonCIP56Indexer (integration)', () => {
         interfaceViews: [holdingInterfaceView({ owner: 'charlie::fp', amount: '50', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } })],
       });
 
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([tiExercise, holdingCreated]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([tiExercise, holdingCreated]), am);
 
       const calls = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls;
       const call = calls[calls.length - 1][0];
@@ -248,7 +249,7 @@ describe('CantonCIP56Indexer (integration)', () => {
         contractId: 'mint-holding', transactionId: 'tx-mint', offset: 5,
         interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '200', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } })],
       });
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([holdingCreated]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([holdingCreated]), am);
 
       const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
       expect(call.transfers[0]).toMatchObject({ to: 'alice::fp', labels: { type: 'holding_created' } });
@@ -260,19 +261,19 @@ describe('CantonCIP56Indexer (integration)', () => {
         contractId: 'ti-cleanup', entityName: 'TransferInstruction', transactionId: 'tx-1', offset: 1,
         arguments: { transfer: { sender: 'alice::fp', receiver: 'bob::fp', amount: '10', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } } },
       });
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([tiCreate]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([tiCreate]), am);
 
       (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         fragments: { items: [{ name: 'ti-cleanup', address: 'alice::fp' }] },
       });
       const tiArchive = makeEvent({ eventType: 'archived', contractId: 'ti-cleanup', transactionId: 'tx-2', offset: 2 });
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([tiArchive]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([tiArchive]), am);
 
       const holdingCreated = makeEvent({
         contractId: 'late-holding', transactionId: 'tx-2', offset: 3,
         interfaceViews: [holdingInterfaceView({ owner: 'bob::fp', amount: '10', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } })],
       });
-      await indexer.eventProcessorBatch(makeResult(), makeBatch([holdingCreated]));
+      await indexer.indexBatch(mockReqContext, wrapEvents([holdingCreated]), am);
 
       const calls = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls;
       const lastCall = calls[calls.length - 1][0];

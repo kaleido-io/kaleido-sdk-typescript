@@ -15,12 +15,12 @@
 // limitations under the License.
 
 import type {
-  Address,
-  Asset,
-  Fragment,
-  Pool,
-  Transfer,
-} from '../clients/asset-manager/models.js';
+  AddressBulkInput as Address,
+  AssetBulkInput as Asset,
+  FragmentBulkInput as Fragment,
+  PoolBulkInput as Pool,
+  TransferBulkInput as Transfer,
+} from '@kaleido-io/sdk';
 
 // ── Canton contract event types ─────────────────────────────────────
 

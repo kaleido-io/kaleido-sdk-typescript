@@ -14,35 +14,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { NewWorkflowEngineClient, HandlerSetFor } from '@kaleido-io/workflow-engine-sdk';
-import dotenv from 'dotenv';
+import { IndexerConfig, formatError } from '@kaleido-io/sdk';
+import { CantonCIP56Indexer } from './canton/indexer.js';
+import type { CantonConfig } from './config.js';
 
-import { loadProviderConfig } from './config/provider-config.js';
-import { AssetManagerClient } from './clients/asset-manager/client.js';
-import { cantonCip56Indexer } from './canton/indexer.js';
+const config = IndexerConfig.loadFromFile<CantonConfig>();
+const indexer = new CantonCIP56Indexer(config);
 
-dotenv.config();
-
-async function main() {
-  const providerConfig = loadProviderConfig();
-
-  const am = providerConfig.assetManager;
-  const amUrl = `https://${am.account}/endpoint/${am.environment}/${am.serviceName}/rest`;
-  const authToken = `Basic ${Buffer.from(`${am.auth.keyName}:${am.auth.keyValue}`).toString('base64')}`;
-  const amClient = new AssetManagerClient({ url: amUrl, authToken });
-
-  await cantonCip56Indexer.setup(amClient);
-
-  const client = await NewWorkflowEngineClient(
-    HandlerSetFor(cantonCip56Indexer),
-    process.env.WFE_CONFIG_FILE ?? './config/wfe-config.yaml',
-  );
-
-  process.on('SIGINT', () => client.disconnect());
-  process.on('SIGTERM', () => client.disconnect());
-}
-
-main().catch((err) => {
-  console.error('Fatal:', err);
-  process.exit(1);
+indexer.connect().catch((err: unknown) => {
+    console.error(formatError(err));
+    process.exit(1);
 });

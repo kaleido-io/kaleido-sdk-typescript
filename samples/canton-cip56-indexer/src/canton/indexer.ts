@@ -14,26 +14,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {
-  EngineAPI,
-  WSEventProcessorBatchRequest,
-  WSEventProcessorBatchResult,
-  newLogger,
-} from '@kaleido-io/workflow-engine-sdk';
-import { AssetManagerClient } from '../clients/asset-manager/client.js';
+import { Indexer, newLogger } from '@kaleido-io/sdk';
 import type {
-  Address,
-  Asset,
-  Fragment,
-  Pool,
-  Transfer,
-} from '../clients/asset-manager/models.js';
+  EventProcessorEvent,
+  IDataModelClient,
+  IndexerConfig,
+  RequestContext,
+} from '@kaleido-io/sdk';
+import type {
+  AddressBulkInput as Address,
+  AssetBulkInput as Asset,
+  FragmentBulkInput as Fragment,
+  PoolBulkInput as Pool,
+  TransferBulkInput as Transfer,
+} from '@kaleido-io/sdk';
 import type { CantonContractEvent, TransferContext, BatchContext, HoldingView } from './types.js';
 import { shortPartyName, findHoldingView, extractTransferData, isCreate, isArchive } from './helpers.js';
 import { scanCreates, scanContextAndMisses, resolveAMMisses } from './processors/batch-scanner.js';
 import { handleArchived, resolveFromEvent } from './processors/archive-processor.js';
 import { handleHoldingCreated } from './processors/holding-processor.js';
 import { handleTICreated } from './processors/ti-processor.js';
+import type { CantonConfig } from '../config.js';
+
+const log = newLogger('canton-cip56-indexer');
 
 /**
  * CIP-56 event processor for Canton contract events.
@@ -60,47 +63,39 @@ import { handleTICreated } from './processors/ti-processor.js';
  *   - On cache miss (contract created in a prior batch), the Asset Manager
  *     is queried for the existing fragment.
  */
-export class CantonCIP56Indexer {
-  private amClient: AssetManagerClient | undefined;
+export class CantonCIP56Indexer extends Indexer<CantonConfig, CantonContractEvent> {
   /** Cross-batch cache: transactionId → TransferContext from exercised TIs. */
   private txTransferContext = new Map<string, TransferContext>();
-  private log = newLogger('canton-cip56-indexer');
 
-  name(): string {
-    return 'canton-cip56-indexer';
+  constructor(config: IndexerConfig<CantonConfig>) {
+    super(config);
   }
 
-  async setup(amClient: AssetManagerClient): Promise<void> {
-    this.amClient = amClient;
+  override async setup(_config: CantonConfig, _dmClient: IDataModelClient): Promise<void> {
+    // No canton-specific setup required — platform connection is handled by
+    // the Indexer base class (AM client, WFE connection).
   }
 
-  init(_engAPI: EngineAPI): Promise<void> {
-    return Promise.resolve();
-  }
-
-  close(): void {}
-
-  async eventProcessorBatch(
-    result: WSEventProcessorBatchResult,
-    batch: WSEventProcessorBatchRequest,
-  ): Promise<void> {
-    this.log.debug(`Batch received: ${batch.events.length} events`);
+  override async indexBatch(
+    _reqContext: RequestContext,
+    events: EventProcessorEvent<CantonContractEvent>[],
+    dmClient: IDataModelClient,
+  ): Promise<{ events: EventProcessorEvent<CantonContractEvent>[] }> {
+    log.debug(`Batch received: ${events.length} events`);
 
     // ── Scan passes ───────────────────────────────────────────────
     // Pass 1: index all created contracts and TIs in this batch.
-    const { contracts, batchTI } = scanCreates(batch.events);
+    const { contracts, batchTI } = scanCreates(events);
     // Pass 2: link TI exercises to transfer context, find cache misses.
     const { txContext, archiveMisses, tiMisses, exerciseEvents, txIdsInBatch } =
-      scanContextAndMisses(batch.events, contracts, batchTI, this.txTransferContext);
+      scanContextAndMisses(events, contracts, batchTI, this.txTransferContext);
 
     // ── AM query ──────────────────────────────────────────────────
     // Resolve archive and TI misses by querying AM for stored fragments.
-    if (this.amClient) {
-      await resolveAMMisses(
-        archiveMisses, tiMisses, exerciseEvents,
-        contracts, txContext, this.txTransferContext, this.amClient,
-      );
-    }
+    await resolveAMMisses(
+      archiveMisses, tiMisses, exerciseEvents,
+      contracts, txContext, this.txTransferContext, dmClient,
+    );
 
     // ── Process: dispatch events, collect entities ────────────────
     // Initialize batch-local entity collections for the bulk upsert.
@@ -125,10 +120,10 @@ export class CantonCIP56Indexer {
     };
 
     // Dispatch each event to the appropriate handler based on event type.
-    for (const event of batch.events) {
-      const ce = event.data as CantonContractEvent;
+    for (const event of events) {
+      const ce = event.data;
 
-      this.log.debug(
+      log.debug(
         `EVENT ${ce.eventType} ${ce.entityName} offset=${ce.offset} txId=${ce.transactionId} contractId=${ce.contractId}`,
       );
 
@@ -148,7 +143,7 @@ export class CantonCIP56Indexer {
         if (info) {
           handleArchived(ce, info, ctx);
         } else {
-          this.log.warn(
+          log.warn(
             `Skipping archive — unknown owner for contractId=${ce.contractId}`,
           );
         }
@@ -181,22 +176,16 @@ export class CantonCIP56Indexer {
         }
       }
 
-      if (this.amClient) {
-        await this.amClient.bulkUpsert({
-          addresses: Array.from(addressMap.values()),
-          assets,
-          pools,
-          fragments,
-          transfers,
-        });
-        this.log.info(
-          `Upserted ${fragments.length} fragments, ${transfers.length} transfers, ${addressSet.size} addresses, ${assets.length} assets, ${pools.length} pools`,
-        );
-      } else {
-        this.log.warn(
-          `[DRY-RUN] Would upsert ${fragments.length} fragments, ${transfers.length} transfers, ${addressSet.size} addresses, ${assets.length} assets, ${pools.length} pools (no AM client)`,
-        );
-      }
+      await dmClient.bulkUpsert({
+        addresses: Array.from(addressMap.values()),
+        assets,
+        pools,
+        fragments,
+        transfers,
+      } as Parameters<typeof dmClient.bulkUpsert>[0]);
+      log.info(
+        `Upserted ${fragments.length} fragments, ${transfers.length} transfers, ${addressSet.size} addresses, ${assets.length} assets, ${pools.length} pools`,
+      );
     }
 
     // ── Evict txTransferContext for completed transactions ─────────
@@ -207,13 +196,6 @@ export class CantonCIP56Indexer {
       this.txTransferContext.delete(txId);
     }
 
-    // Advance the WFE checkpoint to the last event's offset so the
-    // stream resumes from here on restart.
-    const lastEvent = batch.events[batch.events.length - 1];
-    if (lastEvent) {
-      result.checkpoint = { offset: (lastEvent.data as CantonContractEvent).offset };
-    }
+    return { events };
   }
 }
-
-export const cantonCip56Indexer = new CantonCIP56Indexer();

@@ -17,11 +17,23 @@
 import { vi } from 'vitest';
 import type { CantonContractEvent, BatchContext, TransferContext, ContractInfo } from './types.js';
 import type {
-  WSEventProcessorBatchRequest,
-  WSEventProcessorBatchResult,
-} from '@kaleido-io/workflow-engine-sdk';
-import type { AssetManagerClient } from '../clients/asset-manager/client.js';
-import type { Address, Asset, Fragment, Pool, Transfer } from '../clients/asset-manager/models.js';
+  EventProcessorEvent,
+  IDataModelClient,
+  RequestContext,
+} from '@kaleido-io/sdk';
+import type {
+  AddressBulkInput as Address,
+  AssetBulkInput as Asset,
+  FragmentBulkInput as Fragment,
+  PoolBulkInput as Pool,
+  TransferBulkInput as Transfer,
+} from '@kaleido-io/sdk';
+
+export const mockReqContext: RequestContext = {
+  requestId: 'test-request-id',
+  signal: new AbortController().signal,
+  cancel: () => {},
+};
 
 export function holdingInterfaceView(viewValue: Record<string, unknown>) {
   return {
@@ -53,26 +65,21 @@ export function makeEvent(
   };
 }
 
-export function makeBatch(
+export function wrapEvents(
   events: CantonContractEvent[],
-): WSEventProcessorBatchRequest {
-  return {
-    events: events.map((e) => ({
-      topic: `canton.txcomplete.${e.workflowId}`,
-      data: e,
-    })),
-  } as WSEventProcessorBatchRequest;
+): EventProcessorEvent<CantonContractEvent>[] {
+  return events.map((e, i) => ({
+    idempotencyKey: `key-${i}`,
+    topic: `canton.txcomplete.${e.workflowId}`,
+    data: e,
+  }));
 }
 
-export function makeResult(): WSEventProcessorBatchResult {
-  return { checkpoint: null } as unknown as WSEventProcessorBatchResult;
-}
-
-export function mockAmClient() {
+export function mockAmClient(): IDataModelClient {
   return {
     bulkUpsert: vi.fn().mockResolvedValue({}),
     bulkQuery: vi.fn().mockResolvedValue({}),
-  } as unknown as AssetManagerClient;
+  } as unknown as IDataModelClient;
 }
 
 export function makeBatchContext(overrides?: Partial<BatchContext>): BatchContext {

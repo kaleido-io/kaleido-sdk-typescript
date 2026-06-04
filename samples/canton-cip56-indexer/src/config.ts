@@ -14,22 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { Asset, Address, Pool, Transfer, Fragment } from './models.js';
-
-/** Input payload for PUT /api/v1/bulk/datamodel */
-export type BulkUpsertInput = {
-  assets?: Asset[];
-  addresses?: Address[];
-  pools?: Pool[];
-  transfers?: Transfer[];
-  fragments?: Fragment[];
-};
-
-/** Response from PUT /api/v1/bulk/datamodel */
-export type BulkUpsertResult = {
-  assets?: Asset[];
-  addresses?: Address[];
-  pools?: Pool[];
-  transfers?: Transfer[];
-  fragments?: Fragment[];
-};
+// Canton-specific application config fields.
+// Platform connection (WFE URL, AM, auth, connector) live in the top-level
+// IndexerConfig fields; add canton-specific fields here as needed.
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface CantonConfig {}

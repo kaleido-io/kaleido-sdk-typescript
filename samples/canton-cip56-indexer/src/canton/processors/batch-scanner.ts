@@ -14,9 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { AssetManagerClient } from '../../clients/asset-manager/client.js';
-import type { BulkQueryInput, BulkQueryOutput } from '../../clients/asset-manager/bulkquery.js';
-import type { Fragment } from '../../clients/asset-manager/models.js';
+import type { IDataModelClient, BulkQueryInput, BulkQueryOutput, Fragment } from '@kaleido-io/sdk';
 import type {
   CantonContractEvent,
   ContractInfo,
@@ -194,7 +192,7 @@ export async function resolveAMMisses(
   contracts: Map<string, ContractInfo>,
   txContext: Map<string, TransferContext>,
   txTransferContext: Map<string, TransferContext>,
-  amClient: AssetManagerClient,
+  dmClient: IDataModelClient,
 ): Promise<void> {
   const allMisses = new Set([...archiveMisses, ...tiMisses]);
   if (allMisses.size === 0) return;
@@ -203,7 +201,7 @@ export async function resolveAMMisses(
   // Fragment.name stores the contractId; we look them up by name.
   const fragMap = new Map<string, Fragment>();
   await batchLookup<Fragment>(
-    amClient,
+    dmClient,
     Array.from(allMisses),
     (chunk) => ({ fragments: { limit: chunk.length, in: [{ field: 'name', values: chunk }] } }),
     (output) => output.fragments?.items ?? [],
@@ -259,7 +257,7 @@ export async function resolveAMMisses(
  * size limits while keeping the number of round-trips minimal.
  */
 async function batchLookup<T>(
-  amClient: AssetManagerClient,
+  dmClient: IDataModelClient,
   lookups: string[],
   buildQuery: (batch: string[]) => BulkQueryInput,
   extractResults: (output: BulkQueryOutput) => T[],
@@ -268,7 +266,7 @@ async function batchLookup<T>(
   const BATCH_SIZE = 100;
   for (let i = 0; i < lookups.length; i += BATCH_SIZE) {
     const chunk = lookups.slice(i, i + BATCH_SIZE);
-    const result = await amClient.bulkQuery(buildQuery(chunk));
+    const result = await dmClient.bulkQuery(buildQuery(chunk));
     handleResults(extractResults(result));
   }
 }
