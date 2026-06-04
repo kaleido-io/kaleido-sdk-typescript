@@ -26,7 +26,7 @@ export const formatError = (error: any): string => {
     if (axios.isAxiosError(error)) {
       const axiosErr = error as AxiosError;
       const data: any = axiosErr.response?.data as any;
-      const dataMessage = data.message || data.error || JSON.stringify(data);
+      const dataMessage = data?.message || data?.error || JSON.stringify(data);
       message = `${axiosErr.request?.method} ${axiosErr.request?.url} failed [${axiosErr?.status}] ${error.message}: ${dataMessage}`
     } else {
       message = error.message || (typeof error);
