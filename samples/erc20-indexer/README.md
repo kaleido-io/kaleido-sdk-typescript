@@ -146,10 +146,13 @@ npm run promote:docker # or promote:podman for Podman users, or promote:crane if
 Then, you can patch the existing provider either in the UI by editing the service settings, or by running the following commands:
 
 ```bash
-# NOTE: this will extract the platform URL and API credentials from the WFE config file,
-#       your API credentials will need privileges to patch the provider runtime if they do not already have them.
+export PLATFORM_URL=https://my-kaleido.io
+export ENV_ID=my-environment-id
+export API_KEY=my-api-key
+export API_SECRET=my-api-secret
 export RUNTIME_NAME=erc20-indexer-runtime
 export IMAGE_REPOSITORY=my-namespace/{{PROVIDER_NAME}}
+export IMAGE_TAG=v2-$(date +%Y%m%d%H%M%S)
 npm run patch-provider-runtime
 ```
 

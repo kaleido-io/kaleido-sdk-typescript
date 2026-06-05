@@ -11,7 +11,10 @@
   },
   "scripts": {
     "build": "tsup",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [
     "kaleido",
@@ -58,6 +61,8 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.0.0",
     "tsup": "^8.5.1",
-    "typescript": "^5.2.0"
-  }
+    "typescript": "^5.2.0",
+    "vitest": "^4.0.0"
+  },
+  "sideEffects": false
 }

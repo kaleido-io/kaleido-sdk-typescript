@@ -15,7 +15,9 @@
 // limitations under the License.
 
 import axios, { AxiosError } from "axios";
+import { newLogger } from "../log/logger";
 
+const log = newLogger('kaleido-sdk');
 
 export const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);
@@ -35,5 +37,9 @@ export const formatError = (error: any): string => {
       message = message + '\n' + error.stack;
     }
     return message;
+}
 
+export const fatalError = (error: unknown): never => {
+    log.error(formatError(error));
+    process.exit(1);
 }

@@ -14,14 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IndexerConfig, formatError } from '@kaleido-io/sdk';
+import { KaleidoApp, fatalError } from '@kaleido-io/sdk';
 import { CantonCIP56Indexer } from './canton/indexer.js';
-import type { CantonConfig } from './config.js';
 
-const config = IndexerConfig.loadFromFile<CantonConfig>();
-const indexer = new CantonCIP56Indexer(config);
-
-indexer.connect().catch((err: unknown) => {
-    console.error(formatError(err));
-    process.exit(1);
-});
+KaleidoApp.fromConfigFile()
+    .indexer('canton-cip56-indexer', new CantonCIP56Indexer().createHandler())
+    .start()
+    .catch(fatalError);

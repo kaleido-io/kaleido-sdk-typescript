@@ -19,8 +19,9 @@ import type { CantonContractEvent, BatchContext, TransferContext, ContractInfo }
 import type {
   EventProcessorEvent,
   IDataModelClient,
-  RequestContext,
+  IndexerContext,
 } from '@kaleido-io/sdk';
+import { AssetManagerClient } from '@kaleido-io/sdk';
 import type {
   AddressBulkInput as Address,
   AssetBulkInput as Asset,
@@ -28,12 +29,21 @@ import type {
   PoolBulkInput as Pool,
   TransferBulkInput as Transfer,
 } from '@kaleido-io/sdk';
+import type { CantonConfig } from '../config.js';
 
-export const mockReqContext: RequestContext = {
-  requestId: 'test-request-id',
-  signal: new AbortController().signal,
-  cancel: () => {},
-};
+export function mockIndexerContext(am: IDataModelClient): IndexerContext<CantonConfig> {
+  const amClient = am as unknown as AssetManagerClient;
+  return {
+    config: {},
+    providerName: 'test-provider',
+    handlerName: 'canton-cip56-indexer',
+    signal: new AbortController().signal,
+    requestId: 'test-request-id',
+    assetManagerClient: () => amClient,
+    getServiceClientOptions: vi.fn() as any,
+    get am() { return amClient; },
+  };
+}
 
 export function holdingInterfaceView(viewValue: Record<string, unknown>) {
   return {

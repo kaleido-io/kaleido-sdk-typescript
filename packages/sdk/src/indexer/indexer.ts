@@ -19,6 +19,9 @@ import { AssetManagerClient, IDataModelClient } from "@kaleido-io/asset-manager-
 import { loadConfig } from "../config/config.js";
 
 
+/**
+ * @deprecated Use {@link KaleidoApp} with {@link IndexerHandlerDef} instead.
+ */
 export interface IndexerConfig<CustomConfig> extends ProviderConfig<CustomConfig> {
 
     connectorNameOrId?: string;
@@ -46,6 +49,9 @@ export namespace IndexerConfig {
 
 const log = newLogger("Indexer");
 
+/**
+ * @deprecated Use {@link KaleidoApp} with {@link IndexerHandlerDef} instead.
+ */
 export abstract class Indexer<CustomConfig, EventDataType> extends ProviderBase<CustomConfig> {
 
     private readonly dmClient: IDataModelClient;

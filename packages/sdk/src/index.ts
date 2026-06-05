@@ -17,7 +17,15 @@
 export * from '@kaleido-io/workflow-engine-sdk';
 export * from '@kaleido-io/asset-manager-sdk';
 export { loadConfig } from './config/config.js';
+// Legacy abstract-class API (deprecated — use KaleidoApp instead)
 export { Indexer, IndexerConfig } from './indexer/indexer.js';
 // Logger is exported by both packages (WFE's logger interface and core's HTTP logger).
 // Explicitly re-export WFE's Logger to resolve the ambiguity.
 export type { Logger } from '@kaleido-io/workflow-engine-sdk';
+
+// ── New builder API ──────────────────────────────────────────────────────────
+export { KaleidoApp } from './app/kaleido-app.js';
+export type { SetupContext, IndexerContext } from './app/context.js';
+export type { IndexerHandlerDef, TransactionHandlerRegistration } from './app/types.js';
+export { ensureStream } from './stream/ensure-stream.js';
+export type { EnsureStreamOptions } from './stream/ensure-stream.js';

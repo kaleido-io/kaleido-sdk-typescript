@@ -14,11 +14,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IndexerConfig } from '@kaleido-io/sdk';
-import type { EventProcessorEvent, RequestContext } from '@kaleido-io/sdk';
+import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/sdk';
+import { AssetManagerClient } from '@kaleido-io/sdk';
 import type { BTCTransactionEvent, TxSummaryVIn, TxSummaryVOut } from '@kaleido-io/sdk/types/btc';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { BTCIndexerConfig } from './config.js';
+import type { BTCIndexerConfig } from './config.js';
 import { BTCIndexer } from './indexer.js';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -33,17 +33,21 @@ const BTC_CONFIG: BTCIndexerConfig = {
   tokenSymbol: 'BTC',
 };
 
-const MOCK_INDEXER_CONFIG: IndexerConfig<BTCIndexerConfig> = {
-    platform: { url: 'http://unused.example.com' },
-    environmentNameOrId: 'test-env', assetManagerNameOrId: 'test-am',
-    config: BTC_CONFIG,
-}
+type MockClient = { bulkUpsert: ReturnType<typeof vi.fn>; bulkQuery: ReturnType<typeof vi.fn> };
 
-const mockReqContext: RequestContext = {
-  requestId: 'test-request-id',
-  signal: new AbortController().signal,
-  cancel: () => {},
-};
+function mockIndexerContext(client: MockClient, config: BTCIndexerConfig = BTC_CONFIG): IndexerContext<BTCIndexerConfig> {
+  const amClient = client as unknown as AssetManagerClient;
+  return {
+    config,
+    providerName: 'test-provider',
+    handlerName: 'bitcoin-indexer',
+    signal: new AbortController().signal,
+    requestId: 'test-request-id',
+    assetManagerClient: () => amClient,
+    getServiceClientOptions: vi.fn() as any,
+    get am() { return amClient; },
+  };
+}
 
 function makeVIn(txid: string, vout: number): TxSummaryVIn {
   return { txid, vout, scriptSig: { hex: '' }, sequence: 0xffffffff };
@@ -81,15 +85,14 @@ function makeEvent(btcTx: BTCTransactionEvent): EventProcessorEvent<BTCTransacti
   return { idempotencyKey: btcTx.tx.txid, topic: 'btcTransactions', data: btcTx };
 }
 
-type MockClient = { bulkUpsert: ReturnType<typeof vi.fn>; bulkQuery: ReturnType<typeof vi.fn> };
-
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('BTCIndexer.setup()', () => {
   it('upserts asset, address, and pool with create_or_ignore', async () => {
     const client: MockClient = { bulkUpsert: vi.fn().mockResolvedValue({}), bulkQuery: vi.fn() };
-    const indexer = new BTCIndexer(MOCK_INDEXER_CONFIG);
-    await indexer.setup(BTC_CONFIG, client as any);
+    const ctx = mockIndexerContext(client);
+    const indexer = new BTCIndexer();
+    await indexer.setup(ctx);
 
     expect(client.bulkUpsert).toHaveBeenCalledTimes(1);
     const payload = client.bulkUpsert.mock.calls[0][0];
@@ -108,6 +111,7 @@ describe('BTCIndexer.setup()', () => {
 describe('BTCIndexer.process()', () => {
   let mockClient: MockClient;
   let indexer: BTCIndexer;
+  let ctx: IndexerContext<BTCIndexerConfig>;
 
   beforeEach(async () => {
     mockClient = {
@@ -117,13 +121,14 @@ describe('BTCIndexer.process()', () => {
         addresses: { items: [], count: 0, allItems: true },
       }),
     };
-    indexer = new BTCIndexer(MOCK_INDEXER_CONFIG);
-    await indexer.setup(BTC_CONFIG, mockClient as any);
+    ctx = mockIndexerContext(mockClient);
+    indexer = new BTCIndexer();
+    await indexer.setup(ctx);
     vi.clearAllMocks();
   });
 
   it('makes no calls for an empty batch', async () => {
-    const result = await indexer.indexBatch(mockReqContext, [], mockClient as any);
+    const result = await indexer.indexBatch(ctx, []);
     expect(mockClient.bulkUpsert).not.toHaveBeenCalled();
     expect(mockClient.bulkQuery).not.toHaveBeenCalled();
     expect(result.events).toHaveLength(0);
@@ -131,12 +136,12 @@ describe('BTCIndexer.process()', () => {
 
   it('throws on network name mismatch', async () => {
     const event = makeEvent(makeTxEvent({ network: { name: 'testnet4', net: NETWORK.net } }));
-    await expect((indexer as any).indexBatch(mockReqContext, [event], mockClient as any)).rejects.toThrow(/Network mismatch/);
+    await expect(indexer.indexBatch(ctx, [event])).rejects.toThrow(/Network mismatch/);
   });
 
   it('throws on network id mismatch', async () => {
     const event = makeEvent(makeTxEvent({ network: { name: NETWORK.name, net: 0x00000001 } }));
-    await expect((indexer as any).indexBatch(mockReqContext, [event], mockClient as any)).rejects.toThrow(/Network mismatch/);
+    await expect(indexer.indexBatch(ctx, [event])).rejects.toThrow(/Network mismatch/);
   });
 
   it('upserts input and output fragments when no wallets are involved', async () => {
@@ -146,7 +151,7 @@ describe('BTCIndexer.process()', () => {
       vout: [makeVOut(0, 50000, 'addr1')],
     }));
 
-    await (indexer as any).indexBatch(mockReqContext, [event], mockClient as any);
+    await indexer.indexBatch(ctx, [event]);
 
     // Fragment query for the spent input, address query for the output address
     expect(mockClient.bulkQuery).toHaveBeenCalledTimes(2);
@@ -190,7 +195,7 @@ describe('BTCIndexer.process()', () => {
         },
       });
 
-    await (indexer as any).indexBatch(mockReqContext, [event], mockClient as any);
+    await indexer.indexBatch(ctx, [event]);
 
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
     const { transfers } = mockClient.bulkUpsert.mock.calls[0][0];
@@ -235,7 +240,7 @@ describe('BTCIndexer.process()', () => {
         },
       });
 
-    await (indexer as any).indexBatch(mockReqContext, [event], mockClient as any);
+    await indexer.indexBatch(ctx, [event]);
 
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
     const { transfers } = mockClient.bulkUpsert.mock.calls[0][0];
@@ -280,7 +285,7 @@ describe('BTCIndexer.process()', () => {
         },
       });
 
-    await (indexer as any).indexBatch(mockReqContext, [event], mockClient as any);
+    await indexer.indexBatch(ctx, [event]);
 
     const { transfers } = mockClient.bulkUpsert.mock.calls[0][0];
 
@@ -300,18 +305,18 @@ describe('BTCIndexer.process()', () => {
       makeEvent(makeTxEvent({ txid: 'tx006', vout: [makeVOut(0, 20000, 'a2')] })),
     ];
 
-    await indexer.indexBatch(mockReqContext, events, mockClient as any);
+    await indexer.indexBatch(ctx, events);
 
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
   });
 
-  it('uses valueSat over value when both are cpresent', async () => {
+  it('uses valueSat over value when both are present', async () => {
     const event = makeEvent(makeTxEvent({
       txid: 'tx008',
       vout: [{ n: 0, valueSat: 99000, value: 0.001, scriptPubKey: { hex: '', type: 'p2pkh' } }],
     }));
 
-    await (indexer as any).indexBatch(mockReqContext, [event], mockClient as any);
+    await indexer.indexBatch(ctx, [event]);
 
     const { fragments } = mockClient.bulkUpsert.mock.calls[0][0];
     expect(fragments[0].value).toBe('99000');
@@ -323,7 +328,7 @@ describe('BTCIndexer.process()', () => {
       vout: [{ n: 0, value: 0.00123456, scriptPubKey: { hex: '', type: 'p2pkh' } }],
     }));
 
-    await (indexer as any).indexBatch(mockReqContext, [event], mockClient as any);
+    await indexer.indexBatch(ctx, [event]);
 
     const { fragments } = mockClient.bulkUpsert.mock.calls[0][0];
     expect(fragments[0].value).toBe('123456');

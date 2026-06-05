@@ -14,13 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Indexer, newLogger } from '@kaleido-io/sdk';
-import type {
-  EventProcessorEvent,
-  IDataModelClient,
-  IndexerConfig,
-  RequestContext,
-} from '@kaleido-io/sdk';
+import { newLogger } from '@kaleido-io/sdk';
+import type { EventProcessorEvent, IndexerContext, IndexerHandlerDef } from '@kaleido-io/sdk';
 import type {
   AddressBulkInput as Address,
   AssetBulkInput as Asset,
@@ -63,25 +58,17 @@ const log = newLogger('canton-cip56-indexer');
  *   - On cache miss (contract created in a prior batch), the Asset Manager
  *     is queried for the existing fragment.
  */
-export class CantonCIP56Indexer extends Indexer<CantonConfig, CantonContractEvent> {
+export class CantonCIP56Indexer {
   /** Cross-batch cache: transactionId → TransferContext from exercised TIs. */
-  private txTransferContext = new Map<string, TransferContext>();
+  private readonly txTransferContext = new Map<string, TransferContext>();
 
-  constructor(config: IndexerConfig<CantonConfig>) {
-    super(config);
-  }
-
-  override async setup(_config: CantonConfig, _dmClient: IDataModelClient): Promise<void> {
-    // No canton-specific setup required — platform connection is handled by
-    // the Indexer base class (AM client, WFE connection).
-  }
-
-  override async indexBatch(
-    _reqContext: RequestContext,
+  async indexBatch(
+    ctx: IndexerContext<CantonConfig>,
     events: EventProcessorEvent<CantonContractEvent>[],
-    dmClient: IDataModelClient,
   ): Promise<{ events: EventProcessorEvent<CantonContractEvent>[] }> {
     log.debug(`Batch received: ${events.length} events`);
+
+    const am = ctx.am;
 
     // ── Scan passes ───────────────────────────────────────────────
     // Pass 1: index all created contracts and TIs in this batch.
@@ -94,7 +81,7 @@ export class CantonCIP56Indexer extends Indexer<CantonConfig, CantonContractEven
     // Resolve archive and TI misses by querying AM for stored fragments.
     await resolveAMMisses(
       archiveMisses, tiMisses, exerciseEvents,
-      contracts, txContext, this.txTransferContext, dmClient,
+      contracts, txContext, this.txTransferContext, am,
     );
 
     // ── Process: dispatch events, collect entities ────────────────
@@ -114,7 +101,7 @@ export class CantonCIP56Indexer extends Indexer<CantonConfig, CantonContractEven
       if (!addressMap.has(key)) addressMap.set(key, addr);
     };
 
-    const ctx: BatchContext = {
+    const batchCtx: BatchContext = {
       fragmentMap, transfers, addressMap, assetMap, poolMap, addressSet,
       txContext, contracts, addAddress,
     };
@@ -131,17 +118,17 @@ export class CantonCIP56Indexer extends Indexer<CantonConfig, CantonContractEven
         // Created event: check for Holding view first, then TI data.
         const holdingIV = findHoldingView(ce);
         if (holdingIV?.viewValue) {
-          handleHoldingCreated(ce, holdingIV.viewValue as unknown as HoldingView, ctx);
+          handleHoldingCreated(ce, holdingIV.viewValue as unknown as HoldingView, batchCtx);
         } else {
           const td = extractTransferData(ce);
-          if (td) handleTICreated(ce, td, ctx);
+          if (td) handleTICreated(ce, td, batchCtx);
         }
       } else if (isArchive(ce)) {
         // Archive/exercise: look up the contract info (from batch maps,
         // AM query results, or last-resort event parsing).
         const info = contracts.get(ce.contractId) ?? resolveFromEvent(ce);
         if (info) {
-          handleArchived(ce, info, ctx);
+          handleArchived(ce, info, batchCtx);
         } else {
           log.warn(
             `Skipping archive — unknown owner for contractId=${ce.contractId}`,
@@ -176,13 +163,13 @@ export class CantonCIP56Indexer extends Indexer<CantonConfig, CantonContractEven
         }
       }
 
-      await dmClient.bulkUpsert({
+      await am.bulkUpsert({
         addresses: Array.from(addressMap.values()),
         assets,
         pools,
         fragments,
         transfers,
-      } as Parameters<typeof dmClient.bulkUpsert>[0]);
+      });
       log.info(
         `Upserted ${fragments.length} fragments, ${transfers.length} transfers, ${addressSet.size} addresses, ${assets.length} assets, ${pools.length} pools`,
       );
@@ -197,5 +184,11 @@ export class CantonCIP56Indexer extends Indexer<CantonConfig, CantonContractEven
     }
 
     return { events };
+  }
+
+  createHandler(): IndexerHandlerDef<CantonConfig, CantonContractEvent> {
+    return {
+      process: (ctx, events) => this.indexBatch(ctx, events),
+    };
   }
 }

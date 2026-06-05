@@ -14,10 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { KaleidoApp, fatalError } from '@kaleido-io/sdk';
-import { ERC20Indexer } from './erc20/indexer.js';
-
-KaleidoApp.fromConfigFile()
-    .indexer('erc20-indexer', new ERC20Indexer().createHandler())
-    .start()
-    .catch(fatalError);
+export interface ETHIndexerConfig {
+  upsertTriggerCount?: number;
+  networkName: string;
+  chainId: string;
+  tokenSymbol: string;
+  tokenName: string;
+}

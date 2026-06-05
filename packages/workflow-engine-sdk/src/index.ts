@@ -150,7 +150,8 @@ export {
 } from "./utils/patch";
 
 export {
-  formatError
+  formatError,
+  fatalError,
 } from "./utils/errors";
 
 // Logger

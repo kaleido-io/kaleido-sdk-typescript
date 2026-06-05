@@ -16,12 +16,11 @@
 
 import {
   BulkUpsertBuilder,
-  IDataModelClient,
-  Indexer,
-  IndexerConfig,
   EventProcessorEvent,
+  IndexerContext,
+  IndexerHandlerDef,
+  ensureStream,
   newLogger,
-  RequestContext,
 } from '@kaleido-io/sdk';
 import type { EVMTransactionEvent } from '@kaleido-io/sdk/types/evm';
 import type { ERC20Config } from '../config/provider-config.js';
@@ -40,46 +39,44 @@ type ERC20TransferData = { from: string; to: string; value: string };
  * Receives decoded EVM transaction batches from a WFE `evmTransactions` stream,
  * maps Transfer(address,address,uint256) events to Asset Manager data models,
  * and bulk-upserts addresses + transfers into the Asset Manager.
- *
- * Call `setup()` once before registering with the WFE client to create the
- * asset and pool definitions in the Asset Manager.
  */
-export class ERC20Indexer extends Indexer<ERC20Config, EVMTransactionEvent> {
-  private contractAddress!: string;
-  private contractName!: string;
-  private chain!: string;
-  private poolName!: string;
+export class ERC20Indexer {
+  async setup(ctx: IndexerContext<ERC20Config>): Promise<void> {
+    const { contractAddress, contractName, contractSymbol, chain, stream } = ctx.config;
+    const addr = (contractAddress ?? '').toLowerCase();
+    const name = contractName ?? 'ERC20';
+    const symbol = contractSymbol ?? name;
+    const chainLabel = chain ?? 'ethereum';
+    const poolName = name.toLowerCase();
+    const assetName = `${name.toLowerCase()}_${addr}`;
 
-  constructor(config: IndexerConfig<ERC20Config>) {
-    super(config);
-  }
-
-  /**
-   * One-time setup: register the asset and pool in Asset Manager.
-   * Must be called before the processor starts receiving batches.
-   */
-  override async setup(erc20Config: ERC20Config, dmClient: IDataModelClient): Promise<void> {
-    this.contractAddress = (erc20Config.contractAddress ?? '').toLowerCase();
-    this.contractName = erc20Config.contractName ?? 'ERC20';
-    this.chain = erc20Config.chain ?? 'ethereum';
-    this.poolName = this.contractName.toLowerCase();
-
-    const symbol = erc20Config.contractSymbol ?? this.contractName;
-    const assetName = `${this.contractName.toLowerCase()}_${this.contractAddress.toLowerCase()}`;
-
-    const builder = new BulkUpsertBuilder(dmClient);
-    builder.upsertAsset({ name: assetName, displayName: this.contractName, info: { symbol, contractAddress: this.contractAddress }, updateType: 'create_or_ignore' });
-    builder.upsertAddress({ address: this.contractAddress, contract: true, updateType: 'create_or_ignore' });
-    builder.upsertPool({ name: this.poolName, asset: assetName, address: this.contractAddress, standard: 'ERC20', displayName: `${this.contractName} on ${this.chain}`, labels: { chain: this.chain, symbol }, updateType: 'create_or_ignore' });
+    const builder = new BulkUpsertBuilder(ctx.am);
+    builder.upsertAsset({ name: assetName, displayName: name, info: { symbol, contractAddress: addr }, updateType: 'create_or_ignore' });
+    builder.upsertAddress({ address: addr, contract: true, updateType: 'create_or_ignore' });
+    builder.upsertPool({ name: poolName, asset: assetName, address: addr, standard: 'ERC20', displayName: `${name} on ${chainLabel}`, labels: { chain: chainLabel, symbol }, updateType: 'create_or_ignore' });
     await builder.execute();
+
+    if (stream) {
+      await ensureStream(ctx, {
+        connectorBindingName: stream.connectorBindingName,
+        factory: stream.factory,
+        name: stream.name,
+        description: stream.description,
+        eventSourceConfig: stream.eventSourceConfig,
+      });
+    }
   }
 
-  override async indexBatch(
-    _reqContext: RequestContext,
+  async indexBatch(
+    ctx: IndexerContext<ERC20Config>,
     events: EventProcessorEvent<EVMTransactionEvent>[],
-    dmClient: IDataModelClient,
   ): Promise<{ events: EventProcessorEvent<EVMTransactionEvent>[] }> {
-    const builder = new BulkUpsertBuilder(dmClient);
+    const { contractAddress, contractName, chain } = ctx.config;
+    const addr = (contractAddress ?? '').toLowerCase();
+    const poolName = (contractName ?? 'ERC20').toLowerCase();
+    const chainLabel = chain ?? 'ethereum';
+
+    const builder = new BulkUpsertBuilder(ctx.am);
     let highestBlock = 0;
     let transferCount = 0;
 
@@ -90,21 +87,15 @@ export class ERC20Indexer extends Indexer<ERC20Config, EVMTransactionEvent> {
       if (!tx.decodedEvents) continue;
 
       const blockNumber = parseInt(tx.block.number, 10);
-      if (blockNumber > highestBlock) {
-        highestBlock = blockNumber;
-      }
+      if (blockNumber > highestBlock) highestBlock = blockNumber;
 
       for (const decoded of tx.decodedEvents) {
-        // These are safety guards to prevent processing events that are not Transfer(address,address,uint256) events
-        // nor events for the contract address we are interested in. It could be a misconfiguration in your stream if you
-        // see this warning, but if you feel confident that your stream is configured correctly, please reach out
-        // to the Kaleido team for support.
         if (decoded.signature !== TRANSFER_SIG) {
           log.warn(`skipping event with signature ${decoded.signature} not matching ${TRANSFER_SIG}`);
           continue;
         }
-        if (decoded.address.toLowerCase() !== this.contractAddress) {
-          log.warn(`skipping event with address ${decoded.address} not matching ${this.contractAddress}`);
+        if (decoded.address.toLowerCase() !== addr) {
+          log.warn(`skipping event with address ${decoded.address} not matching ${addr}`);
           continue;
         }
 
@@ -117,8 +108,6 @@ export class ERC20Indexer extends Indexer<ERC20Config, EVMTransactionEvent> {
         if (!isBurn) builder.upsertAddress({ address: to.toLowerCase(), updateType: 'create_or_ignore' });
         builder.upsertAddress({ address: contractAddr, contract: true, updateType: 'create_or_ignore' });
 
-        // Balance deltas: subtract from sender, add to receiver.
-        // Mints/burns update a virtual "circulation" address for total supply tracking.
         const balanceChanges = [];
         if (!isMint) balanceChanges.push({ address: from, operation: 'subtract' as const, amount: String(value) });
         if (!isBurn) balanceChanges.push({ address: to, operation: 'add' as const, amount: String(value) });
@@ -133,14 +122,14 @@ export class ERC20Indexer extends Indexer<ERC20Config, EVMTransactionEvent> {
           signer: tx.receipt?.from,
           amount: String(value),
           transactionHash: tx.transactionHash,
-          parent: { type: 'pool', ref: `${contractAddr}/${this.poolName}` },
+          parent: { type: 'pool', ref: `${contractAddr}/${poolName}` },
           info: {
             blockNumber: tx.block.number,
             blockTimestamp: tx.block.timestamp,
             logIndex: decoded.logIndex,
           },
           balanceChanges,
-          labels: { chain: this.chain },
+          labels: { chain: chainLabel },
           updateType: 'create_or_replace',
         });
       }
@@ -155,5 +144,12 @@ export class ERC20Indexer extends Indexer<ERC20Config, EVMTransactionEvent> {
     await builder.execute();
 
     return { events };
+  }
+
+  createHandler(): IndexerHandlerDef<ERC20Config, EVMTransactionEvent> {
+    return {
+      setup: (ctx) => this.setup(ctx),
+      process: (ctx, events) => this.indexBatch(ctx, events),
+    };
   }
 }

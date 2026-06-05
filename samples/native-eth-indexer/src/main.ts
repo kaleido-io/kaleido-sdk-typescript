@@ -15,9 +15,9 @@
 // limitations under the License.
 
 import { KaleidoApp, fatalError } from '@kaleido-io/sdk';
-import { ERC20Indexer } from './erc20/indexer.js';
+import { ETHIndexer } from './indexer.js';
 
 KaleidoApp.fromConfigFile()
-    .indexer('erc20-indexer', new ERC20Indexer().createHandler())
+    .indexer('native-eth-indexer', new ETHIndexer().createHandler())
     .start()
     .catch(fatalError);

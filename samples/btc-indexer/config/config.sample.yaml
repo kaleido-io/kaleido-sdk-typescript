@@ -1,43 +1,41 @@
 # Provider configuration for the BTC Indexer.
-# Set CONFIG_FILE env var to point to this file (default: ./config/provider-config.yaml).
+# Copy this file to config/config.yaml and fill in your values.
+# Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
 
-platform:
-  url: https://myaccount.myinstance.kaleido.io/
-  timeout: 120000
+workflow-engine:
+  providerName: bitcoin-indexer
+  providerMetadata:
+    displayName: BTC Indexer
+    description: Indexes BTC Transfer events into the Kaleido Asset Manager
+  url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-bitcoin-env/s:workflow-engine/rest
   auth:
+    type: basic
     username: myuser
     password: my-api-key
 
-providerName: bitcoin-indexer
-providerMetadata:
-  displayName: BTC Indexer
-  description: Indexes BTC Transfer events into the Kaleido Asset Manager
+service-bindings:
+  asset-manager:
+    type: asset-manager
+    bindingType: non-hosted
+    url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-bitcoin-env/s:my-asset-manager/rest
+    auth:
+      type: basic
+      username: myuser
+      password: my-api-key
+  btc-connector:
+    type: btc-connector
+    bindingType: non-hosted
+    url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-bitcoin-env/s:my-bitcoin-connector/rest
+    auth:
+      type: basic
+      username: myuser
+      password: my-api-key
 
-environmentNameOrId: my-bitcoin-env
-
-assetManagerNameOrId: my-asset-manager
-
-connectorNameOrId: my-bitcoin-connector
-
-workflowEngineNameOrId: workflow-engine
-
-# BTC contract to index
+# BTC network to index
 config:
-  bulkQueryLimit: 100 # when retrieving fragments/addresses to build a picture of spends to inform the update
-  upsertTriggerCount: 100 # the amount of individual objects to trigger an upsert
+  bulkQueryLimit: 100     # max fragments/addresses per AM query when resolving inputs
+  upsertTriggerCount: 100 # flush after this many pending objects
   networkName: testnet4
   networkId: 0x283f161c
   tokenSymbol: tBTC
   tokenName: testnet4-btc
-
-stream:
-  autoCreate: true
-  factory: transactionEvents
-  name: btc-indexer
-  eventSourceConfig:
-    unfiltered: true
-    fromBlock: '0'
-    batchSize: 5 # the number of transactions to collect from the blockchain
-    batchTimeout: '10s'
-    pollTimeout: '30s'
-    requiredConfirmations: 5

@@ -14,9 +14,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+export interface ERC20StreamConfig {
+  connectorBindingName: string;
+  factory: string;
+  name: string;
+  description?: string;
+  eventSourceConfig: unknown;
+}
+
 export interface ERC20Config {
-  contractAddress: string;
-  contractName: string;
-  contractSymbol: string;
-  chain: string;
+  contractAddress?: string;
+  contractName?: string;
+  contractSymbol?: string;
+  chain?: string;
+  stream?: ERC20StreamConfig;
 }

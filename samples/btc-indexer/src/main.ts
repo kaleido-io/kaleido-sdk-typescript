@@ -14,13 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IndexerConfig, formatError } from "@kaleido-io/sdk";
-import { BTCIndexer } from "./indexer.js";
-import { BTCIndexerConfig } from "./config.js";
+import { KaleidoApp, fatalError } from '@kaleido-io/sdk';
+import { BTCIndexer } from './indexer.js';
 
-const config = IndexerConfig.loadFromFile<BTCIndexerConfig>();
-const bitcoinIndexer = new BTCIndexer(config);
-bitcoinIndexer.connect().catch((err: any) => {
-    console.error(formatError(err));
-    process.exit(1);
-});
+KaleidoApp.fromConfigFile()
+    .indexer('bitcoin-indexer', new BTCIndexer().createHandler())
+    .start()
+    .catch(fatalError);

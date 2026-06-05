@@ -52,8 +52,12 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "roots": ["<rootDir>/src"],
-    "testMatch": ["**/?(*.)+(spec|test).ts"],
+    "roots": [
+      "<rootDir>/src"
+    ],
+    "testMatch": [
+      "**/?(*.)+(spec|test).ts"
+    ],
     "transform": {
       "^.+\\.ts$": "ts-jest"
     },
@@ -65,5 +69,6 @@
   },
   "engines": {
     "node": ">=20"
-  }
+  },
+  "sideEffects": false
 }

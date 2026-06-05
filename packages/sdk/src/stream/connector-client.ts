@@ -14,10 +14,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { KaleidoApp, fatalError } from '@kaleido-io/sdk';
-import { ERC20Indexer } from './erc20/indexer.js';
+import { ServiceClient, ServiceClientOptions, createServiceTransport } from '@kaleido-io/workflow-engine-sdk';
 
-KaleidoApp.fromConfigFile()
-    .indexer('erc20-indexer', new ERC20Indexer().createHandler())
-    .start()
-    .catch(fatalError);
+/**
+ * Minimal concrete HTTP/WS-proxy client used by ensureStream to call connector REST APIs.
+ * Not part of the public SDK surface — instantiated internally by ensureStream.
+ */
+export class ConnectorClient extends ServiceClient {
+  constructor(options: ServiceClientOptions) {
+    super(createServiceTransport(options));
+  }
+
+  putStream<T = unknown>(path: string, body: unknown): Promise<T> {
+    return this.put<T>(path, body);
+  }
+}
