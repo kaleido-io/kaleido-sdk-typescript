@@ -291,7 +291,7 @@ export class BulkUpsertBuilder {
       await Promise.all(this.finalizers.map((f) => Promise.resolve(f())));
     }
     
-    // Reset the count
+    this.updates = {};
     this.count = 0;
   }
   
