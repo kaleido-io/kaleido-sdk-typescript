@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "main": "dist/src/connect.js",
+  "main": "dist/src/main.js",
   "scripts": {
     "prebuild": "npm run clean",
     "build": "tsc",

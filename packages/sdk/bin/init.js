@@ -22,7 +22,7 @@ import { spawnSync } from 'child_process';
 import { tmpdir } from 'os';
 
 const GITHUB_REPO = process.env.WESDK_REPO_URL ?? 'https://github.com/kaleido-io/kaleido-sdk-typescript.git';
-const AVAILABLE_TEMPLATES = ['getting-started', 'erc20-indexer', 'btc-indexer'];
+const AVAILABLE_TEMPLATES = ['getting-started', 'erc20-indexer', 'btc-indexer', 'native-eth-indexer'];
 const projectNameRegex = /^(?:@[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*|[a-z0-9][a-z0-9-]*)$/;
 
 const __filename = fileURLToPath(import.meta.url);
