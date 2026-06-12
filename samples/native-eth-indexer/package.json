@@ -15,7 +15,8 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@kaleido-io/sdk": "*",
+    "@kaleido-io/workflow-engine-sdk": "*",
+    "@kaleido-io/asset-manager-sdk": "*",
     "js-yaml": "^4.1.1"
   },
   "devDependencies": {

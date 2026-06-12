@@ -14,10 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { KaleidoApp, fatalError } from '@kaleido-io/sdk';
+import { WorkflowEngineClient, fatalError } from '@kaleido-io/workflow-engine-sdk';
 import { BTCIndexer } from './indexer.js';
 
-KaleidoApp.fromConfigFile()
-    .indexer('bitcoin-indexer', new BTCIndexer().createHandler())
+WorkflowEngineClient.fromConfigFile()
+    .indexer('bitcoin-indexer', new BTCIndexer())
     .start()
     .catch(fatalError);

@@ -19,6 +19,7 @@ import { scanCreates, scanContextAndMisses } from './batch-scanner.js';
 import type { TransferContext } from '../types.js';
 import { makeEvent, holdingInterfaceView } from '../test-helpers.js';
 
+
 function wrapEvents(events: ReturnType<typeof makeEvent>[]) {
   return events.map((e) => ({ data: e }));
 }

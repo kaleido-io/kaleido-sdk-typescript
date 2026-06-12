@@ -4,6 +4,8 @@ import {
   ServiceClientOptions,
   createServiceTransport,
 } from "@kaleido-io/core/http";
+import { resolveServiceBinding } from "@kaleido-io/core";
+import { BulkUpsertBuilder, type BulkUpsertBuilderOptions } from "./bulk-upsert-builder.js";
 import {
   Activity,
   ActivityEvent,
@@ -56,27 +58,51 @@ import {
   TransferInput,
   UpsertManyResult,
 } from "./asset-manager.interfaces";
-import { newLogger } from "@kaleido-io/workflow-engine-sdk";
+import { newLogger, type SetupContext } from "@kaleido-io/workflow-engine-sdk";
 
 const log = newLogger("AssetManagerClient");
 
 /**
  * Typed client for the Asset Manager REST API.
  *
- * Extends ServiceClient — the transport-agnostic base from the SDK.
- * The actual transport (direct HTTP vs WS proxy) is determined at
- * construction time by the ServiceClientOptions discriminator.
+ * Constructor overloads — pick the form that fits your context:
  *
- * Usage:
- *   const options = client.getServiceClientOptions('asset-manager');
- *   const am = new AssetManagerClient(options);
- *   await am.bulkUpsert({ assets: [{ name: 'my-asset', ... }] });
+ *   // From a handler context (resolves binding via WFE client):
+ *   const am = new AssetManagerClient(ctx);
+ *   const am = new AssetManagerClient(ctx, 'asset-manager-2');
+ *
+ *   // From a binding name (resolves directly from config file):
+ *   const am = new AssetManagerClient('asset-manager');
+ *
+ *   // From explicit options (existing / low-level usage):
+ *   const am = new AssetManagerClient(client.getServiceClientOptions('asset-manager'));
  */
 const API_VERSION = "";
 
+function resolveOptions(
+  ctxOrOptsOrName: SetupContext | ServiceClientOptions | string,
+  bindingName?: string,
+): ServiceClientOptions {
+  if (typeof ctxOrOptsOrName === 'string') {
+    return resolveServiceBinding(ctxOrOptsOrName);
+  }
+  if ('getServiceClientOptions' in ctxOrOptsOrName) {
+    return ctxOrOptsOrName.getServiceClientOptions(bindingName ?? 'asset-manager');
+  }
+  return ctxOrOptsOrName;
+}
+
 export class AssetManagerClient extends ServiceClient {
-  constructor(options: ServiceClientOptions) {
-    super(createServiceTransport(options));
+  constructor(ctxOrOptsOrName: SetupContext | ServiceClientOptions | string, bindingName?: string) {
+    super(createServiceTransport(resolveOptions(ctxOrOptsOrName, bindingName)));
+  }
+
+  /**
+   * Create a new BulkUpsertBuilder pre-wired to this client.
+   * Each process batch should call this to get a fresh builder with no accumulated state.
+   */
+  getNewBulkUpsertBuilder(options?: BulkUpsertBuilderOptions): BulkUpsertBuilder {
+    return new BulkUpsertBuilder(this, options);
   }
 
   // Status

@@ -14,10 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { KaleidoApp, fatalError } from '@kaleido-io/sdk';
+import { WorkflowEngineClient, fatalError } from '@kaleido-io/workflow-engine-sdk';
 import { CantonCIP56Indexer } from './canton/indexer.js';
 
-KaleidoApp.fromConfigFile()
-    .indexer('canton-cip56-indexer', new CantonCIP56Indexer().createHandler())
+WorkflowEngineClient.fromConfigFile()
+    .indexer('canton-cip56-indexer', new CantonCIP56Indexer())
     .start()
     .catch(fatalError);

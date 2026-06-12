@@ -19,6 +19,7 @@ import { handleHoldingCreated } from './holding-processor.js';
 import type { HoldingView } from '../types.js';
 import { makeEvent, makeBatchContext } from '../test-helpers.js';
 
+
 describe('handleHoldingCreated', () => {
   it('creates fragment, addresses, asset, pool, and balance-add transfer', () => {
     const ce = makeEvent({ contractId: 'c1', transactionId: 'tx-1' });

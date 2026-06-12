@@ -21,7 +21,8 @@
     "patch-provider-runtime": "curl -s -f -X PUT \"${PLATFORM_URL}/api/v1/environments/${ENV_ID}/runtimes/${RUNTIME_NAME}\" -u \"${API_KEY}:${API_SECRET}\" -H 'Content-Type: application/json' -d '{\"name\":\"'\"${RUNTIME_NAME}\"'\",\"type\":\"ProviderRuntime\",\"image\":{\"repository\":\"'\"${IMAGE_REPOSITORY}\"'\",\"tag\":\"'\"${IMAGE_TAG:-latest}\"'\"}}'"
   },
   "dependencies": {
-    "@kaleido-io/sdk": "*"
+    "@kaleido-io/workflow-engine-sdk": "*",
+    "@kaleido-io/asset-manager-sdk": "*"
   },
   "devDependencies": {
     "@types/node": "^25.5.2",

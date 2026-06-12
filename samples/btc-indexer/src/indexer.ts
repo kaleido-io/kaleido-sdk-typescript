@@ -15,6 +15,13 @@
 // limitations under the License.
 
 import type {
+  EventProcessorEvent,
+  IndexerContext,
+
+  SetupContext,
+} from '@kaleido-io/workflow-engine-sdk';
+import { newLogger } from '@kaleido-io/workflow-engine-sdk';
+import type {
   Address,
   BulkQueryInput,
   BulkQueryOutput,
@@ -22,12 +29,9 @@ import type {
   FragmentBulkInput,
   IDataModelClient,
   TransferBulkInput,
-  EventProcessorEvent,
-  IndexerContext,
-  IndexerHandlerDef,
-} from '@kaleido-io/sdk';
-import { BulkUpsertBuilder, newLogger } from '@kaleido-io/sdk';
-import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/sdk/types/btc';
+} from '@kaleido-io/asset-manager-sdk';
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
 import type { BTCIndexerConfig } from './config.js';
 
 const log = newLogger('bitcoin-indexer');
@@ -39,7 +43,7 @@ export class BTCIndexer {
   private upsertTriggerCount: number = 500;
   private bulkQueryLimit: number = 100;
 
-  async setup(ctx: IndexerContext<BTCIndexerConfig>): Promise<void> {
+  async setup(ctx: SetupContext<BTCIndexerConfig>): Promise<void> {
     const bitcoinConfig = ctx.config;
     this.networkId = Number(bitcoinConfig.networkId);
     this.networkName = bitcoinConfig.networkName;
@@ -49,7 +53,7 @@ export class BTCIndexer {
 
     const symbol = bitcoinConfig.tokenSymbol ?? this.tokenName;
 
-    const builder = new BulkUpsertBuilder(ctx.am);
+    const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder();
     builder.upsertAsset({ name: this.tokenName, displayName: this.tokenName, info: { symbol }, updateType: 'create_or_ignore' });
     builder.upsertAddress({ address: this.tokenName, contract: true, updateType: 'create_or_ignore' });
     builder.upsertPool({
@@ -86,8 +90,8 @@ export class BTCIndexer {
       return { events };
     }
 
-    const am = ctx.am;
-    const builder = new BulkUpsertBuilder(am).autoFlush(this.upsertTriggerCount);
+    const am = new AssetManagerClient(ctx);
+    const builder = am.getNewBulkUpsertBuilder().autoFlush(this.upsertTriggerCount);
     const startTime = Date.now();
     log.info(`Received batch of ${events.length} events`);
 
@@ -249,12 +253,6 @@ export class BTCIndexer {
     return { events };
   }
 
-  createHandler(): IndexerHandlerDef<BTCIndexerConfig, BTCTransactionEvent> {
-    return {
-      setup: (ctx) => this.setup(ctx),
-      process: (ctx, events) => this.indexBatch(ctx, events),
-    };
-  }
 }
 
 function satoshiValue(utxo: TxSummaryVOut): string | undefined {

@@ -19,6 +19,7 @@ import { handleTICreated } from './ti-processor.js';
 import type { TransferData } from '../types.js';
 import { makeEvent, makeBatchContext } from '../test-helpers.js';
 
+
 describe('handleTICreated', () => {
   it('creates fragment with sender, receiver, and amount labels', () => {
     const ce = makeEvent({ contractId: 'ti-1' });

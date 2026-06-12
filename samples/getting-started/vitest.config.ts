@@ -30,7 +30,7 @@ export default defineConfig({
         '**/*.config.ts',
         '**/flow.yaml',
       ],
-      include: ['src/**/*.ts'],
+      include: ['**/*.ts'],
       thresholds: {
         lines: 80,
         functions: 80,

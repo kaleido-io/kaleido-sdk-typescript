@@ -15,10 +15,15 @@
 // limitations under the License.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { IndexerContext } from '@kaleido-io/sdk';
+import type { IndexerContext } from '@kaleido-io/workflow-engine-sdk';
 import type { CantonConfig } from '../config.js';
 import { CantonCIP56Indexer } from './indexer.js';
 import { makeEvent, wrapEvents, mockAmClient, mockIndexerContext, holdingInterfaceView } from './test-helpers.js';
+
+vi.mock('@kaleido-io/asset-manager-sdk', async (importOriginal) => {
+  const real = await importOriginal();
+  return { ...real, AssetManagerClient: vi.fn() };
+});
 
 describe('CantonCIP56Indexer (integration)', () => {
   let indexer: CantonCIP56Indexer;

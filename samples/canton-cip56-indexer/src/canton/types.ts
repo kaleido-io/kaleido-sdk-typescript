@@ -20,7 +20,7 @@ import type {
   FragmentBulkInput as Fragment,
   PoolBulkInput as Pool,
   TransferBulkInput as Transfer,
-} from '@kaleido-io/sdk';
+} from '@kaleido-io/asset-manager-sdk';
 
 // ── Canton contract event types ─────────────────────────────────────
 

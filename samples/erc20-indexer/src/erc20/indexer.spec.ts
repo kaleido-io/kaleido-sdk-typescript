@@ -15,12 +15,17 @@
 // limitations under the License.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { IDataModelClient } from '@kaleido-io/sdk';
-import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/sdk';
-import { AssetManagerClient } from '@kaleido-io/sdk';
-import type { EVMTransactionEvent } from '@kaleido-io/sdk/types/evm';
+import type { IDataModelClient } from '@kaleido-io/asset-manager-sdk';
+import { AssetManagerClient, BulkUpsertBuilder } from '@kaleido-io/asset-manager-sdk';
+import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/workflow-engine-sdk';
+import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
 import { ERC20Indexer } from './indexer.js';
 import type { ERC20Config } from '../config/provider-config.js';
+
+vi.mock('@kaleido-io/asset-manager-sdk', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@kaleido-io/asset-manager-sdk')>();
+  return { ...real, AssetManagerClient: vi.fn() };
+});
 
 // ─── Shared fixtures ─────────────────────────────────────────────────────────
 
@@ -40,16 +45,18 @@ type MockFn = ReturnType<typeof vi.fn>;
 type MockClient = { bulkUpsert: MockFn; bulkQuery: MockFn };
 
 function mockIndexerContext(am: IDataModelClient, config: ERC20Config = ERC20_CONFIG): IndexerContext<ERC20Config> {
-  const amClient = am as unknown as AssetManagerClient;
+  const amWithBuilder = {
+    ...am,
+    getNewBulkUpsertBuilder: (opts?: unknown) => new BulkUpsertBuilder(am, opts as never),
+  };
+  vi.mocked(AssetManagerClient).mockImplementation(function() { return amWithBuilder as unknown as AssetManagerClient; } as never);
   return {
     config,
     providerName: 'test-provider',
     handlerName: 'erc20-indexer',
     signal: new AbortController().signal,
     requestId: 'test-request-id',
-    assetManagerClient: () => amClient,
-    getServiceClientOptions: vi.fn() as any,
-    get am() { return amClient; },
+    getServiceClientOptions: vi.fn(),
   };
 }
 

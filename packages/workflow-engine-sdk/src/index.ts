@@ -162,3 +162,10 @@ export * from "./i18n/errors";
 export type { HandlerBindingTarget } from "./types/flows";
 
 export { HandlerRuntimeMode } from "./runtime/handler_runtime";
+
+// ── Builder API ───────────────────────────────────────────────────────────────
+
+export type { SetupContext, IndexerContext } from './app/context';
+export type { IndexerHandlerDef, TransactionHandlerRegistration } from './app/types';
+export { ensureStream } from './stream/ensure-stream';
+export type { EnsureStreamOptions } from './stream/ensure-stream';

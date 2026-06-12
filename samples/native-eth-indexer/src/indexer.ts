@@ -17,11 +17,13 @@
 import type {
   EventProcessorEvent,
   IndexerContext,
-  IndexerHandlerDef,
-  TransferBulkInput,
-} from '@kaleido-io/sdk';
-import { BulkUpsertBuilder, newLogger } from '@kaleido-io/sdk';
-import type { EVMTransactionEvent } from '@kaleido-io/sdk/types/evm';
+
+  SetupContext,
+} from '@kaleido-io/workflow-engine-sdk';
+import { newLogger } from '@kaleido-io/workflow-engine-sdk';
+import type { TransferBulkInput } from '@kaleido-io/asset-manager-sdk';
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
 import type { ETHIndexerConfig } from './config.js';
 
 const log = newLogger('native-eth-indexer');
@@ -32,7 +34,7 @@ export class ETHIndexer {
   private networkName!: string;
   private upsertTriggerCount: number = 500;
 
-  async setup(ctx: IndexerContext<ETHIndexerConfig>): Promise<void> {
+  async setup(ctx: SetupContext<ETHIndexerConfig>): Promise<void> {
     const ethConfig = ctx.config;
     this.networkName = ethConfig.networkName;
     this.chainId = Number(ethConfig.chainId);
@@ -41,7 +43,7 @@ export class ETHIndexer {
 
     const symbol = ethConfig.tokenSymbol ?? this.tokenName;
 
-    const builder = new BulkUpsertBuilder(ctx.am);
+    const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder();
     builder.upsertAsset({ name: this.tokenName, displayName: this.tokenName, info: { symbol }, updateType: 'create_or_ignore' });
     builder.upsertAddress({ address: this.tokenName, contract: true, updateType: 'create_or_ignore' });
     builder.upsertPool({
@@ -64,7 +66,7 @@ export class ETHIndexer {
       return { events };
     }
 
-    const builder = new BulkUpsertBuilder(ctx.am).autoFlush(this.upsertTriggerCount);
+    const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder().autoFlush(this.upsertTriggerCount);
     const startTime = Date.now();
     log.info(`Received batch of ${events.length} events`);
 
@@ -113,10 +115,4 @@ export class ETHIndexer {
     return { events };
   }
 
-  createHandler(): IndexerHandlerDef<ETHIndexerConfig, EVMTransactionEvent> {
-    return {
-      setup: (ctx) => this.setup(ctx),
-      process: (ctx, events) => this.indexBatch(ctx, events),
-    };
-  }
 }

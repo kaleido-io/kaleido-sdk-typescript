@@ -14,12 +14,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/sdk';
-import { AssetManagerClient } from '@kaleido-io/sdk';
-import type { BTCTransactionEvent, TxSummaryVIn, TxSummaryVOut } from '@kaleido-io/sdk/types/btc';
+import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/workflow-engine-sdk';
+import { AssetManagerClient, BulkUpsertBuilder } from '@kaleido-io/asset-manager-sdk';
+import type { IDataModelClient } from '@kaleido-io/asset-manager-sdk';
+import type { BTCTransactionEvent, TxSummaryVIn, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BTCIndexerConfig } from './config.js';
 import { BTCIndexer } from './indexer.js';
+
+vi.mock('@kaleido-io/asset-manager-sdk', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@kaleido-io/asset-manager-sdk')>();
+  return { ...real, AssetManagerClient: vi.fn() };
+});
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -36,16 +42,18 @@ const BTC_CONFIG: BTCIndexerConfig = {
 type MockClient = { bulkUpsert: ReturnType<typeof vi.fn>; bulkQuery: ReturnType<typeof vi.fn> };
 
 function mockIndexerContext(client: MockClient, config: BTCIndexerConfig = BTC_CONFIG): IndexerContext<BTCIndexerConfig> {
-  const amClient = client as unknown as AssetManagerClient;
+  const amWithBuilder = {
+    ...client,
+    getNewBulkUpsertBuilder: (opts?: unknown) => new BulkUpsertBuilder(client as unknown as IDataModelClient, opts as never),
+  };
+  vi.mocked(AssetManagerClient).mockImplementation(function() { return amWithBuilder as unknown as AssetManagerClient; } as never);
   return {
     config,
     providerName: 'test-provider',
     handlerName: 'bitcoin-indexer',
     signal: new AbortController().signal,
     requestId: 'test-request-id',
-    assetManagerClient: () => amClient,
-    getServiceClientOptions: vi.fn() as any,
-    get am() { return amClient; },
+    getServiceClientOptions: vi.fn(),
   };
 }
 

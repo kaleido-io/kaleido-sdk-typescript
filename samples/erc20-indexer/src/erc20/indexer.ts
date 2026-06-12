@@ -14,15 +14,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {
-  BulkUpsertBuilder,
+import type {
   EventProcessorEvent,
   IndexerContext,
-  IndexerHandlerDef,
-  ensureStream,
-  newLogger,
-} from '@kaleido-io/sdk';
-import type { EVMTransactionEvent } from '@kaleido-io/sdk/types/evm';
+
+  SetupContext,
+} from '@kaleido-io/workflow-engine-sdk';
+import { ensureStream, newLogger } from '@kaleido-io/workflow-engine-sdk';
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
 import type { ERC20Config } from '../config/provider-config.js';
 
 const log = newLogger('erc20-indexer');
@@ -41,7 +41,7 @@ type ERC20TransferData = { from: string; to: string; value: string };
  * and bulk-upserts addresses + transfers into the Asset Manager.
  */
 export class ERC20Indexer {
-  async setup(ctx: IndexerContext<ERC20Config>): Promise<void> {
+  async setup(ctx: SetupContext<ERC20Config>): Promise<void> {
     const { contractAddress, contractName, contractSymbol, chain, stream } = ctx.config;
     const addr = (contractAddress ?? '').toLowerCase();
     const name = contractName ?? 'ERC20';
@@ -50,7 +50,7 @@ export class ERC20Indexer {
     const poolName = name.toLowerCase();
     const assetName = `${name.toLowerCase()}_${addr}`;
 
-    const builder = new BulkUpsertBuilder(ctx.am);
+    const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder();
     builder.upsertAsset({ name: assetName, displayName: name, info: { symbol, contractAddress: addr }, updateType: 'create_or_ignore' });
     builder.upsertAddress({ address: addr, contract: true, updateType: 'create_or_ignore' });
     builder.upsertPool({ name: poolName, asset: assetName, address: addr, standard: 'ERC20', displayName: `${name} on ${chainLabel}`, labels: { chain: chainLabel, symbol }, updateType: 'create_or_ignore' });
@@ -76,7 +76,7 @@ export class ERC20Indexer {
     const poolName = (contractName ?? 'ERC20').toLowerCase();
     const chainLabel = chain ?? 'ethereum';
 
-    const builder = new BulkUpsertBuilder(ctx.am);
+    const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder();
     let highestBlock = 0;
     let transferCount = 0;
 
@@ -146,10 +146,4 @@ export class ERC20Indexer {
     return { events };
   }
 
-  createHandler(): IndexerHandlerDef<ERC20Config, EVMTransactionEvent> {
-    return {
-      setup: (ctx) => this.setup(ctx),
-      process: (ctx, events) => this.indexBatch(ctx, events),
-    };
-  }
 }

@@ -14,10 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { KaleidoApp, fatalError } from '@kaleido-io/sdk';
+import { WorkflowEngineClient, fatalError } from '@kaleido-io/workflow-engine-sdk';
 import { ETHIndexer } from './indexer.js';
 
-KaleidoApp.fromConfigFile()
-    .indexer('native-eth-indexer', new ETHIndexer().createHandler())
+WorkflowEngineClient.fromConfigFile()
+    .indexer('native-eth-indexer', new ETHIndexer())
     .start()
     .catch(fatalError);

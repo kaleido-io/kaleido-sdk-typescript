@@ -14,15 +14,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { newLogger } from '@kaleido-io/sdk';
-import type { EventProcessorEvent, IndexerContext, IndexerHandlerDef } from '@kaleido-io/sdk';
+import { newLogger } from '@kaleido-io/workflow-engine-sdk';
+import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/workflow-engine-sdk';
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
 import type {
   AddressBulkInput as Address,
   AssetBulkInput as Asset,
   FragmentBulkInput as Fragment,
   PoolBulkInput as Pool,
   TransferBulkInput as Transfer,
-} from '@kaleido-io/sdk';
+} from '@kaleido-io/asset-manager-sdk';
 import type { CantonContractEvent, TransferContext, BatchContext, HoldingView } from './types.js';
 import { shortPartyName, findHoldingView, extractTransferData, isCreate, isArchive } from './helpers.js';
 import { scanCreates, scanContextAndMisses, resolveAMMisses } from './processors/batch-scanner.js';
@@ -68,7 +69,7 @@ export class CantonCIP56Indexer {
   ): Promise<{ events: EventProcessorEvent<CantonContractEvent>[] }> {
     log.debug(`Batch received: ${events.length} events`);
 
-    const am = ctx.am;
+    const am = new AssetManagerClient(ctx);
 
     // ── Scan passes ───────────────────────────────────────────────
     // Pass 1: index all created contracts and TIs in this batch.
@@ -186,9 +187,4 @@ export class CantonCIP56Indexer {
     return { events };
   }
 
-  createHandler(): IndexerHandlerDef<CantonConfig, CantonContractEvent> {
-    return {
-      process: (ctx, events) => this.indexBatch(ctx, events),
-    };
-  }
 }

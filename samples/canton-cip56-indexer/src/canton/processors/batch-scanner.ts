@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { IDataModelClient, BulkQueryInput, BulkQueryOutput, Fragment } from '@kaleido-io/sdk';
+import type { IDataModelClient, BulkQueryInput, BulkQueryOutput, Fragment } from '@kaleido-io/asset-manager-sdk';
 import type {
   CantonContractEvent,
   ContractInfo,

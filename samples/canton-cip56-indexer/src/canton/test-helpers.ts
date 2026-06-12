@@ -18,30 +18,32 @@ import { vi } from 'vitest';
 import type { CantonContractEvent, BatchContext, TransferContext, ContractInfo } from './types.js';
 import type {
   EventProcessorEvent,
-  IDataModelClient,
   IndexerContext,
-} from '@kaleido-io/sdk';
-import { AssetManagerClient } from '@kaleido-io/sdk';
+} from '@kaleido-io/workflow-engine-sdk';
 import type {
+  IDataModelClient,
   AddressBulkInput as Address,
   AssetBulkInput as Asset,
   FragmentBulkInput as Fragment,
   PoolBulkInput as Pool,
   TransferBulkInput as Transfer,
-} from '@kaleido-io/sdk';
+} from '@kaleido-io/asset-manager-sdk';
+import { AssetManagerClient, BulkUpsertBuilder } from '@kaleido-io/asset-manager-sdk';
 import type { CantonConfig } from '../config.js';
 
 export function mockIndexerContext(am: IDataModelClient): IndexerContext<CantonConfig> {
-  const amClient = am as unknown as AssetManagerClient;
+  const amWithBuilder = {
+    ...am,
+    getNewBulkUpsertBuilder: (opts?: unknown) => new BulkUpsertBuilder(am, opts as never),
+  };
+  vi.mocked(AssetManagerClient).mockImplementation(function() { return amWithBuilder as unknown as AssetManagerClient; } as never);
   return {
     config: {},
     providerName: 'test-provider',
     handlerName: 'canton-cip56-indexer',
     signal: new AbortController().signal,
     requestId: 'test-request-id',
-    assetManagerClient: () => amClient,
-    getServiceClientOptions: vi.fn() as any,
-    get am() { return amClient; },
+    getServiceClientOptions: vi.fn(),
   };
 }
 

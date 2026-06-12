@@ -18,6 +18,7 @@ import { describe, it, expect } from 'vitest';
 import { handleArchived, resolveFromEvent } from './archive-processor.js';
 import { makeEvent, makeBatchContext, holdingInterfaceView } from '../test-helpers.js';
 
+
 describe('handleArchived', () => {
   it('emits subtract transfer and marks spent for holding with amount+pool', () => {
     const ce = makeEvent({ eventType: 'archived', contractId: 'c1', transactionId: 'tx-a' });

@@ -14,6 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as fs from 'fs';
+import yaml from 'js-yaml';
 import {
   HandlerRuntime,
   HandlerRuntimeConfig,
@@ -23,9 +25,21 @@ import {
   EventSource,
   EventProcessor,
 } from '../interfaces/handlers';
-import { ServiceBindingsMap, ServiceBindingConfig } from "../service/types";
-import { ServiceClientOptions } from "@kaleido-io/core/http";
-import { WSProxyAdapter } from "../service/ws_proxy_adapter";
+import { ServiceBindingsMap, ServiceBindingConfig } from '../service/types';
+import { ServiceClientOptions } from '@kaleido-io/core/http';
+import { WSProxyAdapter } from '../service/ws_proxy_adapter';
+import { ConfigLoader, KALEIDO_CONFIG_FILE, WFE_CONFIG_FILE } from '../config/config';
+import { newLogger } from '../log/logger';
+import { createEventProcessor, EventProcessorEvent } from '../factories/event_processor';
+import { RequestContext } from '../types/core';
+import {
+  SetupContext,
+  createSetupContext,
+  createIndexerContext,
+} from '../app/context';
+import type { IndexerHandlerDef, TransactionHandlerRegistration } from '../app/types';
+
+const log = newLogger('WorkflowEngineClient');
 
 /**
  * TLS options for the WebSocket server (inbound mode).
@@ -65,11 +79,19 @@ export interface WorkflowEngineClientConfig {
   serviceBindings?: ServiceBindingsMap;
 }
 
-export class WorkflowEngineClient {
+type RegisteredHandler =
+  | { name: string; type: 'indexer'; def: IndexerHandlerDef<unknown, unknown> }
+  | { name: string; type: 'transactionHandler'; def: TransactionHandlerRegistration }
+  | { name: string; type: 'eventSource'; source: EventSource };
+
+export class WorkflowEngineClient<CustomConfig = unknown> {
   private runtime: HandlerRuntime;
   private bindings: ServiceBindingsMap;
+  private readonly wfeConfig: WorkflowEngineClientConfig;
+  private readonly customConfig: CustomConfig;
+  private readonly registeredHandlers: RegisteredHandler[] = [];
 
-  constructor(config: WorkflowEngineClientConfig) {
+  constructor(config: WorkflowEngineClientConfig, customConfig?: CustomConfig) {
     const runtimeConfig: HandlerRuntimeConfig = {
       url: config.url,
       server: config.server,
@@ -85,7 +107,115 @@ export class WorkflowEngineClient {
 
     this.runtime = new HandlerRuntime(runtimeConfig);
     this.bindings = config.serviceBindings ?? {};
+    this.wfeConfig = config;
+    this.customConfig = (customConfig ?? {}) as CustomConfig;
   }
+
+  // ── Builder API ─────────────────────────────────────────────────────────────
+
+  /**
+   * Load config from a YAML file and return a configured client.
+   *
+   * File path resolution order:
+   *   1. `path` argument
+   *   2. `KALEIDO_CONFIG_FILE` env var
+   *   3. `WFE_CONFIG_FILE` env var (legacy)
+   */
+  static fromConfigFile<C = unknown>(path?: string): WorkflowEngineClient<C> {
+    const wfeClientConfig = ConfigLoader.loadClientConfigFromFile(path);
+    const serviceBindings = ConfigLoader.loadServiceBindings(path);
+    if (Object.keys(serviceBindings).length > 0) {
+      wfeClientConfig.serviceBindings = serviceBindings;
+    }
+
+    const configPath = (
+      path ??
+      process.env[KALEIDO_CONFIG_FILE] ??
+      process.env[WFE_CONFIG_FILE] ??
+      ''
+    ).trim();
+
+    let customConfig: C = {} as C;
+    if (configPath) {
+      try {
+        const raw = fs.readFileSync(configPath, 'utf8');
+        const parsed = yaml.load(raw) as Record<string, unknown> | undefined;
+        customConfig = ((parsed?.['config']) ?? {}) as C;
+      } catch {
+        // no custom config section is fine
+      }
+    }
+
+    return new WorkflowEngineClient<C>(wfeClientConfig, customConfig);
+  }
+
+  /** @internal For unit tests — creates a client with a stub config, no file I/O. */
+  static _createForTest<C = unknown>(
+    customConfig: C = {} as C,
+    wfeConfig: WorkflowEngineClientConfig = { providerName: 'test-provider' },
+  ): WorkflowEngineClient<C> {
+    return new WorkflowEngineClient<C>(wfeConfig, customConfig);
+  }
+
+  /**
+   * Register an event-processor indexer.
+   * The handler name must be unique within this client.
+   */
+  indexer<C = CustomConfig, E = unknown>(name: string, def: IndexerHandlerDef<C, E>): this {
+    this.assertUniqueHandlerName(name);
+    this.registeredHandlers.push({ name, type: 'indexer', def: def as IndexerHandlerDef<unknown, unknown> });
+    return this;
+  }
+
+  /**
+   * Register a WFE transaction handler.
+   * The handler name must be unique within this client.
+   */
+  transactionHandler(name: string, def: TransactionHandlerRegistration): this {
+    this.assertUniqueHandlerName(name);
+    this.registeredHandlers.push({ name, type: 'transactionHandler', def });
+    return this;
+  }
+
+  /**
+   * Register a WFE event source.
+   * The handler name is taken from `source.name()` and must be unique within this client.
+   */
+  eventSource(source: EventSource): this {
+    const name = source.name();
+    this.assertUniqueHandlerName(name);
+    this.registeredHandlers.push({ name, type: 'eventSource', source });
+    return this;
+  }
+
+  /**
+   * Run all handler `setup` hooks, then exit without connecting to WFE.
+   * Use this as an init-container / migration step.
+   */
+  async setup(): Promise<void> {
+    const controller = new AbortController();
+    await this.runSetupHooks(controller.signal);
+    controller.abort();
+  }
+
+  /**
+   * Run all handler `setup` hooks, register handlers, then connect to WFE.
+   */
+  async start(): Promise<void> {
+    const controller = new AbortController();
+    await this.runSetupHooks(controller.signal);
+    this.registerBuilderHandlers(controller.signal);
+    await this.connect();
+  }
+
+  /**
+   * Disconnect from WFE.
+   */
+  stop(): void {
+    this.disconnect();
+  }
+
+  // ── Low-level registration API (used by NewWorkflowEngineClient) ────────────
 
   registerTransactionHandler(name: string, handler: TransactionHandler): void {
     this.runtime.registerTransactionHandler(name, handler);
@@ -128,7 +258,7 @@ export class WorkflowEngineClient {
     if (!binding) {
       throw new Error(
         `Service binding '${name}' not found. ` +
-          `Available bindings: ${Object.keys(this.bindings).join(", ") || "(none)"}`,
+          `Available bindings: ${Object.keys(this.bindings).join(', ') || '(none)'}`,
       );
     }
     return binding;
@@ -138,17 +268,17 @@ export class WorkflowEngineClient {
     const binding = this.getServiceBinding(name);
 
     switch (binding.bindingType) {
-      case "hosted":
+      case 'hosted':
         return {
-          transport: "ws-proxy",
+          transport: 'ws-proxy',
           wsProxy: this.getWSProxyAdapter(),
           serviceType: binding.type,
           id: binding.id,
         };
 
-      case "non-hosted":
+      case 'non-hosted':
         return {
-          transport: "http",
+          transport: 'http',
           url: binding.url,
           auth: binding.auth,
           maxRetries: binding.maxRetries,
@@ -161,6 +291,60 @@ export class WorkflowEngineClient {
           `Service binding '${name}' has unknown bindingType: ${(_exhaustive as ServiceBindingConfig).bindingType}`,
         );
       }
+    }
+  }
+
+  // ── Private builder helpers ──────────────────────────────────────────────────
+
+  private buildSetupContext(handlerName: string, signal: AbortSignal): SetupContext<CustomConfig> {
+    return createSetupContext(
+      (name) => this.getServiceClientOptions(name),
+      this.customConfig,
+      this.wfeConfig.providerName,
+      handlerName,
+      signal,
+    );
+  }
+
+  private async runSetupHooks(signal: AbortSignal): Promise<void> {
+    for (const registered of this.registeredHandlers) {
+      if (registered.type === 'eventSource') continue;
+      const { name, def } = registered;
+      if (def.setup) {
+        log.info(`Running setup hook for handler '${name}'`);
+        const ctx = this.buildSetupContext(name, signal);
+        await def.setup(ctx as SetupContext<unknown>);
+      }
+    }
+  }
+
+  private registerBuilderHandlers(signal: AbortSignal): void {
+    for (const registered of this.registeredHandlers) {
+      if (registered.type === 'indexer') {
+        const { name, def } = registered;
+        this.registerEventProcessor(
+          name,
+          createEventProcessor(
+            name,
+            async (reqCtx: RequestContext, events: EventProcessorEvent<unknown>[]) => {
+              const setupCtx = this.buildSetupContext(name, signal);
+              const ctx = createIndexerContext(setupCtx, reqCtx.requestId);
+              return def.indexBatch(ctx, events);
+            },
+          ),
+        );
+      } else if (registered.type === 'transactionHandler') {
+        const { name, def } = registered;
+        this.registerTransactionHandler(name, def.handler);
+      } else if (registered.type === 'eventSource') {
+        this.registerEventSource(registered.name, registered.source);
+      }
+    }
+  }
+
+  private assertUniqueHandlerName(name: string): void {
+    if (this.registeredHandlers.some((h) => h.name === name)) {
+      throw new Error(`Handler '${name}' is already registered`);
     }
   }
 }
