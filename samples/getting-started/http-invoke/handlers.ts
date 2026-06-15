@@ -19,7 +19,7 @@ import * as path from 'path';
 import yaml from 'js-yaml';
 import {
   BasicStageDirector,
-  DirectedActionConfig,
+  ActionConfig,
   EvalResult,
   InvocationMode,
   WithStageDirector,
@@ -87,7 +87,7 @@ const httpInvoke = appConfig.httpInvoke ?? {
   apiKeyHeader: 'X-API-KEY',
 };
 
-const map: Map<string, DirectedActionConfig<HTTPInvokeHandlerInput>> = new Map([
+const map: Map<string, ActionConfig<HTTPInvokeHandlerInput>> = new Map([
   [
     'http-invoke',
     {

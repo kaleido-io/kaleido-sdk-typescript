@@ -17,7 +17,7 @@
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
 import {
   BasicStageDirector,
-  DirectedActionConfig,
+  ActionConfig,
   EvalResult,
   InvocationMode,
   WithStageDirector,
@@ -46,7 +46,7 @@ class ListPoolsInput implements WithStageDirector {
 
 export function createActionMap(
   getAmClient: (authRef?: string) => AssetManagerClient,
-): Map<string, DirectedActionConfig<ListPoolsInput>> {
+): Map<string, ActionConfig<ListPoolsInput>> {
   return new Map([
     [
       'list-pools',

@@ -16,7 +16,7 @@
 
 import {
   WorkflowEngineClient,
-  createDirectedTransactionHandler,
+  createTransactionHandler,
   type ServiceClientOptions,
 } from "@kaleido-io/workflow-engine-sdk";
 import { AssetManagerClient } from "@kaleido-io/asset-manager-sdk";
@@ -42,7 +42,7 @@ const listPoolsRegistration = (() => {
     setup: async (ctx: { getServiceClientOptions(name: string): ServiceClientOptions }) => {
       amOptions = ctx.getServiceClientOptions('asset-manager');
     },
-    handler: createDirectedTransactionHandler(
+    handler: createTransactionHandler(
       'list-pools',
       createListPoolsActionMap(
         (authRef?) => new AssetManagerClient({ ...amOptions, authRef } as ServiceClientOptions),
@@ -52,9 +52,9 @@ const listPoolsRegistration = (() => {
 })();
 
 const app = WorkflowEngineClient.fromConfigFile()
-  .transactionHandler('hello', { handler: createDirectedTransactionHandler('hello', helloActionMap) })
-  .transactionHandler('http-invoke', { handler: createDirectedTransactionHandler('http-invoke', httpInvokeActionMap) })
-  .transactionHandler('snap-watcher', { handler: createDirectedTransactionHandler('snap-watcher', snapActionMap) })
+  .transactionHandler('hello', { handler: createTransactionHandler('hello', helloActionMap) })
+  .transactionHandler('http-invoke', { handler: createTransactionHandler('http-invoke', httpInvokeActionMap) })
+  .transactionHandler('snap-watcher', { handler: createTransactionHandler('snap-watcher', snapActionMap) })
   .transactionHandler('list-pools', listPoolsRegistration)
   .indexer('echo', echoHandlerDef)
   .eventSource(eventSource)
