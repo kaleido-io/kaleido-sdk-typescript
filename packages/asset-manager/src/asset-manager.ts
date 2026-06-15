@@ -77,7 +77,7 @@ const log = newLogger("AssetManagerClient");
  *   // From explicit options (existing / low-level usage):
  *   const am = new AssetManagerClient(client.getServiceClientOptions('asset-manager'));
  */
-const API_VERSION = "";
+const API_VERSION = "/api/v1";
 
 function resolveOptions(
   ctxOrOptsOrName: SetupContext | ServiceClientOptions | string,

@@ -36,13 +36,13 @@ describe('CantonCIP56Indexer (integration)', () => {
     ctx = mockIndexerContext(am);
   });
 
-  it('returns the input events from indexBatch', async () => {
+  it('processes events in indexBatch', async () => {
     const event = makeEvent({
       offset: 42,
       interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '1', instrumentId: { id: 'TOK', admin: 'b::fp' } })],
     });
-    const result = await indexer.indexBatch(ctx, wrapEvents([event]));
-    expect(result.events).toHaveLength(1);
+    await indexer.indexBatch(ctx, wrapEvents([event]));
+    expect(am.bulkUpsert).toHaveBeenCalled();
   });
 
   it('does not call bulkUpsert when no relevant events', async () => {

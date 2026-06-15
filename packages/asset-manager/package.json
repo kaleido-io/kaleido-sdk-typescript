@@ -52,6 +52,7 @@
     },
     "moduleNameMapper": {
       "^@kaleido-io/workflow-engine-sdk$": "<rootDir>/../workflow-engine-sdk/src/index.ts",
+      "^@kaleido-io/core$": "<rootDir>/../../internal/core/src/index.ts",
       "^@kaleido-io/core/(.+)$": "<rootDir>/../../internal/core/src/$1/index.ts",
       "^(\\.{1,2}/.*)\\.js$": "$1"
     },
