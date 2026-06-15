@@ -19,7 +19,7 @@
  * event source handler in the Kaleido EVM Connector.
  *
  * Import via:
- *   import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
+ *   import type { EVMTransactionEvent } from '@kaleido-io/connector-sdk/evm';
  */
 
 export type EVMTransactionEvent = {
@@ -31,7 +31,7 @@ export type EVMTransactionEvent = {
   decodedEvents?: EVMDecodedLogEvent[];
   decodedError?: EVMDecodedError;
   decodedInput?: EVMDecodedFunctionInput;
-  ethTransfer?: EVMNativeETHTransfer[];
+  ethTransfers?: EVMNativeETHTransfer[];
 };
 
 export type EVMBlockInfo = {
@@ -95,4 +95,9 @@ export type EVMNativeETHTransfer = {
   from: string;
   to: string;
   value: string;
+  /** Identifies the call in the nested trace stack; empty array for root-level transfers. */
+  traceAddress?: number[];
 };
+
+export * from './stream-config.js';
+export { EVMConnectorClient } from './client.js';

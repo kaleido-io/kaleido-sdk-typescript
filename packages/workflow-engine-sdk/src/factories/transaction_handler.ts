@@ -30,7 +30,7 @@ import {
 } from '../types/core';
 import {
   TransactionHandler,
-  DirectedActionConfig,
+  ActionConfig,
   EngineAPI,
 } from '../interfaces/handlers';
 import { evalDirected } from '../helpers/stage_director';
@@ -47,18 +47,14 @@ export interface TransactionHandlerBuilder extends TransactionHandler {
  * Internal base implementation for directed transaction handlers.
  */
 class TransactionHandlerBase<T extends WithStageDirector> implements TransactionHandlerBuilder {
-  private _name: string;
-  private actionMap: Map<string, DirectedActionConfig<T>>;
+  readonly name: string;
+  private actionMap: Map<string, ActionConfig<T>>;
   private initFn?: (engAPI: EngineAPI) => Promise<void>;
   private closeFn?: () => void;
 
-  constructor(name: string, actionMap: Map<string, DirectedActionConfig<T>>) {
-    this._name = name;
+  constructor(name: string, actionMap: Map<string, ActionConfig<T>>) {
+    this.name = name;
     this.actionMap = actionMap;
-  }
-
-  name(): string {
-    return this._name;
   }
 
   withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): TransactionHandlerBuilder {
@@ -102,9 +98,9 @@ class TransactionHandlerBase<T extends WithStageDirector> implements Transaction
  * @param actionMap Map of action names to their configurations
  * @returns A TransactionHandlerBuilder for chaining
  */
-export function createDirectedTransactionHandler<T extends WithStageDirector>(
+export function createTransactionHandler<T extends WithStageDirector>(
   name: string,
-  actionMap: Map<string, DirectedActionConfig<T>>
+  actionMap: Map<string, ActionConfig<T>>
 ): TransactionHandlerBuilder {
   return new TransactionHandlerBase<T>(name, actionMap);
 }

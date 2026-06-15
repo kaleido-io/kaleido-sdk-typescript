@@ -46,6 +46,7 @@ export {
   ConfigLoader,
   KALEIDO_CONFIG_FILE,
   WFE_CONFIG_FILE,
+  CONFIG_FILE,
 } from './config/config';
 
 export {
@@ -60,8 +61,8 @@ export {
 
 export {
   HandlerSet,
-  HandlerSetFor,
-  NewWorkflowEngineClient,
+  handlerSetFor,
+  createWorkflowEngineClient,
 } from './client/client_factory';
 
 export { newLogger, setLoggerFactory, defaultLoggerFactory, LoggerFactory } from './log/logger';
@@ -80,7 +81,7 @@ export * from "./interfaces/messages";
 
 // Transaction handler factory
 export {
-  createDirectedTransactionHandler,
+  createTransactionHandler,
   TransactionHandlerBuilder,
 } from "./factories/transaction_handler";
 

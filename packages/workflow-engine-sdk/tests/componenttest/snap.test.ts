@@ -20,7 +20,7 @@ import * as path from 'path';
 import {
   WorkflowEngineClient,
   ConfigLoader,
-  createDirectedTransactionHandler,
+  createTransactionHandler,
   BasicStageDirector,
   InvocationMode,
   EvalResult,
@@ -161,7 +161,7 @@ describe('Snap Component Test', () => {
       }
     });
 
-    const watcherHandler = createDirectedTransactionHandler('watcher', watcherActionMap);
+    const watcherHandler = createTransactionHandler('watcher', watcherActionMap);
     watcherClient.registerTransactionHandler('watcher', watcherHandler);
 
     await watcherClient.connect();

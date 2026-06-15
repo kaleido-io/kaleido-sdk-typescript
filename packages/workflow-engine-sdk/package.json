@@ -78,14 +78,6 @@
     ".": {
       "import": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
-    },
-    "./types/evm": {
-      "import": "./dist/src/types/evm/index.js",
-      "types": "./dist/src/types/evm/index.d.ts"
-    },
-    "./types/btc": {
-      "import": "./dist/src/types/btc/index.js",
-      "types": "./dist/src/types/btc/index.d.ts"
     }
   },
   "sideEffects": false

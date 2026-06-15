@@ -14,12 +14,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import type { EVMTransactionEventsConfig } from '@kaleido-io/connector-sdk/evm';
+
 export interface ERC20StreamConfig {
   connectorBindingName: string;
   factory: string;
   name: string;
   description?: string;
-  eventSourceConfig: unknown;
+  eventSourceConfig: EVMTransactionEventsConfig;
 }
 
 export interface ERC20Config {

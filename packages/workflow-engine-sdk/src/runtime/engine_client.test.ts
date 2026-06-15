@@ -31,7 +31,7 @@ describe('EngineClient', () => {
     beforeEach(() => {
         mockEngineClientRuntime = {
             sendMessage: jest.fn(),
-            isWebSocketConnected: jest.fn(() => true),
+            isWebSocketConnected: true,
             generateId: jest.fn(() => 'test'),
         } as any as EngineClientRuntime;
         abortController = new AbortController();
@@ -49,7 +49,7 @@ describe('EngineClient', () => {
         expect(engineClient).toBeDefined();
     })
     it('should throw an error if the runtime is not connected', async () => {
-        mockEngineClientRuntime.isWebSocketConnected = jest.fn(() => false);
+        mockEngineClientRuntime.isWebSocketConnected = false;
         const engineClient = new EngineClient(mockEngineClientRuntime);
         await expect(engineClient.submitAsyncTransactions(mockReqContext, 'test', [{
             workflow: 'test',

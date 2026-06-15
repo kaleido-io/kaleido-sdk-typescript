@@ -31,7 +31,8 @@ import type {
   TransferBulkInput,
 } from '@kaleido-io/asset-manager-sdk';
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
-import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
+import type { BTCTransactionEvent, TxSummaryVOut } from '@kaleido-io/connector-sdk/btc';
+import { BTCConnectorClient } from '@kaleido-io/connector-sdk/btc';
 import type { BTCIndexerConfig } from './config.js';
 
 const log = newLogger('bitcoin-indexer');
@@ -66,6 +67,15 @@ export class BTCIndexer {
       labels: { networkName: this.networkName, symbol },
     });
     await builder.execute();
+
+    if (ctx.config.stream) {
+      await new BTCConnectorClient(ctx.config.stream.connectorBindingName).ensureStream(ctx, {
+        factory: ctx.config.stream.factory,
+        name: ctx.config.stream.name,
+        description: ctx.config.stream.description,
+        eventSourceConfig: ctx.config.stream.eventSourceConfig,
+      });
+    }
   }
 
   private async batchLookup<T>(

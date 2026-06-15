@@ -36,7 +36,7 @@ export interface IndexerHandlerDef<CustomConfig = unknown, EventDataType = unkno
 /**
  * Handler registration for a WFE transaction handler.
  *
- * Supply the pre-built TransactionHandler (e.g. from createDirectedTransactionHandler)
+ * Supply the pre-built TransactionHandler (e.g. from createTransactionHandler)
  * plus an optional setup hook that runs before the WFE connection is established.
  */
 export interface TransactionHandlerRegistration {

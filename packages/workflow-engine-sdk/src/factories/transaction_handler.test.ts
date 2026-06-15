@@ -21,29 +21,29 @@ jest.mock('../helpers/stage_director', () => ({
     evalDirected: jest.fn(() => Promise.resolve()),
 }));
 
-import { DirectedActionConfig } from '../interfaces/handlers';
-import { createDirectedTransactionHandler } from './transaction_handler';
+import { ActionConfig } from '../interfaces/handlers';
+import { createTransactionHandler } from './transaction_handler';
 import { WithStageDirector, WSHandleTransactions, WSHandleTransactionsResult, WSMessageType } from '../types/core';
 import { EngineClient, EngineClientRuntime } from '../runtime/engine_client';
 import { evalDirected } from '../helpers/stage_director';
 
-describe('createDirectedTransactionHandler', () => {
+describe('createTransactionHandler', () => {
 
     it('should create a transaction handler', () => {
-        const transactionHandler = createDirectedTransactionHandler('test-transaction-handler', new Map<string, DirectedActionConfig<WithStageDirector>>());
+        const transactionHandler = createTransactionHandler('test-transaction-handler', new Map<string, ActionConfig<WithStageDirector>>());
         expect(transactionHandler).toBeDefined();
-        expect(transactionHandler.name()).toBe('test-transaction-handler');
+        expect(transactionHandler.name).toBe('test-transaction-handler');
     })
     it('should create a transaction handler with init and close functions', async () => {
         const initFn = jest.fn(() => Promise.resolve());
         const closeFn = jest.fn();
         const engineClientRuntime = {
             sendMessage: jest.fn(),
-            isWebSocketConnected: jest.fn(() => true),
+            isWebSocketConnected: true,
             generateId: jest.fn(() => 'test'),
         } as any as EngineClientRuntime;
         const engineClient = new EngineClient(engineClientRuntime);
-        const transactionHandler = createDirectedTransactionHandler('test-transaction-handler', new Map<string, DirectedActionConfig<WithStageDirector>>())
+        const transactionHandler = createTransactionHandler('test-transaction-handler', new Map<string, ActionConfig<WithStageDirector>>())
             .withInitFn(initFn)
             .withCloseFn(closeFn);
         await transactionHandler.init(engineClient);

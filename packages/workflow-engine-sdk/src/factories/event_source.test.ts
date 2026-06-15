@@ -50,7 +50,7 @@ describe('createEventSource', () => {
         const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
 
         expect(eventSource).toBeDefined();
-        expect(eventSource.name()).toBe('test-event-source');
+        expect(eventSource.name).toBe('test-event-source');
     })
 
     it('should create an event source with init and close functions', async () => {
@@ -64,7 +64,7 @@ describe('createEventSource', () => {
         });
         const engineClientRuntime = {
             sendMessage: jest.fn(),
-            isWebSocketConnected: jest.fn(() => true),
+            isWebSocketConnected: true,
             generateId: jest.fn(() => 'test'),
         } as any as EngineClientRuntime;
         const engineClient = new EngineClient(engineClientRuntime);
@@ -160,6 +160,41 @@ describe('createEventSource', () => {
 
         await eventSource.eventSourcePoll({} as any, config, result, request);
         expect(pollFn).toHaveBeenCalledTimes(1);
+    })
+
+    it('should thread authRef from the poll request through to the poll function', async () => {
+        let capturedAuthRef: string | undefined;
+        const pollFn = jest.fn(async (_config: EventSourceConf<TestConfig>, _checkpoint: TestCheckpoint | null, authRef?: string) => {
+            capturedAuthRef = authRef;
+            return { checkpointOut: { lastId: 0 }, events: [] };
+        });
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
+
+        const config: WSEventSourceConfig = {
+            messageType: WSMessageType.EVENT_SOURCE_CONFIG,
+            id: 'config-id',
+            handler: 'test-event-source',
+            streamName: 'test-stream',
+            streamId: 'stream-1',
+            config: { endpoint: 'http://test.com' }
+        };
+        const result: WSListenerPollResult = {
+            messageType: WSMessageType.EVENT_SOURCE_POLL_RESULT,
+            id: 'poll-id',
+            handler: 'test-event-source',
+            events: []
+        };
+        const request: WSListenerPollRequest = {
+            messageType: WSMessageType.EVENT_SOURCE_POLL,
+            id: 'poll-id',
+            handler: 'test-event-source',
+            streamName: 'test-stream',
+            streamId: 'stream-1',
+            authRef: 'user-auth-ref-456',
+        };
+
+        await eventSource.eventSourcePoll({} as any, config, result, request);
+        expect(capturedAuthRef).toBe('user-auth-ref-456');
     })
 
     it('should handle poll errors', async () => {

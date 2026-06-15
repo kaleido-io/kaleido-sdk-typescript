@@ -14,10 +14,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import type { EVMTransactionEventsConfig } from '@kaleido-io/connector-sdk/evm';
+
 export interface ETHIndexerConfig {
   upsertTriggerCount?: number;
   networkName: string;
   chainId: string;
   tokenSymbol: string;
   tokenName: string;
+  stream?: {
+    connectorBindingName: string;
+    factory: string;
+    name: string;
+    description?: string;
+    eventSourceConfig: EVMTransactionEventsConfig;
+  };
 }

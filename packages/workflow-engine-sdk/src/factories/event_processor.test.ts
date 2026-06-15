@@ -56,7 +56,7 @@ describe('createEventProcessor', () => {
       async (_reqContext, events) => ({ events })
     );
     expect(processor).toBeDefined();
-    expect(processor.name()).toBe('test-processor');
+    expect(processor.name).toBe('test-processor');
   });
 
   it('should create an event processor with init and close functions', async () => {
@@ -64,7 +64,7 @@ describe('createEventProcessor', () => {
     const closeFn = jest.fn();
     const engineClientRuntime = {
       sendMessage: jest.fn(),
-      isWebSocketConnected: jest.fn(() => true),
+      isWebSocketConnected: true,
       generateId: jest.fn(() => 'test'),
     } as any as EngineClientRuntime;
     const engineClient = new EngineClient(engineClientRuntime);
@@ -84,7 +84,7 @@ describe('createEventProcessor', () => {
   });
 
   it('should process a batch and return typed events', async () => {
-    const batchFn = jest.fn(async (_reqContext: RequestContext, events: EventProcessorEvent<TestEventData>[]) => ({
+    const batchFn = jest.fn(async (_reqContext: RequestContext, events: EventProcessorEvent<TestEventData>[], _authRef?: string) => ({
       events,
       checkpointOut: { lastProcessedTime: 12345 },
     }));
@@ -161,20 +161,39 @@ describe('createEventProcessor', () => {
   });
 
   it('should pass empty batch to function when no events', async () => {
-    const batchFn = jest.fn(async (reqContext: RequestContext, events: EventProcessorEvent<TestEventData>[]) => ({ events }));
+    const batchFn = jest.fn(async (_reqContext: RequestContext, events: EventProcessorEvent<TestEventData>[], _authRef?: string) => ({ events }));
     const processor = createEventProcessor<TestEventData>('test-processor', batchFn);
 
     const result = makeResult();
-    await processor.eventProcessorBatch({} as any, result,makeBatch([]));
+    await processor.eventProcessorBatch({} as any, result, makeBatch([]));
 
-    expect(batchFn).toHaveBeenCalledWith(expect.anything(), []);
+    expect(batchFn).toHaveBeenCalledWith(expect.anything(), [], undefined);
     expect(result.events).toHaveLength(0);
+  });
+
+  it('should thread authRef from the batch through to the batch function', async () => {
+    let capturedAuthRef: string | undefined;
+    const processor = createEventProcessor<TestEventData>(
+      'test-processor',
+      async (_reqContext, events, authRef) => {
+        capturedAuthRef = authRef;
+        return { events };
+      }
+    );
+
+    const batch: WSEventProcessorBatchRequest = {
+      ...makeBatch([{ idempotencyKey: 'key1', topic: 'test-topic', data: { id: 1, value: 'a' } }]),
+      authRef: 'user-auth-ref-123',
+    };
+
+    await processor.eventProcessorBatch({} as any, makeResult(), batch);
+    expect(capturedAuthRef).toBe('user-auth-ref-123');
   });
 
   it('should not call init or close when no functions are registered', async () => {
     const engineClientRuntime = {
       sendMessage: jest.fn(),
-      isWebSocketConnected: jest.fn(() => true),
+      isWebSocketConnected: true,
       generateId: jest.fn(() => 'test'),
     } as any as EngineClientRuntime;
     const engineClient = new EngineClient(engineClientRuntime);

@@ -53,7 +53,8 @@ export interface EventProcessorEvent<DT> {
  */
 export type EventProcessorBatchFn<DT = unknown> = (
   reqContext: RequestContext,
-  events: EventProcessorEvent<DT>[]
+  events: EventProcessorEvent<DT>[],
+  authRef?: string,
 ) => Promise<{ events: EventProcessorEvent<DT>[] }>;
 
 /**
@@ -65,18 +66,14 @@ export interface EventProcessorBuilder<DT = unknown> extends EventProcessor {
 }
 
 class EventProcessorBase<DT> implements EventProcessorBuilder<DT> {
-  private _name: string;
+  readonly name: string;
   private batchFn: EventProcessorBatchFn<DT>;
   private initFn?: (engAPI: EngineAPI) => Promise<void>;
   private closeFn?: () => void;
 
   constructor(name: string, batchFn: EventProcessorBatchFn<DT>) {
-    this._name = name;
+    this.name = name;
     this.batchFn = batchFn;
-  }
-
-  name(): string {
-    return this._name;
   }
 
   withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventProcessorBuilder<DT> {
@@ -113,7 +110,7 @@ class EventProcessorBase<DT> implements EventProcessorBuilder<DT> {
         data: evt.data as DT,
       }));
 
-      const batchResult = await this.batchFn(reqContext, events);
+      const batchResult = await this.batchFn(reqContext, events, batch.authRef);
 
       result.events = batchResult.events.map((evt): ListenerEvent => ({
         idempotencyKey: evt.idempotencyKey,

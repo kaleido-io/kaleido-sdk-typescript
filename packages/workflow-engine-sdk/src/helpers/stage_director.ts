@@ -25,8 +25,8 @@
 
 import { SDKErrors, newError } from '../i18n/errors';
 import {
-  DirectedActionConfig,
-  DirectedTransactionBatchIn
+  ActionConfig,
+  TransactionHandlerBatchIn
 } from '../interfaces/handlers';
 import { newLogger } from '../log/logger';
 import {
@@ -59,7 +59,7 @@ export class BasicStageDirector implements StageDirector, WithStageDirector {
     public failureStage: string
   ) { }
 
-  getStageDirector(): StageDirector {
+  get stageDirector(): StageDirector {
     return this;
   }
 }
@@ -217,7 +217,7 @@ export class StageDirectorHelper {
 export async function evalDirected<T extends WithStageDirector>(
   reply: WSHandleTransactionsResult,
   batch: WSHandleTransactions,
-  actionMap: Map<string, DirectedActionConfig<T>>
+  actionMap: Map<string, ActionConfig<T>>
 ): Promise<void> {
   reply.results = new Array(batch.transactions.length);
 
@@ -239,9 +239,9 @@ export async function evalDirected<T extends WithStageDirector>(
         throw newError(SDKErrors.MsgSDKInputNullOrUndefined, req.stage);
       }
 
-      // If input doesn't have getStageDirector method (plain object from JSON),
-      // wrap it to provide the method
-      if (typeof execReq.input.getStageDirector !== 'function') {
+      // If input is a plain object from JSON (no stageDirector property),
+      // synthesize one from the action/outputPath/nextStage/failureStage fields
+      if (!execReq.input.stageDirector) {
         const plainInput = execReq.input as any;
 
         // Validate that the plain input has the required action field
@@ -255,12 +255,12 @@ export async function evalDirected<T extends WithStageDirector>(
 
         execReq.input = {
           ...plainInput,
-          getStageDirector: () => ({
+          stageDirector: {
             action: plainInput.action,
             outputPath: plainInput.outputPath,
             nextStage: plainInput.nextStage,
-            failureStage: plainInput.failureStage
-          })
+            failureStage: plainInput.failureStage,
+          },
         } as T;
       }
     } catch (error) {
@@ -271,7 +271,7 @@ export async function evalDirected<T extends WithStageDirector>(
       continue;
     }
 
-    const sd = execReq.input.getStageDirector();
+    const sd = execReq.input.stageDirector;
     const actionConf = actionMap.get(sd.action);
 
     if (!actionConf) {
@@ -311,7 +311,7 @@ export async function evalDirected<T extends WithStageDirector>(
         // Note: We execute the batch as one async operation, but add each
         // individual transaction to completions
         const batchPromise = (async () => {
-          const batchIn: DirectedTransactionBatchIn<T>[] = transactions.map(r => ({
+          const batchIn: TransactionHandlerBatchIn<T>[] = transactions.map(r => ({
             transaction: r.transaction,
             value: r.input
           }));
@@ -349,7 +349,7 @@ export async function evalDirected<T extends WithStageDirector>(
  * Execute a single mapped transaction
  */
 async function execMapped<T extends WithStageDirector>(
-  config: DirectedActionConfig<T>,
+  config: ActionConfig<T>,
   transaction: WSEvaluateTransaction,
   input: T
 ): Promise<WSEvaluateReplyResult> {
@@ -370,7 +370,7 @@ async function execMapped<T extends WithStageDirector>(
       deadline?: string;
     };
     return StageDirectorHelper.mapOutput(
-      input.getStageDirector(),
+      input.stageDirector,
       transaction,
       result,
       output,
@@ -394,8 +394,8 @@ async function execMapped<T extends WithStageDirector>(
  * Execute a batch of mapped transactions
  */
 async function execBatchMapped<T extends WithStageDirector>(
-  config: DirectedActionConfig<T>,
-  transactions: DirectedTransactionBatchIn<T>[]
+  config: ActionConfig<T>,
+  transactions: TransactionHandlerBatchIn<T>[]
 ): Promise<WSEvaluateReplyResult[]> {
   if (!config.batchHandler) {
     throw newError(SDKErrors.MsgSDKBatchHandlerNotConfigured);
@@ -411,7 +411,7 @@ async function execBatchMapped<T extends WithStageDirector>(
     return transactions.map((req, i) => {
       const batchResult = batchResults[i];
       return StageDirectorHelper.mapOutput(
-        req.value.getStageDirector(),
+        req.value.stageDirector,
         req.transaction,
         batchResult.result,
         batchResult.output,

@@ -36,9 +36,7 @@ function createMockRuntime(): ProxyAdapterRuntime & { lastMessage: any } {
     sendMessage(msg: any) {
       this.lastMessage = msg;
     },
-    isWebSocketConnected() {
-      return true;
-    },
+    isWebSocketConnected: true,
   };
 }
 
@@ -123,7 +121,7 @@ describe("WSProxyAdapter", () => {
     const adapter = new WSProxyAdapter();
     adapter.setRuntime({
       sendMessage: jest.fn(),
-      isWebSocketConnected: () => false,
+      isWebSocketConnected: false,
     });
     await expect(adapter.request("x", "GET", "u:1234")).rejects.toThrow(
       "not connected",

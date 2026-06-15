@@ -1,4 +1,6 @@
-# Provider configuration for the BTC Indexer.
+# Kaleido platform configuration for the BTC Indexer (KALEIDO_CONFIG_FILE).
+# This file is operator-managed: it contains credentials and service endpoints
+# injected by the Kaleido platform at runtime.
 # Copy this file to config/config.yaml and fill in your values.
 # Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
 
@@ -30,12 +32,3 @@ service-bindings:
       type: basic
       username: myuser
       password: my-api-key
-
-# BTC network to index
-config:
-  bulkQueryLimit: 100     # max fragments/addresses per AM query when resolving inputs
-  upsertTriggerCount: 100 # flush after this many pending objects
-  networkName: testnet4
-  networkId: 0x283f161c
-  tokenSymbol: tBTC
-  tokenName: testnet4-btc

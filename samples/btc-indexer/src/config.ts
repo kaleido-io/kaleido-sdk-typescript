@@ -14,6 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import type { BTCTransactionEventsConfig } from '@kaleido-io/connector-sdk/btc';
+
 export interface BTCIndexerConfig {
   upsertTriggerCount?: number;
   bulkQueryLimit?: number;
@@ -21,4 +23,11 @@ export interface BTCIndexerConfig {
   networkName: string;
   tokenSymbol: string;
   tokenName: string;
+  stream?: {
+    connectorBindingName: string;
+    factory: string;
+    name: string;
+    description?: string;
+    eventSourceConfig: BTCTransactionEventsConfig;
+  };
 }

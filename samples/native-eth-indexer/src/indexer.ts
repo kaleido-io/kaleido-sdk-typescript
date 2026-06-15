@@ -23,7 +23,8 @@ import type {
 import { newLogger } from '@kaleido-io/workflow-engine-sdk';
 import type { TransferBulkInput } from '@kaleido-io/asset-manager-sdk';
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
-import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
+import type { EVMTransactionEvent } from '@kaleido-io/connector-sdk/evm';
+import { EVMConnectorClient } from '@kaleido-io/connector-sdk/evm';
 import type { ETHIndexerConfig } from './config.js';
 
 const log = newLogger('native-eth-indexer');
@@ -56,6 +57,15 @@ export class ETHIndexer {
       labels: { networkName: this.networkName, symbol },
     });
     await builder.execute();
+
+    if (ctx.config.stream) {
+      await new EVMConnectorClient(ctx.config.stream.connectorBindingName).ensureStream(ctx, {
+        factory: ctx.config.stream.factory,
+        name: ctx.config.stream.name,
+        description: ctx.config.stream.description,
+        eventSourceConfig: ctx.config.stream.eventSourceConfig,
+      });
+    }
   }
 
   async indexBatch(

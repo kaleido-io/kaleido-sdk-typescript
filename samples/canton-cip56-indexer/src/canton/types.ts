@@ -22,85 +22,26 @@ import type {
   TransferBulkInput as Transfer,
 } from '@kaleido-io/asset-manager-sdk';
 
-// ── Canton contract event types ─────────────────────────────────────
+import type {
+  CantonContractEvent,
+  ContractInterfaceView,
+  CantonContractEventsConfig,
+  HoldingView,
+  TransferData,
+} from '@kaleido-io/connector-sdk/canton';
 
-export type CantonContractEvent = {
-  eventType: 'created' | 'archived' | 'exercised';
-  contractId: string;
-  templateId: string;
-  packageId: string;
-  packageName?: string;
-  moduleName: string;
-  entityName: string;
-  arguments?: Record<string, unknown> | null;
-  choice?: string;
-  consuming?: boolean;
-  offset: number;
-  transactionId: string;
-  workflowId: string;
-  effectiveAt?: string | null;
-  updateId: string;
-  completionOffset: string;
-
-  createdEventBlob?: string;
-  synchronizerId?: string;
-  signatories?: string[];
-  observers?: string[];
-  interfaceViews?: ContractInterfaceView[];
+export type {
+  CantonContractEvent,
+  ContractInterfaceView,
+  CantonContractEventsConfig,
+  HoldingView,
+  TransferData,
 };
 
-export type ContractInterfaceView = {
-  interfaceId: string;
-  packageId: string;
-  packageName?: string;
-  moduleName: string;
-  entityName: string;
-  viewValue?: Record<string, unknown> | null;
-};
-
-/**
- * Stream configuration accepted by the cantonContractEvents event source.
- */
-export type CantonContractEventsConfig = {
-  fromOffset?: number | null;
-  fromCurrentOffset?: boolean;
-  pollTimeout?: string | null;
-  batchSize?: number | null;
-  parties?: string[];
-  templateIds?: string[];
-  interfaceIds?: string[];
-  includeCreatedEventBlob?: boolean | null;
-  userId?: string;
-};
-
-// ── CIP-56 interface view types ─────────────────────────────────────
-
-export const HOLDING_INTERFACE = 'Splice.Api.Token.HoldingV1:Holding';
-export const TRANSFER_INSTRUCTION_INTERFACE =
-  'Splice.Api.Token.TransferInstructionV1:TransferInstruction';
-
-export type HoldingView = {
-  owner: string;
-  amount: string;
-  instrumentId?: {
-    admin?: string;
-    id?: string;
-  };
-  lock?: unknown;
-  meta?: {
-    values?: Record<string, string>;
-  };
-};
-
-export type TransferData = {
-  sender: string;
-  receiver: string;
-  amount: string;
-  instrumentId?: {
-    admin?: string;
-    id?: string;
-  };
-};
+export {
+  HOLDING_INTERFACE,
+  TRANSFER_INSTRUCTION_INTERFACE,
+} from '@kaleido-io/connector-sdk/canton';
 
 // ── Indexer batch context types ─────────────────────────────────────
 

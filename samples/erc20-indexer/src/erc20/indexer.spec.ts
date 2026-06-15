@@ -18,7 +18,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { IDataModelClient } from '@kaleido-io/asset-manager-sdk';
 import { AssetManagerClient, BulkUpsertBuilder } from '@kaleido-io/asset-manager-sdk';
 import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/workflow-engine-sdk';
-import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
+import type { EVMTransactionEvent } from '@kaleido-io/connector-sdk/evm';
 import { ERC20Indexer } from './indexer.js';
 import type { ERC20Config } from '../config/provider-config.js';
 

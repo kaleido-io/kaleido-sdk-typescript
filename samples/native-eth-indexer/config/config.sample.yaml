@@ -1,4 +1,7 @@
-# Provider configuration for the Native ETH Indexer.
+# Operator-managed configuration for the Native ETH Indexer.
+# This file is the KALEIDO_CONFIG_FILE — it contains Kaleido platform connectivity
+# (workflow engine URL/auth and service bindings) and is typically provided or managed
+# by the Kaleido operator.
 # Copy this file to config/config.yaml and fill in your values.
 # Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
 
@@ -30,11 +33,3 @@ service-bindings:
       type: basic
       username: myuser
       password: my-api-key
-
-# Native ETH network to index
-config:
-  upsertTriggerCount: 500
-  networkName: sepolia
-  chainId: '11155111'
-  tokenSymbol: ETH
-  tokenName: eth-sepolia

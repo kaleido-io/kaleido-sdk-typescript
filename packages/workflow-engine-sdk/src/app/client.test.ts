@@ -92,7 +92,7 @@ describe('WorkflowEngineClient builder', () => {
     client.indexer('shared', { indexBatch: jest.fn<() => Promise<{ events: never[] }>>().mockResolvedValue({ events: [] }) });
     expect(() =>
       client.transactionHandler('shared', {
-        handler: { name: () => 'shared', init: jest.fn() as never, close: jest.fn() as never, transactionHandlerBatch: jest.fn() as never },
+        handler: { name: 'shared', init: jest.fn() as never, close: jest.fn() as never, transactionHandlerBatch: jest.fn() as never },
       }),
     ).toThrow("Handler 'shared' is already registered");
   });
@@ -134,7 +134,7 @@ describe('WorkflowEngineClient builder', () => {
   it('registers event source on start()', async () => {
     const client = makeTestClient({});
     const mockSource = {
-      name: () => 'my-source',
+      name: 'my-source',
       init: jest.fn(), close: jest.fn(),
       eventSourcePoll: jest.fn(), eventSourceValidateConfig: jest.fn(), eventSourceDelete: jest.fn(),
     } as unknown as EventSource;

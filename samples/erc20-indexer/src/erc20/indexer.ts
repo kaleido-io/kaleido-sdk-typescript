@@ -20,9 +20,10 @@ import type {
 
   SetupContext,
 } from '@kaleido-io/workflow-engine-sdk';
-import { ensureStream, newLogger } from '@kaleido-io/workflow-engine-sdk';
+import { newLogger } from '@kaleido-io/workflow-engine-sdk';
+import { EVMConnectorClient } from '@kaleido-io/connector-sdk/evm';
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
-import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
+import type { EVMTransactionEvent } from '@kaleido-io/connector-sdk/evm';
 import type { ERC20Config } from '../config/provider-config.js';
 
 const log = newLogger('erc20-indexer');
@@ -57,8 +58,7 @@ export class ERC20Indexer {
     await builder.execute();
 
     if (stream) {
-      await ensureStream(ctx, {
-        connectorBindingName: stream.connectorBindingName,
+      await new EVMConnectorClient(stream.connectorBindingName).ensureStream(ctx, {
         factory: stream.factory,
         name: stream.name,
         description: stream.description,

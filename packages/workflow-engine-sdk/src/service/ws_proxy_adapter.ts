@@ -33,7 +33,7 @@ const log = newLogger("ws_proxy_adapter");
  */
 export interface ProxyAdapterRuntime {
   sendMessage(message: any): void;
-  isWebSocketConnected(): boolean;
+  isWebSocketConnected: boolean;
 }
 
 /**
@@ -144,7 +144,7 @@ export class WSProxyAdapter {
 
       this.inflightRequests.set(requestId, { resolve, reject, timer });
 
-      if (this.runtime && this.runtime.isWebSocketConnected()) {
+      if (this.runtime && this.runtime.isWebSocketConnected) {
         this.runtime.sendMessage(message);
       } else {
         this.inflightRequests.delete(requestId);

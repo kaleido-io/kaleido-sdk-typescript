@@ -17,7 +17,7 @@
 import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/workflow-engine-sdk';
 import { AssetManagerClient, BulkUpsertBuilder } from '@kaleido-io/asset-manager-sdk';
 import type { IDataModelClient } from '@kaleido-io/asset-manager-sdk';
-import type { BTCTransactionEvent, TxSummaryVIn, TxSummaryVOut } from '@kaleido-io/workflow-engine-sdk/types/btc';
+import type { BTCTransactionEvent, TxSummaryVIn, TxSummaryVOut } from '@kaleido-io/connector-sdk/btc';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BTCIndexerConfig } from './config.js';
 import { BTCIndexer } from './indexer.js';

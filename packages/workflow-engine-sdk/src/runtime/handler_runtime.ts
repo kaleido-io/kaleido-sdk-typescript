@@ -279,7 +279,7 @@ export class HandlerRuntime {
   /**
    * Check if connected to the workflow engine
    */
-  isWebSocketConnected(): boolean {
+  get isWebSocketConnected(): boolean {
     return this.isConnected && this.ws?.readyState === WebSocket.OPEN;
   }
 

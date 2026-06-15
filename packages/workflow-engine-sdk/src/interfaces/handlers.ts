@@ -47,7 +47,7 @@ export interface EngineAPI {
 }
 
 export interface Handler {
-  name(): string;
+  readonly name: string;
   init(engAPI: EngineAPI): Promise<void>;
   close(): void;
 }
@@ -98,7 +98,7 @@ export interface EventProcessor extends Handler {
 /**
  * Function type for handling individual directed requests
  */
-export type DirectedTransactionHandler<T extends WithStageDirector> = (
+export type TransactionHandlerFn<T extends WithStageDirector> = (
   transaction: WSEvaluateTransaction,
   input: T
 ) => Promise<{ result: EvalResult; output?: any; error?: Error; triggers?: Trigger[]; events?: HandlerEvent[]; extraUpdates?: Patch; customStage?: string; deadline?: string }>;
@@ -106,7 +106,7 @@ export type DirectedTransactionHandler<T extends WithStageDirector> = (
 /**
  * Input for batch directed transaction handling
  */
-export interface DirectedTransactionBatchIn<T extends WithStageDirector> {
+export interface TransactionHandlerBatchIn<T extends WithStageDirector> {
   transaction: WSEvaluateTransaction;
   value: T;
 }
@@ -114,7 +114,7 @@ export interface DirectedTransactionBatchIn<T extends WithStageDirector> {
 /**
  * Output for batch directed transaction handling
  */
-export interface DirectedTransactionBatchOut<_T extends WithStageDirector> {
+export interface TransactionHandlerBatchOut<_T extends WithStageDirector> {
   result: EvalResult;
   output?: any;
   error?: Error;
@@ -129,16 +129,16 @@ export interface DirectedTransactionBatchOut<_T extends WithStageDirector> {
 /**
  * Function type for handling batch directed transactions.
  */
-export type DirectedTransactionBatchHandler<T extends WithStageDirector> = (
-  transactions: DirectedTransactionBatchIn<T>[]
-) => Promise<DirectedTransactionBatchOut<T>[]>;
+export type TransactionHandlerBatchFn<T extends WithStageDirector> = (
+  transactions: TransactionHandlerBatchIn<T>[]
+) => Promise<TransactionHandlerBatchOut<T>[]>;
 
 /**
  * Configuration for a directed action
  */
-export interface DirectedActionConfig<T extends WithStageDirector> {
+export interface ActionConfig<T extends WithStageDirector> {
   invocationMode: InvocationMode;
-  handler?: DirectedTransactionHandler<T>;
-  batchHandler?: DirectedTransactionBatchHandler<T>;
+  handler?: TransactionHandlerFn<T>;
+  batchHandler?: TransactionHandlerBatchFn<T>;
 }
 

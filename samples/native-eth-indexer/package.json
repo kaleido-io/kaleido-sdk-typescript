@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@kaleido-io/workflow-engine-sdk": "*",
+    "@kaleido-io/connector-sdk": "*",
     "@kaleido-io/asset-manager-sdk": "*",
     "js-yaml": "^4.1.1"
   },

@@ -54,7 +54,8 @@ export interface EventSourceEvent<DT> {
  */
 export type EventSourcePollFn<CP, CF, DT> = (
   config: EventSourceConf<CF>,
-  checkpointIn: CP | null
+  checkpointIn: CP | null,
+  authRef?: string,
 ) => Promise<{ checkpointOut: CP; events: EventSourceEvent<DT>[] }>;
 
 /**
@@ -90,7 +91,7 @@ export interface EventSourceBuilder<CP, CF, DT> extends EventSource {
  * Internal event source implementation.
  */
 class EventSourceBase<CP, CF, DT> implements EventSourceBuilder<CP, CF, DT> {
-  private _name: string;
+  readonly name: string;
   private pollFn: EventSourcePollFn<CP, CF, DT>;
   private deleteFn?: EventSourceDeleteFn;
   private configParserFn?: EventSourceConfigParserFn<CF>;
@@ -101,12 +102,8 @@ class EventSourceBase<CP, CF, DT> implements EventSourceBuilder<CP, CF, DT> {
   private confs: Map<string, EventSourceConf<CF>> = new Map();
 
   constructor(name: string, pollFn: EventSourcePollFn<CP, CF, DT>) {
-    this._name = name;
+    this.name = name;
     this.pollFn = pollFn;
-  }
-
-  name(): string {
-    return this._name;
   }
 
   withDeleteFn(deleteFn: EventSourceDeleteFn): EventSourceBuilder<CP, CF, DT> {
@@ -228,7 +225,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceBuilder<CP, CF, DT> {
       const checkpointIn: CP | null = request.checkpoint ?? null;
 
       // Call user's poll function
-      const pollResult = await this.pollFn(esConf, checkpointIn);
+      const pollResult = await this.pollFn(esConf, checkpointIn, request.authRef);
 
       // Map events to ListenerEvent format
       result.events = pollResult.events.map((evt): ListenerEvent => ({

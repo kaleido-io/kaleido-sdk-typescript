@@ -19,7 +19,7 @@
  * event source handler in the Kaleido EVM Connector.
  *
  * Import via:
- *   import type { BTCTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/btc';
+ *   import type { BTCTransactionEvent } from '@kaleido-io/connector-sdk/btc';
  */
 
 export type BlockIdentity = {
@@ -80,3 +80,6 @@ export type BTCTransactionEvent = {
   block: BlockIdentity;
   tx: TxSummary;
 };
+
+export * from './stream-config.js';
+export { BTCConnectorClient } from './client.js';

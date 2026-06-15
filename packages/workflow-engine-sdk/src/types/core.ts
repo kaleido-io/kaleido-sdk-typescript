@@ -81,10 +81,10 @@ export interface StageDirector {
 }
 
 /**
- * Interface for types that can provide a StageDirector
+ * Interface for types that carry StageDirector routing metadata
  */
 export interface WithStageDirector {
-  getStageDirector(): StageDirector;
+  readonly stageDirector: StageDirector;
 }
 
 /**

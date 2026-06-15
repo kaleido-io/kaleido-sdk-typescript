@@ -34,7 +34,7 @@ const log = newLogger('engine_client');
  */
 export interface EngineClientRuntime {
   sendMessage(message: any): void;
-  isWebSocketConnected(): boolean;
+  isWebSocketConnected: boolean;
 }
 
 /**
@@ -61,7 +61,7 @@ export class EngineClient implements EngineAPI {
     authRef: string,
     transactions: AsyncTransactionInput[]
   ): Promise<IdempotentSubmitResult[]> {
-    if (!this.runtime.isWebSocketConnected()) {
+    if (!this.runtime.isWebSocketConnected) {
       throw newError(SDKErrors.MsgSDKEngineNotConnected);
     }
 

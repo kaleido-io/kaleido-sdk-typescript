@@ -1,0 +1,49 @@
+{
+  "name": "@kaleido-io/connector-sdk",
+  "version": "0.1.0",
+  "description": "TypeScript types and utilities for Kaleido connector event data",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    },
+    "./evm": {
+      "import": "./dist/src/evm/index.js",
+      "types": "./dist/src/evm/index.d.ts"
+    },
+    "./btc": {
+      "import": "./dist/src/btc/index.js",
+      "types": "./dist/src/btc/index.d.ts"
+    },
+    "./canton": {
+      "import": "./dist/src/canton/index.js",
+      "types": "./dist/src/canton/index.d.ts"
+    }
+  },
+  "scripts": {
+    "prebuild": "npm run clean",
+    "build": "tsc",
+    "postbuild": "tsc-esm-fix --target='dist'",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@kaleido-io/workflow-engine-sdk": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsc-esm-fix": "^3.1.2",
+    "typescript": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "sideEffects": false
+}

@@ -15,7 +15,8 @@
 // limitations under the License.
 
 import { newLogger } from '@kaleido-io/workflow-engine-sdk';
-import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/workflow-engine-sdk';
+import type { EventProcessorEvent, IndexerContext, SetupContext } from '@kaleido-io/workflow-engine-sdk';
+import { CantonConnectorClient } from '@kaleido-io/connector-sdk/canton';
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
 import type {
   AddressBulkInput as Address,
@@ -62,6 +63,17 @@ const log = newLogger('canton-cip56-indexer');
 export class CantonCIP56Indexer {
   /** Cross-batch cache: transactionId → TransferContext from exercised TIs. */
   private readonly txTransferContext = new Map<string, TransferContext>();
+
+  async setup(ctx: SetupContext<CantonConfig>): Promise<void> {
+    if (ctx.config.stream) {
+      await new CantonConnectorClient(ctx.config.stream.connectorBindingName).ensureStream(ctx, {
+        factory: ctx.config.stream.factory,
+        name: ctx.config.stream.name,
+        description: ctx.config.stream.description,
+        eventSourceConfig: ctx.config.stream.eventSourceConfig,
+      });
+    }
+  }
 
   async indexBatch(
     ctx: IndexerContext<CantonConfig>,

@@ -21,11 +21,11 @@ import './mock-logger';
 
 import {
     BasicStageDirector,
-    DirectedActionConfig,
+    ActionConfig,
     InvocationMode,
     EvalResult,
     WithStageDirector,
-    DirectedTransactionBatchIn
+    TransactionHandlerBatchIn
 } from '../src/index';
 import { newLogger } from '../src/log/logger';
 import { FlowStageTypes } from '../src/types/flows';
@@ -55,7 +55,7 @@ class BatchTestInput implements WithStageDirector {
 
 // Simple batch handler for testing
 export class BatchTestHandler {
-    private actionMap: Map<string, DirectedActionConfig<BatchTestInput>> = new Map();
+    private actionMap: Map<string, ActionConfig<BatchTestInput>> = new Map();
 
     constructor() {
         this.setupActionMap();
@@ -69,7 +69,7 @@ export class BatchTestHandler {
     }
 
     private async batchProcess(
-        transactions: DirectedTransactionBatchIn<BatchTestInput>[]
+        transactions: TransactionHandlerBatchIn<BatchTestInput>[]
     ): Promise<{ result: EvalResult; output?: any; error?: Error }[]> {
         logger.info(`[BatchTest] Processing batch of ${transactions.length} transactions`);
 
@@ -124,7 +124,7 @@ export class BatchTestHandler {
         });
     }
 
-    getActionMap(): Map<string, DirectedActionConfig<BatchTestInput>> {
+    getActionMap(): Map<string, ActionConfig<BatchTestInput>> {
         return this.actionMap;
     }
 
@@ -154,7 +154,7 @@ describe('Batch Processing Test', () => {
             { value: 10, totalValue: 50 }
         ];
 
-        const mockRequests: DirectedTransactionBatchIn<BatchTestInput>[] = testInputs.map((input, index) => ({
+        const mockRequests: TransactionHandlerBatchIn<BatchTestInput>[] = testInputs.map((input, index) => ({
             transaction: {
                 transactionId: `test-${index}`,
                 workflowId: 'test-flow',
@@ -201,7 +201,7 @@ describe('Batch Processing Test', () => {
         }
 
         // Create test transactions with invalid input
-        const mockRequests: DirectedTransactionBatchIn<BatchTestInput>[] = [
+        const mockRequests: TransactionHandlerBatchIn<BatchTestInput>[] = [
             {
                 transaction: {
                     transactionId: 'test-error',

@@ -42,37 +42,40 @@ export const KALEIDO_CONFIG_FILE = "KALEIDO_CONFIG_FILE";
 export const WFE_CONFIG_FILE = "WFE_CONFIG_FILE";
 
 /**
- * Config key names
+ * Environment variable name for the developer-managed provider-specific config file path.
+ * When set, takes precedence over the default path './config/provider-config.yaml'.
  */
-export const ConfigWorkflowEngineProviderName = "providerName";
-export const ConfigWorkflowEngineProviderMetadata = "providerMetadata";
-export const ConfigWorkflowEngineUrl = "url";
-export const ConfigWorkflowEngineAuth = "auth";
-export const ConfigWorkflowEngineMaxRetries = "maxRetries";
-export const ConfigWorkflowEngineRetryDelay = "retryDelay";
-export const ConfigWorkflowEngineServer = "server";
-export const ConfigWorkflowEngineHeaders = "headers";
+export const CONFIG_FILE = "CONFIG_FILE";
 
-/**
- * Config key names for server subsection
- */
-export const ConfigServerAddress = "address";
-export const ConfigServerPort = "port";
-export const ConfigServerReadBufferSize = "readBufferSize";
-export const ConfigServerWriteBufferSize = "writeBufferSize";
-export const ConfigServerHeartbeatInterval = "heartbeatInterval";
-export const ConfigServerThrottleRPS = "requestsPerSecond";
-export const ConfigServerThrottleBurst = "burst";
-export const ConfigServerTls = "tls";
+const WFE_CONFIG_KEYS = {
+  providerName: "providerName",
+  providerMetadata: "providerMetadata",
+  url: "url",
+  auth: "auth",
+  maxRetries: "maxRetries",
+  retryDelay: "retryDelay",
+  server: "server",
+  headers: "headers",
+} as const;
 
-/**
- * Config key names for server.tls subsection
- */
-export const ConfigTlsEnabled = "enabled";
-export const ConfigTlsCaFile = "caFile";
-export const ConfigTlsCertFile = "certFile";
-export const ConfigTlsKeyFile = "keyFile";
-export const ConfigTlsClientAuth = "clientAuth";
+const SERVER_CONFIG_KEYS = {
+  address: "address",
+  port: "port",
+  readBufferSize: "readBufferSize",
+  writeBufferSize: "writeBufferSize",
+  heartbeatInterval: "heartbeatInterval",
+  throttleRPS: "requestsPerSecond",
+  throttleBurst: "burst",
+  tls: "tls",
+} as const;
+
+const TLS_CONFIG_KEYS = {
+  enabled: "enabled",
+  caFile: "caFile",
+  certFile: "certFile",
+  keyFile: "keyFile",
+  clientAuth: "clientAuth",
+} as const;
 
 const log = newLogger("config");
 
@@ -248,7 +251,7 @@ export class ConfigLoader {
 
   static retryDelayMsFromSection(section: Record<string, unknown>): number {
     return ConfigLoader.retryDelayRawToMs(
-      cfgStrOrNumAsString(section, ConfigWorkflowEngineRetryDelay),
+      cfgStrOrNumAsString(section, WFE_CONFIG_KEYS.retryDelay),
     );
   }
 
@@ -286,19 +289,19 @@ export class ConfigLoader {
 
     const providerName = cfgStrField(
       section,
-      ConfigWorkflowEngineProviderName,
+      WFE_CONFIG_KEYS.providerName,
     );
     if (!providerName) {
       throw newError(SDKErrors.MsgSDKProviderNameNotSet);
     }
 
-    const serverSection = cfgObjField(section, ConfigWorkflowEngineServer);
+    const serverSection = cfgObjField(section, WFE_CONFIG_KEYS.server);
 
     const url =
-      cfgStrField(section, ConfigWorkflowEngineUrl) || undefined;
+      cfgStrField(section, WFE_CONFIG_KEYS.url) || undefined;
     const headers =
-      cfgStringMapField(section, ConfigWorkflowEngineHeaders) || undefined;
-    const auth = section[ConfigWorkflowEngineAuth] as
+      cfgStringMapField(section, WFE_CONFIG_KEYS.headers) || undefined;
+    const auth = section[WFE_CONFIG_KEYS.auth] as
       | WorkflowEngineConfig["workflowEngine"]["auth"]
       | undefined;
 
@@ -307,16 +310,16 @@ export class ConfigLoader {
     if (inbound && serverSection) {
       const addrPort = parseInboundServerAddressPort(
         serverSection,
-        ConfigServerAddress,
-        ConfigServerPort,
+        SERVER_CONFIG_KEYS.address,
+        SERVER_CONFIG_KEYS.port,
       );
       if (addrPort) {
-        const tlsSection = cfgObjField(serverSection, ConfigServerTls);
+        const tlsSection = cfgObjField(serverSection, SERVER_CONFIG_KEYS.tls);
         const serverConfig: ServerConfig = {
           address: addrPort.address,
           port: addrPort.port,
         };
-        if (tlsSection && tlsSection[ConfigTlsEnabled] === true) {
+        if (tlsSection && tlsSection[TLS_CONFIG_KEYS.enabled] === true) {
           serverConfig.tls = ConfigLoader.buildServerTlsFromSection(tlsSection);
         }
         const clientConfig: WorkflowEngineClientConfig = {
@@ -325,7 +328,7 @@ export class ConfigLoader {
           providerName,
           maxAttempts: cfgNumField(
             section,
-            ConfigWorkflowEngineMaxRetries,
+            WFE_CONFIG_KEYS.maxRetries,
           ),
           reconnectDelay: ConfigLoader.retryDelayMsFromSection(section),
         };
@@ -347,11 +350,11 @@ export class ConfigLoader {
           headers,
           maxRetries: cfgNumField(
             section,
-            ConfigWorkflowEngineMaxRetries,
+            WFE_CONFIG_KEYS.maxRetries,
           ),
           retryDelay: cfgStrOrNumAsString(
             section,
-            ConfigWorkflowEngineRetryDelay,
+            WFE_CONFIG_KEYS.retryDelay,
           ),
         },
       };
@@ -376,9 +379,9 @@ export class ConfigLoader {
     cert?: Buffer;
     key?: Buffer;
   } {
-    const certFile = cfgStrField(tlsSection, ConfigTlsCertFile);
-    const keyFile = cfgStrField(tlsSection, ConfigTlsKeyFile);
-    const caFile = cfgStrField(tlsSection, ConfigTlsCaFile);
+    const certFile = cfgStrField(tlsSection, TLS_CONFIG_KEYS.certFile);
+    const keyFile = cfgStrField(tlsSection, TLS_CONFIG_KEYS.keyFile);
+    const caFile = cfgStrField(tlsSection, TLS_CONFIG_KEYS.caFile);
     return {
       enabled: true,
       ...(caFile && { ca: fs.readFileSync(caFile) }),
@@ -403,9 +406,9 @@ export class ConfigLoader {
       key?: Buffer;
       rejectUnauthorized?: boolean;
     } = {};
-    const caFile = cfgStrField(tlsSection, ConfigTlsCaFile);
-    const certFile = cfgStrField(tlsSection, ConfigTlsCertFile);
-    const keyFile = cfgStrField(tlsSection, ConfigTlsKeyFile);
+    const caFile = cfgStrField(tlsSection, TLS_CONFIG_KEYS.caFile);
+    const certFile = cfgStrField(tlsSection, TLS_CONFIG_KEYS.certFile);
+    const keyFile = cfgStrField(tlsSection, TLS_CONFIG_KEYS.keyFile);
     if (caFile) {
       opts.ca = fs.readFileSync(caFile);
       opts.rejectUnauthorized = true;
@@ -423,7 +426,7 @@ export class ConfigLoader {
   ): void {
     const metaObj = cfgObjField(
       section,
-      ConfigWorkflowEngineProviderMetadata,
+      WFE_CONFIG_KEYS.providerMetadata,
     );
     if (!metaObj) {
       return;

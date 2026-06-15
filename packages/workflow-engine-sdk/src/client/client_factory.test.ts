@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { HandlerSetFor, NewWorkflowEngineClient } from './client_factory';
+import { handlerSetFor, createWorkflowEngineClient } from './client_factory';
 import { WorkflowEngineClient, WorkflowEngineClientConfig } from './client';
 import {
   TransactionHandler,
@@ -45,7 +45,7 @@ const mockClientConfig: WorkflowEngineClientConfig = {
 
 function createMockTransactionHandler(name: string): TransactionHandler {
   return {
-    name: () => name,
+    name,
     init: jest.fn(),
     close: jest.fn(),
     transactionHandlerBatch: jest.fn(),
@@ -54,7 +54,7 @@ function createMockTransactionHandler(name: string): TransactionHandler {
 
 function createMockEventSource(name: string): EventSource {
   return {
-    name: () => name,
+    name,
     init: jest.fn(),
     close: jest.fn(),
     eventSourcePoll: jest.fn(),
@@ -65,7 +65,7 @@ function createMockEventSource(name: string): EventSource {
 
 function createMockEventProcessor(name: string): EventProcessor {
   return {
-    name: () => name,
+    name,
     init: jest.fn(),
     close: jest.fn(),
     eventProcessorBatch: jest.fn(),
@@ -98,34 +98,34 @@ describe('client_factory', () => {
     ConfigLoader.loadClientConfigFromFile.mockReturnValue(mockClientConfig);
   });
 
-  describe('HandlerSetFor', () => {
+  describe('handlerSetFor', () => {
     it('should return the same array of handlers', () => {
       const tx = createMockTransactionHandler('tx1');
       const es = createMockEventSource('es1');
-      const set = HandlerSetFor(tx, es);
+      const set = handlerSetFor(tx, es);
       expect(set).toEqual([tx, es]);
       expect(set).toHaveLength(2);
     });
 
     it('should return empty array when no handlers passed', () => {
-      const set = HandlerSetFor();
+      const set = handlerSetFor();
       expect(set).toEqual([]);
     });
 
     it('should return single handler in array', () => {
       const ep = createMockEventProcessor('echo');
-      const set = HandlerSetFor(ep);
+      const set = handlerSetFor(ep);
       expect(set).toHaveLength(1);
       expect(set[0]).toBe(ep);
     });
   });
 
-  describe('NewWorkflowEngineClient', () => {
+  describe('createWorkflowEngineClient', () => {
     it('should load config from file and create connected client', async () => {
       const tx = createMockTransactionHandler('my-tx');
-      const set = HandlerSetFor(tx);
+      const set = handlerSetFor(tx);
 
-      const client = await NewWorkflowEngineClient(set, '/path/to/wfe.yaml');
+      const client = await createWorkflowEngineClient(set, '/path/to/wfe.yaml');
 
       expect(ConfigLoader.loadClientConfigFromFile).toHaveBeenCalledWith(
         '/path/to/wfe.yaml',
@@ -138,9 +138,9 @@ describe('client_factory', () => {
 
     it('should register event source by name from handler', async () => {
       const es = createMockEventSource('my-listener');
-      const set = HandlerSetFor(es);
+      const set = handlerSetFor(es);
 
-      await NewWorkflowEngineClient(set, '/wfe.yaml');
+      await createWorkflowEngineClient(set, '/wfe.yaml');
 
       expect(mockRegisterEventSource).toHaveBeenCalledWith('my-listener', es);
       expect(mockRegisterTransactionHandler).not.toHaveBeenCalled();
@@ -149,9 +149,9 @@ describe('client_factory', () => {
 
     it('should register event processor by name from handler', async () => {
       const ep = createMockEventProcessor('echo');
-      const set = HandlerSetFor(ep);
+      const set = handlerSetFor(ep);
 
-      await NewWorkflowEngineClient(set, '/wfe.yaml');
+      await createWorkflowEngineClient(set, '/wfe.yaml');
 
       expect(mockRegisterEventProcessor).toHaveBeenCalledWith('echo', ep);
       expect(mockRegisterTransactionHandler).not.toHaveBeenCalled();
@@ -162,9 +162,9 @@ describe('client_factory', () => {
       const tx = createMockTransactionHandler('tx1');
       const es = createMockEventSource('source1');
       const ep = createMockEventProcessor('processor1');
-      const set = HandlerSetFor(tx, es, ep);
+      const set = handlerSetFor(tx, es, ep);
 
-      await NewWorkflowEngineClient(set, '/wfe.yaml');
+      await createWorkflowEngineClient(set, '/wfe.yaml');
 
       expect(mockRegisterTransactionHandler).toHaveBeenCalledWith('tx1', tx);
       expect(mockRegisterEventSource).toHaveBeenCalledWith('source1', es);
@@ -173,9 +173,9 @@ describe('client_factory', () => {
     });
 
     it('should call loadClientConfigFromFile with undefined when configFile omitted', async () => {
-      const set = HandlerSetFor(createMockTransactionHandler('tx'));
+      const set = handlerSetFor(createMockTransactionHandler('tx'));
 
-      await NewWorkflowEngineClient(set);
+      await createWorkflowEngineClient(set);
 
       expect(ConfigLoader.loadClientConfigFromFile).toHaveBeenCalledWith(
         undefined,
@@ -184,13 +184,13 @@ describe('client_factory', () => {
 
     it('should throw when handler is not transaction, event source, or event processor', async () => {
       const invalidHandler = {
-        name: () => 'invalid',
+        name: 'invalid',
         init: jest.fn(),
         close: jest.fn(),
       };
-      const set = HandlerSetFor(invalidHandler as any);
+      const set = handlerSetFor(invalidHandler as any);
 
-      await expect(NewWorkflowEngineClient(set, '/wfe.yaml')).rejects.toThrow(
+      await expect(createWorkflowEngineClient(set, '/wfe.yaml')).rejects.toThrow(
         /Handler "invalid" does not implement TransactionHandler/,
       );
     });
@@ -199,10 +199,10 @@ describe('client_factory', () => {
       ConfigLoader.loadClientConfigFromFile.mockImplementation(() => {
         throw new Error('Config file not found');
       });
-      const set = HandlerSetFor(createMockTransactionHandler('tx'));
+      const set = handlerSetFor(createMockTransactionHandler('tx'));
 
       await expect(
-        NewWorkflowEngineClient(set, '/missing.yaml'),
+        createWorkflowEngineClient(set, '/missing.yaml'),
       ).rejects.toThrow('Config file not found');
       expect(WorkflowEngineClient).not.toHaveBeenCalled();
     });

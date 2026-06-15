@@ -17,7 +17,7 @@
 import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/workflow-engine-sdk';
 import { AssetManagerClient, BulkUpsertBuilder } from '@kaleido-io/asset-manager-sdk';
 import type { IDataModelClient } from '@kaleido-io/asset-manager-sdk';
-import type { EVMTransactionEvent } from '@kaleido-io/workflow-engine-sdk/types/evm';
+import type { EVMTransactionEvent } from '@kaleido-io/connector-sdk/evm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ETHIndexerConfig } from './config.js';
 import { ETHIndexer } from './indexer.js';

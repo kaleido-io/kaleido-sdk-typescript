@@ -32,7 +32,7 @@ describe('WorkflowEngineClient', () => {
   let mockRegisterEventProcessor: jest.Mock;
   let mockStart: jest.Mock<() => Promise<void>>;
   let mockStop: jest.Mock<() => void>;
-  let mockIsWebSocketConnected: jest.Mock<() => boolean>;
+  let mockIsWebSocketConnected: boolean;
 
   beforeEach(() => {
     // Reset all mocks
@@ -44,7 +44,7 @@ describe('WorkflowEngineClient', () => {
     mockRegisterEventProcessor = jest.fn();
     mockStart = jest.fn();
     mockStop = jest.fn();
-    mockIsWebSocketConnected = jest.fn();
+    mockIsWebSocketConnected = false;
 
     // Create mock runtime instance
     mockRuntime = {
@@ -53,7 +53,7 @@ describe('WorkflowEngineClient', () => {
       registerEventProcessor: mockRegisterEventProcessor,
       start: mockStart,
       stop: mockStop,
-      isWebSocketConnected: mockIsWebSocketConnected,
+      get isWebSocketConnected() { return mockIsWebSocketConnected; },
     } as any as jest.Mocked<HandlerRuntime>;
 
     // Mock the HandlerRuntime constructor
@@ -418,35 +418,20 @@ describe('WorkflowEngineClient', () => {
   });
 
   describe('isConnected', () => {
-    it('should delegate to runtime.isWebSocketConnected', () => {
+    it('should reflect runtime connection state', () => {
       const client = new WorkflowEngineClient({
         url: 'ws://localhost:5503/ws',
         providerName: 'test-provider',
       });
 
-      mockIsWebSocketConnected.mockReturnValueOnce(true);
-      expect(client.isConnected()).toBe(true);
-      expect(mockIsWebSocketConnected).toHaveBeenCalledTimes(1);
+      mockIsWebSocketConnected = false;
+      expect(client.isConnected).toBe(false);
 
-      mockIsWebSocketConnected.mockReturnValueOnce(false);
-      expect(client.isConnected()).toBe(false);
-      expect(mockIsWebSocketConnected).toHaveBeenCalledTimes(2);
-    });
+      mockIsWebSocketConnected = true;
+      expect(client.isConnected).toBe(true);
 
-    it('should reflect connection state changes', () => {
-      const client = new WorkflowEngineClient({
-        url: 'ws://localhost:5503/ws',
-        providerName: 'test-provider',
-      });
-
-      mockIsWebSocketConnected.mockReturnValueOnce(false);
-      expect(client.isConnected()).toBe(false);
-
-      mockIsWebSocketConnected.mockReturnValueOnce(true);
-      expect(client.isConnected()).toBe(true);
-
-      mockIsWebSocketConnected.mockReturnValueOnce(false);
-      expect(client.isConnected()).toBe(false);
+      mockIsWebSocketConnected = false;
+      expect(client.isConnected).toBe(false);
     });
   });
 
@@ -477,16 +462,16 @@ describe('WorkflowEngineClient', () => {
       client.registerEventSource('source', eventSource);
 
       // Initially not connected
-      mockIsWebSocketConnected.mockReturnValueOnce(false);
-      expect(client.isConnected()).toBe(false);
+      mockIsWebSocketConnected = false;
+      expect(client.isConnected).toBe(false);
 
       // Connect
       await client.connect();
       expect(mockStart).toHaveBeenCalledTimes(1);
 
       // Check connection status
-      mockIsWebSocketConnected.mockReturnValueOnce(true);
-      expect(client.isConnected()).toBe(true);
+      mockIsWebSocketConnected = true;
+      expect(client.isConnected).toBe(true);
 
       // Disconnect
       client.disconnect();

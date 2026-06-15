@@ -28,7 +28,7 @@ import {
 import { ServiceBindingsMap, ServiceBindingConfig } from '../service/types';
 import { ServiceClientOptions } from '@kaleido-io/core/http';
 import { WSProxyAdapter } from '../service/ws_proxy_adapter';
-import { ConfigLoader, KALEIDO_CONFIG_FILE, WFE_CONFIG_FILE } from '../config/config';
+import { ConfigLoader, KALEIDO_CONFIG_FILE, WFE_CONFIG_FILE, CONFIG_FILE } from '../config/config';
 import { newLogger } from '../log/logger';
 import { createEventProcessor, EventProcessorEvent } from '../factories/event_processor';
 import { RequestContext } from '../types/core';
@@ -128,21 +128,34 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
       wfeClientConfig.serviceBindings = serviceBindings;
     }
 
-    const configPath = (
-      path ??
-      process.env[KALEIDO_CONFIG_FILE] ??
-      process.env[WFE_CONFIG_FILE] ??
-      ''
-    ).trim();
+    // Resolve the provider-specific config file: CONFIG_FILE env var, then default path.
+    const providerConfigPath = (process.env[CONFIG_FILE] ?? './config/provider-config.yaml').trim();
 
     let customConfig: C = {} as C;
-    if (configPath) {
-      try {
-        const raw = fs.readFileSync(configPath, 'utf8');
-        const parsed = yaml.load(raw) as Record<string, unknown> | undefined;
-        customConfig = ((parsed?.['config']) ?? {}) as C;
-      } catch {
-        // no custom config section is fine
+    let loadedFromProviderFile = false;
+    try {
+      const raw = fs.readFileSync(providerConfigPath, 'utf8');
+      customConfig = (yaml.load(raw) ?? {}) as C;
+      loadedFromProviderFile = true;
+    } catch {
+      // file absent or unreadable — fall back to 'config:' key in KALEIDO_CONFIG_FILE
+    }
+
+    if (!loadedFromProviderFile) {
+      const kaleidoConfigPath = (
+        path ??
+        process.env[KALEIDO_CONFIG_FILE] ??
+        process.env[WFE_CONFIG_FILE] ??
+        ''
+      ).trim();
+      if (kaleidoConfigPath) {
+        try {
+          const raw = fs.readFileSync(kaleidoConfigPath, 'utf8');
+          const parsed = yaml.load(raw) as Record<string, unknown> | undefined;
+          customConfig = ((parsed?.['config']) ?? {}) as C;
+        } catch {
+          // no custom config section is fine
+        }
       }
     }
 
@@ -179,10 +192,10 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
 
   /**
    * Register a WFE event source.
-   * The handler name is taken from `source.name()` and must be unique within this client.
+   * The handler name is taken from `source.name` and must be unique within this client.
    */
   eventSource(source: EventSource): this {
-    const name = source.name();
+    const name = source.name;
     this.assertUniqueHandlerName(name);
     this.registeredHandlers.push({ name, type: 'eventSource', source });
     return this;
@@ -215,7 +228,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     this.disconnect();
   }
 
-  // ── Low-level registration API (used by NewWorkflowEngineClient) ────────────
+  // ── Low-level registration API (used by newWorkflowEngineClient) ────────────
 
   registerTransactionHandler(name: string, handler: TransactionHandler): void {
     this.runtime.registerTransactionHandler(name, handler);
@@ -241,8 +254,8 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     this.disconnect();
   }
 
-  isConnected(): boolean {
-    return this.runtime.isWebSocketConnected();
+  get isConnected(): boolean {
+    return this.runtime.isWebSocketConnected;
   }
 
   getWSProxyAdapter(): WSProxyAdapter {
