@@ -16,6 +16,8 @@
 
 
 import https from 'https';
+import { IncomingMessage } from 'http';
+import { Transform } from 'stream';
 import WebSocket, { ClientOptions, WebSocketServer } from 'ws';
 import { backOff } from 'exponential-backoff';
 import {
@@ -128,6 +130,7 @@ export class HandlerRuntime {
 
   private reconnectResolve?: (value: void | PromiseLike<void>) => void;
   private reconnectReject?: (reason?: any) => void;
+  private reconnectTimer?: NodeJS.Timeout;
   private isConnected = false;
   private shouldReconnect = true;
 
@@ -247,6 +250,11 @@ export class HandlerRuntime {
 
     this.shouldReconnect = false;
 
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
+
     // Clean up heartbeat
     this.cleanupHeartbeat();
 
@@ -350,6 +358,7 @@ export class HandlerRuntime {
               ...this.config.options?.headers,
               ...this.config.headers,
             },
+            handshakeTimeout: this.PING_INTERVAL_MS,
           };
 
           if (this.config.authToken) {
@@ -369,6 +378,29 @@ export class HandlerRuntime {
           this.ws.on('open', this.onOpen.bind(this));
           this.ws.on('message', this.onMessage.bind(this));
           this.ws.on('close', this.onClose.bind(this));
+          this.ws.on('unexpected-response', (_req: any, res: IncomingMessage) => {
+            let responseData = '';
+            res.pipe(
+              new Transform({
+                transform(chunk, _encoding, callback) {
+                  responseData += chunk;
+                  callback();
+                },
+                flush: () => {
+                  const msg = `Connect error [${res.statusCode}]: ${responseData}`;
+                  log.error('Unexpected HTTP response during WebSocket upgrade', {
+                    statusCode: res.statusCode,
+                    body: responseData,
+                  });
+                  if (this.reconnectReject) {
+                    this.reconnectReject(new Error(msg));
+                    this.reconnectReject = undefined;
+                    this.reconnectResolve = undefined;
+                  }
+                },
+              }),
+            );
+          });
         }),
       this.config.maxAttempts ? { numOfAttempts: this.config.maxAttempts } : {}
     );
@@ -411,10 +443,13 @@ export class HandlerRuntime {
       this.reconnectReject(new Error('WebSocket closed'));
       this.reconnectReject = undefined;
       this.reconnectResolve = undefined;
-    } else if (this.shouldReconnect) {
+    } else if (this.shouldReconnect && !this.reconnectTimer) {
       const delay = this.config.reconnectDelay || 1000;
       log.info('Reconnecting', { delay });
-      setTimeout(() => this.connectWebSocket(), delay);
+      this.reconnectTimer = setTimeout(() => {
+        this.reconnectTimer = undefined;
+        this.connectWebSocket();
+      }, delay);
     }
   }
 
