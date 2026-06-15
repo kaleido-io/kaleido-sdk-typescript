@@ -21,9 +21,17 @@ COPY packages/workflow-engine-sdk ./packages/workflow-engine-sdk
 COPY packages/asset-manager ./packages/asset-manager
 RUN npm run build -w packages/workflow-engine-sdk -w packages/asset-manager
 
-# Build the sample
+# Build the sample — source lives at root level (no src/ subdir)
 COPY samples/getting-started/tsconfig.json ./samples/getting-started/
-COPY samples/getting-started/src ./samples/getting-started/src
+COPY samples/getting-started/connect.ts ./samples/getting-started/
+COPY samples/getting-started/provider.ts ./samples/getting-started/
+COPY samples/getting-started/block-indexer ./samples/getting-started/block-indexer
+COPY samples/getting-started/event-source ./samples/getting-started/event-source
+COPY samples/getting-started/hello ./samples/getting-started/hello
+COPY samples/getting-started/http-invoke ./samples/getting-started/http-invoke
+COPY samples/getting-started/list-pools ./samples/getting-started/list-pools
+COPY samples/getting-started/snap ./samples/getting-started/snap
+COPY samples/getting-started/utils ./samples/getting-started/utils
 RUN npm run build -w samples/getting-started
 
 # Runtime stage — distroless for minimal attack surface and image size
@@ -49,4 +57,4 @@ ENV CONFIG_FILE=./config/config.yaml
 # distroless/nodejs images run as nonroot (uid 65532) by default
 USER nonroot
 
-CMD ["/app/samples/getting-started/dist/src/connect.js"]
+CMD ["/app/samples/getting-started/dist/connect.js"]

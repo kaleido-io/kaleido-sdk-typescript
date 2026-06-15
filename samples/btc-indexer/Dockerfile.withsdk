@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY internal/core/package.json ./internal/core/
 COPY packages/asset-manager/package.json ./packages/asset-manager/
+COPY packages/connector-sdk/package.json ./packages/connector-sdk/
 COPY packages/workflow-engine-sdk/package.json ./packages/workflow-engine-sdk/
 COPY samples/btc-indexer/package.json ./samples/btc-indexer/
 
@@ -19,7 +20,8 @@ RUN npm run build --prefix internal/core
 # Build workspace packages
 COPY packages/workflow-engine-sdk ./packages/workflow-engine-sdk
 COPY packages/asset-manager ./packages/asset-manager
-RUN npm run build -w packages/workflow-engine-sdk -w packages/asset-manager
+COPY packages/connector-sdk ./packages/connector-sdk
+RUN npm run build -w packages/workflow-engine-sdk -w packages/asset-manager -w packages/connector-sdk
 
 # Build the sample
 COPY samples/btc-indexer/tsconfig.json ./samples/btc-indexer/

@@ -1,4 +1,4 @@
-# Build from monorepo root: docker build -f samples/erc20-indexer/Dockerfile.withsdk .
+# Build from monorepo root: docker build -f samples/canton-cip56-indexer/Dockerfile.withsdk .
 FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
@@ -9,7 +9,7 @@ COPY internal/core/package.json ./internal/core/
 COPY packages/asset-manager/package.json ./packages/asset-manager/
 COPY packages/connector-sdk/package.json ./packages/connector-sdk/
 COPY packages/workflow-engine-sdk/package.json ./packages/workflow-engine-sdk/
-COPY samples/erc20-indexer/package.json ./samples/erc20-indexer/
+COPY samples/canton-cip56-indexer/package.json ./samples/canton-cip56-indexer/
 
 RUN npm ci
 
@@ -24,9 +24,9 @@ COPY packages/connector-sdk ./packages/connector-sdk
 RUN npm run build -w packages/workflow-engine-sdk -w packages/asset-manager -w packages/connector-sdk
 
 # Build the sample
-COPY samples/erc20-indexer/tsconfig.json ./samples/erc20-indexer/
-COPY samples/erc20-indexer/src ./samples/erc20-indexer/src
-RUN npm run build -w samples/erc20-indexer
+COPY samples/canton-cip56-indexer/tsconfig.json ./samples/canton-cip56-indexer/
+COPY samples/canton-cip56-indexer/src ./samples/canton-cip56-indexer/src
+RUN npm run build -w samples/canton-cip56-indexer
 
 # Runtime stage — distroless for minimal attack surface and image size
 # No shell, no package manager: only the Node runtime and your compiled JS.
@@ -35,12 +35,12 @@ FROM gcr.io/distroless/nodejs22-debian12
 WORKDIR /app
 
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/samples/erc20-indexer/dist ./samples/erc20-indexer/dist
-COPY --from=builder /app/samples/erc20-indexer/package.json ./samples/erc20-indexer/
+COPY --from=builder /app/samples/canton-cip56-indexer/dist ./samples/canton-cip56-indexer/dist
+COPY --from=builder /app/samples/canton-cip56-indexer/package.json ./samples/canton-cip56-indexer/
 
 ENV CONFIG_FILE=./config/config.yaml
 
 # distroless node images use nonroot (uid 65532) by default
 USER nonroot
 
-CMD ["/app/samples/erc20-indexer/dist/src/connect.js"]
+CMD ["/app/samples/canton-cip56-indexer/dist/src/connect.js"]
