@@ -30,7 +30,7 @@ export interface IndexerHandlerDef<CustomConfig = unknown, EventDataType = unkno
   indexBatch: (
     ctx: IndexerContext<CustomConfig>,
     events: EventProcessorEvent<EventDataType>[],
-  ) => Promise<{ events: EventProcessorEvent<EventDataType>[] }>;
+  ) => Promise<void>;
 }
 
 /**

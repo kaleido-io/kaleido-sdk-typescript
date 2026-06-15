@@ -291,8 +291,9 @@ export class BulkUpsertBuilder {
       await Promise.all(this.finalizers.map((f) => Promise.resolve(f())));
     }
     
-    // Reset the count
+    // Reset the count and updates
     this.count = 0;
+    this.updates = {};
   }
   
   private async retryIndividually(): Promise<void> {

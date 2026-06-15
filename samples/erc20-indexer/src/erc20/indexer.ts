@@ -70,7 +70,7 @@ export class ERC20Indexer {
   async indexBatch(
     ctx: IndexerContext<ERC20Config>,
     events: EventProcessorEvent<EVMTransactionEvent>[],
-  ): Promise<{ events: EventProcessorEvent<EVMTransactionEvent>[] }> {
+  ): Promise<void> {
     const { contractAddress, contractName, chain } = ctx.config;
     const addr = (contractAddress ?? '').toLowerCase();
     const poolName = (contractName ?? 'ERC20').toLowerCase();
@@ -142,8 +142,6 @@ export class ERC20Indexer {
     }
 
     await builder.execute();
-
-    return { events };
   }
 
 }

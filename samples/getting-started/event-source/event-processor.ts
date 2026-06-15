@@ -24,6 +24,5 @@ export const echoHandlerDef: IndexerHandlerDef = {
     for (const event of events) {
       log.info(`Event received: ${event.topic} - ${JSON.stringify(event.data, null, '\t')}`);
     }
-    return { events };
   },
 };

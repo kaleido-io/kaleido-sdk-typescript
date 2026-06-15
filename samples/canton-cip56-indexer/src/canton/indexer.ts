@@ -78,7 +78,7 @@ export class CantonCIP56Indexer {
   async indexBatch(
     ctx: IndexerContext<CantonConfig>,
     events: EventProcessorEvent<CantonContractEvent>[],
-  ): Promise<{ events: EventProcessorEvent<CantonContractEvent>[] }> {
+  ): Promise<void> {
     log.debug(`Batch received: ${events.length} events`);
 
     const am = new AssetManagerClient(ctx);
@@ -196,7 +196,6 @@ export class CantonCIP56Indexer {
       this.txTransferContext.delete(txId);
     }
 
-    return { events };
   }
 
 }

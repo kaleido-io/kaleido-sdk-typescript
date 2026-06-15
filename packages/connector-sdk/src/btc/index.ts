@@ -82,4 +82,5 @@ export type BTCTransactionEvent = {
 };
 
 export * from './stream-config.js';
+export * from './transaction-spec.js';
 export { BTCConnectorClient } from './client.js';

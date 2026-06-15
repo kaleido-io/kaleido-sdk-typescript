@@ -55,7 +55,7 @@ describe('SetupContext via WorkflowEngineClient', () => {
     let capturedCtx: Record<string, unknown> | undefined;
     client.indexer('my-handler', {
       setup: async (ctx) => { capturedCtx = ctx as never; },
-      indexBatch: async (_ctx, events) => ({ events }),
+      indexBatch: async (_ctx, _events) => {},
     });
     await client.start();
     expect(capturedCtx!['config']).toEqual({ foo: 1 });
@@ -68,7 +68,7 @@ describe('SetupContext via WorkflowEngineClient', () => {
     let opts: Record<string, unknown> | undefined;
     client.indexer('h', {
       setup: async (ctx) => { opts = ctx.getServiceClientOptions('asset-manager') as never; },
-      indexBatch: async (_ctx, events) => ({ events }),
+      indexBatch: async (_ctx, _events) => {},
     });
     await client.start();
     expect(opts).toMatchObject({ transport: 'http', url: 'http://am' });
@@ -82,14 +82,14 @@ describe('SetupContext via WorkflowEngineClient', () => {
 describe('WorkflowEngineClient builder', () => {
   it('throws on duplicate handler name', () => {
     const client = makeTestClient({});
-    const noop = { indexBatch: jest.fn<() => Promise<{ events: never[] }>>().mockResolvedValue({ events: [] }) };
+    const noop = { indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) };
     client.indexer('my-handler', noop);
     expect(() => client.indexer('my-handler', noop)).toThrow("Handler 'my-handler' is already registered");
   });
 
   it('throws on duplicate name across handler types', () => {
     const client = makeTestClient({});
-    client.indexer('shared', { indexBatch: jest.fn<() => Promise<{ events: never[] }>>().mockResolvedValue({ events: [] }) });
+    client.indexer('shared', { indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
     expect(() =>
       client.transactionHandler('shared', {
         handler: { name: 'shared', init: jest.fn() as never, close: jest.fn() as never, transactionHandlerBatch: jest.fn() as never },
@@ -100,7 +100,7 @@ describe('WorkflowEngineClient builder', () => {
   it('calls setup hook before connect on start()', async () => {
     const client = makeTestClient({});
     const setupFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
-    client.indexer('idx', { setup: setupFn, indexBatch: jest.fn<() => Promise<{ events: never[] }>>().mockResolvedValue({ events: [] }) });
+    client.indexer('idx', { setup: setupFn, indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
 
     await client.start();
 
@@ -114,7 +114,7 @@ describe('WorkflowEngineClient builder', () => {
   it('setup() calls setup hooks but does NOT call connect', async () => {
     const client = makeTestClient({});
     const setupFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
-    client.indexer('idx', { setup: setupFn, indexBatch: jest.fn<() => Promise<{ events: never[] }>>().mockResolvedValue({ events: [] }) });
+    client.indexer('idx', { setup: setupFn, indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
 
     await client.setup();
 
@@ -124,7 +124,7 @@ describe('WorkflowEngineClient builder', () => {
 
   it('registers event processor on start()', async () => {
     const client = makeTestClient({});
-    client.indexer('my-idx', { indexBatch: jest.fn<() => Promise<{ events: never[] }>>().mockResolvedValue({ events: [] }) });
+    client.indexer('my-idx', { indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
 
     await client.start();
 
@@ -147,7 +147,7 @@ describe('WorkflowEngineClient builder', () => {
 
   it('stop() calls disconnect', async () => {
     const client = makeTestClient({});
-    client.indexer('idx', { indexBatch: jest.fn<() => Promise<{ events: never[] }>>().mockResolvedValue({ events: [] }) });
+    client.indexer('idx', { indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
     await client.start();
     client.stop();
     expect(client.disconnect).toHaveBeenCalledTimes(1);
@@ -157,13 +157,13 @@ describe('WorkflowEngineClient builder', () => {
     const client = makeTestClient({ key: 'value' });
     let capturedCtx: Record<string, unknown> | undefined;
     client.indexer('idx', {
-      indexBatch: async (ctx, events) => { capturedCtx = ctx as never; return { events }; },
+      indexBatch: async (ctx, _events) => { capturedCtx = ctx as never; },
     });
 
     await client.start();
 
     const registeredProcessor = ((client.registerEventProcessor as jest.Mock).mock.calls[0]! as unknown[])[1] as { eventProcessorBatch: (...args: unknown[]) => Promise<unknown> };
-    const batchResult = { events: [] };
+    const batchResult = {};
     await registeredProcessor.eventProcessorBatch({ requestId: 'req-abc' }, batchResult, { events: [] });
 
     expect(capturedCtx!['requestId']).toBe('req-abc');

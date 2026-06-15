@@ -71,10 +71,8 @@ export class ETHIndexer {
   async indexBatch(
     ctx: IndexerContext<ETHIndexerConfig>,
     events: EventProcessorEvent<EVMTransactionEvent>[],
-  ): Promise<{ events: EventProcessorEvent<EVMTransactionEvent>[] }> {
-    if (events.length === 0) {
-      return { events };
-    }
+  ): Promise<void> {
+    if (events.length === 0) return;
 
     const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder().autoFlush(this.upsertTriggerCount);
     const startTime = Date.now();
@@ -122,7 +120,6 @@ export class ETHIndexer {
     await builder.execute();
 
     log.info(`Indexed ${txCount} transactions with a total of ${builder.getTotalCount()} updates in ${Date.now() - startTime}ms`);
-    return { events };
   }
 
 }

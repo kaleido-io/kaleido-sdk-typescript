@@ -114,7 +114,7 @@ export interface TransactionHandlerBatchIn<T extends WithStageDirector> {
 /**
  * Output for batch directed transaction handling
  */
-export interface TransactionHandlerBatchOut<_T extends WithStageDirector> {
+export interface TransactionHandlerBatchOut {
   result: EvalResult;
   output?: any;
   error?: Error;
@@ -131,7 +131,7 @@ export interface TransactionHandlerBatchOut<_T extends WithStageDirector> {
  */
 export type TransactionHandlerBatchFn<T extends WithStageDirector> = (
   transactions: TransactionHandlerBatchIn<T>[]
-) => Promise<TransactionHandlerBatchOut<T>[]>;
+) => Promise<TransactionHandlerBatchOut[]>;
 
 /**
  * Configuration for a directed action

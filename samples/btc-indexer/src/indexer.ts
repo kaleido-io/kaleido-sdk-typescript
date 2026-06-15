@@ -95,10 +95,8 @@ export class BTCIndexer {
   async indexBatch(
     ctx: IndexerContext<BTCIndexerConfig>,
     events: EventProcessorEvent<BTCTransactionEvent>[],
-  ): Promise<{ events: EventProcessorEvent<BTCTransactionEvent>[] }> {
-    if (events.length === 0) {
-      return { events };
-    }
+  ): Promise<void> {
+    if (events.length === 0) return;
 
     const am = new AssetManagerClient(ctx);
     const builder = am.getNewBulkUpsertBuilder().autoFlush(this.upsertTriggerCount);
@@ -117,7 +115,11 @@ export class BTCIndexer {
     await this.batchLookup<Fragment>(
       am,
       fragmentsToLookup,
-      (batch) => ({ fragments: { limit: batch.length, in: [{ field: 'name', values: batch }] } }),
+      (batch) => ({ fragments: {
+        limit: batch.length,
+        in: [{ field: 'name', values: batch }],
+        eq: [{ field: 'address', value: this.tokenName }],
+      } }),
       (output) => output.fragments?.items ?? [],
       (fragments) => {
         for (const fragment of fragments) {
@@ -260,7 +262,6 @@ export class BTCIndexer {
     await builder.execute();
 
     log.info(`Indexed ${txCount} transactions with a total of ${builder.getTotalCount()} updates in ${Date.now() - startTime}ms`);
-    return { events };
   }
 
 }

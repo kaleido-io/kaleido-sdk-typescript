@@ -16,8 +16,10 @@
 
 import { WorkflowEngineClient, fatalError } from '@kaleido-io/workflow-engine-sdk';
 import { BTCIndexer } from './indexer.js';
+import { createCoinSelectorHandler } from './coin-selector.js';
 
 WorkflowEngineClient.fromConfigFile()
     .indexer('bitcoin-indexer', new BTCIndexer())
+    .transactionHandler('btc-coin-selector', { handler: createCoinSelectorHandler() })
     .start()
     .catch(fatalError);

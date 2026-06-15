@@ -46,9 +46,7 @@ export interface TokenTransferEvent {
 export const tokenTransferIndexer = createEventProcessor<TokenTransferEvent>(
   'token-transfer-indexer',
   async (_reqContext, events) => {
-    if (events.length === 0) {
-      return { events };
-    }
+    if (events.length === 0) return;
 
     let highestBlock = 0;
     for (const event of events) {
@@ -58,9 +56,5 @@ export const tokenTransferIndexer = createEventProcessor<TokenTransferEvent>(
       }
     }
 
-    return {
-      events,
-      checkpointOut: { highestBlock },
-    };
   }
 );

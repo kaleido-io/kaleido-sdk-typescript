@@ -22,7 +22,6 @@ import {
   RequestContext,
   WSEventProcessorBatchRequest,
   WSEventProcessorBatchResult,
-  ListenerEvent,
 } from '../types/core';
 import { newLogger } from '../log/logger';
 import { formatError, getErrorMessage } from '../utils/errors';
@@ -55,7 +54,7 @@ export type EventProcessorBatchFn<DT = unknown> = (
   reqContext: RequestContext,
   events: EventProcessorEvent<DT>[],
   authRef?: string,
-) => Promise<{ events: EventProcessorEvent<DT>[] }>;
+) => Promise<void>;
 
 /**
  * Builder interface for configuring event processors with optional lifecycle hooks.
@@ -110,13 +109,7 @@ class EventProcessorBase<DT> implements EventProcessorBuilder<DT> {
         data: evt.data as DT,
       }));
 
-      const batchResult = await this.batchFn(reqContext, events, batch.authRef);
-
-      result.events = batchResult.events.map((evt): ListenerEvent => ({
-        idempotencyKey: evt.idempotencyKey,
-        topic: evt.topic,
-        data: evt.data,
-      }));
+      await this.batchFn(reqContext, events, batch.authRef);
 
     } catch (error: any) {
       log.error('Event processor batch failed', { error: formatError(error) });
