@@ -97,7 +97,7 @@ describe('WorkflowEngineClient builder', () => {
     ).toThrow("Handler 'shared' is already registered");
   });
 
-  it('calls setup hook before connect on start()', async () => {
+  it('calls setup hook after connect on start()', async () => {
     const client = makeTestClient({});
     const setupFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
     client.indexer('idx', { setup: setupFn, indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
@@ -108,7 +108,9 @@ describe('WorkflowEngineClient builder', () => {
     expect(client.connect).toHaveBeenCalledTimes(1);
     const setupOrder = (setupFn.mock.invocationCallOrder ?? [])[0]!;
     const connectOrder = ((client.connect as jest.Mock).mock.invocationCallOrder ?? [])[0]!;
-    expect(setupOrder).toBeLessThan(connectOrder);
+    // Setup runs after connect so hosted ws-proxy bindings have an established
+    // WebSocket before setup() tries to call platform services.
+    expect(setupOrder).toBeGreaterThan(connectOrder);
   });
 
   it('setup() calls setup hooks but does NOT call connect', async () => {

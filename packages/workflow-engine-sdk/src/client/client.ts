@@ -212,13 +212,18 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
   }
 
   /**
-   * Run all handler `setup` hooks, register handlers, then connect to WFE.
+   * Connect to WFE, register handlers, then run all handler `setup` hooks.
+   *
+   * Setup runs after connect so that hosted service bindings (ws-proxy transport)
+   * have an established WebSocket before setup() tries to call platform services
+   * such as the Asset Manager. In non-hosted mode the order makes no difference
+   * since those bindings use direct HTTP.
    */
   async start(): Promise<void> {
     const controller = new AbortController();
-    await this.runSetupHooks(controller.signal);
     this.registerBuilderHandlers(controller.signal);
     await this.connect();
+    await this.runSetupHooks(controller.signal);
   }
 
   /**
