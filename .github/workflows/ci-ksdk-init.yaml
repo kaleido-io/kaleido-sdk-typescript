@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        template: [getting-started, erc20-indexer, btc-indexer]
+        template: [getting-started, erc20-indexer, btc-indexer, canton-cip56-indexer]
     steps:
       - uses: actions/checkout@v4
 
@@ -29,11 +29,11 @@ jobs:
 
       - name: Pack sdk
         run: npm pack
-        working-directory: packages/sdk
+        working-directory: packages/samples
 
       - name: Run ksdk init from tarball
         run: |
-          TARBALL=$(ls "$GITHUB_WORKSPACE"/packages/sdk/kaleido-io-sdk-*.tgz)
+          TARBALL=$(ls "$GITHUB_WORKSPACE"/packages/samples/kaleido-io-samples-*.tgz)
           mkdir -p /tmp/ksdk-init-test
           cd /tmp/ksdk-init-test
           WESDK_REPO_URL="$GITHUB_WORKSPACE" npx "file:$TARBALL" init my-${{ matrix.template }} --template ${{ matrix.template }}
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        template: [getting-started, erc20-indexer, btc-indexer]
+        template: [getting-started, erc20-indexer, btc-indexer, canton-cip56-indexer]
     steps:
       - uses: actions/checkout@v4
 
@@ -84,7 +84,7 @@ jobs:
 
       - name: Pack sdk
         run: npm pack
-        working-directory: packages/sdk
+        working-directory: packages/samples
 
       - name: Create minimal existing project
         run: |
@@ -94,7 +94,7 @@ jobs:
 
       - name: Run ksdk init in add-to-existing mode
         run: |
-          TARBALL=$(ls "$GITHUB_WORKSPACE"/packages/sdk/kaleido-io-sdk-*.tgz)
+          TARBALL=$(ls "$GITHUB_WORKSPACE"/packages/samples/kaleido-io-samples-*.tgz)
           cd /tmp/ksdk-add-test
           WESDK_REPO_URL="$GITHUB_WORKSPACE" npx "file:$TARBALL" init --template ${{ matrix.template }}
 

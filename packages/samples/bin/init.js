@@ -22,7 +22,7 @@ import { spawnSync } from 'child_process';
 import { tmpdir } from 'os';
 
 const GITHUB_REPO = process.env.WESDK_REPO_URL ?? 'https://github.com/kaleido-io/kaleido-sdk-typescript.git';
-const AVAILABLE_TEMPLATES = ['getting-started', 'erc20-indexer', 'btc-indexer', 'native-eth-indexer'];
+const AVAILABLE_TEMPLATES = ['getting-started', 'erc20-indexer', 'btc-indexer', 'native-eth-indexer', 'canton-cip56-indexer'];
 const projectNameRegex = /^(?:@[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*|[a-z0-9][a-z0-9-]*)$/;
 
 const __filename = fileURLToPath(import.meta.url);
@@ -188,8 +188,9 @@ try {
   // Build a per-package version map by reading manifests directly from git objects.
   // git show fetches the blob lazily for remote partial clones and works with local paths too.
   for (const manifestPath of [
-    'packages/sdk/package.json',
+    'packages/samples/package.json',
     'packages/workflow-engine-sdk/package.json',
+    'packages/connector-sdk/package.json',
     'packages/asset-manager/package.json',
   ]) {
     const result = spawnSync('git', ['show', `HEAD:${manifestPath}`], {

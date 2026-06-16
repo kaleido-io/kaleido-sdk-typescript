@@ -23,6 +23,7 @@ import {
 } from "axios";
 import axiosRetry, { isNetworkError } from "axios-retry";
 import CacheableLookup from "cacheable-lookup";
+import * as dns from "dns";
 import * as http from "http";
 import * as https from "https";
 import { ServiceBindingAuth } from "./types";
@@ -137,7 +138,9 @@ export function configureHttpClient(
 ): AxiosInstance {
   const maxRetries = options.maxRetries ?? 3;
   const timeout = options.timeout ?? 30000;
-  const rejectUnauthorized = options.rejectUnauthorized ?? true;
+  // Respect NODE_TLS_REJECT_UNAUTHORIZED=0 when no explicit override is set.
+  const rejectUnauthorized =
+    options.rejectUnauthorized ?? process.env["NODE_TLS_REJECT_UNAUTHORIZED"] !== "0";
 
   // Configure keepAlive agents with connection pool limits
   const httpsAgent = new https.Agent({
@@ -153,10 +156,11 @@ export function configureHttpClient(
     maxFreeSockets: 10,
   });
 
-  // Cache DNS lookups to avoid expensive syscalls
-  // Node's default behavior is to make a syscall for every query, which can be
-  // resource-intensive and cause spurious failures depending on OS and load.
+  // Cache DNS lookups to avoid repeated syscalls, using the system resolver
+  // (dns.lookup) so that /etc/hosts entries are respected. The default
+  // CacheableLookup resolver uses dns.resolve*() which bypasses /etc/hosts.
   const cacheable = new CacheableLookup();
+  cacheable.lookup = dns.lookup.bind(dns) as typeof cacheable.lookup;
   cacheable.install(httpsAgent);
   cacheable.install(httpAgent);
 
