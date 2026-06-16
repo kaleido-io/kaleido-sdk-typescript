@@ -1,37 +1,42 @@
 #!/usr/bin/env node
 // TODO: Remove this script before publishing packages to npm.
-// It exists solely to allow local testing of `npx ksdk init` while
-// @kaleido-io/* packages are not yet published to a registry.
+// It exists solely to allow local testing while @kaleido-io/* packages are not
+// yet published to a registry.
 //
 // Must be run from the repo root (where this package.json lives).
-// Pass the absolute path to the initialised project as the argument.
 //
-// Full local dev flow:
-//   # 1. From repo root — build and pack
+// Usage:
+//   npm run patch-local-deps -- <path-to-project>                 # patch everything (default)
+//   npm run patch-local-deps -- <path-to-project> --no-docker     # skip Dockerfile patch
+//   npm run patch-local-deps -- <path-to-project> --no-npm        # skip package.json patch
+//
+// Default (no flags):
+//   Packs each @kaleido-io/* package into tarballs, copies them into
+//   .kaleido-local-deps/, patches package.json to use file: paths to those
+//   tarballs, and patches the Dockerfile. Covers the full dev cycle:
+//   npm install && start:dev for iteration, docker build when ready to deploy.
+//
+// Full flow:
 //   npm run build:packages
-//   cd packages/samples && npm pack && cd ../..
-//
-//   # 2. Init into a temp dir (use absolute path, no globs)
-//   TARBALL=$PWD/packages/samples/kaleido-io-samples-1.0.0.tgz
-//   mkdir /tmp/my-erc20 && cd /tmp/my-erc20
-//   WESDK_REPO_URL="/path/to/kaleido-sdk-typescript" npx "file:$TARBALL" init my-erc20-indexer --template erc20-indexer
-//
-//   # 3. Back to repo root — patch deps, then install and run
-//   cd /path/to/kaleido-sdk-typescript
-//   npm run patch-local-deps -- /tmp/my-erc20/my-erc20-indexer
-//   cd /tmp/my-erc20/my-erc20-indexer && npm install && npm run start:dev
+//   npm run patch-local-deps -- /tmp/my-project
+//   cd /tmp/my-project && npm install && npm run start:dev
+//   # ... iterate ...
+//   docker build --platform linux/amd64 -t <image>:<tag> /tmp/my-project
 
-import { readFileSync, writeFileSync } from 'fs';
-import { resolve, join, dirname } from 'path';
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, copyFileSync } from 'fs';
+import { resolve, join, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
-import { readdirSync, existsSync } from 'fs';
+import { execSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 
 const targetArg = process.argv[2];
+const dockerMode = !process.argv.includes('--no-docker');
+const npmMode   = !process.argv.includes('--no-npm');
+
 if (!targetArg) {
-  console.error('Usage: npm run patch-local-deps -- <path-to-project>');
+  console.error('Usage: npm run patch-local-deps -- <path-to-project> [--docker]');
   process.exit(1);
 }
 
@@ -43,39 +48,109 @@ if (!existsSync(pkgPath)) {
   process.exit(1);
 }
 
-// Discover local @kaleido-io/* packages by scanning packages/
-const localPackages = {};
+// ── Discover local @kaleido-io/* packages ────────────────────────────────────
+
 const packagesDir = join(REPO_ROOT, 'packages');
+const localPackages = {};   // name → source dir
+
 for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
   if (!entry.isDirectory()) continue;
   const manifestPath = join(packagesDir, entry.name, 'package.json');
   if (!existsSync(manifestPath)) continue;
   const { name } = JSON.parse(readFileSync(manifestPath, 'utf-8'));
   if (name?.startsWith('@kaleido-io/')) {
-    localPackages[name] = `file:${join(packagesDir, entry.name)}`;
+    localPackages[name] = join(packagesDir, entry.name);
   }
 }
 
-const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
-const changed = [];
+// ── Resolve dep paths (source dirs or packed tarballs) ───────────────────────
 
-for (const section of ['dependencies', 'devDependencies', 'peerDependencies']) {
-  if (!pkg[section]) continue;
-  for (const [dep, localPath] of Object.entries(localPackages)) {
-    if (dep in pkg[section] && pkg[section][dep] !== localPath) {
-      const old = pkg[section][dep];
-      pkg[section][dep] = localPath;
-      changed.push(`  ${dep}: "${old}" → "${localPath}"`);
+const depPaths = {};   // name → value to write into package.json
+
+// Always pack tarballs — they work for both npm install (local dev) and docker build.
+const depsDir = join(targetDir, '.kaleido-local-deps');
+mkdirSync(depsDir, { recursive: true });
+
+for (const [name, srcDir] of Object.entries(localPackages)) {
+  console.log(`Packing ${name}...`);
+  const tgz = execSync('npm pack --quiet', { cwd: srcDir, encoding: 'utf-8' }).trim();
+  const srcTgz = join(srcDir, tgz);
+  const destTgz = join(depsDir, tgz);
+  copyFileSync(srcTgz, destTgz);
+  execSync(`rm -f "${srcTgz}"`);
+  depPaths[name] = `file:.kaleido-local-deps/${tgz}`;
+  console.log(`  → ${destTgz}`);
+}
+
+// ── Patch package.json ───────────────────────────────────────────────────────
+
+if (npmMode) {
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+  const changed = [];
+
+  for (const section of ['dependencies', 'devDependencies', 'peerDependencies']) {
+    if (!pkg[section]) continue;
+    for (const [name, newPath] of Object.entries(depPaths)) {
+      if (name in pkg[section] && pkg[section][name] !== newPath) {
+        changed.push(`  ${name}: "${pkg[section][name]}" → "${newPath}"`);
+        pkg[section][name] = newPath;
+      }
     }
   }
+
+  if (changed.length > 0) {
+    writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+    console.log(`\nPatched ${pkgPath}:`);
+    for (const line of changed) console.log(line);
+  } else {
+    console.log('\npackage.json already patched.');
+  }
 }
 
-if (changed.length === 0) {
-  console.log('Nothing to patch — all @kaleido-io/* deps already use file: paths or are absent.');
-  process.exit(0);
+// ── Patch Dockerfile ──────────────────────────────────────────────────────────
+
+if (dockerMode) {
+  const dockerfilePath = join(targetDir, 'Dockerfile');
+  if (!existsSync(dockerfilePath)) {
+    console.warn(`\nNo Dockerfile found at ${dockerfilePath} — skipping Dockerfile patch.`);
+  } else {
+    let dockerfile = readFileSync(dockerfilePath, 'utf-8');
+    let dockerChanged = false;
+
+    // Add COPY for .kaleido-local-deps before the first RUN npm command
+    if (!dockerfile.includes('.kaleido-local-deps')) {
+      dockerfile = dockerfile.replace(
+        /^(COPY package\.json.*)/m,
+        'COPY .kaleido-local-deps ./.kaleido-local-deps\n$1',
+      );
+      dockerChanged = true;
+    }
+
+    // Drop package-lock.json from the COPY — the lockfile was generated against
+    // registry deps, not the local file: paths, so npm install must regenerate it.
+    if (dockerfile.includes('package-lock.json')) {
+      dockerfile = dockerfile.replace(/\s+package-lock\.json/g, '');
+      dockerChanged = true;
+    }
+
+    // npm ci requires a lockfile matching package.json exactly — use npm install instead
+    if (dockerfile.includes('npm ci')) {
+      dockerfile = dockerfile.replace(/\bnpm ci\b/g, 'npm install');
+      dockerChanged = true;
+    }
+
+    if (dockerChanged) {
+      writeFileSync(dockerfilePath, dockerfile, 'utf-8');
+      console.log(`\nPatched ${dockerfilePath}:`);
+      if (!dockerfile.includes('npm ci')) console.log('  npm ci → npm install');
+      console.log('  Added: COPY .kaleido-local-deps ./.kaleido-local-deps');
+    } else {
+      console.log(`\nDockerfile already patched.`);
+    }
+  }
+
+  console.log('\nReady to build:');
+  console.log(`  docker build --platform linux/amd64 -t <image>:<tag> ${targetDir}`);
 }
 
-writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
-console.log(`Patched ${pkgPath}:`);
-for (const line of changed) console.log(line);
-console.log('\nRun `npm install` inside the project to apply.');
+console.log('\nRun `npm install` inside the project for local dev.');
