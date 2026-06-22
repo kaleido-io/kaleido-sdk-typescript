@@ -101,9 +101,26 @@ export class WSProxyAdapter {
   }
 
   /**
+   * Wait until the runtime WebSocket is connected, polling every 100ms.
+   * Used to tolerate the small window between the WebSocket open event
+   * and setup hooks running (e.g. during provider startup or reconnection).
+   */
+  private async waitForConnection(timeoutMs: number): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (this.runtime?.isWebSocketConnected) return;
+      await new Promise<void>((r) => setTimeout(r, 100));
+    }
+    throw new Error("WSProxyAdapter: runtime WebSocket not connected");
+  }
+
+  /**
    * Send a service proxy request over the runtime's WebSocket.
    * The provider-proxy on the other end intercepts these and makes
    * the actual HTTP call with managed auth credentials.
+   *
+   * If the WebSocket is not yet connected (e.g. setup hooks running just
+   * after connect), waits up to requestTimeoutMs for it to become ready.
    */
   async request(
     serviceType: string,
@@ -114,6 +131,8 @@ export class WSProxyAdapter {
     path?: string,
     authRef?: string,
   ): Promise<ServiceProxyResponse> {
+    await this.waitForConnection(this.requestTimeoutMs);
+
     const requestId = generateId();
 
     const message: ServiceProxyRequest = {
@@ -143,18 +162,7 @@ export class WSProxyAdapter {
       }, this.requestTimeoutMs);
 
       this.inflightRequests.set(requestId, { resolve, reject, timer });
-
-      if (this.runtime && this.runtime.isWebSocketConnected) {
-        this.runtime.sendMessage(message);
-      } else {
-        this.inflightRequests.delete(requestId);
-        clearTimeout(timer);
-        reject(
-          new Error(
-            "WSProxyAdapter: runtime WebSocket not connected",
-          ),
-        );
-      }
+      this.runtime!.sendMessage(message);
     });
   }
 

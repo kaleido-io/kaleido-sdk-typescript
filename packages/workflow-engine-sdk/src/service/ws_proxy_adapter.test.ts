@@ -40,6 +40,9 @@ function createMockRuntime(): ProxyAdapterRuntime & { lastMessage: any } {
   };
 }
 
+/** Flush microtasks so async waitForConnection resolves before checking side-effects. */
+const tick = () => new Promise<void>((r) => setTimeout(r, 0));
+
 describe("WSProxyAdapter", () => {
   it("should send a ServiceProxyRequest over WebSocket", async () => {
     const adapter = new WSProxyAdapter(5000);
@@ -54,6 +57,7 @@ describe("WSProxyAdapter", () => {
       { "Content-Type": "application/json" },
     );
 
+    await tick();
     expect(runtime.lastMessage).not.toBeNull();
     expect(runtime.lastMessage.messageType).toBe(
       WSMessageType.SERVICE_PROXY_REQUEST,
@@ -89,6 +93,7 @@ describe("WSProxyAdapter", () => {
     adapter.setRuntime(runtime);
 
     const promise = adapter.request("asset-manager", "GET", "u:1234");
+    await tick();
 
     const response: ServiceProxyResponse = {
       messageType: WSMessageType.SERVICE_PROXY_RESPONSE,
@@ -110,15 +115,17 @@ describe("WSProxyAdapter", () => {
     await expect(promise).rejects.toThrow("timed out");
   });
 
-  it("should throw if runtime not bound", async () => {
-    const adapter = new WSProxyAdapter();
+  it("should throw if runtime not bound (after timeout)", async () => {
+    // Uses a short timeout so the wait-for-connection loop exits quickly.
+    const adapter = new WSProxyAdapter(200);
     await expect(adapter.request("x", "GET", "u:1234")).rejects.toThrow(
       "not connected",
     );
-  });
+  }, 1000);
 
-  it("should throw if WebSocket not connected", async () => {
-    const adapter = new WSProxyAdapter();
+  it("should throw if WebSocket not connected (after timeout)", async () => {
+    // Uses a short timeout so the wait-for-connection loop exits quickly.
+    const adapter = new WSProxyAdapter(200);
     adapter.setRuntime({
       sendMessage: jest.fn(),
       isWebSocketConnected: false,
@@ -126,7 +133,7 @@ describe("WSProxyAdapter", () => {
     await expect(adapter.request("x", "GET", "u:1234")).rejects.toThrow(
       "not connected",
     );
-  });
+  }, 1000);
 
   it("should cancel all inflight requests", async () => {
     const adapter = new WSProxyAdapter(60000);
@@ -134,6 +141,7 @@ describe("WSProxyAdapter", () => {
     adapter.setRuntime(runtime);
 
     const promise = adapter.request("x", "GET", "u:1234");
+    await tick();  // let waitForConnection resolve and request enter inflight map
     adapter.cancelAll();
 
     await expect(promise).rejects.toThrow("connection closed");

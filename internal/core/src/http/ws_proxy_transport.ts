@@ -107,12 +107,13 @@ export class WSProxyTransport implements ServiceTransport {
 
   private async proxyRequest(method: string, url: string, body?: any): Promise<WSProxyResponse> {
     log.debug(`-> ws-proxy ${method} ${this.serviceType}/${this.id}${url} authRef=${this.authRef ? this.authRef.substring(0, 8) + '...' : '(none)'}`);
+    const headers = body !== undefined ? { 'Content-Type': 'application/json' } : undefined;
     const response = await this.wsProxy.request(
       this.serviceType,
       method,
       this.id,
       body,
-      undefined,
+      headers,
       url,
       this.authRef,
     );
