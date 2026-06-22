@@ -16,7 +16,7 @@ tokenName: testnet4-btc
 # stream.connectorBindingName must match a service-binding name in config.yaml.
 stream:
   connectorBindingName: btc-connector
-  factory: btcTransactions
+  factory: transactionEvents
   name: btc-indexer
   description: Bitcoin transaction events
   eventSourceConfig:
