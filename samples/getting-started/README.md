@@ -1,33 +1,66 @@
-# Kaleido workflow engine custom providers
+# getting-started
 
-This project contains worked examples of custom providers that register transaction handlers and event sources with the Kaleido workflow engine.
+A sample Kaleido Workflow Engine provider demonstrating transaction handlers, event sources,
+and event processors — the core building blocks for custom providers.
 
-## Getting started
+## Quick start
 
-1. Edit `config/wfe-config.yaml`: root key **`workflow-engine`**. **Outbound:** `providerName`, `url`, and `auth`. **Inbound:** `providerName` and `server` (address, port). Optional `config/config.yaml` is for app-only settings (e.g. HTTP-invoke sample); if that file is missing, samples use built-in defaults.
-2. Install dependencies: `npm install`
-3. Start the provider, either:
-   - use the vscode launch configurations to run inside the debugger
-   - use `npm run start:dev` to run TypeScript
-   - use `npm build` and `npm start` to run transpiled JavaScript
-
-Your provider will initialize and attempt to connect to the workflow engine and register the provider and handlers. You should see:
 ```bash
+# 1. Initialize a new project from this template
+npx @kaleido-io/sdk init my-provider --template getting-started
+cd my-provider
+
+# 2. Install dependencies
+npm install
+
+# 3. Copy and edit the config files
+cp config/config.sample.yaml config/config.yaml
+cp config/provider-config.sample.yaml config/provider-config.yaml
+# Edit config/config.yaml — set providerName, url, and auth for your Workflow Engine
+# Edit config/provider-config.yaml — adjust app-specific settings (e.g. HTTP invoke URL)
+
+# 4. Run in dev mode (no build step needed)
+npm run start:dev
+```
+
+Your provider will initialize and connect to the Workflow Engine. You should see:
+```
 [handler_runtime] Registering provider and handlers
 ```
-Followed by some handler registration messages. You can now take a look at your workflow engine provider page in the Kaleido UI and you should see your provider listed.
+Followed by handler registration messages. Your provider will then appear in the **Workflow engine** provider list in the Kaleido UI.
 
-This project will be bootstrapped with some example handlers, and the flows and streams needed to put them to use. To trigger a handler, you can use the `hello` sample by:
-- defining a workflow that uses the `hello` handler by running `npm run create-workflow ./src/samples/hello/flow.ts`
-- create a transaction against that workflow by running `npm run create-transaction ./src/samples/hello/transaction.ts`
+To trigger the `hello` handler:
+```bash
+# Define a workflow using the hello handler
+npm run create-workflow hello/flow.ts
 
-You should see the transaction appear in your workflow engine, and it should transition to `succeeded` shortly afterwards with a greeting message produced by the `hello` handler in this project.
+# Submit a transaction against that workflow
+npm run create-transaction hello/transaction.ts
+```
 
-## Included Samples
+The transaction will appear in your Workflow Engine and transition to `succeeded` with a greeting message.
 
-This project includes several samples demonstrating different patterns and capabilities:
+## Configuration
 
-- **[Hello](./src/samples/hello/README.md)** - A simple transaction handler that processes input and returns a greeting message
-- **[HTTP invoke](./src/samples/http-invoke/README.md)** - Demonstrates making HTTP requests to external APIs from within a transaction handler
-- **[Event source](./src/samples/event-source/README.md)** - Shows how to set up a custom event source that generates events and streams them to an event processor
-- **[Snap](./src/samples/snap/README.md)** - By playing the card game "snap", this sample demonstrates a correlation stream that matches events from any event source with inflight transactions.
+### `config/config.yaml`
+
+> Copy `config/config.sample.yaml` to `config/config.yaml`
+
+Contains the Workflow Engine connection. `providerName` must match the name registered in `provider.ts`.
+Set `KALEIDO_CONFIG_FILE` env var to point to this file (default: `./config/config.yaml`).
+
+### `config/provider-config.yaml`
+
+> Copy `config/provider-config.sample.yaml` to `config/provider-config.yaml`
+
+Contains app-specific settings (e.g. HTTP invoke URL). Optional — samples use built-in defaults if the file is missing.
+Set `CONFIG_FILE` env var to point to this file (default: `./config/provider-config.yaml`).
+
+## Included samples
+
+- **[hello](./hello/README.md)** — A simple transaction handler that processes input and returns a greeting message
+- **[http-invoke](./http-invoke/README.md)** — Demonstrates making HTTP requests to external APIs from within a transaction handler
+- **[event-source](./event-source/README.md)** — Shows how to set up a custom event source that generates events and streams them to an event processor
+- **[snap](./snap/README.md)** — By playing the card game "snap", this sample demonstrates a correlation stream that matches events from any event source with inflight transactions
+- **list-pools** — Demonstrates calling the Asset Manager from a transaction handler, forwarding the caller's auth token via the provider proxy
+- **block-indexer** — An event processor that indexes EVM block data into the Asset Manager

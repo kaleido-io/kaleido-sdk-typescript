@@ -1,6 +1,5 @@
-# Developer-managed provider configuration for the Canton CIP-56 Indexer (CONFIG_FILE).
-# This file contains provider-specific settings such as stream definitions
-# that are typically managed by the application developer.
+# Provider-specific configuration for the Canton CIP-56 Indexer (CONFIG_FILE).
+# Contains settings bundled with the provider image.
 # Copy this file to config/provider-config.yaml and fill in your values.
 # Set CONFIG_FILE env var to point to your config (default: ./config/provider-config.yaml).
 

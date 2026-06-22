@@ -1,5 +1,5 @@
-# Operator-managed configuration (KALEIDO_CONFIG_FILE).
-# Contains Workflow Engine connection details and service bindings.
+# Configuration for the ERC-20 Indexer (KALEIDO_CONFIG_FILE).
+# When running as a Hosted provider, this file is managed by the Kaleido platform.
 # Copy this file to config/config.yaml and fill in your values.
 # Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
 

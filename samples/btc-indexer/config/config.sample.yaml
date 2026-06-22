@@ -1,6 +1,5 @@
-# Kaleido platform configuration for the BTC Indexer (KALEIDO_CONFIG_FILE).
-# This file is operator-managed: it contains credentials and service endpoints
-# injected by the Kaleido platform at runtime.
+# Configuration for the BTC Indexer (KALEIDO_CONFIG_FILE).
+# When running as a Hosted provider, this file is managed by the Kaleido platform.
 # Copy this file to config/config.yaml and fill in your values.
 # Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
 

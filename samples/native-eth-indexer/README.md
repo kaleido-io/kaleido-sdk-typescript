@@ -7,7 +7,7 @@ into the [Kaleido Asset Manager](https://docs.kaleido.io/platform/digital-assets
 
 1. Connects to your Workflow Engine as a provider named `native-eth-indexer`.
 2. Registers an **event processor** (`indexer`) that receives decoded EVM
-   transaction batches from a `transactionEvents`-compatible stream.
+   transaction batches from a `nativeEthTransactions`-compatible stream.
 3. For every transaction it
    - Creates a transfer record for each native ETH value movement
    - Records balance changes (subtract from sender, add to receiver)
@@ -19,14 +19,15 @@ into the [Kaleido Asset Manager](https://docs.kaleido.io/platform/digital-assets
   - An **EVM connector** stack connected to your chosen EVM-compatible chain
   - An **Asset manager** service
 
-## Running locally - within SDK repo
+## Quick start
 
 ```bash
-# 1. Build the SDK repo at the top level
-npm run build
+# 1. Initialize a new project from this template
+npx @kaleido-io/sdk init my-eth-indexer --template native-eth-indexer
+cd my-eth-indexer
 
-# 2. Change into the sample directory
-cd samples/native-eth-indexer
+# 2. Install dependencies
+npm install
 
 # 3. Copy and edit the config files
 cp config/config.sample.yaml config/config.yaml
@@ -43,14 +44,14 @@ npm run start:dev
 
 > Copy `config/config.sample.yaml` to `config/config.yaml`
 
-Contains Kaleido platform connectivity (workflow engine URL/auth and service bindings).
+Contains Workflow Engine connection details and service bindings.
 Set `KALEIDO_CONFIG_FILE` env var to point to this file (default: `./config/config.yaml`).
 
 ### `config/provider-config.yaml`
 
 > Copy `config/provider-config.sample.yaml` to `config/provider-config.yaml`
 
-Contains provider-specific configuration (chain ID, network name, token symbol, stream settings).
+Contains provider-specific settings (chain ID, network name, token symbol, stream settings).
 Set `CONFIG_FILE` env var to point to this file (default: `./config/provider-config.yaml`).
 
 ## Hosting on the Kaleido platform
@@ -60,42 +61,40 @@ Set `CONFIG_FILE` env var to point to this file (default: `./config/provider-con
 - In addition to the minimum prerequisites, you will need:
   - An **Artifact registry** service with an artifact **namespace** created
   - A **Provider proxy** service
-  - To convert your `config.yaml` to `config.json`
+  - To convert your `provider-config.yaml` to `provider-config.json`
     ```bash
-    yq -o=json config/config.yaml > config/config.json
+    yq -o=json config/provider-config.yaml > config/provider-config.json
     ```
 
-### Building an OCI image
+### 1. Building an OCI image
 
-There are two Dockerfile examples provided:
+```bash
+npm run package:docker # or package:podman for Podman users
+```
 
-- `Dockerfile` - builds the sample standalone, pulling the SDK from npm
-  ```sh
-  # From the native-eth-indexer directory
-  docker build --platform linux/amd64 -t native-eth-indexer .
-  ```
-- `Dockerfile.withsdk` - builds the sample including building the SDK locally
-  ```sh
-  # From root directory of repo
-  docker build --platform linux/amd64 -t native-eth-indexer -f ./samples/native-eth-indexer/Dockerfile.withsdk .
-  ```
-
-> **NOTE**: the image is built on `linux/amd64` for compatibility with the Kaleido platform. On MacOS with Apple Silicon, Rosetta emulation must be enabled.
+> **NOTE**: the image is built on `linux/amd64` for compatibility with the Kaleido platform. You will need to ensure that your build environment is compatible with `linux/amd64` for building the image. Such as with MacOS on Apple Silicon, Rosetta emulation must be enabled.
 
 The image uses [distroless/nodejs22](https://github.com/GoogleContainerTools/distroless) on `linux/amd64`
 for a minimal, shell-free runtime — required for hosting on the Kaleido platform.
 
-### Pushing to the artifact registry
+### 2. Pushing to the artifact registry
 
+Make sure you are logged into the artifact registry you want to push to:
+
+```bash
+docker login my-registry.my-kaleido.io
+```
+
+To push to your artifact registry:
 ```bash
 # Set the image tag - must be unique as tags are immutable
 export IMAGE_TAG=v1-$(date +%Y%m%d%H%M%S)
+# Set the artifact registry hostname
 export ARTIFACT_REGISTRY=my-registry.my-kaleido.io/my-namespace
-docker tag native-eth-indexer $ARTIFACT_REGISTRY/native-eth-indexer:$IMAGE_TAG
-docker push $ARTIFACT_REGISTRY/native-eth-indexer:$IMAGE_TAG
+npm run promote:docker # or promote:podman for Podman users, or promote:crane if copying from an existing OCI registry via Crane
 ```
 
-### Deploying the provider
+### 3. Deploying the provider
 
 1. Go to the Kaleido platform UI within your running environment
 2. Navigate to the **Operations and resources** page
@@ -103,25 +102,27 @@ docker push $ARTIFACT_REGISTRY/native-eth-indexer:$IMAGE_TAG
 4. Select the **Provider** service type
 5. After naming your service:
    a. Select your uploaded provider artifact tag from within your namespaced repository
-   b. Drag and drop `config/config.json` into the configuration file input box
+   b. Drag and drop `config/provider-config.json` into the configuration file input box
 6. Finish creating the **Provider** service
 7. View the **Logs** of the Provider runtime to confirm it is running correctly
 8. Confirm the provider is connected within your **Provider proxy** service and registered in the **Workflow engine** provider list
 
-### Streaming events to the provider
+### 4. Streaming events to the provider
 
-Create a stream pointing at your hosted provider via your **EVM connector** service using the `transactionEvents` stream factory, or use the stream auto-creation config in `provider-config.yaml`.
+Create a stream pointing at your hosted provider via your **EVM connector** service using the `nativeEthTransactions` stream factory, or use the stream auto-creation config in `provider-config.yaml`.
 
-### Upgrading the provider
+### 5. Upgrading the provider
+
+To upgrade the provider, build a new image and promote it to the artifact registry:
 
 ```bash
-docker build --platform linux/amd64 -t native-eth-indexer .
+npm run package:docker # or package:podman for Podman users
 export IMAGE_TAG=v2-$(date +%Y%m%d%H%M%S)
-docker tag native-eth-indexer $ARTIFACT_REGISTRY/native-eth-indexer:$IMAGE_TAG
-docker push $ARTIFACT_REGISTRY/native-eth-indexer:$IMAGE_TAG
+npm run promote:docker # or promote:podman for Podman users, or promote:crane if copying from an existing OCI registry via Crane
 ```
 
-Then update the provider in the Kaleido UI by editing the service settings to point at the new image tag.
+Then update the provider in the Kaleido platform UI by editing the service settings to point at the new image tag, or manage it via the
+[Kaleido Terraform provider](https://github.com/kaleido-io/terraform-provider-kaleido).
 
 ### Troubleshooting
 

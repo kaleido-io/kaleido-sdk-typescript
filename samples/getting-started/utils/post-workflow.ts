@@ -48,7 +48,7 @@ async function main() {
 
         // Create the workflow engine REST client
         const config = ConfigLoader.loadClientConfigFromFile(
-            process.env.KALEIDO_CONFIG_FILE ?? process.env.WFE_CONFIG_FILE ?? './config/wfe-config.yaml',
+            process.env.KALEIDO_CONFIG_FILE ?? './config/config.yaml',
         );
         const client = new WorkflowEngineRestClient(config);
 

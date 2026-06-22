@@ -1,6 +1,5 @@
-# Developer-managed configuration for the Native ETH Indexer.
-# This file is the CONFIG_FILE — it contains provider-specific settings that the
-# developer configures for their target network and asset.
+# Provider-specific configuration for the Native ETH Indexer (CONFIG_FILE).
+# Contains settings bundled with the provider image.
 # Copy this file to config/provider-config.yaml and fill in your values.
 # Set CONFIG_FILE env var to point to your config (default: ./config/provider-config.yaml).
 

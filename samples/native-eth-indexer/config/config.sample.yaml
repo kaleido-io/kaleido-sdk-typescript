@@ -1,7 +1,5 @@
-# Operator-managed configuration for the Native ETH Indexer.
-# This file is the KALEIDO_CONFIG_FILE — it contains Kaleido platform connectivity
-# (workflow engine URL/auth and service bindings) and is typically provided or managed
-# by the Kaleido operator.
+# Configuration for the Native ETH Indexer (KALEIDO_CONFIG_FILE).
+# When running as a Hosted provider, this file is managed by the Kaleido platform.
 # Copy this file to config/config.yaml and fill in your values.
 # Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
 

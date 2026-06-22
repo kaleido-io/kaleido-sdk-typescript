@@ -1,6 +1,5 @@
-# Operator-managed configuration for the Canton CIP-56 Indexer (KALEIDO_CONFIG_FILE).
-# This file contains the Workflow Engine connection and service-binding definitions
-# that are typically managed by the Kaleido platform operator.
+# Configuration for the Canton CIP-56 Indexer (KALEIDO_CONFIG_FILE).
+# When running as a Hosted provider, this file is managed by the Kaleido platform.
 # Copy this file to config/config.yaml and fill in your values.
 # Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
 

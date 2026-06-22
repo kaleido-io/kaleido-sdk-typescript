@@ -1,5 +1,5 @@
-# Developer-managed configuration (CONFIG_FILE).
-# Contains provider-specific settings for the ERC-20 Indexer.
+# Provider-specific configuration for the ERC-20 Indexer (CONFIG_FILE).
+# Contains settings bundled with the provider image.
 # Copy this file to config/provider-config.yaml and fill in your values.
 # Set CONFIG_FILE env var to point to your config (default: ./config/provider-config.yaml).
 

@@ -1,7 +1,6 @@
 # Provider-specific configuration for the BTC Indexer (CONFIG_FILE).
-# This file is developer-managed: it contains provider behavior settings
-# that are bundled with the provider image and tuned by the developer.
-# Copy this file to config/provider-config.yaml and adjust as needed.
+# Contains settings bundled with the provider image.
+# Copy this file to config/provider-config.yaml and fill in your values.
 # Set CONFIG_FILE env var to point to your config (default: ./config/provider-config.yaml).
 
 # BTC network to index
