@@ -282,7 +282,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     return binding;
   }
 
-  getServiceClientOptions(name: string): ServiceClientOptions {
+  getServiceClientOptions(name: string, authRef?: string): ServiceClientOptions {
     const binding = this.getServiceBinding(name);
 
     switch (binding.bindingType) {
@@ -292,6 +292,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
           wsProxy: this.getWSProxyAdapter(),
           serviceType: binding.type,
           id: binding.id,
+          authRef,
         };
 
       case 'non-hosted':
@@ -314,9 +315,9 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
 
   // ── Private builder helpers ──────────────────────────────────────────────────
 
-  private buildSetupContext(handlerName: string, signal: AbortSignal): SetupContext<CustomConfig> {
+  private buildSetupContext(handlerName: string, signal: AbortSignal, authRef?: string): SetupContext<CustomConfig> {
     return createSetupContext(
-      (name) => this.getServiceClientOptions(name),
+      (name) => this.getServiceClientOptions(name, authRef),
       this.customConfig,
       this.wfeConfig.providerName,
       handlerName,
@@ -345,7 +346,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
           createEventProcessor(
             name,
             async (reqCtx: RequestContext, events: EventProcessorEvent<unknown>[]) => {
-              const setupCtx = this.buildSetupContext(name, signal);
+              const setupCtx = this.buildSetupContext(name, signal, reqCtx.authRef);
               const ctx = createIndexerContext(setupCtx, reqCtx.requestId);
               return def.indexBatch(ctx, events);
             },

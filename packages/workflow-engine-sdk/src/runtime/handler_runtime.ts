@@ -610,6 +610,7 @@ export class HandlerRuntime {
     return {
       requestId: envelope.id,
       authTokens: envelope.authTokens,
+      authRef: (envelope as WSEventProcessorBatchRequest).authRef,
       signal: controller.signal,
       cancel: () => {
         if (timeoutId !== undefined) clearTimeout(timeoutId);

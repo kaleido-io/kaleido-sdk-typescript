@@ -167,6 +167,8 @@ export interface WSEvaluateReplyResult {
 export interface RequestContext {
   requestId: string;
   authTokens?: Record<string, string>;
+  /** Auth reference forwarded from the WFE request — used by ws-proxy transport to inject credentials. */
+  authRef?: string;
   signal: AbortSignal;
   cancel(): void;
 }

@@ -77,7 +77,17 @@ const log = newLogger("AssetManagerClient");
  *   // From explicit options (existing / low-level usage):
  *   const am = new AssetManagerClient(client.getServiceClientOptions('asset-manager'));
  */
-const API_VERSION = "/api/v1";
+// For hosted (ws-proxy) transport the proxy base URL already includes the
+// /api/v1/namespaces/<service> prefix, so no API version prefix is needed.
+// For non-hosted (http) transport the external URL ends at /rest and requires
+// the /api/v1 prefix to reach the API.
+function apiVersion(opts: ServiceClientOptions): string {
+  if (opts.transport === 'ws-proxy') return '';
+  // If the URL already includes /api/v1 (e.g. internal cluster service endpoints
+  // like r-xxx-amr.svc.cluster.local:5000/api/v1/namespaces/service), don't add it again.
+  if (opts.transport === 'http' && opts.url?.includes('/api/v1')) return '';
+  return '/api/v1';
+}
 
 function resolveOptions(
   ctxOrOptsOrName: SetupContext | ServiceClientOptions | string,
@@ -93,8 +103,12 @@ function resolveOptions(
 }
 
 export class AssetManagerClient extends ServiceClient {
+  private readonly apiVersion: string;
+
   constructor(ctxOrOptsOrName: SetupContext | ServiceClientOptions | string, bindingName?: string) {
-    super(createServiceTransport(resolveOptions(ctxOrOptsOrName, bindingName)));
+    const opts = resolveOptions(ctxOrOptsOrName, bindingName);
+    super(createServiceTransport(opts));
+    this.apiVersion = apiVersion(opts);
   }
 
   /**
@@ -107,95 +121,95 @@ export class AssetManagerClient extends ServiceClient {
 
   // Status
   getStatus() {
-    return this.get<{ status: string }>(`${API_VERSION}/status`);
+    return this.get<{ status: string }>(`${this.apiVersion}/status`);
   }
 
   // Assets
   getAssets(params?: { filter?: any; label?: string[] }) {
     return this.get<ItemsResult<Asset>>(
-      `${API_VERSION}/assets`,
+      `${this.apiVersion}/assets`,
       params?.filter,
     );
   }
 
   getAsset(nameOrId: string) {
-    return this.get<Asset>(`${API_VERSION}/assets/${nameOrId}`, undefined, {
+    return this.get<Asset>(`${this.apiVersion}/assets/${nameOrId}`, undefined, {
       ignore404: true,
     });
   }
 
   createAsset(asset: AssetInput & { labels?: string[] }) {
-    return this.post<Asset>(`${API_VERSION}/assets`, asset);
+    return this.post<Asset>(`${this.apiVersion}/assets`, asset);
   }
 
   updateAsset(nameOrId: string, asset: Partial<AssetInput>) {
-    return this.patch<Asset>(`${API_VERSION}/assets/${nameOrId}`, asset);
+    return this.patch<Asset>(`${this.apiVersion}/assets/${nameOrId}`, asset);
   }
 
   async deleteAsset(nameOrId: string) {
-    await this.delete(`${API_VERSION}/assets/${nameOrId}`);
+    await this.delete(`${this.apiVersion}/assets/${nameOrId}`);
   }
 
   // Addresses
   getAddresses(params?: { filter?: any }) {
     return this.get<ItemsResult<Address>>(
-      `${API_VERSION}/addresses`,
+      `${this.apiVersion}/addresses`,
       params?.filter,
     );
   }
 
   getAddress(address: string) {
-    return this.get<Address>(`${API_VERSION}/addresses/${address}`, undefined, {
+    return this.get<Address>(`${this.apiVersion}/addresses/${address}`, undefined, {
       ignore404: true,
     });
   }
 
   createAddress(address: AddressInput & { labels?: string[] }) {
-    return this.post<Address>(`${API_VERSION}/addresses`, address);
+    return this.post<Address>(`${this.apiVersion}/addresses`, address);
   }
 
   updateAddress(address: string, updates: Partial<AddressInput>) {
-    return this.patch<Address>(`${API_VERSION}/addresses/${address}`, updates);
+    return this.patch<Address>(`${this.apiVersion}/addresses/${address}`, updates);
   }
 
   async deleteAddress(address: string) {
-    await this.delete(`${API_VERSION}/addresses/${address}`);
+    await this.delete(`${this.apiVersion}/addresses/${address}`);
   }
 
   // Pools
   getPools(params?: { filter?: any; label?: string[] }) {
-    return this.get<ItemsResult<Pool>>(`${API_VERSION}/pools`, params?.filter);
+    return this.get<ItemsResult<Pool>>(`${this.apiVersion}/pools`, params?.filter);
   }
 
   getPool(nameOrId: string) {
-    return this.get<Pool>(`${API_VERSION}/pools/${nameOrId}`, undefined, {
+    return this.get<Pool>(`${this.apiVersion}/pools/${nameOrId}`, undefined, {
       ignore404: true,
     });
   }
 
   createPool(pool: PoolInput & { labels?: string[] }) {
-    return this.post<Pool>(`${API_VERSION}/pools`, pool);
+    return this.post<Pool>(`${this.apiVersion}/pools`, pool);
   }
 
   updatePool(nameOrId: string, updates: Partial<PoolInput>) {
-    return this.patch<Pool>(`${API_VERSION}/pools/${nameOrId}`, updates);
+    return this.patch<Pool>(`${this.apiVersion}/pools/${nameOrId}`, updates);
   }
 
   async deletePool(nameOrId: string) {
-    await this.delete(`${API_VERSION}/pools/${nameOrId}`);
+    await this.delete(`${this.apiVersion}/pools/${nameOrId}`);
   }
 
   // Collections
   getCollections(params?: { filter?: any }) {
     return this.get<ItemsResult<Collection>>(
-      `${API_VERSION}/collections`,
+      `${this.apiVersion}/collections`,
       params?.filter,
     );
   }
 
   getCollection(nameOrId: string) {
     return this.get<Collection>(
-      `${API_VERSION}/collections/${nameOrId}`,
+      `${this.apiVersion}/collections/${nameOrId}`,
       undefined,
       {
         ignore404: true,
@@ -209,7 +223,7 @@ export class AssetManagerClient extends ServiceClient {
     description?: string;
     labels?: string[];
   }) {
-    return this.post<Collection>(`${API_VERSION}/collections`, collection);
+    return this.post<Collection>(`${this.apiVersion}/collections`, collection);
   }
 
   updateCollection(
@@ -217,26 +231,26 @@ export class AssetManagerClient extends ServiceClient {
     updates: { displayName?: string; description?: string },
   ) {
     return this.patch<Collection>(
-      `${API_VERSION}/collections/${nameOrId}`,
+      `${this.apiVersion}/collections/${nameOrId}`,
       updates,
     );
   }
 
   async deleteCollection(nameOrId: string) {
-    await this.delete(`${API_VERSION}/collections/${nameOrId}`);
+    await this.delete(`${this.apiVersion}/collections/${nameOrId}`);
   }
 
   // Activities
   getActivities(params?: { filter?: any; label?: string[] }) {
     return this.get<ItemsResult<Activity>>(
-      `${API_VERSION}/activities`,
+      `${this.apiVersion}/activities`,
       params?.filter,
     );
   }
 
   getActivity(nameOrId: string) {
     return this.get<Activity>(
-      `${API_VERSION}/activities/${nameOrId}`,
+      `${this.apiVersion}/activities/${nameOrId}`,
       undefined,
       {
         ignore404: true,
@@ -245,54 +259,54 @@ export class AssetManagerClient extends ServiceClient {
   }
 
   createActivity(activity: ActivityInput & { labels?: string[] }) {
-    return this.post<Activity>(`${API_VERSION}/activities`, activity);
+    return this.post<Activity>(`${this.apiVersion}/activities`, activity);
   }
 
   updateActivity(nameOrId: string, updates: Partial<ActivityInput>) {
     return this.patch<Activity>(
-      `${API_VERSION}/activities/${nameOrId}`,
+      `${this.apiVersion}/activities/${nameOrId}`,
       updates,
     );
   }
 
   async deleteActivity(nameOrId: string) {
-    await this.delete(`${API_VERSION}/activities/${nameOrId}`);
+    await this.delete(`${this.apiVersion}/activities/${nameOrId}`);
   }
 
   // Data
   getData(params?: { filter?: any; label?: string[] }) {
-    return this.get<ItemsResult<Data>>(`${API_VERSION}/data`, params?.filter);
+    return this.get<ItemsResult<Data>>(`${this.apiVersion}/data`, params?.filter);
   }
 
   getDataSingle(nameOrId: string) {
-    return this.get<Data>(`${API_VERSION}/data/${nameOrId}`, undefined, {
+    return this.get<Data>(`${this.apiVersion}/data/${nameOrId}`, undefined, {
       ignore404: true,
     });
   }
 
   createData(data: DataInput & { labels?: string[] }) {
-    return this.post<Data>(`${API_VERSION}/data`, data);
+    return this.post<Data>(`${this.apiVersion}/data`, data);
   }
 
   updateData(nameOrId: string, updates: Partial<DataInput>) {
-    return this.patch<Data>(`${API_VERSION}/data/${nameOrId}`, updates);
+    return this.patch<Data>(`${this.apiVersion}/data/${nameOrId}`, updates);
   }
 
   async deleteData(nameOrId: string) {
-    await this.delete(`${API_VERSION}/data/${nameOrId}`);
+    await this.delete(`${this.apiVersion}/data/${nameOrId}`);
   }
 
   // Events
   getEvents(params?: { filter?: any }) {
     return this.get<ItemsResult<ActivityEvent>>(
-      `${API_VERSION}/events`,
+      `${this.apiVersion}/events`,
       params?.filter,
     );
   }
 
   getEvent(nameOrId: string) {
     return this.get<ActivityEvent>(
-      `${API_VERSION}/events/${nameOrId}`,
+      `${this.apiVersion}/events/${nameOrId}`,
       undefined,
       {
         ignore404: true,
@@ -301,31 +315,31 @@ export class AssetManagerClient extends ServiceClient {
   }
 
   createEvent(event: EventInput & { labels?: string[] }) {
-    return this.post<ActivityEvent>(`${API_VERSION}/events`, event);
+    return this.post<ActivityEvent>(`${this.apiVersion}/events`, event);
   }
 
   updateEvent(nameOrId: string, updates: Partial<EventInput>) {
     return this.patch<ActivityEvent>(
-      `${API_VERSION}/events/${nameOrId}`,
+      `${this.apiVersion}/events/${nameOrId}`,
       updates,
     );
   }
 
   async deleteEvent(nameOrId: string) {
-    await this.delete(`${API_VERSION}/events/${nameOrId}`);
+    await this.delete(`${this.apiVersion}/events/${nameOrId}`);
   }
 
   // Fragments
   getFragments(params?: { filter?: any }) {
     return this.get<ItemsResult<Fragment>>(
-      `${API_VERSION}/fragments`,
+      `${this.apiVersion}/fragments`,
       params?.filter,
     );
   }
 
   getFragment(nameOrId: string) {
     return this.get<Fragment>(
-      `${API_VERSION}/fragments/${nameOrId}`,
+      `${this.apiVersion}/fragments/${nameOrId}`,
       undefined,
       {
         ignore404: true,
@@ -334,54 +348,54 @@ export class AssetManagerClient extends ServiceClient {
   }
 
   createFragment(fragment: FragmentInput & { labels?: string[] }) {
-    return this.post<Fragment>(`${API_VERSION}/fragments`, fragment);
+    return this.post<Fragment>(`${this.apiVersion}/fragments`, fragment);
   }
 
   updateFragment(nameOrId: string, updates: Partial<FragmentInput>) {
     return this.patch<Fragment>(
-      `${API_VERSION}/fragments/${nameOrId}`,
+      `${this.apiVersion}/fragments/${nameOrId}`,
       updates,
     );
   }
 
   async deleteFragment(nameOrId: string) {
-    await this.delete(`${API_VERSION}/fragments/${nameOrId}`);
+    await this.delete(`${this.apiVersion}/fragments/${nameOrId}`);
   }
 
   // NFTs
   getNFTs(params?: { filter?: any }) {
-    return this.get<ItemsResult<NFT>>(`${API_VERSION}/nfts`, params?.filter);
+    return this.get<ItemsResult<NFT>>(`${this.apiVersion}/nfts`, params?.filter);
   }
 
   getNFT(nameOrId: string) {
-    return this.get<NFT>(`${API_VERSION}/nfts/${nameOrId}`, undefined, {
+    return this.get<NFT>(`${this.apiVersion}/nfts/${nameOrId}`, undefined, {
       ignore404: true,
     });
   }
 
   createNFT(nft: NFTInput & { labels?: string[] }) {
-    return this.post<NFT>(`${API_VERSION}/nfts`, nft);
+    return this.post<NFT>(`${this.apiVersion}/nfts`, nft);
   }
 
   updateNFT(nameOrId: string, updates: Partial<NFTInput>) {
-    return this.patch<NFT>(`${API_VERSION}/nfts/${nameOrId}`, updates);
+    return this.patch<NFT>(`${this.apiVersion}/nfts/${nameOrId}`, updates);
   }
 
   async deleteNFT(nameOrId: string) {
-    await this.delete(`${API_VERSION}/nfts/${nameOrId}`);
+    await this.delete(`${this.apiVersion}/nfts/${nameOrId}`);
   }
 
   // Transfers
   getTransfers(params?: { filter?: any }) {
     return this.get<ItemsResult<Transfer>>(
-      `${API_VERSION}/transfers`,
+      `${this.apiVersion}/transfers`,
       params?.filter,
     );
   }
 
   getTransfer(transferId: string) {
     return this.get<Transfer>(
-      `${API_VERSION}/transfers/${transferId}`,
+      `${this.apiVersion}/transfers/${transferId}`,
       undefined,
       {
         ignore404: true,
@@ -390,51 +404,51 @@ export class AssetManagerClient extends ServiceClient {
   }
 
   createTransfer(transfer: TransferInput & { labels?: string[] }) {
-    return this.post<Transfer>(`${API_VERSION}/transfers`, transfer);
+    return this.post<Transfer>(`${this.apiVersion}/transfers`, transfer);
   }
 
   updateTransfer(transferId: string, updates: Partial<TransferInput>) {
     return this.patch<Transfer>(
-      `${API_VERSION}/transfers/${transferId}`,
+      `${this.apiVersion}/transfers/${transferId}`,
       updates,
     );
   }
 
   async deleteTransfer(transferId: string) {
-    await this.delete(`${API_VERSION}/transfers/${transferId}`);
+    await this.delete(`${this.apiVersion}/transfers/${transferId}`);
   }
 
   // Balances
   getBalances(params?: { filter?: any }) {
     return this.get<ItemsResult<Balance>>(
-      `${API_VERSION}/balances`,
+      `${this.apiVersion}/balances`,
       params?.filter,
     );
   }
 
   getBalance(nameOrId: string) {
-    return this.get<Balance>(`${API_VERSION}/balances/${nameOrId}`, undefined, {
+    return this.get<Balance>(`${this.apiVersion}/balances/${nameOrId}`, undefined, {
       ignore404: true,
     });
   }
 
   getAddressBalances(address: string, params?: { filter?: any }) {
     return this.get<ItemsResult<Balance>>(
-      `${API_VERSION}/addresses/${address}/balances`,
+      `${this.apiVersion}/addresses/${address}/balances`,
       params?.filter,
     );
   }
 
   getAssetBalances(assetNameOrId: string, params?: { filter?: any }) {
     return this.get<ItemsResult<Balance>>(
-      `${API_VERSION}/assets/${assetNameOrId}/balances`,
+      `${this.apiVersion}/assets/${assetNameOrId}/balances`,
       params?.filter,
     );
   }
 
   getPoolBalances(poolNameOrId: string, params?: { filter?: any }) {
     return this.get<ItemsResult<Balance>>(
-      `${API_VERSION}/pools/${poolNameOrId}/balances`,
+      `${this.apiVersion}/pools/${poolNameOrId}/balances`,
       params?.filter,
     );
   }
@@ -442,7 +456,7 @@ export class AssetManagerClient extends ServiceClient {
   // Bulk Operations
   async bulkQuery(input: BulkQueryInput) {
     const startTime = new Date().getTime();
-    const res = await this.post<BulkQueryOutput>(`${API_VERSION}/bulk/query`, input, {
+    const res = await this.post<BulkQueryOutput>(`${this.apiVersion}/bulk/query`, input, {
       retryOn5xx: true,
     });
     const countFor = (collection: string, set?: FilterResult<unknown>) =>
@@ -453,7 +467,7 @@ export class AssetManagerClient extends ServiceClient {
 
   async bulkUpsert(input: BulkUpsertInput, options?: AxiosRequestConfig) {
     const startTime = new Date().getTime();
-    const res = await this.put<BulkUpsertOutput>(`${API_VERSION}/bulk/datamodel`, input, options);
+    const res = await this.put<BulkUpsertOutput>(`${this.apiVersion}/bulk/datamodel`, input, options);
     const countFor = (collection: string, set?: UpsertManyResult) => {
       if (typeof set !== 'object') return '-';
       const c = set.created?.length ?? 0, r = set.replaced?.length ?? 0, u = set.updated?.length ?? 0, i = set.ignored?.length ?? 0;
@@ -466,14 +480,14 @@ export class AssetManagerClient extends ServiceClient {
   // Policy Operations
   getPolicies(params?: { filter?: any }) {
     return this.get<ItemsResult<Policy>>(
-      `${API_VERSION}/policies`,
+      `${this.apiVersion}/policies`,
       params?.filter,
     );
   }
 
   getPolicy(policyNameOrId: string, options?: { withActive?: boolean }) {
     return this.get<Policy>(
-      `${API_VERSION}/policies/${policyNameOrId}`,
+      `${this.apiVersion}/policies/${policyNameOrId}`,
       { withActive: options?.withActive },
       { ignore404: true },
     );
@@ -481,32 +495,32 @@ export class AssetManagerClient extends ServiceClient {
 
   replacePolicy(policyNameOrId: string, policy: PolicyInlineVersion) {
     return this.put<PolicyInlineVersion>(
-      `${API_VERSION}/policies/${policyNameOrId}`,
+      `${this.apiVersion}/policies/${policyNameOrId}`,
       policy,
     );
   }
 
   updatePolicy(policyNameOrId: string, updates: Partial<Policy>) {
     return this.patch<Policy>(
-      `${API_VERSION}/policies/${policyNameOrId}`,
+      `${this.apiVersion}/policies/${policyNameOrId}`,
       updates,
     );
   }
 
   async deletePolicy(policyNameOrId: string) {
-    await this.delete(`${API_VERSION}/policies/${policyNameOrId}`);
+    await this.delete(`${this.apiVersion}/policies/${policyNameOrId}`);
   }
 
   invokePolicy(policyNameOrId: string, input: any) {
     return this.post<PolicyInvocationResult>(
-      `${API_VERSION}/policies/${policyNameOrId}/invoke`,
+      `${this.apiVersion}/policies/${policyNameOrId}/invoke`,
       input,
     );
   }
 
   invokeInlinePolicy(policy: PolicyInlineInvoke) {
     return this.post<PolicyInvocationResult>(
-      `${API_VERSION}/inline/policy/invoke`,
+      `${this.apiVersion}/inline/policy/invoke`,
       policy,
     );
   }
@@ -514,14 +528,14 @@ export class AssetManagerClient extends ServiceClient {
   // Policy Version Operations
   getPolicyVersions(policyNameOrId: string, params?: { filter?: any }) {
     return this.get<ItemsResult<PolicyVersion>>(
-      `${API_VERSION}/policies/${policyNameOrId}/versions`,
+      `${this.apiVersion}/policies/${policyNameOrId}/versions`,
       params?.filter,
     );
   }
 
   getPolicyVersion(policyNameOrId: string, version: string) {
     return this.get<PolicyVersion>(
-      `${API_VERSION}/policies/${policyNameOrId}/versions/${version}`,
+      `${this.apiVersion}/policies/${policyNameOrId}/versions/${version}`,
       undefined,
       {
         ignore404: true,
@@ -539,7 +553,7 @@ export class AssetManagerClient extends ServiceClient {
         ? { inactive: options.inactive }
         : undefined;
     return this.post<PolicyVersion>(
-      `${API_VERSION}/policies/${policyNameOrId}/versions`,
+      `${this.apiVersion}/policies/${policyNameOrId}/versions`,
       version,
       {
         params,
@@ -553,27 +567,27 @@ export class AssetManagerClient extends ServiceClient {
     updates: PolicyVersionUpdate,
   ) {
     return this.patch<PolicyVersion>(
-      `${API_VERSION}/policies/${policyNameOrId}/versions/${version}`,
+      `${this.apiVersion}/policies/${policyNameOrId}/versions/${version}`,
       updates,
     );
   }
 
   async deletePolicyVersion(policyNameOrId: string, version: string) {
     await this.delete(
-      `${API_VERSION}/policies/${policyNameOrId}/versions/${version}`,
+      `${this.apiVersion}/policies/${policyNameOrId}/versions/${version}`,
     );
   }
 
   invokePolicyVersion(policyNameOrId: string, version: string, input: any) {
     return this.post<PolicyInvocationResult>(
-      `${API_VERSION}/policies/${policyNameOrId}/versions/${version}/invoke`,
+      `${this.apiVersion}/policies/${policyNameOrId}/versions/${version}/invoke`,
       input,
     );
   }
 
   // Task Operations
   getTasks(params?: { filter?: any }) {
-    return this.get<ItemsResult<Task>>(`${API_VERSION}/tasks`, params?.filter);
+    return this.get<ItemsResult<Task>>(`${this.apiVersion}/tasks`, params?.filter);
   }
 
   getTask(taskNameOrId: string, options?: { withActive?: boolean }) {
@@ -582,7 +596,7 @@ export class AssetManagerClient extends ServiceClient {
         ? { withActive: options.withActive }
         : undefined;
     return this.get<TaskInlineVersion>(
-      `${API_VERSION}/tasks/${taskNameOrId}`,
+      `${this.apiVersion}/tasks/${taskNameOrId}`,
       params,
       {
         ignore404: true,
@@ -592,17 +606,17 @@ export class AssetManagerClient extends ServiceClient {
 
   replaceTask(taskNameOrId: string, task: TaskInlineVersion) {
     return this.put<TaskInlineVersion>(
-      `${API_VERSION}/tasks/${taskNameOrId}`,
+      `${this.apiVersion}/tasks/${taskNameOrId}`,
       task,
     );
   }
 
   updateTask(taskNameOrId: string, updates: Partial<Task>) {
-    return this.patch<Task>(`${API_VERSION}/tasks/${taskNameOrId}`, updates);
+    return this.patch<Task>(`${this.apiVersion}/tasks/${taskNameOrId}`, updates);
   }
 
   async deleteTask(taskNameOrId: string) {
-    await this.delete(`${API_VERSION}/tasks/${taskNameOrId}`);
+    await this.delete(`${this.apiVersion}/tasks/${taskNameOrId}`);
   }
 
   invokeTask(
@@ -615,7 +629,7 @@ export class AssetManagerClient extends ServiceClient {
         ? { returnFullContext: options.returnFullContext }
         : undefined;
     return this.post<InvocationSubmitResult>(
-      `${API_VERSION}/tasks/${taskNameOrId}/invoke`,
+      `${this.apiVersion}/tasks/${taskNameOrId}/invoke`,
       input,
       {
         params,
@@ -632,7 +646,7 @@ export class AssetManagerClient extends ServiceClient {
         ? { returnFullContext: options.returnFullContext }
         : undefined;
     return this.post<InvocationSubmitResult>(
-      `${API_VERSION}/inline/task/invoke`,
+      `${this.apiVersion}/inline/task/invoke`,
       task,
       { params },
     );
@@ -641,14 +655,14 @@ export class AssetManagerClient extends ServiceClient {
   // Task Version Operations
   getTaskVersions(taskNameOrId: string, params?: { filter?: any }) {
     return this.get<ItemsResult<TaskVersion>>(
-      `${API_VERSION}/tasks/${taskNameOrId}/versions`,
+      `${this.apiVersion}/tasks/${taskNameOrId}/versions`,
       params?.filter,
     );
   }
 
   getTaskVersion(taskNameOrId: string, version: string) {
     return this.get<TaskVersion>(
-      `${API_VERSION}/tasks/${taskNameOrId}/versions/${version}`,
+      `${this.apiVersion}/tasks/${taskNameOrId}/versions/${version}`,
       undefined,
       {
         ignore404: true,
@@ -666,7 +680,7 @@ export class AssetManagerClient extends ServiceClient {
         ? { inactive: options.inactive }
         : undefined;
     return this.post<TaskVersion>(
-      `${API_VERSION}/tasks/${taskNameOrId}/versions`,
+      `${this.apiVersion}/tasks/${taskNameOrId}/versions`,
       version,
       { params },
     );
@@ -678,14 +692,14 @@ export class AssetManagerClient extends ServiceClient {
     updates: TaskVersionUpdate,
   ) {
     return this.patch<TaskVersion>(
-      `${API_VERSION}/tasks/${taskNameOrId}/versions/${version}`,
+      `${this.apiVersion}/tasks/${taskNameOrId}/versions/${version}`,
       updates,
     );
   }
 
   async deleteTaskVersion(taskNameOrId: string, version: string) {
     await this.delete(
-      `${API_VERSION}/tasks/${taskNameOrId}/versions/${version}`,
+      `${this.apiVersion}/tasks/${taskNameOrId}/versions/${version}`,
     );
   }
 
@@ -700,7 +714,7 @@ export class AssetManagerClient extends ServiceClient {
         ? { returnFullContext: options.returnFullContext }
         : undefined;
     return this.post<InvocationSubmitResult>(
-      `${API_VERSION}/tasks/${taskNameOrId}/versions/${version}/invoke`,
+      `${this.apiVersion}/tasks/${taskNameOrId}/versions/${version}/invoke`,
       input,
       { params },
     );
@@ -709,14 +723,14 @@ export class AssetManagerClient extends ServiceClient {
   // Invocation Operations
   getInvocations(params?: { filter?: any }) {
     return this.get<ItemsResult<Invocation>>(
-      `${API_VERSION}/invocations`,
+      `${this.apiVersion}/invocations`,
       params?.filter,
     );
   }
 
   getInvocation(invocationId: string) {
     return this.get<Invocation>(
-      `${API_VERSION}/invocations/${invocationId}`,
+      `${this.apiVersion}/invocations/${invocationId}`,
       undefined,
       {
         ignore404: true,
@@ -725,7 +739,7 @@ export class AssetManagerClient extends ServiceClient {
   }
 
   async deleteInvocation(invocationId: string) {
-    await this.delete(`${API_VERSION}/invocations/${invocationId}`);
+    await this.delete(`${this.apiVersion}/invocations/${invocationId}`);
   }
 
   invocationFail(
@@ -737,39 +751,39 @@ export class AssetManagerClient extends ServiceClient {
       context?: any;
     },
   ) {
-    return this.post(`${API_VERSION}/invocations/${invocationId}/fail`, error);
+    return this.post(`${this.apiVersion}/invocations/${invocationId}/fail`, error);
   }
 
   invocationReplay(invocationId: string) {
-    return this.post(`${API_VERSION}/invocations/${invocationId}/replay`, {});
+    return this.post(`${this.apiVersion}/invocations/${invocationId}/replay`, {});
   }
 
   invocationSuspend(invocationId: string) {
-    return this.post(`${API_VERSION}/invocations/${invocationId}/suspend`, {});
+    return this.post(`${this.apiVersion}/invocations/${invocationId}/suspend`, {});
   }
 
   invocationResume(invocationId: string) {
-    return this.post(`${API_VERSION}/invocations/${invocationId}/resume`, {});
+    return this.post(`${this.apiVersion}/invocations/${invocationId}/resume`, {});
   }
 
   // Steps Catalog
   getStepsCatalog() {
     return this.get<ItemsResult<StepsCatalogItem>>(
-      `${API_VERSION}/steps/catalog`,
+      `${this.apiVersion}/steps/catalog`,
     );
   }
 
   // Subscriptions
   getSubscriptions(params?: { filter?: any }) {
     return this.get<ItemsResult<DataModelSubscription>>(
-      `${API_VERSION}/subscriptions`,
+      `${this.apiVersion}/subscriptions`,
       params?.filter,
     );
   }
 
   getSubscription(subscriptionNameOrId: string) {
     return this.get<DataModelSubscription>(
-      `${API_VERSION}/subscriptions/${subscriptionNameOrId}`,
+      `${this.apiVersion}/subscriptions/${subscriptionNameOrId}`,
       undefined,
       { ignore404: true },
     );
@@ -780,25 +794,25 @@ export class AssetManagerClient extends ServiceClient {
     subscription: DataModelSubscriptionInput,
   ) {
     return this.put<DataModelSubscription>(
-      `${API_VERSION}/subscriptions/${subscriptionNameOrId}`,
+      `${this.apiVersion}/subscriptions/${subscriptionNameOrId}`,
       subscription,
     );
   }
 
   async deleteSubscription(subscriptionNameOrId: string) {
-    await this.delete(`${API_VERSION}/subscriptions/${subscriptionNameOrId}`);
+    await this.delete(`${this.apiVersion}/subscriptions/${subscriptionNameOrId}`);
   }
 
   subscriptionStart(subscriptionNameOrId: string) {
     return this.post(
-      `${API_VERSION}/subscriptions/${subscriptionNameOrId}/start`,
+      `${this.apiVersion}/subscriptions/${subscriptionNameOrId}/start`,
       {},
     );
   }
 
   subscriptionStop(subscriptionNameOrId: string) {
     return this.post(
-      `${API_VERSION}/subscriptions/${subscriptionNameOrId}/stop`,
+      `${this.apiVersion}/subscriptions/${subscriptionNameOrId}/stop`,
       {},
     );
   }
@@ -808,7 +822,7 @@ export class AssetManagerClient extends ServiceClient {
     request: SubscriptionResetRequest,
   ) {
     return this.post(
-      `${API_VERSION}/subscriptions/${subscriptionNameOrId}/reset`,
+      `${this.apiVersion}/subscriptions/${subscriptionNameOrId}/reset`,
       request,
     );
   }
@@ -816,14 +830,14 @@ export class AssetManagerClient extends ServiceClient {
   // Data Model Listeners
   getDataModelListeners(params?: { filter?: any }) {
     return this.get<ItemsResult<DataModelListener>>(
-      `${API_VERSION}/listeners/datamodel`,
+      `${this.apiVersion}/listeners/datamodel`,
       params?.filter,
     );
   }
 
   getDataModelListener(listenerNameOrId: string) {
     return this.get<DataModelListener>(
-      `${API_VERSION}/listeners/datamodel/${listenerNameOrId}`,
+      `${this.apiVersion}/listeners/datamodel/${listenerNameOrId}`,
       undefined,
       { ignore404: true },
     );
@@ -834,25 +848,25 @@ export class AssetManagerClient extends ServiceClient {
     listener: DataModelListenerInput,
   ) {
     return this.put<DataModelListener>(
-      `${API_VERSION}/listeners/datamodel/${listenerNameOrId}`,
+      `${this.apiVersion}/listeners/datamodel/${listenerNameOrId}`,
       listener,
     );
   }
 
   async deleteDataModelListener(listenerNameOrId: string) {
-    await this.delete(`${API_VERSION}/listeners/datamodel/${listenerNameOrId}`);
+    await this.delete(`${this.apiVersion}/listeners/datamodel/${listenerNameOrId}`);
   }
 
   dataModelListenerStart(listenerNameOrId: string) {
     return this.post(
-      `${API_VERSION}/listeners/datamodel/${listenerNameOrId}/start`,
+      `${this.apiVersion}/listeners/datamodel/${listenerNameOrId}/start`,
       {},
     );
   }
 
   dataModelListenerStop(listenerNameOrId: string) {
     return this.post(
-      `${API_VERSION}/listeners/datamodel/${listenerNameOrId}/stop`,
+      `${this.apiVersion}/listeners/datamodel/${listenerNameOrId}/stop`,
       {},
     );
   }
@@ -862,7 +876,7 @@ export class AssetManagerClient extends ServiceClient {
     request: DataModelListenerResetRequest,
   ) {
     return this.post(
-      `${API_VERSION}/listeners/datamodel/${listenerNameOrId}/reset`,
+      `${this.apiVersion}/listeners/datamodel/${listenerNameOrId}/reset`,
       request,
     );
   }
@@ -870,14 +884,14 @@ export class AssetManagerClient extends ServiceClient {
   // FireFly Listeners
   getFireFlyListeners(params?: { filter?: any }) {
     return this.get<ItemsResult<FireFlyListener>>(
-      `${API_VERSION}/listeners/firefly`,
+      `${this.apiVersion}/listeners/firefly`,
       params?.filter,
     );
   }
 
   getFireFlyListener(listenerNameOrId: string) {
     return this.get<FireFlyListener>(
-      `${API_VERSION}/listeners/firefly/${listenerNameOrId}`,
+      `${this.apiVersion}/listeners/firefly/${listenerNameOrId}`,
       undefined,
       {
         ignore404: true,
@@ -890,25 +904,25 @@ export class AssetManagerClient extends ServiceClient {
     listener: FireFlyListenerInput,
   ) {
     return this.put<FireFlyListener>(
-      `${API_VERSION}/listeners/firefly/${listenerNameOrId}`,
+      `${this.apiVersion}/listeners/firefly/${listenerNameOrId}`,
       listener,
     );
   }
 
   async deleteFireFlyListener(listenerNameOrId: string) {
-    await this.delete(`${API_VERSION}/listeners/firefly/${listenerNameOrId}`);
+    await this.delete(`${this.apiVersion}/listeners/firefly/${listenerNameOrId}`);
   }
 
   fireflyListenerStart(listenerNameOrId: string) {
     return this.post(
-      `${API_VERSION}/listeners/firefly/${listenerNameOrId}/start`,
+      `${this.apiVersion}/listeners/firefly/${listenerNameOrId}/start`,
       {},
     );
   }
 
   fireflyListenerStop(listenerNameOrId: string) {
     return this.post(
-      `${API_VERSION}/listeners/firefly/${listenerNameOrId}/stop`,
+      `${this.apiVersion}/listeners/firefly/${listenerNameOrId}/stop`,
       {},
     );
   }
