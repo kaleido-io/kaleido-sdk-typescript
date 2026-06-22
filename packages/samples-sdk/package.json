@@ -1,5 +1,5 @@
 {
-  "name": "@kaleido-io/samples",
+  "name": "@kaleido-io/samples-sdk",
   "version": "1.0.0",
   "description": "Kaleido SDK samples and project scaffolding CLI",
   "type": "module",

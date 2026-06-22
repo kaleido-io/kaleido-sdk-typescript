@@ -24,7 +24,7 @@ into the [Kaleido Asset Manager](https://docs.kaleido.io/platform/digital-assets
 
 ```bash
 # 1. Initialize a new project from this template
-npx @kaleido-io/sdk init my-erc20-indexer --template erc20-indexer
+npx @kaleido-io/samples-sdk init my-erc20-indexer --template erc20-indexer
 cd my-erc20-indexer
 
 # 2. Install dependencies

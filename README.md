@@ -14,7 +14,7 @@ Build transaction handlers, event sources, and event processors with full type s
 
 To bootstrap a new project using the SDK:
 ```bash
-npx @kaleido-io/workflow-engine-sdk init <project-name>
+npx @kaleido-io/samples-sdk init <project-name>
 ```
 
 Or to install the SDK into an existing project:

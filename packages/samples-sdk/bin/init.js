@@ -68,7 +68,7 @@ const args = process.argv.slice(2);
 
 if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
   console.log(`
-Usage: npx @kaleido-io/sdk init [project-name] [options]
+Usage: npx @kaleido-io/samples-sdk init [project-name] [options]
 
   project-name        Name of the new project directory to create.
                       Omit to add a template into the current project.
@@ -78,9 +78,9 @@ Options:
   --help, -h          Show this help message
 
 Examples:
-  npx @kaleido-io/sdk init my-provider --template getting-started
-  npx @kaleido-io/sdk init @my-org/my-provider --template erc20-indexer
-  npx @kaleido-io/sdk init --template erc20-indexer    # add to current project
+  npx @kaleido-io/samples-sdk init my-provider --template getting-started
+  npx @kaleido-io/samples-sdk init @my-org/my-provider --template erc20-indexer
+  npx @kaleido-io/samples-sdk init --template erc20-indexer    # add to current project
 `);
   process.exit(0);
 }
@@ -188,10 +188,10 @@ try {
   // Build a per-package version map by reading manifests directly from git objects.
   // git show fetches the blob lazily for remote partial clones and works with local paths too.
   for (const manifestPath of [
-    'packages/samples/package.json',
+    'packages/samples-sdk/package.json',
     'packages/workflow-engine-sdk/package.json',
     'packages/connector-sdk/package.json',
-    'packages/asset-manager/package.json',
+    'packages/asset-manager-sdk/package.json',
   ]) {
     const result = spawnSync('git', ['show', `HEAD:${manifestPath}`], {
       cwd: tmpDir, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'],

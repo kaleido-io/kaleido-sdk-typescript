@@ -7,7 +7,7 @@ and event processors — the core building blocks for custom providers.
 
 ```bash
 # 1. Initialize a new project from this template
-npx @kaleido-io/sdk init my-provider --template getting-started
+npx @kaleido-io/samples-sdk init my-provider --template getting-started
 cd my-provider
 
 # 2. Install dependencies
