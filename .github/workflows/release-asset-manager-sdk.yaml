@@ -83,7 +83,7 @@ jobs:
       - name: Override SDK version
         uses: ./.github/actions/update-json
         with:
-          file: 'packages/asset-manager/package.json'
+          file: 'packages/asset-manager-sdk/package.json'
           key: 'version'
           value: ${{ steps.prep_version.outputs.clean_version }}
 
@@ -112,7 +112,7 @@ jobs:
         run: npm install && npm run build
 
       - name: Publish to npm with primary tag
-        working-directory: packages/asset-manager
+        working-directory: packages/asset-manager-sdk
         shell: bash
         run: |
           set -e

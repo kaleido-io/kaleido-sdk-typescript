@@ -32,7 +32,7 @@ jobs:
       - name: Build packages (dependency order)
         run: npm run build:packages
 
-      - run: npm test -w packages/asset-manager -w packages/workflow-engine-sdk
+      - run: npm test -w packages/asset-manager-sdk -w packages/workflow-engine-sdk
 
   samples:
     name: Build & Test (samples)
