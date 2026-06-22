@@ -71,6 +71,7 @@ export class ERC20Indexer {
     ctx: IndexerContext<ERC20Config>,
     events: EventProcessorEvent<EVMTransactionEvent>[],
   ): Promise<void> {
+
     const { contractAddress, contractName, chain } = ctx.config;
     const addr = (contractAddress ?? '').toLowerCase();
     const poolName = (contractName ?? 'ERC20').toLowerCase();

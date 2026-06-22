@@ -9,6 +9,16 @@ contractName: MyToken
 contractSymbol: TKN
 chain: ethereum   # Informational label attached to indexed transfers (e.g. "ethereum", "polygon", "base", "besu")
 
+# Direct Asset Manager credentials for setup() when deployed as a hosted provider.
+# The ws-proxy transport only injects auth for per-transaction calls; setup() has
+# no transaction context so must call the AM directly with its own credentials.
+# Omit this section for local dev (non-hosted) — it is not needed there.
+# setupAssetManager:
+#   url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-env/s:my-asset-manager/rest
+#   auth:
+#     username: myuser
+#     password: my-api-key
+
 # EVM stream configuration. Used in the setup hook to upsert the WFE stream.
 # stream.connectorBindingName must match the service-binding name in config.yaml for the connector.
 stream:
