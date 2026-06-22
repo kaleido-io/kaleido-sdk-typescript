@@ -33,6 +33,12 @@ export interface HTTPTransportOptions {
   timeout?: number;
   /** Reject unauthorized TLS certificates (default: true) */
   rejectUnauthorized?: boolean;
+  /** mTLS client certificate (PEM string or Buffer) */
+  cert?: string | Buffer;
+  /** mTLS client key (PEM string or Buffer) */
+  key?: string | Buffer;
+  /** CA certificate for verifying the server (PEM string or Buffer) */
+  ca?: string | Buffer;
   /** Additional Axios request config merged into the instance defaults */
   requestConfig?: AxiosRequestConfig;
   /** Optional logger. When provided, each request is logged at debug level with
@@ -65,6 +71,9 @@ export class HTTPTransport implements ServiceTransport {
       maxRetries: options.maxRetries,
       timeout: options.timeout,
       rejectUnauthorized: options.rejectUnauthorized,
+      cert: options.cert,
+      key: options.key,
+      ca: options.ca,
     });
 
     if (options.logger) {

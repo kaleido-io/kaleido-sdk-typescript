@@ -68,6 +68,12 @@ export interface HttpClientOptions {
   maxRetries?: number;
   timeout?: number;
   rejectUnauthorized?: boolean;
+  /** mTLS client certificate (PEM string or Buffer) */
+  cert?: string | Buffer;
+  /** mTLS client key (PEM string or Buffer) */
+  key?: string | Buffer;
+  /** CA certificate for verifying the server (PEM string or Buffer) */
+  ca?: string | Buffer;
 }
 
 const IDEMPOTENT_METHODS = ["GET", "HEAD", "OPTIONS", "PUT", "DELETE"];
@@ -148,6 +154,9 @@ export function configureHttpClient(
     rejectUnauthorized,
     maxSockets: 50,
     maxFreeSockets: 10,
+    ...(options.cert && { cert: options.cert }),
+    ...(options.key  && { key:  options.key  }),
+    ...(options.ca   && { ca:   options.ca   }),
   });
 
   const httpAgent = new http.Agent({
