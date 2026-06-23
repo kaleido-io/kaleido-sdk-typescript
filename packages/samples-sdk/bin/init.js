@@ -15,7 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
 import { dirname, join, relative, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
@@ -34,31 +34,47 @@ const FALLBACK_VERSION = `^${sdkPkg.version}`;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function collectFiles(dir, base, result = []) {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const fullPath = join(dir, entry.name);
+function collectFiles(pathToScan, base, result = []) {
+  if (!statSync(pathToScan).isDirectory()) {
+    result.push(relative(base, pathToScan));
+    return result;
+  }
+  for (const entry of readdirSync(pathToScan, { withFileTypes: true })) {
+    const fullPath = join(pathToScan, entry.name);
     if (entry.isDirectory()) collectFiles(fullPath, base, result);
     else result.push(relative(base, fullPath));
   }
   return result;
 }
 
-function applyVariables(dir, variables) {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const fullPath = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      applyVariables(fullPath, variables);
-    } else {
-      try {
-        let content = readFileSync(fullPath, 'utf-8');
-        for (const [key, value] of Object.entries(variables)) {
-          content = content.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
-        }
-        writeFileSync(fullPath, content, 'utf-8');
-      } catch {
-        // skip binary or unreadable files
-      }
+// Relative paths the template would write under `destBase` that already exist
+// on disk — so we can refuse to silently overwrite the user's files.
+function findConflicts(srcPath, destBase, targetBase, conflicts = []) {
+  if (statSync(srcPath).isDirectory()) {
+    for (const entry of readdirSync(srcPath, { withFileTypes: true })) {
+      findConflicts(join(srcPath, entry.name), join(destBase, entry.name), targetBase, conflicts);
     }
+  } else if (existsSync(destBase)) {
+    conflicts.push(relative(targetBase, destBase));
+  }
+  return conflicts;
+}
+
+function applyVariables(path, variables) {
+  if (statSync(path).isDirectory()) {
+    for (const entry of readdirSync(path, { withFileTypes: true })) {
+      applyVariables(join(path, entry.name), variables);
+    }
+    return;
+  }
+  try {
+    let content = readFileSync(path, 'utf-8');
+    for (const [key, value] of Object.entries(variables)) {
+      content = content.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+    }
+    writeFileSync(path, content, 'utf-8');
+  } catch {
+    // skip binary or unreadable files
   }
 }
 
@@ -160,8 +176,26 @@ if (addToExisting) {
 // Files that are monorepo-specific and must never appear in a standalone project
 const SKIP_FILES = new Set(['Dockerfile.withsdk', 'package-lock.json']);
 
-// In add-to-existing mode only these subdirectories are merged in
-const ADD_COPY_DIRS = ['src', 'config'];
+// In add-to-existing mode we merge in the template's source code and config but
+// never the host project's own infrastructure files — these top-level entries
+// are owned by the existing project and left untouched. (A fixed allowlist like
+// ['src','config'] is wrong here: some templates, e.g. workflow-engine-provider,
+// keep their code in top-level feature directories rather than under src/.)
+const ADD_SKIP_ENTRIES = new Set([
+  'package.json',       // merged, never overwritten
+  'package-lock.json',
+  'node_modules',
+  'dist',
+  'tsconfig.json',
+  'vitest.config.ts',
+  'jest.config.json',
+  'Dockerfile',
+  'Dockerfile.withsdk',
+  '.gitignore',
+  '.dockerignore',
+  '.vscode',
+  'README.md',
+]);
 
 const versionMap = {};
 let templateKaleidoDeps = {};  // @kaleido-io/* deps declared in the template's package.json
@@ -217,13 +251,28 @@ try {
   }
 
   if (addToExisting) {
-    for (const dir of ADD_COPY_DIRS) {
-      const srcPath = join(sourceDir, dir);
-      if (existsSync(srcPath)) {
-        const destPath = join(targetDir, dir);
-        cpSync(srcPath, destPath, { recursive: true });
-        collectFiles(destPath, targetDir, copiedFiles);
-      }
+    const entries = readdirSync(sourceDir, { withFileTypes: true })
+      .filter((e) => !ADD_SKIP_ENTRIES.has(e.name));
+
+    // Refuse to clobber: collect every collision across all entries first, then
+    // bail out before copying anything so we never leave a half-merged project.
+    const conflicts = [];
+    for (const entry of entries) {
+      findConflicts(join(sourceDir, entry.name), join(targetDir, entry.name), targetDir, conflicts);
+    }
+    if (conflicts.length > 0) {
+      throw new Error(
+        `the template would overwrite existing files:\n` +
+        conflicts.map((c) => `\t${c}`).join('\n') +
+        `\nMove or remove these files and re-run, or scaffold into a new project instead.`
+      );
+    }
+
+    for (const entry of entries) {
+      const srcPath = join(sourceDir, entry.name);
+      const destPath = join(targetDir, entry.name);
+      cpSync(srcPath, destPath, { recursive: true });
+      collectFiles(destPath, targetDir, copiedFiles);
     }
   } else {
     mkdirSync(targetDir, { recursive: true });
@@ -245,9 +294,8 @@ const existingPkgName = addToExisting ? JSON.parse(readFileSync(cwdPkgPath, 'utf
 const variables = { PROVIDER_NAME: projectName ?? existingPkgName ?? 'my-project' };
 
 if (addToExisting) {
-  for (const dir of ADD_COPY_DIRS.map(d => join(targetDir, d))) {
-    if (existsSync(dir)) applyVariables(dir, variables);
-  }
+  // Only substitute within the files we just copied — never touch the user's existing files.
+  for (const rel of copiedFiles) applyVariables(join(targetDir, rel), variables);
 } else {
   applyVariables(targetDir, variables);
 }
