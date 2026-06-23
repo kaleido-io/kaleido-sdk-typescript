@@ -14,5 +14,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export * from './types.js';
-export { CantonConnectorClient } from './client.js';
+export interface KldResourceBase {
+  id: string;
+  created?: string;
+  updated?: string;
+}
+
+export interface NameAndID {
+  name: string;
+  id?: string;
+  parent?: DataModelReference;
+}
+
+export type DataModelReference = string;
+
+export interface ObjectLabels {
+  labels?: Record<string, string>;
+}
+
+export interface AddressScope {
+  address?: string;
+}
+
+export interface ItemsResult<T> {
+  count: number;
+  total?: number;
+  items: T[];
+}
+
+export type UpdateType =
+  | "create_only"
+  | "update_only"
+  | "create_or_replace"
+  | "create_or_update"
+  | "create_or_ignore";

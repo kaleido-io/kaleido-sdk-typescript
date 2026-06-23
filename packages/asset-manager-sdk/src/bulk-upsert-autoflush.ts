@@ -10,7 +10,7 @@ import {
   NFTBulkInput,
   PoolBulkInput,
   TransferBulkInput,
-} from "./asset-manager.interfaces.js";
+} from "./interfaces/index.js";
 import {
   BulkUpsertBuilder,
   DuplicateStrategy

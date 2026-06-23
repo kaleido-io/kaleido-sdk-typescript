@@ -8,4 +8,4 @@ export {
   IBulkQueryClient,
   IBulkUpsertClient,
 } from "./bulk-upsert-builder.js";
-export * from "./asset-manager.interfaces.js";
+export * from "./interfaces/index.js";

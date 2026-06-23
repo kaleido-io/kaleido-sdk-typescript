@@ -57,7 +57,7 @@ import {
   Transfer,
   TransferInput,
   UpsertManyResult,
-} from "./asset-manager.interfaces";
+} from "./interfaces/index.js";
 import { newLogger, type SetupContext } from "@kaleido-io/workflow-engine-sdk";
 
 const log = newLogger("AssetManagerClient");

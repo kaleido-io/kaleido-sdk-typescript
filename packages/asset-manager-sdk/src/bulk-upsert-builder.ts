@@ -14,7 +14,7 @@ import {
   NFTBulkInput,
   PoolBulkInput,
   TransferBulkInput,
-} from "./asset-manager.interfaces.js";
+} from "./interfaces/index.js";
 import { BulkUpsertAutoFlush } from "./bulk-upsert-autoflush.js";
 import { RequestContext } from "@kaleido-io/workflow-engine-sdk";
 
