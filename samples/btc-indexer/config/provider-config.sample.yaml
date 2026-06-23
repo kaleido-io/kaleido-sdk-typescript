@@ -5,7 +5,7 @@
 
 # BTC network to index
 bulkQueryLimit: 100     # max fragments/addresses per AM query when resolving inputs
-upsertTriggerCount: 100 # flush after this many pending objects
+upsertTriggerCount: 500 # flush after this many pending objects
 networkName: testnet4
 networkId: 0x283f161c
 tokenSymbol: tBTC

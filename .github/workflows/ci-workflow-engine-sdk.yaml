@@ -55,7 +55,7 @@ jobs:
         run: npm run build:samples
 
       - name: Test samples
-        run: npm test -w samples/workflow-engine-provider -w samples/erc20-indexer -w samples/btc-indexer -w samples/canton-cip56-indexer --if-present
+        run: npm test -w samples/workflow-engine-provider -w samples/erc20-indexer -w samples/btc-indexer -w samples/canton-cip56-indexer -w samples/native-eth-indexer --if-present
 
   docker:
     name: Docker Builds (Samples)
