@@ -23,7 +23,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY config ./config
 
-ENV CONFIG_FILE=./config/config.yaml
+ENV CONFIG_FILE=./config/provider-config.yaml
 
 # distroless node images use nonroot (uid 65532) by default
 USER nonroot

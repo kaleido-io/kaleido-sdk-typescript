@@ -37,8 +37,9 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/samples/btc-indexer/dist ./samples/btc-indexer/dist
 COPY --from=builder /app/samples/btc-indexer/package.json ./samples/btc-indexer/
+COPY samples/btc-indexer/config ./config
 
-ENV CONFIG_FILE=./config/config.yaml
+ENV CONFIG_FILE=./config/provider-config.yaml
 
 # distroless node images use nonroot (uid 65532) by default
 USER nonroot
