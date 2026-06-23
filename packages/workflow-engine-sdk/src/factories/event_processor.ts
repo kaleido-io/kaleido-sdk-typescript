@@ -40,15 +40,11 @@ export interface EventProcessorEvent<DT> {
 /**
  * Batch function signature for event processors.
  *
- * Receives a typed batch of events and returns the processed events (which may
- * be filtered or enriched) plus an optional checkpoint.
- *
- * **Checkpoint semantics**: `checkpointOut` is write-only. The engine persists
- * it for operator observability (e.g. monitoring dashboards) but does NOT
- * return it in subsequent batch requests. It cannot be used for resumption —
- * position tracking for the underlying data source belongs in the event
- * source checkpoint, not here. Use an ordered, incrementing value such as a
- * block number so that progress is meaningful to operators.
+ * Receives the request context and a typed batch of events to index. Returns
+ * `Promise<void>` — there is no checkpoint or processed-event return value;
+ * position tracking for the underlying data source belongs in the event source
+ * checkpoint, not here. Throwing marks the batch as failed (the error is caught
+ * and surfaced to the engine via the batch result).
  */
 export type EventProcessorBatchFn<DT = unknown> = (
   reqContext: RequestContext,
@@ -126,11 +122,12 @@ class EventProcessorBase<DT> implements EventProcessorBuilder<DT> {
  * @returns EventProcessorBuilder for chaining optional configuration
  *
  * @example
- * const processor = createEventProcessor<TokenTransfer, IndexerCheckpoint>(
+ * const processor = createEventProcessor<TokenTransfer>(
  *   'token-indexer',
- *   async (events) => {
- *     const processed = events.filter(e => e.data.value > 0n);
- *     return { events: processed, checkpointOut: { lastBlock: processed.at(-1)?.data.blockNumber } };
+ *   async (reqContext, events) => {
+ *     for (const event of events) {
+ *       await writeToStore(event.data);
+ *     }
  *   }
  * );
  */
