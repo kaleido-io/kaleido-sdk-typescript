@@ -16,7 +16,7 @@
 
 
 import { describe, it, expect, jest, afterEach } from '@jest/globals';
-import { getErrorMessage, fatalError } from './errors';
+import { getErrorMessage, fatalError, formatError } from './errors';
 
 describe('errors', () => {
     it('should get error message from Error object', () => {
@@ -28,6 +28,21 @@ describe('errors', () => {
     it('should get error message from string', () => {
         const message = getErrorMessage('test error');
         expect(message).toBe('test error');
+    });
+});
+
+describe('formatError', () => {
+    it('is null-safe', () => {
+        expect(formatError(null)).toBe('null');
+        expect(formatError(undefined)).toBe('undefined');
+    });
+
+    it('formats an Error', () => {
+        expect(formatError(new Error('boom'))).toContain('boom');
+    });
+
+    it('stringifies non-Error throwables', () => {
+        expect(formatError('plain string')).toContain('plain string');
     });
 });
 

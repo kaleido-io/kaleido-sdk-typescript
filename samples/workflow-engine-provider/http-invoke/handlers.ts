@@ -80,7 +80,7 @@ class HTTPInvokeHandlerInput implements WithStageDirector {
   }
 
   name(): string {
-    return 'hello';
+    return 'http-invoke';
   }
 }
 

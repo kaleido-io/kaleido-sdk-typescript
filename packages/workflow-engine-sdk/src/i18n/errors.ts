@@ -64,7 +64,6 @@ export const SDKErrors = {
   MsgSDKEngineReplyInvalidType: fe('KA140615', 'Engine API reply type for transaction %s invalid: %s'),
   MsgSDKEngineFailMarshalEngineRequest: fe('KA140617', 'Failed to marshal engine transaction data'),
   MsgSDKEngineFailSendEngineRequest: fe('KA140618', 'Failed to send engine transaction'),
-  MsgSDKEngineNoTokenAuthRef: fe('KA140619', "No auth token available in engine supplied context for authRef '%s'"),
 
   // Configuration errors
   MsgSDKProviderNameNotSet: fe('KA140620', 'Provider name not set'),

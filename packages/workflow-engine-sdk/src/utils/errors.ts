@@ -24,6 +24,9 @@ export const getErrorMessage = (error: unknown): string => {
 }
 
 export const formatError = (error: any): string => {
+    if (error === null || error === undefined) {
+      return String(error);
+    }
     let message: string;
     if (axios.isAxiosError(error) && error.request) {
       const axiosErr = error as AxiosError;
@@ -31,7 +34,7 @@ export const formatError = (error: any): string => {
       const dataMessage = data?.message || data?.error || JSON.stringify(data);
       message = `${axiosErr.request?.method} ${axiosErr.request?.url} failed [${axiosErr?.status}] ${error.message}: ${dataMessage}`
     } else {
-      message = error.message || (typeof error);
+      message = error.message || String(error);
     }
     if (typeof error.stack == 'string') {
       message = message + '\n' + error.stack;

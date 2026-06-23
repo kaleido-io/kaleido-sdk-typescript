@@ -33,7 +33,7 @@ export type ScriptType =
   | 'witness_v0_keyhash'    // Pay-to-Witness-Public-Key-Hash (long form)
   | 'p2wpkh'                // Pay-to-Witness-Public-Key-Hash — native SegWit
   | 'witness_v0_scripthash' // Pay-to-Witness-Script-Hash (long form)
-  | 'p2wsh'                 // Pay-to-Witness-Script-Hash — native SegWit variant of P2PKH
+  | 'p2wsh'                 // Pay-to-Witness-Script-Hash — native SegWit variant of P2SH
   | 'witness_v1_taproot'    // Pay-to-Taproot (long form)
   | 'p2tr'                  // Pay-to-Taproot — Schnorr signatures / BIP-341
   | 'nulldata';             // OP_RETURN output

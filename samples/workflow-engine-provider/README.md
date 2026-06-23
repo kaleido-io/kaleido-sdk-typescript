@@ -63,4 +63,3 @@ Set `CONFIG_FILE` env var to point to this file (default: `./config/provider-con
 - **[event-source](./event-source/README.md)** — Shows how to set up a custom event source that generates events and streams them to an event processor
 - **[snap](./snap/README.md)** — By playing the card game "snap", this sample demonstrates a correlation stream that matches events from any event source with inflight transactions
 - **list-pools** — Demonstrates calling the Asset Manager from a transaction handler, forwarding the caller's auth token via the provider proxy
-- **block-indexer** — An event processor that indexes EVM block data into the Asset Manager

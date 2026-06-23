@@ -25,7 +25,6 @@ RUN npm run build -w packages/workflow-engine-sdk -w packages/asset-manager-sdk
 COPY samples/workflow-engine-provider/tsconfig.json ./samples/workflow-engine-provider/
 COPY samples/workflow-engine-provider/connect.ts ./samples/workflow-engine-provider/
 COPY samples/workflow-engine-provider/provider.ts ./samples/workflow-engine-provider/
-COPY samples/workflow-engine-provider/block-indexer ./samples/workflow-engine-provider/block-indexer
 COPY samples/workflow-engine-provider/event-source ./samples/workflow-engine-provider/event-source
 COPY samples/workflow-engine-provider/hello ./samples/workflow-engine-provider/hello
 COPY samples/workflow-engine-provider/http-invoke ./samples/workflow-engine-provider/http-invoke

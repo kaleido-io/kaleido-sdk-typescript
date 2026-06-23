@@ -46,7 +46,7 @@ export class ProviderBase<CustomConfig> {
 
     async createClient(): Promise<WorkflowEngineClient> {
         // Connect to the workflow engine
-        const platformURLWsScheme = this.getPlatformURL().replace(/^http/, 'ws');;
+        const platformURLWsScheme = this.getPlatformURL().replace(/^http/, 'ws');
         const wsURL = `${platformURLWsScheme}${this.getWorkflowEngineRESTEndpoint()}/ws`;
         if (!this.providerConfig.providerName) {
             throw new Error(`providerName is required`);
