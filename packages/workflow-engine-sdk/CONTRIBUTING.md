@@ -29,17 +29,17 @@ changes:
 ```bash
 TARBALL=$(ls packages/samples-sdk/kaleido-io-samples-sdk-*.tgz)
 mkdir -p /tmp/ksdk-test && cd /tmp/ksdk-test
-WESDK_REPO_URL="$OLDPWD" npx "file:$TARBALL" init my-provider --template getting-started
+WESDK_REPO_URL="$OLDPWD" npx "file:$TARBALL" init my-provider --template workflow-engine-provider
 ```
 
 #### What SDK consumers run (once published to npm)
 
 ```bash
-npx @kaleido-io/samples-sdk init my-provider --template getting-started
+npx @kaleido-io/samples-sdk init my-provider --template workflow-engine-provider
 ```
 
 The init script prompts you to choose a template when `--template` is omitted
-and stdin is a TTY. Available templates: `getting-started`, `erc20-indexer`,
+and stdin is a TTY. Available templates: `workflow-engine-provider`, `erc20-indexer`,
 `btc-indexer`.
 
 To test add-to-existing mode, create a minimal `package.json` first and omit

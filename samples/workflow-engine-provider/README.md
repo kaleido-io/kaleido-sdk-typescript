@@ -1,4 +1,4 @@
-# getting-started
+# workflow-engine-provider
 
 A sample Kaleido Workflow Engine provider demonstrating transaction handlers, event sources,
 and event processors — the core building blocks for custom providers.
@@ -7,7 +7,7 @@ and event processors — the core building blocks for custom providers.
 
 ```bash
 # 1. Initialize a new project from this template
-npx @kaleido-io/samples-sdk init my-provider --template getting-started
+npx @kaleido-io/samples-sdk init my-provider --template workflow-engine-provider
 cd my-provider
 
 # 2. Install dependencies

@@ -1,4 +1,4 @@
-# Provider-specific configuration for the getting-started provider (CONFIG_FILE).
+# Provider-specific configuration for the workflow-engine-provider (CONFIG_FILE).
 # Contains settings bundled with the provider image.
 # Copy this file to config/provider-config.yaml and fill in your values.
 # Set CONFIG_FILE env var to point to your config (default: ./config/provider-config.yaml).

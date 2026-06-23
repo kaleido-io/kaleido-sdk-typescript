@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        template: [getting-started, erc20-indexer, btc-indexer, canton-cip56-indexer]
+        template: [workflow-engine-provider, erc20-indexer, btc-indexer, canton-cip56-indexer]
     steps:
       - uses: actions/checkout@v4
 
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        template: [getting-started, erc20-indexer, btc-indexer, canton-cip56-indexer]
+        template: [workflow-engine-provider, erc20-indexer, btc-indexer, canton-cip56-indexer]
     steps:
       - uses: actions/checkout@v4
 

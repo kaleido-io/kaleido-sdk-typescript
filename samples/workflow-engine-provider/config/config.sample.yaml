@@ -1,4 +1,4 @@
-# Configuration for the getting-started provider (KALEIDO_CONFIG_FILE).
+# Configuration for the workflow-engine-provider (KALEIDO_CONFIG_FILE).
 # When running as a Hosted provider, this file is managed by the Kaleido platform.
 # Copy this file to config/config.yaml and fill in your values.
 # Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
