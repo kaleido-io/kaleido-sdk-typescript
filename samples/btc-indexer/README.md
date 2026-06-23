@@ -7,7 +7,7 @@ into the [Kaleido Asset Manager](https://docs.kaleido.io/platform/digital-assets
 
 1. Connects to your Workflow Engine as a provider named `bitcoin-indexer`.
 2. Registers an **event processor** (`indexer`) that receives decoded BTC
-   transaction batches from a `btcTransactions`-compatible stream.
+   transaction batches from a `transactionEvents`-compatible stream.
 3. For every transaction it
    - Creates new fragments for minted coins
    - Marks existing coins as spent

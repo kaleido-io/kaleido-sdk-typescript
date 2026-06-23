@@ -30,21 +30,18 @@ The event processor (`event-processor.ts`) listens for batches of events and log
 
 ## Usage
 
-1. Register the event source in your provider's main file:
+1. Register the event source and event processor on your client (see `connect.ts`):
    ```typescript
-   client.registerEventSource('my-listener', eventSource);
+   const app = WorkflowEngineClient.fromConfigFile()
+     .eventSource(eventSource)
+     .indexer('echo', echoHandlerDef);
+
+   await app.start(); // registers the provider and handlers with the workflow engine
    ```
 
-2. Register the event processor:
-   ```typescript
-   client.registerEventProcessor('echo', echoEventProcessor);
-   ```
-
-3. Start your application to register your provider and handlers with the workflow engine.
-
-4. Post the stream to the workflow engine using the utility scripts:
+2. Post the stream to the workflow engine using the utility scripts:
    ```bash
-   npm run create-stream src/samples/event-source/stream.ts
+   npm run create-stream event-source/stream.ts
    ```
 
 Once configured, the event source will generate events every ten seconds, which will result in the event processor being called.

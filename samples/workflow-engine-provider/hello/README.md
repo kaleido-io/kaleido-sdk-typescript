@@ -31,22 +31,22 @@ The `hello-flow` workflow (`flow.ts`) defines a simple asynchronous operation th
 
 ## Usage
 
-1. Register the hello handler in your provider's main file:
+1. Register the hello handler on your client (see `connect.ts`):
    ```typescript
-   const helloHandler = newDirectedTransactionHandler('hello', helloActionMap);
-   client.registerTransactionHandler('hello', helloHandler);
+   const app = WorkflowEngineClient.fromConfigFile()
+     .transactionHandler('hello', { handler: createTransactionHandler('hello', helloActionMap) });
+
+   await app.start(); // registers the provider and handlers with the workflow engine
    ```
 
-2. Start your application to register your provider and handlers with the workflow engine.
-
-3. Post the workflow to the workflow engine using the utility script:
+2. Post the workflow to the workflow engine using the utility script:
    ```bash
-   npm run create-workflow src/samples/hello/flow.ts
+   npm run create-workflow hello/flow.ts
    ```
 
-4. Create a transaction to test the handler:
+3. Create a transaction to test the handler:
    ```bash
-   npm run create-transaction src/samples/hello/transaction.json
+   npm run create-transaction hello/transaction.ts
    ```
 
 The handler will process the transaction and return a greeting message. A transaction event will also be created.

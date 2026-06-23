@@ -10,9 +10,9 @@ holding and transfer events into the
 2. Registers an **event processor** that receives Canton contract events from a
    `cantonContractEvents`-compatible stream filtered on the CIP-56
    `HoldingV1` and `TransferInstructionV1` interface IDs.
-3. Maps **Holding** creates/archives to Asset Manager fragments, transfers, and
-   balance changes; maps **TransferInstruction** creates to pending-transfer
-   fragments; and maps **TransferFactory** creates to pool definitions.
+3. Maps **Holding** creates/archives to Asset Manager fragments, transfers,
+   balance changes, and the pool/asset definitions they belong to; and maps
+   **TransferInstruction** creates to pending-transfer fragments.
 
 ## Minimum Prerequisites
 

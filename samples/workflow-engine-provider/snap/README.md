@@ -67,32 +67,28 @@ When the correlation stream receives a card event that matches an inflight trans
 
 ## Usage
 
-1. Register the snap handler in your provider's main file:
+1. Register the snap handler and dealer event source on your client (see `connect.ts`):
    ```typescript
-   const snapHandler = newDirectedTransactionHandler('snap-watcher', snapActionMap);
-   client.registerTransactionHandler('snap-watcher', snapHandler);
+   const app = WorkflowEngineClient.fromConfigFile()
+     .transactionHandler('snap-watcher', { handler: createTransactionHandler('snap-watcher', snapActionMap) })
+     .eventSource(dealerEventSource);
+
+   await app.start(); // registers the provider and handlers with the workflow engine
    ```
 
-2. Register the dealer event source:
-   ```typescript
-   client.registerEventSource('snap-dealer', dealerEventSource);
-   ```
-
-3. Start your application to register your provider and handlers with the workflow engine.
-
-4. Post the workflow to the workflow engine using the utility scripts:
+2. Post the workflow to the workflow engine using the utility scripts:
    ```bash
-   npm run create-workflow src/samples/snap/flow.ts
+   npm run create-workflow snap/flow.ts
    ```
 
-5. Post the correlation stream to connect the dealer event source to the workflow engine:
+3. Post the correlation stream to connect the dealer event source to the workflow engine:
    ```bash
-   npm run create-stream src/samples/snap/stream.ts
+   npm run create-stream snap/stream.ts
    ```
 
-6. Create a transaction with a suit and rank to set a trap:
+4. Create a transaction with a suit and rank to set a trap:
    ```bash
-   npm run create-transaction src/samples/snap/transaction.json
+   npm run create-transaction snap/transaction.ts
    ```
 
 Once configured, the event source will deal cards from a shuffled deck. The correlation stream will evaluate each card event against all inflight transactions. When a card matching a transaction's trap is dealt, the stream will add the event to that transaction, causing the handler to be invoked and the workflow to transition to the `snap` stage, completing the transaction.

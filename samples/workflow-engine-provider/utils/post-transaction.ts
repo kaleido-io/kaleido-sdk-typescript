@@ -34,7 +34,7 @@ async function main() {
     // Import the transaction from the TypeScript file
     let transaction: CreateTransactionRequest;
     try {
-      const transactionModule = await import(`../../${transactionPath}`);
+      const transactionModule = await import(`../${transactionPath}`);
       if (!transactionModule.transaction) {
         console.error(`Error: The file ${transactionPath} does not export a 'transaction' constant.`);
         process.exit(1);

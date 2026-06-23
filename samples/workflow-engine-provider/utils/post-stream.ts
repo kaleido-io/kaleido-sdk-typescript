@@ -38,7 +38,7 @@ async function main() {
         // Import the workflow from the TypeScript file
         let stream: CreateStreamRequest;
         try {
-            const streamModule = await import(`../../${streamPath}`);
+            const streamModule = await import(`../${streamPath}`);
             if (!streamModule.stream) {
                 console.error(`Error: The file ${streamPath} does not export a 'stream' constant.`);
                 process.exit(1);

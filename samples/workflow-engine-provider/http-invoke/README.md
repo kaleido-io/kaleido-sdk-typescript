@@ -21,22 +21,22 @@ The `http-invoke-flow` workflow (`flow.ts`) is a simple flow that completes once
 
 ## Usage
 
-1. Register the http-invoke handler in your provider's main file:
+1. Register the http-invoke handler on your client (see `connect.ts`):
    ```typescript
-   const httpInvokeHandler = newDirectedTransactionHandler('http-invoke', httpInvokeActionMap);
-   client.registerTransactionHandler('http-invoke', httpInvokeHandler);
+   const app = WorkflowEngineClient.fromConfigFile()
+     .transactionHandler('http-invoke', { handler: createTransactionHandler('http-invoke', httpInvokeActionMap) });
+
+   await app.start(); // registers the provider and handlers with the workflow engine
    ```
 
-3. Start your application to register your provider and handlers with the workflow engine.
-
-4. Post the workflow to the workflow engine using the utility script:
+2. Post the workflow to the workflow engine using the utility script:
    ```bash
-   npm run create-workflow src/samples/http-invoke/flow.ts
+   npm run create-workflow http-invoke/flow.ts
    ```
 
-5. Create a transaction to test the handler:
+3. Create a transaction to test the handler:
    ```bash
-   npm run create-transaction src/samples/http-invoke/transaction.json
+   npm run create-transaction http-invoke/transaction.ts
    ```
 
 The handler will make the HTTP request and return the response.

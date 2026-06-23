@@ -33,7 +33,7 @@ async function main() {
         // Import the workflow from the TypeScript file
         let workflow: CreateWorkflowRequest;
         try {
-            const workflowModule = await import(`../../${workflowPath}`);
+            const workflowModule = await import(`../${workflowPath}`);
             if (!workflowModule.flow) {
                 console.error(`Error: The file ${workflowPath} does not export a 'flow' constant.`);
                 process.exit(1);
