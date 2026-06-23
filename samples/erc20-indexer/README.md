@@ -36,10 +36,8 @@ cp config/provider-config.sample.yaml config/provider-config.yaml
 # Edit both files with your platform details
 
 # 4. Run in dev mode (no build step needed)
+# On startup the indexer ensures its connector stream from the `stream` block in provider-config.yaml.
 npm run start:dev
-
-# 5. In a second terminal: create the event stream in the Workflow Engine
-npm run create-stream
 ```
 
 ## Configuration
@@ -72,8 +70,8 @@ Set `CONFIG_FILE` env var to point to this file (default: `./config/provider-con
 This sample is yours to fork. Common customizations:
 
 - **Multiple contracts** — create a separate stream and event processor for the ERC-20 contract constructor, to dynamically create the asset and pool definitions in the Asset Manager. And update the ERC-20 indexer to upsert the addresses and transfers for any contract address.
-- **Scoped event filtering** — edit `logFilters` in `src/erc20/stream.ts` to filter events for indexed fields within the event signature i.e. index certain `from` and `to` addresses.
-- **Additional event types** — extend `eventProcessorBatch` in `src/erc20/indexer.ts`.
+- **Scoped event filtering** — edit `stream.eventSourceConfig` in `config/provider-config.yaml` to filter events for indexed fields within the event signature i.e. index certain `from` and `to` addresses.
+- **Additional event types** — extend `indexBatch` in `src/erc20/indexer.ts`.
 
 ## Hosting on the Kaleido platform
 
@@ -130,7 +128,7 @@ npm run promote:docker # or promote:podman for Podman users, or promote:crane if
 
 ### 4. Streaming events to the provider
 
-You can then either use `npm run create-stream` to create a new stream pointed at your hosted provider, or go to your **EVM connector** service
+The indexer ensures its stream on startup using the `stream` block in `provider-config.yaml`. Alternatively you can go to your **EVM connector** service
 and create a new stream pointed at your hosted provider via the `evmTransactions` stream factory with a copy of an ERC-20-compatible ABI.
 
 ### 5. Upgrading the provider

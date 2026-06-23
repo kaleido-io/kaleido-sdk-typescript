@@ -112,7 +112,7 @@ npm run promote:docker # or promote:podman for Podman users, or promote:crane if
 
 ### 4. Streaming events to the provider
 
-You can then either use `npm run create-stream` to create a new stream pointed at your hosted provider, or go to your **BTC connector** service
+The indexer ensures its stream on startup using the `stream` block in `provider-config.yaml`. Alternatively you can go to your **BTC connector** service
 and create a new stream pointed at your hosted provider via the `transactionEvents` stream factory.
 
 ### 5. Upgrading the provider
@@ -128,8 +128,12 @@ npm run promote:docker # or promote:podman for Podman users, or promote:crane if
 Then, you can patch the existing provider either in the UI by editing the service settings, or by running:
 
 ```bash
-# NOTE: this will extract the platform URL and API credentials from config.yaml.
-#       Your credentials will need privileges to patch the provider runtime.
+# NOTE: requires your platform URL and API credentials as env vars (with
+#       privileges to patch the provider runtime).
+export PLATFORM_URL=https://my-kaleido.io
+export ENV_ID=my-environment-id
+export API_KEY=my-api-key
+export API_SECRET=my-api-secret
 export RUNTIME_NAME=bitcoin-indexer-runtime
 export IMAGE_REPOSITORY=my-namespace/btc-indexer
 npm run patch-provider-runtime

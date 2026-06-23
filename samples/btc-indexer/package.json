@@ -10,7 +10,6 @@
     "clean": "rm -rf dist",
     "start": "node dist/src/main.js",
     "start:dev": "tsx ./src/main.ts",
-    "create-stream": "tsx ./src/utils/post-stream.ts",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
@@ -19,7 +18,7 @@
     "promote:docker": "docker tag btc-indexer:latest ${ARTIFACT_REGISTRY}/btc-indexer:${IMAGE_TAG} && docker push ${ARTIFACT_REGISTRY}/btc-indexer:${IMAGE_TAG}",
     "promote:podman": "podman tag btc-indexer:latest ${ARTIFACT_REGISTRY}/btc-indexer:${IMAGE_TAG} && podman push ${ARTIFACT_REGISTRY}/btc-indexer:${IMAGE_TAG}",
     "promote:crane": "crane copy ${SOURCE_REGISTRY}/btc-indexer:${IMAGE_TAG} ${ARTIFACT_REGISTRY}/btc-indexer:${IMAGE_TAG}",
-    "patch-provider-runtime": "tsx ./src/utils/patch-provider-runtime.ts"
+    "patch-provider-runtime": "curl -s -f -X PUT \"${PLATFORM_URL}/api/v1/environments/${ENV_ID}/runtimes/${RUNTIME_NAME}\" -u \"${API_KEY}:${API_SECRET}\" -H 'Content-Type: application/json' -d '{\"name\":\"'\"${RUNTIME_NAME}\"'\",\"type\":\"ProviderRuntime\",\"image\":{\"repository\":\"'\"${IMAGE_REPOSITORY}\"'\",\"tag\":\"'\"${IMAGE_TAG:-latest}\"'\"}}'"
   },
   "dependencies": {
     "@kaleido-io/workflow-engine-sdk": "*",
