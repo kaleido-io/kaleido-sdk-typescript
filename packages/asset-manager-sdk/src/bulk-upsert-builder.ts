@@ -276,27 +276,39 @@ export class BulkUpsertBuilder {
    *
    * When `retryOnInvalidRef` is `false`, any KA090801 error is rethrown
    * immediately without retrying.
+   *
+   * The builder is reset after every `execute()`, whether it succeeds or throws,
+   * so it is single-shot: a caller that catches an error must rebuild its
+   * updates rather than re-calling `execute()`. When a
+   * {@link BulkUpsertInvalidRefError} is thrown, the stuck items are available
+   * on the error, not on the builder.
    */
   async execute(): Promise<void> {
-    if (this.hasUpdates()) {
-      try {
-        await this.client.bulkUpsert(this.updates, { signal: this.reqContext?.signal });
-      } catch (err) {
-        if ((this.options.retryOnInvalidRef ?? true) && isInvalidRefError(err)) {
-          await this.retryIndividually();
-        } else {
-          throw err;
+    try {
+      if (this.hasUpdates()) {
+        try {
+          await this.client.bulkUpsert(this.updates, { signal: this.reqContext?.signal });
+        } catch (err) {
+          if ((this.options.retryOnInvalidRef ?? true) && isInvalidRefError(err)) {
+            await this.retryIndividually();
+          } else {
+            throw err;
+          }
         }
       }
-    }
 
-    if (this.finalizers.length > 0) {
-      await Promise.all(this.finalizers.map((f) => Promise.resolve(f())));
+      if (this.finalizers.length > 0) {
+        await Promise.all(this.finalizers.map((f) => Promise.resolve(f())));
+      }
+    } finally {
+      // Always reset, even on failure: retryIndividually() splices out
+      // already-committed items in place, so leaving partial state behind would
+      // let a caller that catches the error and retries re-send committed items.
+      // A thrown BulkUpsertInvalidRefError captures the stuck items by reference
+      // before this runs, so its payload is unaffected.
+      this.count = 0;
+      this.updates = {};
     }
-    
-    // Reset the count and updates
-    this.count = 0;
-    this.updates = {};
   }
   
   private async retryIndividually(): Promise<void> {

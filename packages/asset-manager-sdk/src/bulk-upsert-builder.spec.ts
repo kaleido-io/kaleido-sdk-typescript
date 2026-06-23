@@ -659,6 +659,20 @@ describe("BulkUpsertBuilder", () => {
       expect((err as BulkUpsertInvalidRefError).stuck.activities?.[0]?.name).toBe("activity-stuck");
     });
 
+    it("resets the builder after a failed execute while the error keeps the stuck items", async () => {
+      builder = makeBuilder();
+      builder.upsertActivity({ name: "activity-stuck" });
+
+      mockClient.bulkUpsert.mockRejectedValue(invalidRefError());
+
+      const err = await builder.execute().catch((e) => e);
+      // The error still carries the stuck items...
+      expect((err as BulkUpsertInvalidRefError).stuck.activities).toHaveLength(1);
+      // ...but the builder is reset, so a retry won't re-send already-committed items.
+      expect(builder.hasUpdates()).toBe(false);
+      expect(builder.getCount()).toBe(0);
+    });
+
     it("does not run finalizers when BulkUpsertInvalidRefError is thrown", async () => {
       builder = makeBuilder();
       builder.upsertActivity({ name: "activity-1" });
