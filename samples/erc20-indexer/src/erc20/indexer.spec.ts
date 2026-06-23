@@ -188,6 +188,30 @@ describe('ERC20Indexer.indexBatch()', () => {
     });
   });
 
+  it('lowercases checksummed (mixed-case) addresses in transfer and balanceChanges', async () => {
+    const MIXED_FROM = '0xAbCdEf0000000000000000000000000000000001';
+    const MIXED_TO = '0xFeDcBa0000000000000000000000000000000002';
+    const tx = makeTxEvent({ from: MIXED_FROM, to: MIXED_TO, value: '500' });
+    await indexer.indexBatch(ctx, [makeEvent(tx)]);
+
+    const payload = (mockClient.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+
+    // Address entries are lowercased (the Asset Manager stores them lowercased)
+    expect(payload.addresses).toContainEqual(expect.objectContaining({ address: MIXED_FROM.toLowerCase() }));
+    expect(payload.addresses).toContainEqual(expect.objectContaining({ address: MIXED_TO.toLowerCase() }));
+
+    // Transfer endpoints and balance-change addresses must match the lowercased
+    // entries — otherwise balances never reconcile against the registered addresses.
+    expect(payload.transfers[0]).toMatchObject({
+      from: MIXED_FROM.toLowerCase(),
+      to: MIXED_TO.toLowerCase(),
+      balanceChanges: [
+        { address: MIXED_FROM.toLowerCase(), operation: 'subtract', amount: '500' },
+        { address: MIXED_TO.toLowerCase(), operation: 'add', amount: '500' },
+      ],
+    });
+  });
+
   it('processes a mint (from = zero address)', async () => {
     const tx = makeTxEvent({ from: ZERO, to: WALLET_B, value: '1000' });
     await indexer.indexBatch(ctx, [makeEvent(tx)]);

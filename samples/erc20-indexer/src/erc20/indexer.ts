@@ -101,25 +101,29 @@ export class ERC20Indexer {
         }
 
         const { from, to, value } = decoded.data as ERC20TransferData;
-        const isMint = from === ZERO_ADDRESS;
-        const isBurn = to === ZERO_ADDRESS;
+        // The Asset Manager stores addresses lowercased; normalise here so address
+        // entries, balance changes and transfer endpoints all reference the same key.
+        const fromAddr = from.toLowerCase();
+        const toAddr = to.toLowerCase();
+        const isMint = fromAddr === ZERO_ADDRESS;
+        const isBurn = toAddr === ZERO_ADDRESS;
         const contractAddr = decoded.address.toLowerCase();
 
-        if (!isMint) builder.upsertAddress({ address: from.toLowerCase(), updateType: 'create_or_ignore' });
-        if (!isBurn) builder.upsertAddress({ address: to.toLowerCase(), updateType: 'create_or_ignore' });
+        if (!isMint) builder.upsertAddress({ address: fromAddr, updateType: 'create_or_ignore' });
+        if (!isBurn) builder.upsertAddress({ address: toAddr, updateType: 'create_or_ignore' });
         builder.upsertAddress({ address: contractAddr, contract: true, updateType: 'create_or_ignore' });
 
         const balanceChanges = [];
-        if (!isMint) balanceChanges.push({ address: from, operation: 'subtract' as const, amount: String(value) });
-        if (!isBurn) balanceChanges.push({ address: to, operation: 'add' as const, amount: String(value) });
+        if (!isMint) balanceChanges.push({ address: fromAddr, operation: 'subtract' as const, amount: String(value) });
+        if (!isBurn) balanceChanges.push({ address: toAddr, operation: 'add' as const, amount: String(value) });
         if (isMint)  balanceChanges.push({ address: 'circulation', operation: 'add' as const, amount: String(value) });
         if (isBurn)  balanceChanges.push({ address: 'circulation', operation: 'subtract' as const, amount: String(value) });
 
         transferCount++;
         builder.upsertTransfer({
           protocolId: `${tx.block.number}/${tx.transactionHash}/${decoded.logIndex}`,
-          from: isMint ? undefined : from,
-          to: isBurn ? undefined : to,
+          from: isMint ? undefined : fromAddr,
+          to: isBurn ? undefined : toAddr,
           signer: tx.receipt?.from,
           amount: String(value),
           transactionHash: tx.transactionHash,
