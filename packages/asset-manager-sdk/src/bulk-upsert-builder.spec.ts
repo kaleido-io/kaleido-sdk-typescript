@@ -560,6 +560,19 @@ describe("BulkUpsertBuilder", () => {
       await builder.execute();
       expect(builder.getCount()).toBe(0);
     });
+
+    it("should not over-count when REPLACE replaces an existing item", () => {
+      builder.upsertAsset({ name: "asset1" }, DuplicateStrategy.REPLACE);
+      builder.upsertAsset({ name: "asset1" }, DuplicateStrategy.REPLACE);
+      // Two REPLACEs of the same key leave a single item — count must reflect that.
+      expect(builder.getCount()).toBe(1);
+    });
+
+    it("should not increment when SKIP ignores a duplicate", () => {
+      builder.upsertAsset({ name: "asset1" }, DuplicateStrategy.SKIP);
+      builder.upsertAsset({ name: "asset1" }, DuplicateStrategy.SKIP);
+      expect(builder.getCount()).toBe(1);
+    });
   });
 
   describe("autoFlush", () => {

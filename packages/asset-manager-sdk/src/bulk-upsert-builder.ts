@@ -226,7 +226,10 @@ export class BulkUpsertBuilder {
       }
 
       case DuplicateStrategy.REPLACE: {
-        const filtered = items.filter((a) => getKey(a) !== itemKey) ?? [];
+        const filtered = items.filter((a) => getKey(a) !== itemKey);
+        // append() re-increments count for newItem; discount the replaced item(s)
+        // so count tracks the actual number of items (drives auto-flush thresholds).
+        this.count -= items.length - filtered.length;
         return this.append(filtered, newItem);
       }
 
