@@ -24,6 +24,11 @@ const log = newLogger("BulkUpsertAutoFlush");
  * is async so callers can await the implicit flush.
  *
  * Call {@link execute} at the end of a batch to flush any remaining items.
+ *
+ * Not safe for concurrent use: callers must `await` each `upsert*` before the
+ * next. Issuing several without awaiting can let multiple pass the threshold
+ * check and double-flush, and the flushedCount/getTotalCount arithmetic assumes
+ * serial execution.
  */
 export class BulkUpsertAutoFlush {
 
