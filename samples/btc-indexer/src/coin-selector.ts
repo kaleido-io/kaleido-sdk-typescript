@@ -45,6 +45,8 @@ export interface BTCCoinSelectorOutput {
 
 // Selects a single coin (UTXO) by picking the largest available value.
 // Swap this function out to implement smarter strategies (e.g. exact-match, smallest-sufficient).
+// Note: values are compared via Number(), which loses precision above 2^53
+// satoshis (~90M BTC) — fine for this sample, but use BigInt for exact ordering.
 export function selectLargestCoin(fragments: Fragment[]): Fragment | undefined {
   if (fragments.length === 0) return undefined;
   return fragments.reduce((best, f) =>

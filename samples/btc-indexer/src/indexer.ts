@@ -268,6 +268,8 @@ export class BTCIndexer {
 
 function satoshiValue(utxo: TxSummaryVOut): string | undefined {
   if (typeof utxo.valueSat === 'number') return String(utxo.valueSat);
+  // Fallback: convert a BTC float to satoshis. Floating-point can introduce
+  // sub-satoshi rounding error (e.g. 0.1 * 1e8); prefer valueSat when available.
   if (typeof utxo.value === 'number') return String(Math.floor(utxo.value * 100_000_000));
   return undefined;
 }
