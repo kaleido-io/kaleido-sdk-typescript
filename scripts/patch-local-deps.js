@@ -23,7 +23,7 @@
 //   # ... iterate ...
 //   docker build --platform linux/amd64 -t <image>:<tag> /tmp/my-project
 
-import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, copyFileSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, copyFileSync, unlinkSync } from 'fs';
 import { resolve, join, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
@@ -36,7 +36,7 @@ const dockerMode = !process.argv.includes('--no-docker');
 const npmMode   = !process.argv.includes('--no-npm');
 
 if (!targetArg) {
-  console.error('Usage: npm run patch-local-deps -- <path-to-project> [--docker]');
+  console.error('Usage: npm run patch-local-deps -- <path-to-project> [--no-docker] [--no-npm]');
   process.exit(1);
 }
 
@@ -50,16 +50,20 @@ if (!existsSync(pkgPath)) {
 
 // ── Discover local @kaleido-io/* packages ────────────────────────────────────
 
-const packagesDir = join(REPO_ROOT, 'packages');
+// @kaleido-io/* packages live under packages/ and internal/ (e.g. @kaleido-io/core).
+const searchDirs = ['packages', 'internal'].map((d) => join(REPO_ROOT, d));
 const localPackages = {};   // name → source dir
 
-for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
-  if (!entry.isDirectory()) continue;
-  const manifestPath = join(packagesDir, entry.name, 'package.json');
-  if (!existsSync(manifestPath)) continue;
-  const { name } = JSON.parse(readFileSync(manifestPath, 'utf-8'));
-  if (name?.startsWith('@kaleido-io/')) {
-    localPackages[name] = join(packagesDir, entry.name);
+for (const searchDir of searchDirs) {
+  if (!existsSync(searchDir)) continue;
+  for (const entry of readdirSync(searchDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const manifestPath = join(searchDir, entry.name, 'package.json');
+    if (!existsSync(manifestPath)) continue;
+    const { name } = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+    if (name?.startsWith('@kaleido-io/')) {
+      localPackages[name] = join(searchDir, entry.name);
+    }
   }
 }
 
@@ -77,7 +81,7 @@ for (const [name, srcDir] of Object.entries(localPackages)) {
   const srcTgz = join(srcDir, tgz);
   const destTgz = join(depsDir, tgz);
   copyFileSync(srcTgz, destTgz);
-  execSync(`rm -f "${srcTgz}"`);
+  unlinkSync(srcTgz);
   depPaths[name] = `file:.kaleido-local-deps/${tgz}`;
   console.log(`  → ${destTgz}`);
 }
@@ -134,15 +138,17 @@ if (dockerMode) {
     }
 
     // npm ci requires a lockfile matching package.json exactly — use npm install instead
+    let npmCiReplaced = false;
     if (dockerfile.includes('npm ci')) {
       dockerfile = dockerfile.replace(/\bnpm ci\b/g, 'npm install');
       dockerChanged = true;
+      npmCiReplaced = true;
     }
 
     if (dockerChanged) {
       writeFileSync(dockerfilePath, dockerfile, 'utf-8');
       console.log(`\nPatched ${dockerfilePath}:`);
-      if (!dockerfile.includes('npm ci')) console.log('  npm ci → npm install');
+      if (npmCiReplaced) console.log('  npm ci → npm install');
       console.log('  Added: COPY .kaleido-local-deps ./.kaleido-local-deps');
     } else {
       console.log(`\nDockerfile already patched.`);
