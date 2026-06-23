@@ -106,6 +106,9 @@ Examples:
 // project-name is the first positional arg — absent when first arg is a flag
 const hasProjectName = args[0] && !args[0].startsWith('--');
 const projectName = hasProjectName ? args[0] : null;
+// For scoped names (@org/name) use the unscoped basename as the directory and
+// provider/image name; the scoped name is kept only as the package.json "name".
+const projectDirName = projectName ? projectName.replace(/^@[^/]+\//, '') : null;
 
 if (projectName && !projectNameRegex.test(projectName)) {
   console.error(`Error: Project name "${projectName}" is invalid.`);
@@ -144,7 +147,7 @@ if (!AVAILABLE_TEMPLATES.includes(templateName)) {
 const cwd = process.cwd();
 const cwdPkgPath = join(cwd, 'package.json');
 const addToExisting = !projectName && existsSync(cwdPkgPath);
-const targetDir = projectName ? join(cwd, projectName) : cwd;
+const targetDir = projectName ? join(cwd, projectDirName) : cwd;
 
 if (!projectName && !addToExisting) {
   console.error('Error: No project name given and no package.json found in the current directory.');
@@ -153,7 +156,7 @@ if (!projectName && !addToExisting) {
 }
 
 if (projectName && existsSync(targetDir)) {
-  console.error(`Error: Directory "${projectName}" already exists.`);
+  console.error(`Error: Directory "${projectDirName}" already exists.`);
   console.error('Choose a different name or remove the existing directory.');
   process.exit(1);
 }
@@ -293,7 +296,7 @@ rmSync(tmpDir, { recursive: true, force: true });
 // ── Variable substitution ─────────────────────────────────────────────────────
 
 const existingPkgName = addToExisting ? JSON.parse(readFileSync(cwdPkgPath, 'utf-8')).name : null;
-const variables = { PROVIDER_NAME: projectName ?? existingPkgName ?? 'my-project' };
+const variables = { PROVIDER_NAME: projectDirName ?? existingPkgName ?? 'my-project' };
 
 if (addToExisting) {
   // Only substitute within the files we just copied — never touch the user's existing files.
@@ -355,7 +358,7 @@ if (addToExisting) {
 } else {
   console.log(`Project ${projectName} initialized\n`);
   console.log('Next steps:');
-  console.log(`\tcd ${projectName}`);
+  console.log(`\tcd ${projectDirName}`);
   console.log('\tnpm install');
   console.log('\t# Edit config files with your configuration');
   console.log('\tnpm run start:dev\n');
