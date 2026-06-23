@@ -33,8 +33,11 @@ if (command === 'init') {
     shell: false,
   });
 
-  child.on('exit', (code) => {
-    process.exit(code || 0);
+  child.on('exit', (code, signal) => {
+    // A signal termination reports code === null; surface it as a non-zero exit
+    // rather than masking it as success.
+    if (signal) process.exit(1);
+    process.exit(code ?? 0);
   });
 } else {
   console.log(`

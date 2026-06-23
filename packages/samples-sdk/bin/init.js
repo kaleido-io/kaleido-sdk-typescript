@@ -21,7 +21,7 @@ import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
 import { tmpdir } from 'os';
 
-const GITHUB_REPO = process.env.WESDK_REPO_URL ?? 'https://github.com/kaleido-io/kaleido-sdk-typescript.git';
+const GITHUB_REPO = process.env.KSDK_REPO_URL ?? 'https://github.com/kaleido-io/kaleido-sdk-typescript.git';
 const AVAILABLE_TEMPLATES = ['workflow-engine-provider', 'erc20-indexer', 'btc-indexer', 'native-eth-indexer', 'canton-cip56-indexer'];
 const projectNameRegex = /^(?:@[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*|[a-z0-9][a-z0-9-]*)$/;
 

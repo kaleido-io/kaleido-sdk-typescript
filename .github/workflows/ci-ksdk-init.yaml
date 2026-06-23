@@ -36,7 +36,7 @@ jobs:
           TARBALL=$(ls "$GITHUB_WORKSPACE"/packages/samples-sdk/kaleido-io-samples-sdk-*.tgz)
           mkdir -p /tmp/ksdk-init-test
           cd /tmp/ksdk-init-test
-          WESDK_REPO_URL="$GITHUB_WORKSPACE" npx "file:$TARBALL" init my-${{ matrix.template }} --template ${{ matrix.template }}
+          KSDK_REPO_URL="$GITHUB_WORKSPACE" npx "file:$TARBALL" init my-${{ matrix.template }} --template ${{ matrix.template }}
 
       - name: Verify generated project
         run: |
@@ -96,7 +96,7 @@ jobs:
         run: |
           TARBALL=$(ls "$GITHUB_WORKSPACE"/packages/samples-sdk/kaleido-io-samples-sdk-*.tgz)
           cd /tmp/ksdk-add-test
-          WESDK_REPO_URL="$GITHUB_WORKSPACE" npx "file:$TARBALL" init --template ${{ matrix.template }}
+          KSDK_REPO_URL="$GITHUB_WORKSPACE" npx "file:$TARBALL" init --template ${{ matrix.template }}
 
       - name: Verify add-to-existing result
         run: |

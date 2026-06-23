@@ -22,14 +22,14 @@ npm pack --workspace packages/samples-sdk
 
 #### Testing locally (before submitting a PR)
 
-Run `init` directly from the packed tarball. Set `WESDK_REPO_URL` to your local
+Run `init` directly from the packed tarball. Set `KSDK_REPO_URL` to your local
 checkout so the template clone never hits GitHub and picks up your uncommitted
 changes:
 
 ```bash
 TARBALL=$(ls packages/samples-sdk/kaleido-io-samples-sdk-*.tgz)
 mkdir -p /tmp/ksdk-test && cd /tmp/ksdk-test
-WESDK_REPO_URL="$OLDPWD" npx "file:$TARBALL" init my-provider --template workflow-engine-provider
+KSDK_REPO_URL="$OLDPWD" npx "file:$TARBALL" init my-provider --template workflow-engine-provider
 ```
 
 #### What SDK consumers run (once published to npm)
@@ -48,7 +48,7 @@ the project name:
 ```bash
 mkdir -p /tmp/ksdk-add && cd /tmp/ksdk-add
 echo '{"name":"my-project","version":"1.0.0","type":"module","dependencies":{}}' > package.json
-WESDK_REPO_URL="$OLDPWD" npx "file:$TARBALL" init --template erc20-indexer
+KSDK_REPO_URL="$OLDPWD" npx "file:$TARBALL" init --template erc20-indexer
 ```
 
 Edit the config files to point to a test environment, then:
