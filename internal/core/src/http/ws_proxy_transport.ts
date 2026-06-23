@@ -68,6 +68,33 @@ function isSuccess(status: number): boolean {
   return status >= 200 && status < 300;
 }
 
+/**
+ * Append query parameters to a URL.
+ *
+ * The HTTP transport forwards `params` to Axios, which serializes them onto the
+ * query string. The proxy transport has no Axios layer, so it must do the same
+ * here — otherwise list filters are silently dropped over the proxy. Arrays are
+ * serialized as repeated keys (`?k=a&k=b`), matching the Kaleido query convention;
+ * null/undefined values are skipped.
+ */
+function appendQueryParams(url: string, params?: any): string {
+  if (params === undefined || params === null) return url;
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) {
+        if (v !== undefined && v !== null) search.append(key, String(v));
+      }
+    } else {
+      search.append(key, String(value));
+    }
+  }
+  const query = search.toString();
+  if (!query) return url;
+  return url + (url.includes("?") ? "&" : "?") + query;
+}
+
 function decodeProxyResponse<T>(response: WSProxyResponse): T {
   if (response.bodyBase64) {
     return JSON.parse(
@@ -123,10 +150,10 @@ export class WSProxyTransport implements ServiceTransport {
 
   async get<T>(
     url: string,
-    _params?: any,
+    params?: any,
     config?: RequestConfigWithRetry & { ignore404?: boolean },
   ): Promise<T | undefined> {
-    const response = await this.proxyRequest("GET", url);
+    const response = await this.proxyRequest("GET", appendQueryParams(url, params));
     if (config?.ignore404 && response.status === 404) return undefined;
     throwOnError(response);
     return decodeProxyResponse<T>(response);
@@ -150,8 +177,8 @@ export class WSProxyTransport implements ServiceTransport {
     return decodeProxyResponse<T>(response);
   }
 
-  async delete(url: string): Promise<void> {
-    const response = await this.proxyRequest("DELETE", url);
+  async delete(url: string, params?: any): Promise<void> {
+    const response = await this.proxyRequest("DELETE", appendQueryParams(url, params));
     throwOnError(response);
   }
 }
