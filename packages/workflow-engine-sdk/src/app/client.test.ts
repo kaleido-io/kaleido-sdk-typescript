@@ -166,10 +166,14 @@ describe('WorkflowEngineClient builder', () => {
 
     const registeredProcessor = ((client.registerEventProcessor as jest.Mock).mock.calls[0]! as unknown[])[1] as { eventProcessorBatch: (...args: unknown[]) => Promise<unknown> };
     const batchResult = {};
-    await registeredProcessor.eventProcessorBatch({ requestId: 'req-abc' }, batchResult, { events: [] });
+    const reqSignal = new AbortController().signal;
+    await registeredProcessor.eventProcessorBatch({ requestId: 'req-abc', signal: reqSignal }, batchResult, { events: [] });
 
     expect(capturedCtx!['requestId']).toBe('req-abc');
     expect(capturedCtx!['config']).toEqual({ key: 'value' });
     expect(capturedCtx!['handlerName']).toBe('idx');
+    // The indexer context must carry the per-request signal (deadline/cancellation),
+    // not a start-level signal that is never aborted.
+    expect(capturedCtx!['signal']).toBe(reqSignal);
   });
 });

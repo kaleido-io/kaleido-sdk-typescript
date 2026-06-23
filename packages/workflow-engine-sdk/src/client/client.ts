@@ -221,7 +221,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
    */
   async start(): Promise<void> {
     const controller = new AbortController();
-    this.registerBuilderHandlers(controller.signal);
+    this.registerBuilderHandlers();
     await this.connect();
     await this.runSetupHooks(controller.signal);
   }
@@ -337,7 +337,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     }
   }
 
-  private registerBuilderHandlers(signal: AbortSignal): void {
+  private registerBuilderHandlers(): void {
     for (const registered of this.registeredHandlers) {
       if (registered.type === 'indexer') {
         const { name, def } = registered;
@@ -346,7 +346,10 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
           createEventProcessor(
             name,
             async (reqCtx: RequestContext, events: EventProcessorEvent<unknown>[]) => {
-              const setupCtx = this.buildSetupContext(name, signal, reqCtx.authRef);
+              // Use the per-request signal so the indexer batch observes the
+              // request deadline / cancellation — not a start-level signal that
+              // is never aborted.
+              const setupCtx = this.buildSetupContext(name, reqCtx.signal, reqCtx.authRef);
               const ctx = createIndexerContext(setupCtx, reqCtx.requestId);
               return def.indexBatch(ctx, events);
             },
