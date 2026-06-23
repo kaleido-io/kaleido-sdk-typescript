@@ -106,8 +106,20 @@ jobs:
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
-      # No core build step: connector-sdk makes no direct HTTP calls. All network
-      # I/O (ensureStream → ConnectorClient) runs inside workflow-engine-sdk.
+      # connector-sdk makes no direct HTTP calls (all network I/O runs inside
+      # workflow-engine-sdk), but it imports types from workflow-engine-sdk, whose
+      # dist/ must exist for tsc to resolve the workspace dependency. Build that
+      # chain (core → workflow-engine-sdk) first, mirroring root `build:packages`.
+      - name: Build core dependency
+        working-directory: internal/core
+        shell: bash
+        run: npm install && npm run build
+
+      - name: Build workflow-engine-sdk dependency
+        working-directory: packages/workflow-engine-sdk
+        shell: bash
+        run: npm install && npm run build
+
       - name: Publish to npm with primary tag
         working-directory: packages/connector-sdk
         shell: bash

@@ -111,6 +111,14 @@ jobs:
         shell: bash
         run: npm install && npm run build
 
+      # asset-manager-sdk imports from workflow-engine-sdk (newLogger, RequestContext),
+      # which tsup keeps external — its dist/ (incl. .d.ts for the DTS build) must exist
+      # before building. Build it first, mirroring root `build:packages`.
+      - name: Build workflow-engine-sdk dependency
+        working-directory: packages/workflow-engine-sdk
+        shell: bash
+        run: npm install && npm run build
+
       - name: Publish to npm with primary tag
         working-directory: packages/asset-manager-sdk
         shell: bash
