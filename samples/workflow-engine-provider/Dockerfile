@@ -1,4 +1,4 @@
-# Build from project root: docker build -t getting-started-provider:latest .
+# Build from project root: docker build -t workflow-engine-provider:latest .
 FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app

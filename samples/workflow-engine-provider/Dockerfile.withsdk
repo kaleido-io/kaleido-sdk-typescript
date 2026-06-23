@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY internal/core/package.json ./internal/core/
 COPY packages/workflow-engine-sdk/package.json ./packages/workflow-engine-sdk/
-COPY packages/asset-manager/package.json ./packages/asset-manager/
+COPY packages/asset-manager-sdk/package.json ./packages/asset-manager-sdk/
 COPY samples/getting-started/package.json ./samples/getting-started/
 
 RUN npm ci
@@ -18,8 +18,8 @@ RUN npm run build --prefix internal/core
 
 # Build workspace packages
 COPY packages/workflow-engine-sdk ./packages/workflow-engine-sdk
-COPY packages/asset-manager ./packages/asset-manager
-RUN npm run build -w packages/workflow-engine-sdk -w packages/asset-manager
+COPY packages/asset-manager-sdk ./packages/asset-manager-sdk
+RUN npm run build -w packages/workflow-engine-sdk -w packages/asset-manager-sdk
 
 # Build the sample — source lives at root level (no src/ subdir)
 COPY samples/getting-started/tsconfig.json ./samples/getting-started/
@@ -47,8 +47,8 @@ COPY --from=builder /app/internal/core/dist ./internal/core/dist
 COPY --from=builder /app/internal/core/package.json ./internal/core/package.json
 COPY --from=builder /app/packages/workflow-engine-sdk/dist ./packages/workflow-engine-sdk/dist
 COPY --from=builder /app/packages/workflow-engine-sdk/package.json ./packages/workflow-engine-sdk/package.json
-COPY --from=builder /app/packages/asset-manager/dist ./packages/asset-manager/dist
-COPY --from=builder /app/packages/asset-manager/package.json ./packages/asset-manager/package.json
+COPY --from=builder /app/packages/asset-manager-sdk/dist ./packages/asset-manager-sdk/dist
+COPY --from=builder /app/packages/asset-manager-sdk/package.json ./packages/asset-manager-sdk/package.json
 
 ENV KALEIDO_CONFIG_FILE=./config/wfe-config.yaml
 ENV WFE_CONFIG_FILE=./config/wfe-config.yaml
