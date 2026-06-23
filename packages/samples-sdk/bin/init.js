@@ -28,9 +28,11 @@ const projectNameRegex = /^(?:@[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*|[a-z0-9][a
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const PROJECT_ROOT = resolve(__dirname, '..');
-const sdkPkg = JSON.parse(readFileSync(join(PROJECT_ROOT, 'package.json'), 'utf-8'));
-const FALLBACK_VERSION = `^${sdkPkg.version}`;
+// Fallback only used when a package's version can't be read from the cloned repo.
+// Must NOT be derived from samples-sdk's own version — the @kaleido-io/* SDK
+// packages are versioned independently, so '^<samples-sdk version>' would pin to
+// a version that doesn't exist for them. '*' resolves to the latest published.
+const FALLBACK_VERSION = '*';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
