@@ -19,7 +19,7 @@ export {
 } from "./service_client";
 
 // Auth and logging types
-export { Logger, ServiceBindingAuth } from "./types";
+export { HttpLogger, ServiceBindingAuth } from "./types";
 
 // HTTP client configuration
 export {

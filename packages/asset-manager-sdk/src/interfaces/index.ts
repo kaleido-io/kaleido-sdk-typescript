@@ -24,4 +24,4 @@ export * from './policies.js';
 export * from './tasks.js';
 export * from './invocations.js';
 export * from './subscriptions.js';
-export type { Logger } from '@kaleido-io/core/http';
+export type { HttpLogger } from '@kaleido-io/core/http';
