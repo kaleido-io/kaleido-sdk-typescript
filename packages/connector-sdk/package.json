@@ -35,7 +35,7 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "@kaleido-io/workflow-engine-sdk": "*"
+    "@kaleido-io/workflow-engine-sdk": "^0.9.7"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
