@@ -57,7 +57,7 @@ import {
   WorkflowEngineClient,
   ConfigLoader,
   WorkflowEngineConfig,
-  newDirectedTransactionHandler,
+  createTransactionHandler,
   InvocationMode,
   EvalResult,
 } from "@kaleido-io/workflow-engine-sdk";
@@ -93,7 +93,7 @@ const actionMap = new Map([
   ],
 ]);
 
-const handler = newDirectedTransactionHandler("my-handler", actionMap);
+const handler = createTransactionHandler("my-handler", actionMap);
 client.registerTransactionHandler("my-handler", handler);
 
 // 5. Connect
@@ -129,7 +129,7 @@ client.registerEventSource("source-name", eventSource);
 await client.connect();
 
 // Check connection status
-if (client.isConnected()) {
+if (client.isConnected) {
   console.log("Connected!");
 }
 
@@ -226,44 +226,46 @@ const client = new WorkflowEngineClient(clientConfig);
 
 Two config files are required for this setup:
 
-1. **WFE config (SDK contract)** — Workflow engine connection and identity. Path from `WFE_CONFIG_FILE` or pass `configFile` to `NewWorkflowEngineClient`. Root key in YAML must be **`workflow-engine`**. **Outbound:** `providerName`, `url`, and `auth`. **Inbound:** `providerName` and `server` (address, port); the app creates a WebSocket server and the engine connects to it. Optional `server.tls` for TLS. Delay fields use time strings (e.g. `retryDelay: "2s"`).
+1. **WFE config (SDK contract)** — Workflow engine connection and identity. Path from `KALEIDO_CONFIG_FILE` or pass `configFile` to `createWorkflowEngineClient`. Root key in YAML must be **`workflow-engine`**. **Outbound:** `providerName`, `url`, and `auth`. **Inbound:** `providerName` and `server` (address, port); the app creates a WebSocket server and the engine connects to it. Optional `server.tls` for TLS. Delay fields use time strings (e.g. `retryDelay: "2s"`).
 2. **Provider config (application-owned)** — App-specific settings. Path from `CONFIG_FILE` or `-f`; your app loads and uses it (e.g. to build handlers). The SDK does not read or define its schema.
 
 Example run:
 
 ```bash
-CONFIG_FILE=./config.yaml WFE_CONFIG_FILE=./wfe-config.yaml node connect.js
+CONFIG_FILE=./config.yaml KALEIDO_CONFIG_FILE=./wfe-config.yaml node connect.js
 ```
 
 ### New workflow engine client using config file
 
-To initialize a Workflow Engine Client with using single function, use `NewWorkflowEngineClient` and `HandlerSetFor`:
+To initialize a Workflow Engine Client with using single function, use `createWorkflowEngineClient` and `handlerSetFor`:
 
 ```typescript
 import {
-  NewWorkflowEngineClient,
-  HandlerSetFor,
-  WFE_CONFIG_FILE,
+  createWorkflowEngineClient,
+  handlerSetFor,
+  KALEIDO_CONFIG_FILE,
 } from "@kaleido-io/workflow-engine-sdk";
 
-// Build your handlers (e.g. from provider config in app code)
-const handler = newEventProcessorFromConfig(providerConfig);
-const txHandler = newDirectedTransactionHandler("my-handler", actionMap);
+// Build your handlers
+const handler = createEventProcessor("my-processor", async (ctx, events) => {
+  // index events here
+});
+const txHandler = createTransactionHandler("my-handler", actionMap);
 
 // Create and start runtime (loads WFE config from file, registers handlers, connects)
-const runtime = await NewWorkflowEngineClient(
-  HandlerSetFor(handler, txHandler),
-  process.env[WFE_CONFIG_FILE] ?? "./wfe-config.yaml",
+const runtime = await createWorkflowEngineClient(
+  handlerSetFor(handler, txHandler),
+  process.env[KALEIDO_CONFIG_FILE] ?? "./wfe-config.yaml",
 );
 // runtime is already connected
 // On shutdown:
 runtime.disconnect();
 ```
 
-- **HandlerSetFor(...handlers)**: Builds a handler set from one or more transaction handlers, event sources, or event processors.
-- **NewWorkflowEngineClient(handlerSet, configFile?)**: Loads WFE config from file (when `configFile` or `WFE_CONFIG_FILE` env is set), creates the client, registers all handlers, connects, and returns the client. Uses `ConfigLoader.loadClientConfigFromFile` under the hood.
+- **handlerSetFor(...handlers)**: Builds a handler set from one or more transaction handlers, event sources, or event processors.
+- **createWorkflowEngineClient(handlerSet, configFile?)**: Loads WFE config from file (when `configFile` or `KALEIDO_CONFIG_FILE` env is set), creates the client, registers all handlers, connects, and returns the client. Uses `ConfigLoader.loadClientConfigFromFile` under the hood.
 
-To load client config from a WFE config file without using `NewWorkflowEngineClient` (e.g. for custom startup), use `ConfigLoader.loadClientConfigFromFile(configFilePath?)`. If `configFilePath` is omitted, `process.env[WFE_CONFIG_FILE]` is used. The file must use the root key **`workflow-engine`** only. **Outbound:** include `providerName`, `url`, and `auth`. **Inbound:** include `providerName` and `server` (address, port); the app will create a WebSocket server and auth is not used.
+To load client config from a WFE config file without using `createWorkflowEngineClient` (e.g. for custom startup), use `ConfigLoader.loadClientConfigFromFile(configFilePath?)`. If `configFilePath` is omitted, `process.env[KALEIDO_CONFIG_FILE]` is used. The file must use the root key **`workflow-engine`** only. **Outbound:** include `providerName`, `url`, and `auth`. **Inbound:** include `providerName` and `server` (address, port); the app will create a WebSocket server and auth is not used.
 
 ### Configuration Schema
 
@@ -394,7 +396,7 @@ The recommended approach for building transaction handlers:
 
 ```typescript
 import {
-  newDirectedTransactionHandler,
+  createTransactionHandler,
   InvocationMode,
   EvalResult,
   Patch,
@@ -443,7 +445,7 @@ const actionMap = new Map([
 ]);
 
 // Create handler
-const handler = newDirectedTransactionHandler("my-handler", actionMap)
+const handler = createTransactionHandler("my-handler", actionMap)
   .withInitFn(async (engAPI) => {
     // Initialize resources
     console.log("Handler initialized");
@@ -555,7 +557,7 @@ Event sources poll external systems and emit events to the workflow engine.
 ### Creating an Event Source
 
 ```typescript
-import { newEventSource } from "@kaleido-io/workflow-engine-sdk";
+import { createEventSource } from "@kaleido-io/workflow-engine-sdk";
 
 // Define your types
 interface MyCheckpoint {
@@ -573,7 +575,7 @@ interface MyEventData {
 }
 
 // Create event source
-const eventSource = newEventSource<MyCheckpoint, MyConfig, MyEventData>(
+const eventSource = createEventSource<MyCheckpoint, MyConfig, MyEventData>(
   "my-event-source",
   async (config, checkpointIn) => {
     // Poll for events
@@ -651,7 +653,7 @@ interface MinimalLedger {
   closedAt: string;
 }
 
-const stellarBlocks = newEventSource<
+const stellarBlocks = createEventSource<
   StellarBlockCheckpoint,
   StellarBlockConfig,
   MinimalLedger
@@ -777,14 +779,10 @@ class MyInputImpl implements MyInput {
     );
     this.data = input.data;
   }
-
-  getStageDirector() {
-    return this.stageDirector;
-  }
 }
 
 // The SDK automatically wraps plain JSON objects from the engine
-// with a getStageDirector() method, so you can also use plain objects:
+// with a `stageDirector` property, so you can also use plain objects:
 const actionMap = new Map([
   [
     "myAction",
@@ -846,7 +844,7 @@ Monitor connection events:
 ```typescript
 // The SDK logs connection events automatically
 // Check connection status programmatically:
-if (!client.isConnected()) {
+if (!client.isConnected) {
   console.warn("Client disconnected, will auto-reconnect");
 }
 ```
@@ -981,7 +979,7 @@ describe("Component Test", () => {
 import {
   WorkflowEngineClient,
   WorkflowEngineConfig,
-  newDirectedTransactionHandler,
+  createTransactionHandler,
   InvocationMode,
   EvalResult,
   Patch,
@@ -1058,7 +1056,7 @@ async function main() {
   ]);
 
   // Create handler
-  const handler = newDirectedTransactionHandler("payment-handler", actionMap)
+  const handler = createTransactionHandler("payment-handler", actionMap)
     .withInitFn(async (engAPI) => {
       console.log("Payment handler initialized");
     })
@@ -1184,13 +1182,13 @@ try {
 
 ## Best practices
 
-1. **Use the factory pattern**: `newDirectedTransactionHandler` and `newEventSource` provide clean, type-safe APIs
+1. **Use the factory pattern**: `createTransactionHandler` and `createEventSource` provide clean, type-safe APIs
 2. **Handle errors gracefully**: Return appropriate `EvalResult` values
 3. **Use state updates**: Keep workflow state synchronized with JSON Patch
 4. **Implement idempotency**: Event sources should use checkpoints for resumability
 5. **Log structured data**: Use the built-in logger with metadata
 6. **Test thoroughly**: Unit test handlers, component test with real engine
-7. **Monitor connections**: Check `isConnected()` and handle reconnection
+7. **Monitor connections**: Check `isConnected` and handle reconnection
 8. **Clean up resources**: Implement `withCloseFn` for proper cleanup
 
 ## Troubleshooting
@@ -1268,7 +1266,7 @@ See the TypeScript type definitions for complete API documentation:
 
 The `ConfigLoader` class provides utilities for transforming configuration:
 
-- `loadClientConfigFromFile(configFilePath?)` - Loads WFE config from a YAML file. Only the root key **`workflow-engine`** is supported. **Outbound:** `url` + `auth`. **Inbound:** `server` (address, port); app creates WebSocket server, optional `server.tls`. Uses `process.env[WFE_CONFIG_FILE]` when path is omitted.
+- `loadClientConfigFromFile(configFilePath?)` - Loads WFE config from a YAML file. Only the root key **`workflow-engine`** is supported. **Outbound:** `url` + `auth`. **Inbound:** `server` (address, port); app creates WebSocket server, optional `server.tls`. Uses `process.env[KALEIDO_CONFIG_FILE]` when path is omitted.
 - `createClientConfig(config, providerName)` - Transforms `WorkflowEngineConfig` into `WorkflowEngineClientConfig` (converts HTTP to WebSocket URL, sets auth headers, parses time strings for delays).
 - `logConfigSummary(config)` - Logs configuration summary (without sensitive data).
 
