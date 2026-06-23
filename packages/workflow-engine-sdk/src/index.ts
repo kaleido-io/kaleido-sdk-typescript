@@ -105,6 +105,9 @@ export {
   EventProcessorBatchFn,
 } from './factories/event_processor';
 
+// Indexer factory
+export { createIndexer } from './factories/indexer';
+
 // Stage director helpers
 export {
   BasicStageDirector,
