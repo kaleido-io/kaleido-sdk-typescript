@@ -1,4 +1,4 @@
-# Build from monorepo root: docker build -f samples/getting-started/Dockerfile.withsdk .
+# Build from monorepo root: docker build -f samples/workflow-engine-provider/Dockerfile.withsdk .
 FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
@@ -8,7 +8,7 @@ COPY package.json package-lock.json ./
 COPY internal/core/package.json ./internal/core/
 COPY packages/workflow-engine-sdk/package.json ./packages/workflow-engine-sdk/
 COPY packages/asset-manager-sdk/package.json ./packages/asset-manager-sdk/
-COPY samples/getting-started/package.json ./samples/getting-started/
+COPY samples/workflow-engine-provider/package.json ./samples/workflow-engine-provider/
 
 RUN npm ci
 
@@ -22,17 +22,17 @@ COPY packages/asset-manager-sdk ./packages/asset-manager-sdk
 RUN npm run build -w packages/workflow-engine-sdk -w packages/asset-manager-sdk
 
 # Build the sample — source lives at root level (no src/ subdir)
-COPY samples/getting-started/tsconfig.json ./samples/getting-started/
-COPY samples/getting-started/connect.ts ./samples/getting-started/
-COPY samples/getting-started/provider.ts ./samples/getting-started/
-COPY samples/getting-started/block-indexer ./samples/getting-started/block-indexer
-COPY samples/getting-started/event-source ./samples/getting-started/event-source
-COPY samples/getting-started/hello ./samples/getting-started/hello
-COPY samples/getting-started/http-invoke ./samples/getting-started/http-invoke
-COPY samples/getting-started/list-pools ./samples/getting-started/list-pools
-COPY samples/getting-started/snap ./samples/getting-started/snap
-COPY samples/getting-started/utils ./samples/getting-started/utils
-RUN npm run build -w samples/getting-started
+COPY samples/workflow-engine-provider/tsconfig.json ./samples/workflow-engine-provider/
+COPY samples/workflow-engine-provider/connect.ts ./samples/workflow-engine-provider/
+COPY samples/workflow-engine-provider/provider.ts ./samples/workflow-engine-provider/
+COPY samples/workflow-engine-provider/block-indexer ./samples/workflow-engine-provider/block-indexer
+COPY samples/workflow-engine-provider/event-source ./samples/workflow-engine-provider/event-source
+COPY samples/workflow-engine-provider/hello ./samples/workflow-engine-provider/hello
+COPY samples/workflow-engine-provider/http-invoke ./samples/workflow-engine-provider/http-invoke
+COPY samples/workflow-engine-provider/list-pools ./samples/workflow-engine-provider/list-pools
+COPY samples/workflow-engine-provider/snap ./samples/workflow-engine-provider/snap
+COPY samples/workflow-engine-provider/utils ./samples/workflow-engine-provider/utils
+RUN npm run build -w samples/workflow-engine-provider
 
 # Runtime stage — distroless for minimal attack surface and image size
 FROM gcr.io/distroless/nodejs22-debian12
@@ -40,8 +40,8 @@ FROM gcr.io/distroless/nodejs22-debian12
 WORKDIR /app
 
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/samples/getting-started/dist ./samples/getting-started/dist
-COPY --from=builder /app/samples/getting-started/package.json ./samples/getting-started/
+COPY --from=builder /app/samples/workflow-engine-provider/dist ./samples/workflow-engine-provider/dist
+COPY --from=builder /app/samples/workflow-engine-provider/package.json ./samples/workflow-engine-provider/
 # Workspace package dist dirs — required so npm symlinks in node_modules resolve
 COPY --from=builder /app/internal/core/dist ./internal/core/dist
 COPY --from=builder /app/internal/core/package.json ./internal/core/package.json
@@ -57,4 +57,4 @@ ENV CONFIG_FILE=./config/config.yaml
 # distroless/nodejs images run as nonroot (uid 65532) by default
 USER nonroot
 
-CMD ["/app/samples/getting-started/dist/connect.js"]
+CMD ["/app/samples/workflow-engine-provider/dist/connect.js"]
