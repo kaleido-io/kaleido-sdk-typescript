@@ -8,7 +8,7 @@ holding and transfer events into the
 
 1. Connects to your Workflow Engine as a provider named `canton-cip56-indexer`.
 2. Registers an **event processor** that receives Canton contract events from a
-   `cantonContractEvents`-compatible stream filtered on the CIP-56
+   `contractEvents`-compatible stream filtered on the CIP-56
    `HoldingV1` and `TransferInstructionV1` interface IDs.
 3. Maps **Holding** creates/archives to Asset Manager fragments, transfers,
    balance changes, and the pool/asset definitions they belong to; and maps
@@ -70,7 +70,7 @@ Set `CONFIG_FILE` env var to point to this file (default: `./config/provider-con
 | Key | Description |
 |-----|-------------|
 | `stream.connectorBindingName` | Must match the `canton-connector` service binding name in `config.yaml` |
-| `stream.factory` | Must be `cantonContractEvents` |
+| `stream.factory` | Must be `contractEvents` |
 | `stream.eventSourceConfig.filters.parties` | Canton parties to subscribe to (empty = all) |
 | `stream.eventSourceConfig.filters.interfaceIds` | CIP-56 interface IDs to filter on |
 
@@ -137,7 +137,7 @@ npm run promote:docker # or promote:podman for Podman users, or promote:crane if
 
 ### 4. Streaming events to the provider
 
-The stream is created automatically on first run via the auto-creation settings in `provider-config.yaml`. Alternatively, create a stream via your **Canton connector** service using the `cantonContractEvents` stream factory.
+The stream is created automatically on first run via the auto-creation settings in `provider-config.yaml`. Alternatively, create a stream via your **Canton connector** service using the `contractEvents` stream factory.
 
 ### 5. Upgrading the provider
 

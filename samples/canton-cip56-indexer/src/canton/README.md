@@ -81,7 +81,6 @@ canton/
   types.ts                 All types (Canton events, CIP-56 views, indexer context)
   helpers.ts               Pure functions (parsing, normalization, scaling, predicates)
   indexer.ts               Pipeline orchestrator (scan → query → dispatch → flush)
-  stream.ts                WFE stream definition
   processors/
     batch-scanner.ts       Scan passes + AM miss resolution
     archive-processor.ts   Archive handling (both Holdings and TIs) + owner resolution
