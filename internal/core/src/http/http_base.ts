@@ -15,7 +15,8 @@
 // limitations under the License.
 
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
-import { HttpLogger, ServiceBindingAuth } from "./types";
+import { ServiceBindingAuth } from "./types";
+import { Logger } from "../log/logger";
 import { configureHttpClient, RequestConfigWithRetry } from "./http_client";
 import { ServiceTransport } from "./transport";
 
@@ -43,7 +44,7 @@ export interface HTTPTransportOptions {
   requestConfig?: AxiosRequestConfig;
   /** Optional logger. When provided, each request is logged at debug level with
    *  method, URL, status, and elapsed ms. Errors include the response body. */
-  logger?: HttpLogger;
+  logger?: Logger;
 }
 
 function isSuccess(status: number): boolean {

@@ -55,8 +55,11 @@ let currentFactory: LoggerFactory = defaultLoggerFactory;
  * Replace the logger factory used by all SDK modules.
  *
  * Call this at application startup to route SDK logs through your own logging
- * infrastructure. Takes effect immediately for all loggers, including those
- * already created at module-load time.
+ * infrastructure (NestJS Logger, Winston, Pino, etc.). Takes effect immediately
+ * for all loggers, including those already created at module-load time.
+ *
+ * @example
+ * setLoggerFactory((context) => nestApp.get(Logger).setContext(context));
  */
 export function setLoggerFactory(factory: LoggerFactory): void {
     currentFactory = factory;

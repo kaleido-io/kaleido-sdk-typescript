@@ -9,6 +9,9 @@
     "*": {
       "http": [
         "./dist/src/http/index.d.ts"
+      ],
+      "log": [
+        "./dist/src/log/index.d.ts"
       ]
     }
   },
@@ -20,6 +23,10 @@
     "./http": {
       "import": "./dist/src/http/index.js",
       "types": "./dist/src/http/index.d.ts"
+    },
+    "./log": {
+      "import": "./dist/src/log/index.js",
+      "types": "./dist/src/log/index.d.ts"
     }
   },
   "scripts": {

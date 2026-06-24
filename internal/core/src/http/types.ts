@@ -15,19 +15,6 @@
 // limitations under the License.
 
 /**
- * Minimal logging interface accepted by the HTTP transport's `logger` option.
- * Compatible with `console` and most logging libraries. Named distinctly from
- * the SDK's structured `Logger` (log/logger.ts) to avoid confusion — the two
- * have different method shapes (this one has `log`, that one has `info`).
- */
-export interface HttpLogger {
-  log: (message: string, ...args: unknown[]) => void;
-  error: (message: string, ...args: unknown[]) => void;
-  debug: (message: string, ...args: unknown[]) => void;
-  warn: (message: string, ...args: unknown[]) => void;
-}
-
-/**
  * Authentication configuration for a service binding.
  */
 export interface ServiceBindingAuth {
