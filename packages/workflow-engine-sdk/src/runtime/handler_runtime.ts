@@ -133,6 +133,11 @@ export class HandlerRuntime {
   private reconnectTimer?: NodeJS.Timeout;
   private isConnected = false;
   private shouldReconnect = true;
+  // True while a connectWebSocket() backOff loop is actively (re)connecting. Used
+  // so onClose does not schedule a competing reconnect timer when backOff is
+  // already retrying (e.g. after an 'unexpected-response' that cleared
+  // reconnectReject before the socket's 'close' event fires).
+  private connecting = false;
 
   // Heartbeat for connection liveness detection
   private pingInterval?: NodeJS.Timeout;
@@ -343,8 +348,9 @@ export class HandlerRuntime {
   }
 
   private async connectWebSocket(): Promise<void> {
-
-    return backOff(
+    this.connecting = true;
+    try {
+      return await backOff(
       () =>
         new Promise<void>((resolve, reject) => {
           if (!this.config.url) {
@@ -403,7 +409,10 @@ export class HandlerRuntime {
           });
         }),
       this.config.maxAttempts ? { numOfAttempts: this.config.maxAttempts } : {}
-    );
+      );
+    } finally {
+      this.connecting = false;
+    }
   }
 
   private onError(error: Error): void {
@@ -443,7 +452,10 @@ export class HandlerRuntime {
       this.reconnectReject(new Error('WebSocket closed'));
       this.reconnectReject = undefined;
       this.reconnectResolve = undefined;
-    } else if (this.shouldReconnect && !this.reconnectTimer) {
+    } else if (this.shouldReconnect && !this.reconnectTimer && !this.connecting) {
+      // Skip when a backOff loop is already (re)connecting — otherwise an
+      // 'unexpected-response' (which rejects/clears reconnectReject so backOff
+      // retries) followed by a 'close' would spawn a second, competing loop.
       const delay = this.config.reconnectDelay || 1000;
       log.info('Reconnecting', { delay });
       this.reconnectTimer = setTimeout(() => {
