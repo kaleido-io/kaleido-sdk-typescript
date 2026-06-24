@@ -1,6 +1,6 @@
 {
   "name": "@kaleido-io/core",
-  "version": "0.1.0",
+  "version": "1.0.0-rc1",
   "description": "Core utilities for Kaleido SDKs",
   "type": "module",
   "main": "dist/src/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@kaleido-io/asset-manager-sdk",
-  "version": "0.1.0",
+  "version": "1.0.0-rc1",
   "description": "TypeScript SDK client for the Kaleido Asset Manager service",
   "type": "module",
   "main": "dist/src/index.js",
@@ -23,7 +23,7 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "@kaleido-io/workflow-engine-sdk": "^0.9.7",
+    "@kaleido-io/workflow-engine-sdk": "^1.0.0-rc1",
     "deepmerge": "^4.3.1",
     "zod": "^3.0.0"
   },

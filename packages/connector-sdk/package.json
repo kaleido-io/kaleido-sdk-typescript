@@ -1,6 +1,6 @@
 {
   "name": "@kaleido-io/connector-sdk",
-  "version": "0.1.0",
+  "version": "1.0.0-rc1",
   "description": "TypeScript types and utilities for Kaleido connector event data",
   "type": "module",
   "main": "dist/src/index.js",
@@ -35,7 +35,7 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "@kaleido-io/workflow-engine-sdk": "^0.9.7"
+    "@kaleido-io/workflow-engine-sdk": "^1.0.0-rc1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
