@@ -1,0 +1,18 @@
+# Configuration for the custom-snippet-handler (KALEIDO_CONFIG_FILE).
+# When running as a Hosted provider, this file is managed by the Kaleido platform.
+# Copy this file to config/config.yaml and fill in your values.
+# Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
+#
+# providerName must match the name exported from provider.ts.
+workflow-engine:
+  providerName: custom-snippet-provider
+  providerMetadata:
+    displayName: Custom snippet provider
+    description: A provider that renders custom snippet templates
+  url: https://my-account.my-kaleido.io/endpoint/my-environment/my-workflow-engine/rest
+  auth:
+    type: basic
+    username: my-api-key-name
+    password: my-api-key
+  # retryDelay: 2s
+  # maxRetries: 5   # omit for infinite retries

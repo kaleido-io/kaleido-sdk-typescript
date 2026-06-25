@@ -1,0 +1,46 @@
+{
+  "name": "custom-snippet-handler",
+  "version": "0.0.1",
+  "scripts": {
+    "prebuild": "npm run clean",
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "start": "node --experimental-strip-types dist/connect.js",
+    "start:dev": "tsx ./connect.ts",
+    "create-workflow": "tsx ./utils/post-workflow.ts",
+    "create-transaction": "tsx ./utils/post-transaction.ts",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "package:docker": "docker build --platform linux/amd64 -f Dockerfile.withsdk -t custom-snippet-handler:latest ../..",
+    "package:docker:standalone": "docker build --platform linux/amd64 -t custom-snippet-handler:latest .",
+    "package:podman": "podman build --platform linux/amd64 -t custom-snippet-handler:latest .",
+    "promote:docker": "docker tag custom-snippet-handler:latest ${ARTIFACT_REGISTRY}/custom-snippet-handler:${IMAGE_TAG} && docker push ${ARTIFACT_REGISTRY}/custom-snippet-handler:${IMAGE_TAG}",
+    "promote:podman": "podman tag custom-snippet-handler:latest ${ARTIFACT_REGISTRY}/custom-snippet-handler:${IMAGE_TAG} && podman push ${ARTIFACT_REGISTRY}/custom-snippet-handler:${IMAGE_TAG}",
+    "promote:crane": "crane copy ${SOURCE_REGISTRY}/custom-snippet-handler:${IMAGE_TAG} ${ARTIFACT_REGISTRY}/custom-snippet-handler:${IMAGE_TAG}",
+    "promote:crane-local": "crane copy --insecure daemon://custom-snippet-handler:latest ${ARTIFACT_REGISTRY}/custom-snippet-handler:${IMAGE_TAG}",
+    "promote:kind-local": "docker tag custom-snippet-handler:latest localhost:6001/custom-snippet-handler:${IMAGE_TAG} && docker push localhost:6001/custom-snippet-handler:${IMAGE_TAG}",
+    "upload:handlers": "bash scripts/upload-handlers.sh"
+  },
+  "private": true,
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.5.2",
+    "@vitest/coverage-v8": "^4.0.16",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  },
+  "type": "module",
+  "main": "dist/connect.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "@kaleido-io/workflow-engine-sdk": "*",
+    "dotenv": "^17.2.3",
+    "esbuild": "^0.28.0",
+    "js-yaml": "^4.1.1"
+  }
+}

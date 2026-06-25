@@ -1,0 +1,49 @@
+# Build from monorepo root:
+#   docker build -f samples/custom-snippet-handler/Dockerfile.withsdk -t custom-snippet-handler:latest .
+FROM node:22-bookworm-slim AS builder
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY internal/core/package.json ./internal/core/
+COPY packages/workflow-engine-sdk/package.json ./packages/workflow-engine-sdk/
+COPY samples/custom-snippet-handler/package.json ./samples/custom-snippet-handler/
+
+RUN npm ci
+
+COPY internal/core ./internal/core
+RUN npm run build --prefix internal/core
+
+COPY packages/workflow-engine-sdk ./packages/workflow-engine-sdk
+RUN npm run build -w packages/workflow-engine-sdk
+
+COPY samples/custom-snippet-handler/tsconfig.json ./samples/custom-snippet-handler/
+COPY samples/custom-snippet-handler/connect.ts ./samples/custom-snippet-handler/
+COPY samples/custom-snippet-handler/provider.ts ./samples/custom-snippet-handler/
+COPY samples/custom-snippet-handler/handlers-config.ts ./samples/custom-snippet-handler/
+COPY samples/custom-snippet-handler/register-handlers.ts ./samples/custom-snippet-handler/
+COPY samples/custom-snippet-handler/hot-reload.ts ./samples/custom-snippet-handler/
+COPY samples/custom-snippet-handler/handlers ./samples/custom-snippet-handler/handlers
+RUN npm run build -w samples/custom-snippet-handler
+
+FROM gcr.io/distroless/nodejs22-debian12
+
+WORKDIR /app
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/samples/custom-snippet-handler/dist ./samples/custom-snippet-handler/dist
+COPY --from=builder /app/samples/custom-snippet-handler/package.json ./samples/custom-snippet-handler/
+COPY --from=builder /app/internal/core/dist ./internal/core/dist
+COPY --from=builder /app/internal/core/package.json ./internal/core/package.json
+COPY --from=builder /app/packages/workflow-engine-sdk/dist ./packages/workflow-engine-sdk/dist
+COPY --from=builder /app/packages/workflow-engine-sdk/package.json ./packages/workflow-engine-sdk/package.json
+COPY samples/custom-snippet-handler/config ./samples/custom-snippet-handler/config
+
+ENV KALEIDO_CONFIG_FILE=./config/config.yaml
+ENV CONFIG_FILE=./config/provider-config.yaml
+
+WORKDIR /app/samples/custom-snippet-handler
+
+USER nonroot
+
+CMD ["--experimental-strip-types", "dist/connect.js"]

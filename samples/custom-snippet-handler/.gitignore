@@ -1,0 +1,9 @@
+coverage
+*.tgz
+build
+dist
+.env
+package-lock.json
+node_modules/
+config/config.yaml
+config/provider-config.yaml

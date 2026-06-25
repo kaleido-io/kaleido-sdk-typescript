@@ -1,0 +1,17 @@
+# Provider-specific configuration (CONFIG_FILE).
+# Copy this file to config/provider-config.yaml and fill in your values.
+# Set CONFIG_FILE env var to point to your config (default: ./config/provider-config.yaml).
+
+name: custom-snippet-provider
+metadata:
+  displayName: Custom snippet provider
+  description: Dynamically loads custom handler implementations from config
+
+# Each entry registers a Workflow Engine transaction handler.
+# "file" may be relative to the provider working directory (e.g. handlers/hello.ts)
+# or an absolute path where the platform mounts snippet code (e.g. /snippets/hello.ts).
+# handlers may be empty — the provider still registers with WFE; add entries and
+# save to pick them up when running with hot reload (npm run start:dev).
+handlers:
+  - name: hello
+    file: handlers/hello.ts
