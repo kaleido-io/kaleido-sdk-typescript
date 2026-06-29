@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Upload custom-snippet-handler implementations to artifact-registry.
 #
-# Each handlers/*.ts file (excluding *.test.ts) is uploaded as ?type=typescript
-# to: namespaces/$AREG_NS_FILE/repositories/<name>/files/$AREG_TAG
+# Each handlers/*.ts file (excluding *.test.ts) is uploaded as multipart/form-data
+# (type=typescript, file=<bytes>) to:
+# namespaces/$AREG_NS_FILE/repositories/<name>/files/$AREG_TAG
 #
 # Repository name defaults to the handler basename (hello.ts → hello).
 #
@@ -48,7 +49,9 @@ curl_json() {
 curl_upload_ts() {
   local url="$1"
   local file="$2"
-  curl "${curl_args[@]}" "${auth_args[@]}" -H "Content-Type: text/plain" --data-binary "@${file}" "${url}"
+  curl "${curl_args[@]}" "${auth_args[@]}" -X POST "${url}" \
+    -F "type=typescript" \
+    -F "file=@${file};type=text/plain"
 }
 
 ensure_namespace() {
@@ -141,7 +144,7 @@ for file in "${handler_files[@]}"; do
   echo "-- ${base} → ${AREG_NS_FILE}/${repo}:${AREG_TAG} --"
   ensure_repository "${AREG_NS_FILE}" "${repo}"
   curl_upload_ts \
-    "${AREG_API}/namespaces/${AREG_NS_FILE}/repositories/${repo}/files/${AREG_TAG}?type=typescript" \
+    "${AREG_API}/namespaces/${AREG_NS_FILE}/repositories/${repo}/files/${AREG_TAG}" \
     "${file}" | jq .
 done
 

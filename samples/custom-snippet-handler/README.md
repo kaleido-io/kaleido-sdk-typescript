@@ -93,7 +93,7 @@ npm run create-transaction snippet/transaction.ts
 
 ## Upload handlers to artifact-registry
 
-Upload `handlers/*.ts` snippets to Kaleido artifact-registry (one repository per handler):
+Upload `handlers/*.ts` snippets to Kaleido artifact-registry (one repository per handler). Each upload is **`multipart/form-data`** with form fields **`type=typescript`** and **`file`** (the `.ts` source).
 
 ```bash
 cp scripts/env.example /tmp/areg-env
