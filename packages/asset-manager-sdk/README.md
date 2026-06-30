@@ -1,6 +1,6 @@
 # Kaleido Asset Manager TypeScript SDK
 
-A TypeScript client for the Kaleido Asset Manager service. Use it to read and write the Asset Manager data model — assets, addresses, transfers and more — from standalone applications or from workflow engine indexers.
+A TypeScript client for the Kaleido Asset Manager service. Use it to read and write the Asset Manager data model — assets, addresses, transfers and more — from standalone applications or from workflow engine indexers. More information on digital assets is available in the [Kaleido platform docsite](https://docs.kaleido.io/platform/digital-assets/overview)
 
 This package is one of several Kaleido TypeScript SDK packages. For details of other SDK packages or general information about Kaleido SDKs see the [Kaleido Typsescript SDK Readme](../../README.md) 
 

@@ -9,6 +9,8 @@ event sources - Providers that poll or subscribe to external systems and emit ev
 event processors - Providers that receive event batches from the engine and run your processing logic against them.
 indexers - Providers specialized for ingesting batched events into a datastore such as the Kaleido asset manager.
 
+More information on the workflow engine programming model is avalable from the [Kaleido platform docsite](https://docs.kaleido.io/platform/web3-middleware/workflowengine/)
+
 ## Running hosted or non-hosted
 
 Providers built with the Workflow engine SDK can run in one of 2 modes. Hosted or non-hosted.
