@@ -35,8 +35,8 @@ import { RequestContext } from '../types/core';
 import {
   SetupContext,
   createSetupContext,
-  createIndexerContext,
-} from '../app/context';
+} from '@kaleido-io/core/context';
+import { createIndexerContext } from '../app/context';
 import type { IndexerHandlerDef, TransactionHandlerRegistration } from '../app/types';
 
 const log = newLogger('WorkflowEngineClient');
@@ -77,6 +77,22 @@ export interface WorkflowEngineClientConfig {
   maxAttempts?: number;
   /** Service bindings for platform service access (asset-manager, key-manager, etc.) */
   serviceBindings?: ServiceBindingsMap;
+  /**
+   * Controls when setup() hooks run.
+   *
+   * - `'boot'` (default, backwards compatible): hooks run during start(), with no
+   *   authRef in scope. Hosted-binding calls inside setup() will lack authentication
+   *   and fail at the destination — matching today's behaviour.
+   * - `'deferred'`: hooks run only when the provider-proxy dispatches a
+   *   SETUP_TRIGGER_REQUEST (service-manager initiates this during deploy). The
+   *   trigger carries an authRef bound to the deploying user's JWT, so hooks can
+   *   safely call hosted services.
+   *
+   * The operator sets this field in the rendered KALEIDO_CONFIG_FILE on platforms
+   * that ship the deploy-time setup-trigger machinery. SDKs running against older
+   * platforms will not see the field and default to `'boot'`.
+   */
+  setupLifecycle?: 'boot' | 'deferred';
 }
 
 type RegisteredHandler =
@@ -212,18 +228,65 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
   }
 
   /**
-   * Connect to WFE, register handlers, then run all handler `setup` hooks.
-   *
-   * Setup runs after connect so that hosted service bindings (ws-proxy transport)
-   * have an established WebSocket before setup() tries to call platform services
-   * such as the Asset Manager. In non-hosted mode the order makes no difference
-   * since those bindings use direct HTTP.
+   * Connect to WFE and register handlers. When `setupLifecycle: 'boot'` (default),
+   * setup() hooks also run here, after the connect — so that hosted ws-proxy
+   * bindings have an established WebSocket before setup() tries to call platform
+   * services. When `setupLifecycle: 'deferred'`, hooks do NOT run here; they run
+   * when the proxy dispatches a SETUP_TRIGGER_REQUEST (issued by service-manager
+   * as part of the deploy operation, carrying the deployer's authRef so hosted-
+   * binding calls inside setup() authenticate as the deploying user).
    */
   async start(): Promise<void> {
-    const controller = new AbortController();
     this.registerBuilderHandlers();
     await this.connect();
+    if (this.wfeConfig.setupLifecycle === 'deferred') {
+      // Trigger handler is registered ONLY in deferred mode. In boot mode, any stray
+      // SETUP_TRIGGER_REQUEST (e.g. a misconfigured platform sending one despite the
+      // operator not emitting `deferred`) falls through to the runtime's default
+      // ack-with-success-no-op path — service-manager isn't blocked, and setup hooks
+      // are not run twice.
+      this.registerSetupTriggerHandler();
+      log.info(`setupLifecycle=deferred: skipping boot-time setup hooks (waiting for SETUP_TRIGGER_REQUEST)`);
+      return;
+    }
+    const controller = new AbortController();
     await this.runSetupHooks(controller.signal);
+  }
+
+  /**
+   * Registers a SETUP_TRIGGER_REQUEST handler on the runtime that runs all setup
+   * hooks with the trigger's authRef in scope and returns the aggregated outcome.
+   * Always registered (both lifecycles) so service-manager's dispatch sees a
+   * response — in `boot` mode, this re-runs the hooks with admin auth, which
+   * customer code should treat as idempotent.
+   */
+  private registerSetupTriggerHandler(): void {
+    this.runtime.registerSetupTriggerHandler((authRef) => this.runSetupOnTrigger(authRef));
+  }
+
+  /** @internal — invoked by the runtime when SETUP_TRIGGER_REQUEST arrives. */
+  async runSetupOnTrigger(authRef: string): Promise<{ status: 'success' | 'error'; errors?: string[] }> {
+    const controller = new AbortController();
+    const errors: string[] = [];
+    try {
+      for (const registered of this.registeredHandlers) {
+        if (registered.type === 'eventSource') continue;
+        const { name, def } = registered;
+        if (!def.setup) continue;
+        log.info(`Running setup hook for handler '${name}' (triggered, authRef=${authRef ? authRef.substring(0, 8) + '...' : '(none)'})`);
+        const ctx = this.buildSetupContext(name, controller.signal, authRef);
+        try {
+          await def.setup(ctx as SetupContext<unknown>);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          errors.push(`${name}: ${msg}`);
+          log.error(`Setup hook '${name}' failed`, { error: msg });
+        }
+      }
+    } finally {
+      controller.abort();
+    }
+    return errors.length === 0 ? { status: 'success' } : { status: 'error', errors };
   }
 
   /**

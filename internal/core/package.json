@@ -12,6 +12,9 @@
       ],
       "log": [
         "./dist/src/log/index.d.ts"
+      ],
+      "context": [
+        "./dist/src/context/index.d.ts"
       ]
     }
   },
@@ -27,6 +30,10 @@
     "./log": {
       "import": "./dist/src/log/index.js",
       "types": "./dist/src/log/index.d.ts"
+    },
+    "./context": {
+      "import": "./dist/src/context/index.js",
+      "types": "./dist/src/context/index.d.ts"
     }
   },
   "scripts": {

@@ -1,31 +1,39 @@
-# Kaleido Workflow Engine TypeScript SDK
+# Kaleido Asset Manager TypeScript SDK
 
-A TypeScript SDK for building handlers that integrate with the Kaleido workflow engine. This is one of several SDK pacakges provided to interact with the Kaleido platform. For details of other SDK packages or general information about Kaleido SDKs see the [Kaleido Typsescript SDK Readme](../../README.md) 
+A TypeScript client for the Kaleido Asset Manager service. Use it to read and write the Asset Manager data model — assets, addresses, transfers and more — from standalone applications or from workflow engine indexers.
 
-Using the Workflow engine SDK you can build applications called `providers` that interact with the workflow engine. The different types of providers supported are:
+This package is one of several Kaleido TypeScript SDK packages. For details of other SDK packages or general information about Kaleido SDKs see the [Kaleido Typsescript SDK Readme](../../README.md) 
 
-transaction handlers - Providers that execute workflow stage actions when the engine sends transaction batches (e.g. business logic, external API calls, stage transitions).
-event sources - Providers that poll or subscribe to external systems and emit events (with checkpoints) into the workflow engine.
-event processors - Providers that receive event batches from the engine and run your processing logic against them.
-indexers - Providers specialized for ingesting batched events into a datastore such as the Kaleido asset manager.
+## What this SDK provides
+
+- **`AssetManagerClient`** — typed REST client for every Asset Manager API surface
+- **`bulkQuery` / `bulkUpsert`** — multi-collection read and write in a single request
+- **`BulkUpsertBuilder`** — accumulate updates safely (deduplication, dependency retry, auto-flush) before calling bulk upsert
+
+
+Typical use cases:
+
+- Standalone scripts and services that push or query tokenized asset data
+- Running in an application server that hosts a custom applicaiton that runs against the Kaleido Asset manager data model.
+- Indexers (built with `@kaleido-io/workflow-engine-sdk`) that ingest chain events into the Asset Manager data model
 
 ## Running hosted or non-hosted
 
-Providers built with the Workflow engine SDK can run in one of 2 modes. Hosted or non-hosted.
+Applications using the Asset Manager SDK can run in one of 2 modes. Hosted or non-hosted.
 
 ### Hosted
 
-The provider is built as a docker images which is uploaded to the Kaleido Artifact Registry. A provider service is created inside the Kaleido platform to instantiate an instance of the provider which runs as a Kaleido managed service.
+The application is built as a docker images which is uploaded to the Kaleido Artifact Registry. A provider service is created inside the Kaleido platform to instantiate an instance of the provider which runs as a Kaleido managed service.
 
-In hosted mode the providers has conenction and auth context information automatically provided to it by service-bindings.
+In hosted mode the application has conenction and auth context information automatically provided to it by service-bindings.
 
 This is the intended usage mode for running a provider in production.
 
 ### Non-hosted
 
-The provider runs locally on your development workstation, either as a typescript application or as a dockerfile. Connection information is provided as configuration via non-hosted service bindings which contain connection information required to connect to Kaleido platform services.
+The application runs locally on your development workstation, either as a typescript application or as a dockerfile. Connection information is provided as configuration via non-hosted service bindings which contain connection information required to connect to Kaleido platform services.
 
-Running in this mode is intended to allow you to iterate quickly during development of a provider. It is not reccomended to run in non-hosted mode for production use-cases. 
+Running in this mode is intended to allow you to iterate quickly during development of a provider. It is not reccomended to run in non-hosted mode for production use-cases.
 
 ## Quick start
 
@@ -111,7 +119,7 @@ In add-to-existing mode, your root project files are not overwritten (for exampl
 If you do not wish to start from a template you can simply import the SDK directly
 
 ```bash
-npm install @kaleido-io/workflow-engine-sdk
+npm install @kaleido-io/asset-manager-sdk
 ```
 
 If you are using multiple SDK packaages you may wish to use the multi-service client:
@@ -121,8 +129,6 @@ npm install @kaleido-io/kaleido-sdk
 ```
 
 Note that this will pull in all SDK pacakges as transitive dependncies.
-
-
 
 ## Configuration Model
 
@@ -141,14 +147,6 @@ In both cases, your SDK usage can stay the same; only configuration values chang
 ### Platform config (`config.yaml`)
 
 ```yaml
-workflow-engine:
-  providerName: my-provider
-  url: https://wfe.example.com
-  auth:
-    type: token
-    token: ${WFE_TOKEN}
-    scheme: Bearer
-
 service-bindings:
   asset-manager:
     type: asset-manager
@@ -160,21 +158,23 @@ service-bindings:
       scheme: Bearer
 
   # Hosted binding example (resolved via ws-proxy)
-  evm-connector:
-    type: connector
+  asset-manager-hosted:
+    type: asset-manager
     bindingType: hosted
-    id: svc-connector-001
+    id: svc-am-001
 ```
 
 ### Service bindings
 
-A service binding provides a mapping between the name of a service and it's conenction information. Because this is held in config this means that you can swap between hosted bindings where the connectivity information is autoamtically provided by the platform and non-hosted bindings where you provide the connection information. 
+A service binding provides a mapping between the name of a service and it's conenction information. Because this is held in config this means that you can swap between hosted bindings where the connectivity information is autoamtically provided by the platform and non-hosted bindings where you provide the connection information.
 
 This means that you can seaamlessly transition between running an application locally on your development workstation in order to iterate quickly and running hosted within the Kaleido platform.
 
 When constructing a client you can specify the name of a service binding in order to have the client configured with the appropriate connection for that service. For example:
 
 ```typescript
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+
 const amClient1 = AssetManagerClient.fromConfigFile('assetManager1');
 const amClient2 = AssetManagerClient.fromConfigFile('assetManager2');
 ```
@@ -199,65 +199,67 @@ service-bindings:
       scheme: Bearer
 ```
 
-The exception to this pattern is in the connection to the Workflow engine itself. The workflow engine is a singleton and this connection is also managed through the Provider Proxy running on the Kaleido platform, therefore this has it's own first-class stanza in the configuration file. The workflow engine connection is defined using the top level `workflow-engine` root-key in the config yaml file.
-
-**Example - with basic auth:**
-```yaml
-workflow-engine:
-  providerName: my-service
-  url: http://localhost:5503
-  auth:
-    type: basic
-    username: my-user
-    password: my-password
-  # maxRetries: undefined = infinite reconnection (recommended)
-  # retryDelay: "2s" (time string: ms, s, m, h)
-  retryDelay: 2s
-```
-
-**Example — outbound with token auth:**
+**Example — non-hosted with basic auth:**
 
 ```yaml
-workflow-engine:
-  providerName: my-service
-  url: http://localhost:5503
-  auth:
-    type: token
-    token: dev-token-123
-    header: X-Kld-Authz   # optional, defaults to Authorization
-    scheme: ""            # optional, e.g. "Bearer" for "Bearer <token>"
-  retryDelay: 2s
+service-bindings:
+  asset-manager:
+    type: asset-manager
+    bindingType: non-hosted
+    url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-env/s:my-asset-manager/rest
+    auth:
+      type: basic
+      username: my-user
+      password: my-api-key
 ```
 
-When you are running in `hosted` mode the platform instead uses a websocket connection to communicate with the workflow engine. The configuration for this web socket connection is automatically generated by a platform when you create a provider service.
+**Example — non-hosted with token auth:**
 
+```yaml
+service-bindings:
+  asset-manager:
+    type: asset-manager
+    bindingType: non-hosted
+    url: https://am.example.com/api/v1
+    auth:
+      type: token
+      token: ${AM_TOKEN}
+      header: Authorization   # optional, defaults to Authorization
+      scheme: Bearer          # optional, e.g. "Bearer" for "Bearer <token>"
+```
+
+When you are running in `hosted` mode the platform resolves the Asset Manager connection via ws-proxy; the binding `id` is provided in config and connectivity details are injected at runtime.
 
 ### Provider config (`provider-config.yaml`)
 
-This file is for your own application settings (batch size, allowlists, polling windows, etc.), not platform connection details. When you are implementing a provider the configuration is automatically made available for you as ctx.config. For example:
+This file is for your own application settings (batch size, contract addresses, upsert thresholds, etc.), not platform connection details. When you are implementing an indexer the configuration is automatically made available for you as `ctx.config`. For example:
 
 ```yaml
-batchSize: 50
-allowlist:
-    - '0x0000000000000000000000000000000000000001'
-    - '0x0000000000000000000000000000000000000002'
+upsertTriggerCount: 100
+contractAddress: '0x0000000000000000000000000000000000000001'
+contractName: MyToken
 ```
 
 ```ts
-import { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
-  interface MyConfig {
-    batchSize: number;
-    allowlist: string[];
-  }
-  WorkflowEngineClient.fromConfigFile<MyConfig>()
-    .indexer('my-indexer', {
-      async indexBatch(ctx, events) {
-        const { batchSize, allowlist } = ctx.config;
-        // use batchSize, allowlist...
-      },
-    })
-    .start();
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+
+interface MyConfig {
+  upsertTriggerCount: number;
+  contractAddress: string;
+  contractName: string;
+}
+
+// Inside an indexer indexBatch handler (ctx from @kaleido-io/workflow-engine-sdk):
+async indexBatch(ctx, events) {
+  const { upsertTriggerCount } = ctx.config as MyConfig;
+  const builder = new AssetManagerClient(ctx)
+    .getNewBulkUpsertBuilder()
+    .autoFlush(upsertTriggerCount);
+  // ...
+}
 ```
+
+Standalone applications that only use the Asset Manager SDK can read their own settings from `provider-config.yaml` (or any config file) and pass explicit `ServiceClientOptions` to `AssetManagerClient` — see the [bulk-upsert sample](../../samples/bulk-upsert-sample).
 
 ### Environment Variables
 
@@ -555,471 +557,313 @@ resource "kaleido_platform_service" "my_provider_service" {
 
 Detailed, chain-specific notes: [`samples/btc-indexer`](../../samples/btc-indexer), [`samples/erc20-indexer`](../../samples/erc20-indexer), [`samples/canton-cip56-indexer`](../../samples/canton-cip56-indexer), [`samples/native-eth-indexer`](../../samples/native-eth-indexer), [`samples/workflow-engine-provider`](../../samples/workflow-engine-provider).
 
-## Core concepts
+## AssetManagerClient
 
-### WorkflowEngineClient
+### Construction
 
-The main entry point that manages:
+You can obtain an asset manager client in one of the following ways:
 
-- Handler registration (transaction handlers and event sources)
-- Connection lifecycle
-- Automatic reconnection and re-registration
-- Message routing between engine and handlers
-
-
-Obtaining a client: 
-
-Service bindings (reccomended)
 ```typescript
-const client = WorkflowEngineClient.fromConfigFile();
-```
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
 
-Service bindings, non-default config file
-```ts
-const client = WorkflowEngineClient.fromConfigFile('/path/to/file.yaml');
-```
+// From a named service binding in config.yaml
+const am = new AssetManagerClient('asset-manager');
 
-Explicit service bindings
-```typescript
-const client = new WorkflowEngineClient({
-  url: "ws://localhost:5503/ws",
-  providerName: "my-service",
-  authToken: "your-token",
-  authHeaderName: "X-Kld-Authz", // Optional, defaults to X-Kld-Authz
-  reconnectDelay: 2000, // Optional, ms between reconnect attempts
-  maxAttempts: undefined, // Optional, undefined = infinite retries (recommended)
+// From config file 
+const am2 = AssetManagerClient.fromConfigFile('asset-manager');
+
+// From an explicitly named config file
+const am3 = AssetManagerClient.fromConfigFile('asset-manager', '/path/to/config.yaml');
+
+// From a workflow engine SetupContext (indexer setup / batch handlers)
+// Resolves the binding via ctx.getServiceClientOptions('asset-manager')
+const amFromCtx = new AssetManagerClient(ctx);
+const amAltBinding = new AssetManagerClient(ctx, 'asset-manager-2');
+
+// From explicit ServiceClientOptions (low-level)
+const amExplicit = new AssetManagerClient({
+  transport: 'http',
+  url: 'https://myaccount.kaleido.io/.../rest',
+  auth: { type: 'basic', username: 'user', password: 'api-key' },
 });
 ```
 
-Usage
-```ts
-// Register handlers
-client.registerTransactionHandler("handler-name", transactionHandler);
-client.registerEventSource("source-name", eventSource);
+When constructed from a `SetupContext`, `getNewBulkUpsertBuilder()` automatically wires `ctx.signal` so in-flight upserts cancel if the batch is aborted.
 
-// Connect
-await client.connect();
+### Status
 
-// Check connection status
-if (client.isConnected) {
-  console.log("Connected!");
-}
+| Method | Description |
+|---|---|
+| `getStatus()` | Service health / status |
 
-// Disconnect
-client.disconnect();
+## Data model REST API
+
+All methods below are on `AssetManagerClient`. List methods accept optional `filter` (and `label` where noted). Single-resource methods accept a name or id.
+
+### Assets, addresses, pools, collections, activities
+
+| Resource | List | Get | Create | Update | Delete |
+|---|---|---|---|---|---|
+| Assets | `getAssets` | `getAsset` | `createAsset` | `updateAsset` | `deleteAsset` |
+| Addresses | `getAddresses` | `getAddress` | `createAddress` | `updateAddress` | `deleteAddress` |
+| Pools | `getPools` | `getPool` | `createPool` | `updatePool` | `deletePool` |
+| Collections | `getCollections` | `getCollection` | `createCollection` | `updateCollection` | `deleteCollection` |
+| Activities | `getActivities` | `getActivity` | `createActivity` | `updateActivity` | `deleteActivity` |
+
+### Data, events, fragments, NFTs, transfers
+
+| Resource | List | Get | Create | Update | Delete |
+|---|---|---|---|---|---|
+| Data | `getData` | `getDataSingle` | `createData` | `updateData` | `deleteData` |
+| Events | `getEvents` | `getEvent` | `createEvent` | `updateEvent` | `deleteEvent` |
+| Fragments | `getFragments` | `getFragment` | `createFragment` | `updateFragment` | `deleteFragment` |
+| NFTs | `getNFTs` | `getNFT` | `createNFT` | `updateNFT` | `deleteNFT` |
+| Transfers | `getTransfers` | `getTransfer` | `createTransfer` | `updateTransfer` | `deleteTransfer` |
+
+### Balances
+
+| Method | Description |
+|---|---|
+| `getBalances` | List balances (optional filter) |
+| `getBalance` | Get a balance by name or id |
+| `getAddressBalances` | Balances for an address |
+| `getAssetBalances` | Balances for an asset |
+| `getPoolBalances` | Balances for a pool |
+
+## Bulk query and bulk upsert
+
+For high-throughput read/write across multiple collections, use the bulk endpoints directly on the client:
+
+```typescript
+import type { BulkQueryInput, BulkUpsertInput } from '@kaleido-io/asset-manager-sdk';
+
+const queryResult = await am.bulkQuery({
+  assets: { filter: { equal: [{ field: 'name', value: 'my-asset' }] } },
+  transfers: { limit: 50 },
+} satisfies BulkQueryInput);
+
+await am.bulkUpsert({
+  assets: [{ name: 'my-asset', updateType: 'create_or_ignore' }],
+  addresses: [{ address: '0xabc...', updateType: 'create_or_update' }],
+} satisfies BulkUpsertInput);
 ```
 
-## Transaction handlers
+**Bulk query** returns filtered pages from any combination of: assets, activities, addresses, collections, data, events, fragments, nfts, pools, transfers, and balance changes.
 
-Providers that execute workflow stage actions when the engine sends transaction batches.
+**Bulk upsert** accepts the same entity types in `BulkUpsertInput`. Each item supports `updateType` (`create_or_ignore`, `create_or_update`, `update_only`, etc.) and optional labels.
 
-Register with the fluent builder on `WorkflowEngineClient.fromConfigFile()`. Pass a factory-built handler, or a registration object / closure from a helper function:
+## BulkUpsertBuilder
+
+For indexer-style batching, prefer `BulkUpsertBuilder` over hand-rolling `BulkUpsertInput`. The builder:
+
+- Ensures each record appears at most once per `execute()` call
+- Deduplicates by entity key with configurable `DuplicateStrategy` (`MERGE`, `SKIP`, `REPLACE`)
+- Retries invalid-reference errors (`KA090801`) item-by-item by default
+- Supports post-upsert finalizers and optional auto-flush at a threshold
 
 ```typescript
 import {
-  WorkflowEngineClient,
-  createTransactionHandler,
-  InvocationMode,
-  EvalResult,
-} from '@kaleido-io/workflow-engine-sdk';
+  AssetManagerClient,
+  BulkUpsertBuilder,
+  BulkUpsertInvalidRefError,
+  DuplicateStrategy,
+} from '@kaleido-io/asset-manager-sdk';
 
-const actionMap = new Map([
-  [
-    'process',
-    {
-      invocationMode: InvocationMode.PARALLEL,
-      handler: async (_tx, input) => ({
-        result: EvalResult.COMPLETE,
-        output: { ok: true },
-      }),
-    },
-  ],
-]);
+const am = new AssetManagerClient('asset-manager');
 
-WorkflowEngineClient.fromConfigFile()
-  .transactionHandler('my-handler', {
-    handler: createTransactionHandler('my-handler', actionMap),
-    setup: async (ctx) => {
-      /* optional one-time init; ctx.config from provider-config.yaml */
-    },
-  })
-  .start();
+// Fresh builder per batch — use inside indexBatch handlers
+const builder = am.getNewBulkUpsertBuilder();
+
+builder
+  .upsertAsset({ name: 'USDC', updateType: 'create_or_ignore' })
+  .upsertAddress({ address: '0xfrom...', updateType: 'create_or_update' }, DuplicateStrategy.MERGE)
+  .upsertTransfer({ /* ... */ })
+  .addFinalizer(() => console.log('upsert committed'));
+
+await builder.execute();
 ```
 
-A closure or factory that returns `{ handler, setup? }` is also supported:
+### Builder API
+
+| Method | Description |
+|---|---|
+| `getNewBulkUpsertBuilder(options?)` | Create a builder wired to this client |
+| `upsertActivity` / `upsertAddress` / `upsertAsset` / `upsertCollection` / `upsertData` / `upsertEvent` / `upsertFragment` / `upsertNFT` / `upsertPool` / `upsertTransfer` | Accumulate an update (chainable) |
+| `addFinalizer(fn)` | Run after successful `execute()` |
+| `hasUpdates()` | Whether the builder has pending items |
+| `getCount()` | Number of accumulated items |
+| `execute()` | Send bulk upsert and reset the builder |
+| `autoFlush(n)` | Return a wrapper that calls `execute()` every `n` items |
+
+**Options (`BulkUpsertBuilderOptions`):**
+
+| Option | Default | Description |
+|---|---|---|
+| `signal` | — | Abort in-flight HTTP requests (auto-set from `SetupContext`) |
+| `retryOnInvalidRef` | `true` | Retry `KA090801` individually; throws `BulkUpsertInvalidRefError` if stuck |
 
 ```typescript
-function createMyHandler() {
-  return {
-    handler: createTransactionHandler('my-handler', actionMap),
-    setup: async (ctx) => { /* ... */ },
-  };
-}
+// Disable dependency retry for fast failure
+const strict = am.getNewBulkUpsertBuilder({ retryOnInvalidRef: false });
 
-WorkflowEngineClient.fromConfigFile()
-  .transactionHandler('my-handler', createMyHandler())
-  .start();
-```
-
-### EngineAPI
-
-The `EngineAPI` interface allows transaction handlers to make API calls back to the workflow engine during processing.
-
-```typescript
-async function myHandler(transaction, input, engAPI: EngineAPI) {
-  const results = await engAPI.submitAsyncTransactions(
-    input.id,
-    transaction.authRef,
-    [
-      {
-        workflowId: 'flw:abc123',
-        operation: 'process',
-        input: { data: 'value' },
-      },
-    ],
-  );
-
-  return {
-    result: EvalResult.COMPLETE,
-    output: { submittedTxs: results },
-  };
-}
-```
-
-### StageDirector pattern
-
-For workflows with action-based routing and automatic stage transitions:
-
-```typescript
-import {
-  BasicStageDirector,
-  WithStageDirector,
-} from '@kaleido-io/workflow-engine-sdk';
-
-interface MyInput extends WithStageDirector {
-  data: string;
-}
-
-class MyInputImpl implements MyInput {
-  public stageDirector: BasicStageDirector;
-  public data: string;
-
-  constructor(input: any) {
-    this.stageDirector = new BasicStageDirector(
-      input.action,
-      input.outputPath,
-      input.nextStage,
-      input.failureStage,
-    );
-    this.data = input.data;
+try {
+  await strict.upsertPool({ name: 'pool-1', asset: 'missing-asset' }).execute();
+} catch (err) {
+  if (err instanceof BulkUpsertInvalidRefError) {
+    console.error('Stuck items:', err.stuck);
   }
 }
-
-// The SDK automatically wraps plain JSON objects from the engine
-// with a `stageDirector` property, so you can also use plain objects:
-const actionMap = new Map([
-  [
-    'myAction',
-    {
-      invocationMode: InvocationMode.PARALLEL,
-      handler: async (transaction, input: any) => ({
-        result: EvalResult.COMPLETE,
-        output: { processed: input.data },
-      }),
-    },
-  ],
-]);
 ```
 
-## Event sources
-
-Providers that poll or subscribe to external systems and emit events (with checkpoints) into the workflow engine.
-
-Build the source with `createEventSource`, then register it on the client. Closures in the poll function are supported:
+**Auto-flush** (common in indexers processing large batches):
 
 ```typescript
-import { WorkflowEngineClient, createEventSource } from '@kaleido-io/workflow-engine-sdk';
+const flush = am.getNewBulkUpsertBuilder().autoFlush(100);
 
-const myEventSource = createEventSource('my-event-source', async (config, checkpointIn) => ({
-  checkpointOut: { lastId: (checkpointIn?.lastId ?? 0) + 1 },
-  events: [{ idempotencyKey: 'evt-1', topic: 'my-topic', data: { value: 1 } }],
-}));
-
-WorkflowEngineClient.fromConfigFile()
-  .eventSource(myEventSource)
-  .start();
-```
-
-You can also pass a pre-built `EventSource` instance from a factory:
-
-```typescript
-WorkflowEngineClient.fromConfigFile()
-  .eventSource(createTickerEventSource())
-  .start();
-```
-
-## Event processors
-
-Providers that receive event batches from the engine and run processing logic against them.
-
-Event processors use the `createEventProcessor` factory and the low-level `registerEventProcessor` API (there is no `.eventProcessor()` on the fluent builder). Register before calling `connect()` or `start()`:
-
-```typescript
-import {
-  WorkflowEngineClient,
-  createEventProcessor,
-} from '@kaleido-io/workflow-engine-sdk';
-
-const processor = createEventProcessor('my-processor', async (_ctx, events) => {
-  for (const event of events) {
-    await handle(event);
-  }
-});
-
-const client = WorkflowEngineClient.fromConfigFile();
-client.registerEventProcessor('my-processor', processor);
-await client.start();
-```
-
-Closures in the batch function are supported. For setup hooks, typed `ctx.config`, and service-binding helpers, use an **indexer** instead (see below) — indexers are implemented as event processors under the hood.
-
-## Indexers
-
-Event processors with an optional `setup` hook and `IndexerContext` (`ctx.config`, `getServiceClientOptions`, per-request `signal`). Suited for ingesting batched events into any datastore.
-
-```typescript
-import { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
-
-interface MyConfig {
-  batchSize: number;
+for (const event of events) {
+  await flush.upsertTransfer(/* ... */); // executes every 100 items
 }
-
-WorkflowEngineClient.fromConfigFile<MyConfig>()
-  .indexer('my-indexer', {
-    setup: async (ctx) => {
-      /* ensureStream, bootstrap resources, etc. */
-    },
-    indexBatch: async (ctx, events) => {
-      const { batchSize } = ctx.config;
-      for (const event of events) await persist(event, batchSize);
-    },
-  })
-  .start();
+await flush.execute(); // flush remainder
 ```
 
-Pass an inline definition (closures) or a class instance that satisfies `IndexerHandlerDef`:
+## Policies and tasks
+
+Asset Manager policies and tasks are versioned resources with invoke endpoints.
+
+### Policies
+
+| Method | Description |
+|---|---|
+| `getPolicies` | List policies |
+| `getPolicy` | Get policy (optional `withActive`) |
+| `replacePolicy` | Replace policy document |
+| `updatePolicy` | Patch policy metadata |
+| `deletePolicy` | Delete policy |
+| `invokePolicy` | Invoke active policy version |
+| `invokeInlinePolicy` | Invoke without persisting a policy |
+| `getPolicyVersions` / `getPolicyVersion` | List / get versions |
+| `createPolicyVersion` / `updatePolicyVersion` / `deletePolicyVersion` | Manage versions |
+| `invokePolicyVersion` | Invoke a specific version |
+
+### Tasks
+
+| Method | Description |
+|---|---|
+| `getTasks` | List tasks |
+| `getTask` | Get task (optional `withActive`) |
+| `replaceTask` / `updateTask` / `deleteTask` | CRUD |
+| `invokeTask` / `invokeInlineTask` | Run task |
+| `getTaskVersions` / `getTaskVersion` | List / get versions |
+| `createTaskVersion` / `updateTaskVersion` / `deleteTaskVersion` | Manage versions |
+| `invokeTaskVersion` | Invoke a specific version |
+
+### Invocations and steps catalog
+
+| Method | Description |
+|---|---|
+| `getInvocations` / `getInvocation` | List / get invocations |
+| `deleteInvocation` | Delete invocation |
+| `invocationFail` | Mark invocation failed |
+| `invocationReplay` | Replay invocation |
+| `invocationSuspend` / `invocationResume` | Suspend / resume |
+| `getStepsCatalog` | Available policy/task step types |
+
+## Subscriptions and listeners
+
+### Data model subscriptions
+
+| Method | Description |
+|---|---|
+| `getSubscriptions` / `getSubscription` | List / get |
+| `replaceSubscription` | Replace subscription config |
+| `deleteSubscription` | Delete |
+| `subscriptionStart` / `subscriptionStop` | Start / stop |
+| `subscriptionReset` | Reset with optional checkpoint |
+
+### Data model listeners
+
+| Method | Description |
+|---|---|
+| `getDataModelListeners` / `getDataModelListener` | List / get |
+| `replaceDataModelListener` | Replace listener config |
+| `deleteDataModelListener` | Delete |
+| `dataModelListenerStart` / `dataModelListenerStop` | Start / stop |
+| `dataModelListenerReset` | Reset with optional checkpoint |
+
+### FireFly listeners
+
+| Method | Description |
+|---|---|
+| `getFireFlyListeners` / `getFireFlyListener` | List / get |
+| `replaceFireFlyListener` | Replace listener config |
+| `deleteFireFlyListener` | Delete |
+| `fireflyListenerStart` / `fireflyListenerStop` | Start / stop |
+
+## Using with workflow engine indexers
+
+Indexers receive a `SetupContext` in `setup()` and an `IndexerContext` in `indexBatch()`. Both expose `getServiceClientOptions()` and `signal`. Construct `AssetManagerClient` from the context — no separate binding config is needed in hosted mode:
 
 ```typescript
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+import type { IndexerContext, SetupContext } from '@kaleido-io/workflow-engine-sdk';
+
 class MyIndexer {
-  async setup(ctx) { /* ... */ }
-  async indexBatch(ctx, events) { /* ... */ }
-}
+  async setup(ctx: SetupContext<MyConfig>) {
+    const am = new AssetManagerClient(ctx);
+    await am.createAsset({ name: 'bootstrap-asset' });
+  }
 
-WorkflowEngineClient.fromConfigFile<MyConfig>()
-  .indexer('my-indexer', new MyIndexer())
-  .start();
+  async indexBatch(ctx: IndexerContext<MyConfig>, events) {
+    const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder();
+    for (const event of events) {
+      builder.upsertTransfer(/* map event */);
+    }
+    await builder.execute();
+  }
+}
 ```
+
+See `@kaleido-io/workflow-engine-sdk` for indexer registration and the [erc20-indexer sample](../../samples/erc20-indexer) for a full example.
+
+## Exported types
+
+The package re-exports typed request/response shapes for every data model entity and bulk operation. Import these for compile-time safety:
+
+- **Common:** `ItemsResult`, `FilterResult`, `UpdateType`, `NameAndID`, …
+- **Entities:** `Asset`, `Address`, `Pool`, `Activity`, `Collection`, `Data`, `Event`, `Fragment`, `NFT`, `Transfer`, `Balance`, …
+- **Bulk:** `BulkQueryInput`, `BulkQueryOutput`, `BulkUpsertInput`, `BulkUpsertOutput`, `*BulkInput` per entity
+- **Policies / tasks / invocations / subscriptions:** full type surface from `./interfaces`
+- **Builder:** `BulkUpsertBuilderOptions`, `DuplicateStrategy`, `BulkUpsertInvalidRefError`, `IDataModelClient`, `IBulkQueryClient`, `IBulkUpsertClient`
+- **Context:** `SetupContext`
 
 ## Logging
 
-The SDK uses a structured logger:
+Structured logging is re-exported from this package (same implementation as other Kaleido SDKs):
 
 ```typescript
-import { newLogger } from '@kaleido-io/workflow-engine-sdk';
+import { newLogger, setLoggerFactory } from '@kaleido-io/asset-manager-sdk';
 
-const log = newLogger('my-component');
-
-log.debug('Debug message', { metadata: 'value' });
-log.info('Info message', { userId: 123 });
-log.warn('Warning message', { reason: 'low memory' });
-log.error('Error message', { error: err.message });
+const log = newLogger('my-am-app');
+log.info('Starting bulk upsert', { count: 100 });
 ```
 
-## Error handling
+`AssetManagerClient` and `BulkUpsertBuilder` emit debug-level timing logs for bulk operations automatically.
 
-### Handler errors
+## Samples
 
-Return appropriate `EvalResult` values from transaction handlers:
+Relevant samples in this repository:
 
-```typescript
-handler: async (transaction, input) => {
-  try {
-    const result = await riskyOperation(input);
-    return { result: EvalResult.COMPLETE, output: result };
-  } catch (error) {
-    if (isTransient(error)) {
-      return { result: EvalResult.TRANSIENT_ERROR, error: error as Error };
-    }
-    return { result: EvalResult.HARD_FAILURE, error: error as Error };
-  }
-};
-```
+| Sample | Demonstrates |
+|---|---|
+| [`samples/bulk-upsert-sample`](../../samples/bulk-upsert-sample) | Standalone `BulkUpsertBuilder`, finalizers, `bulkQuery` |
+| [`samples/dependency-ordering-sample`](../../samples/dependency-ordering-sample) | `retryOnInvalidRef` and `BulkUpsertInvalidRefError` |
+| [`samples/erc20-indexer`](../../samples/erc20-indexer) | Indexer + `AssetManagerClient(ctx)` + bulk upsert |
+| [`samples/btc-indexer`](../../samples/btc-indexer) | BTC indexer with auto-flush |
+| [`samples/native-eth-indexer`](../../samples/native-eth-indexer) | Native ETH transfers |
+| [`samples/canton-cip56-indexer`](../../samples/canton-cip56-indexer) | Canton holdings → Asset Manager |
 
-Event processors and indexers should throw from the batch function to mark a batch as failed; the SDK surfaces the error to the engine.
+See [Quick start](#quick-start) for scaffolding an indexer project from a template.
 
-### Connection errors
+## License
 
-The client automatically handles WebSocket disconnections, reconnection with backoff, handler re-registration on reconnect, and connection health monitoring.
-
-```typescript
-if (!client.isConnected) {
-  console.warn('Client disconnected, will auto-reconnect');
-}
-```
-
-## Complete transaction handler example
-
-```typescript
-import {
-  WorkflowEngineClient,
-  WorkflowEngineConfig,
-  createTransactionHandler,
-  InvocationMode,
-  EvalResult,
-  Patch,
-  ConfigLoader,
-} from "@kaleido-io/workflow-engine-sdk";
-import * as fs from "fs";
-import * as yaml from "js-yaml";
-
-interface ProcessInput {
-  action: string;
-  userId: string;
-  amount: number;
-}
-
-async function main() {
-  // Load config (your application handles file loading)
-  const configFile = fs.readFileSync("./config.yaml", "utf8");
-  const config: WorkflowEngineConfig = yaml.load(
-    configFile,
-  ) as WorkflowEngineConfig;
-
-  // SDK transforms config
-  const clientConfig = ConfigLoader.createClientConfig(
-    config,
-    "payment-service",
-  );
-
-  // Create client
-  const client = new WorkflowEngineClient(clientConfig);
-
-  // Define actions
-  const actionMap = new Map([
-    [
-      "validatePayment",
-      {
-        invocationMode: InvocationMode.PARALLEL,
-        handler: async (transaction, input: ProcessInput) => {
-          if (input.amount <= 0) {
-            return {
-              result: EvalResult.HARD_FAILURE,
-              error: new Error("Invalid amount"),
-            };
-          }
-
-          return {
-            result: EvalResult.COMPLETE,
-            output: { validated: true },
-            extraUpdates: [
-              Patch.add("/validation", { valid: true, timestamp: new Date() }),
-            ],
-          };
-        },
-      },
-    ],
-
-    [
-      "processPayment",
-      {
-        invocationMode: InvocationMode.PARALLEL,
-        handler: async (transaction, input: ProcessInput) => {
-          const paymentResult = await processPayment(
-            input.userId,
-            input.amount,
-          );
-
-          return {
-            result: EvalResult.COMPLETE,
-            output: paymentResult,
-            triggers: [{ topic: "payment.completed" }],
-          };
-        },
-      },
-    ],
-  ]);
-
-  // Create handler
-  const handler = createTransactionHandler("payment-handler", actionMap)
-    .withInitFn(async (engAPI) => {
-      console.log("Payment handler initialized");
-    })
-    .withCloseFn(() => {
-      console.log("Payment handler closed");
-    });
-
-  // Register and connect
-  client.registerTransactionHandler("payment-handler", handler);
-  await client.connect();
-
-  console.log("Payment service ready");
-}
-
-main().catch(console.error);
-```
-
-## Multiple handlers
-
-A single application using the workflow engine SDK can register multiple handlers:
-
-```typescript
-// Register multiple handlers
-client.registerTransactionHandler("handler1", handler1);
-client.registerTransactionHandler("handler2", handler2);
-client.registerEventSource("source1", source1);
-client.registerEventSource("source2", source2);
-
-// All handlers use the same WebSocket connection
-await client.connect();
-```
-
-## Troubleshooting
-
-### Handler not registered
-
-**Problem**: `No connections for handler 'my-handler'`
-
-**Solution**: Ensure handler is registered before creating workflow or ensure connector is running
-
-```typescript
-// Register BEFORE submitting workflows
-client.registerTransactionHandler("my-handler", handler);
-await client.connect();
-// Now workflows can use this handler
-```
-
-### Connection timeouts
-
-**Problem**: Client fails to connect or times out
-
-**Solution**: Check workflow engine URL and authentication
-
-```typescript
-// Verify URL format (should include ws:// or wss://)
-url: "ws://localhost:5503/ws"; // ✓ Correct
-url: "localhost:5503"; // ✗ Wrong
-
-// Check authentication
-authToken: process.env.AUTH_TOKEN; // Ensure token is valid
-```
-
-### Event source not polling
-
-**Problem**: Event stream created but no events emitted
-
-**Solution**:
-
-1. Check stream is started: `"started": true`
-2. Verify handler name matches: `listenerHandler: 'my-event-source'`
-3. Check provider name matches: `listenerHandlerProvider: 'my-service'`
-4. Ensure event source is registered before creating stream
+Apache-2.0

@@ -124,6 +124,53 @@ describe('WorkflowEngineClient builder', () => {
     expect(client.connect).not.toHaveBeenCalled();
   });
 
+  it('setupLifecycle=deferred: start() skips boot-time setup hooks', async () => {
+    const client = WorkflowEngineClient._createForTest({}, { providerName: 'test-provider', setupLifecycle: 'deferred' });
+    jest.spyOn(client, 'connect').mockResolvedValue(undefined);
+    jest.spyOn(client, 'disconnect').mockImplementation(() => {});
+    jest.spyOn(client, 'registerEventProcessor').mockImplementation(() => {});
+    const setupFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    client.indexer('idx', { setup: setupFn, indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
+
+    await client.start();
+
+    expect(client.connect).toHaveBeenCalledTimes(1);
+    expect(setupFn).not.toHaveBeenCalled();
+  });
+
+  it('runSetupOnTrigger runs setup hooks and exposes authRef via SetupContext', async () => {
+    const client = makeTestClient({}, {
+      'asset-manager': { type: 'asset-manager', bindingType: 'non-hosted', url: 'http://am', auth: {} },
+    });
+    let capturedAuthRef: string | undefined;
+    const setupFn = jest.fn(async (ctx: any) => {
+      capturedAuthRef = ctx.getServiceClientOptions('asset-manager').authRef;
+    });
+    client.indexer('idx', { setup: setupFn as never, indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
+    // No start() — we exercise the trigger callback directly.
+    // Override the binding-lookup mock so the real getServiceClientOptions runs and surfaces authRef.
+    (client.getServiceClientOptions as unknown as jest.Mock).mockImplementation(
+      (...args: unknown[]) => ({ transport: 'http', url: 'http://am', auth: {}, authRef: args[1] }) as never,
+    );
+
+    const result = await client.runSetupOnTrigger('admin-authref-xyz');
+
+    expect(setupFn).toHaveBeenCalledTimes(1);
+    expect(result.status).toBe('success');
+    expect(capturedAuthRef).toBe('admin-authref-xyz');
+  });
+
+  it('runSetupOnTrigger collects errors and returns error status', async () => {
+    const client = makeTestClient({});
+    const setupFn = jest.fn<() => Promise<void>>().mockRejectedValue(new Error('boom'));
+    client.indexer('idx', { setup: setupFn, indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
+
+    const result = await client.runSetupOnTrigger('a');
+
+    expect(result.status).toBe('error');
+    expect(result.errors).toEqual(['idx: boom']);
+  });
+
   it('registers event processor on start()', async () => {
     const client = makeTestClient({});
     client.indexer('my-idx', { indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });

@@ -14,19 +14,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { SetupContext } from '@kaleido-io/core/context';
-
 /**
- * Context injected into indexer `indexBatch` callbacks.
- * Extends {@link SetupContext} with the request-scoped ID for the current batch.
+ * Kaleido SDK - TypeScript umbrella package.
  */
-export interface IndexerContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
-  readonly requestId: string;
-}
 
-export function createIndexerContext<C>(
-  setupCtx: SetupContext<C>,
-  requestId: string,
-): IndexerContext<C> {
-  return { ...setupCtx, requestId };
-}
+export { KaleidoClient } from './kaleido-client.js';
+export type { KaleidoClientConfig } from './kaleido-client.js';
+
+export type { SetupContext } from '@kaleido-io/core/context';
+export { createSetupContext } from '@kaleido-io/core/context';
+
+export {
+  newLogger,
+  setLoggerFactory,
+  defaultLoggerFactory,
+} from './log/logger.js';
+export type { Logger, LoggerFactory } from './log/logger.js';

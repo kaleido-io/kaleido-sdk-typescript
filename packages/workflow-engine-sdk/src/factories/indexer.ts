@@ -15,7 +15,8 @@
 // limitations under the License.
 
 import type { IndexerHandlerDef } from '../app/types.js';
-import type { IndexerContext, SetupContext } from '../app/context.js';
+import type { SetupContext } from '@kaleido-io/core/context';
+import type { IndexerContext } from '../app/context.js';
 import type { EventProcessorEvent } from './event_processor.js';
 
 /**

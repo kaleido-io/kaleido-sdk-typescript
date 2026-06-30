@@ -17,7 +17,7 @@ Build and pack the SDK from the repo root (so workspace packages are resolved):
 ```bash
 # From repo root
 npm run build:packages
-npm pack --workspace packages/samples-sdk
+npm pack --workspace packages/kaleido-sdk
 ```
 
 #### Testing locally (before submitting a PR)
@@ -27,7 +27,7 @@ checkout so the template clone never hits GitHub and picks up your uncommitted
 changes:
 
 ```bash
-TARBALL=$(ls packages/samples-sdk/kaleido-io-samples-sdk-*.tgz)
+TARBALL=$(ls packages/kaleido-sdk/kaleido-io-kaleido-sdk-*.tgz)
 mkdir -p /tmp/ksdk-test && cd /tmp/ksdk-test
 KSDK_REPO_URL="$OLDPWD" npx "file:$TARBALL" init my-provider --template workflow-engine-provider
 ```
@@ -35,7 +35,7 @@ KSDK_REPO_URL="$OLDPWD" npx "file:$TARBALL" init my-provider --template workflow
 #### What SDK consumers run (once published to npm)
 
 ```bash
-npx @kaleido-io/samples-sdk init my-provider --template workflow-engine-provider
+npx @kaleido-io/kaleido-sdk init my-provider --template workflow-engine-provider
 ```
 
 The init script prompts you to choose a template when `--template` is omitted

@@ -26,7 +26,7 @@ holding and transfer events into the
 
 ```bash
 # 1. Initialize a new project from this template
-npx @kaleido-io/samples-sdk init my-canton-indexer --template canton-cip56-indexer
+npx @kaleido-io/kaleido-sdk init my-canton-indexer --template canton-cip56-indexer
 cd my-canton-indexer
 
 # 2. Install dependencies

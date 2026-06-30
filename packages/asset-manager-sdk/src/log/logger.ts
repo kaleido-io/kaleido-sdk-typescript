@@ -14,19 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { SetupContext } from '@kaleido-io/core/context';
-
-/**
- * Context injected into indexer `indexBatch` callbacks.
- * Extends {@link SetupContext} with the request-scoped ID for the current batch.
- */
-export interface IndexerContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
-  readonly requestId: string;
-}
-
-export function createIndexerContext<C>(
-  setupCtx: SetupContext<C>,
-  requestId: string,
-): IndexerContext<C> {
-  return { ...setupCtx, requestId };
-}
+// Re-export from @kaleido-io/core so this package shares one bundled logger
+// implementation (and one setLoggerFactory state) with its HTTP transport.
+export { newLogger, setLoggerFactory, defaultLoggerFactory } from '@kaleido-io/core/log';
+export type { Logger, LoggerFactory } from '@kaleido-io/core/log';

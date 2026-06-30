@@ -169,7 +169,10 @@ export { HandlerRuntimeMode } from "./runtime/handler_runtime";
 
 // ── Builder API ───────────────────────────────────────────────────────────────
 
-export type { SetupContext, IndexerContext } from './app/context';
+export type { SetupContext } from '@kaleido-io/core/context';
+export { createSetupContext } from '@kaleido-io/core/context';
+export type { IndexerContext } from './app/context';
+export { createIndexerContext } from './app/context';
 export type { IndexerHandlerDef, TransactionHandlerRegistration } from './app/types';
 export { ensureStream } from './stream/ensure-stream';
 export type { EnsureStreamOptions } from './stream/ensure-stream';

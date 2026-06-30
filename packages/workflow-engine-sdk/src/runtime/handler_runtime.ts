@@ -148,6 +148,13 @@ export class HandlerRuntime {
   private engineClient: EngineClient;
   private wsProxyAdapter: WSProxyAdapter;
 
+  /**
+   * Optional handler invoked when a SETUP_TRIGGER_REQUEST arrives. Registered by
+   * WorkflowEngineClient; absent during low-level direct-runtime usage (which has
+   * no setup() lifecycle of its own).
+   */
+  private setupTriggerHandler?: (authRef: string) => Promise<{ status: 'success' | 'error'; errors?: string[] }>;
+
   constructor(config: HandlerRuntimeConfig) {
     if (config.server) {
       this.mode = HandlerRuntimeMode.INBOUND;
@@ -188,6 +195,19 @@ export class HandlerRuntime {
    */
   registerEventProcessor(name: string, handler: EventProcessor): void {
     this.eventProcessors.set(name, handler);
+  }
+
+  /**
+   * Register a callback invoked when the provider-proxy dispatches a setup trigger.
+   * The callback runs the registered setup hooks with the supplied authRef and returns
+   * the aggregated result. When no callback is registered (e.g. low-level direct-runtime
+   * use), incoming SETUP_TRIGGER_REQUEST messages are acknowledged with success — this
+   * keeps deploy-time triggers from failing against runtimes that have no setup hooks.
+   */
+  registerSetupTriggerHandler(
+    handler: (authRef: string) => Promise<{ status: 'success' | 'error'; errors?: string[] }>,
+  ): void {
+    this.setupTriggerHandler = handler;
   }
 
   /**
@@ -557,6 +577,9 @@ export class HandlerRuntime {
       case WSMessageType.SERVICE_PROXY_RESPONSE:
         this.wsProxyAdapter.handleResponse(msg as ServiceProxyResponse);
         break;
+      case WSMessageType.SETUP_TRIGGER_REQUEST:
+        this.handleSetupTriggerRequest(msg);
+        break;
       case WSMessageType.PROTOCOL_ERROR:
         log.error('Protocol error received', { error: msg.error });
         break;
@@ -567,6 +590,37 @@ export class HandlerRuntime {
       default:
         log.warn('Unknown message type', { messageType: msg.messageType });
     }
+  }
+
+  private async handleSetupTriggerRequest(msg: any): Promise<void> {
+    const requestId = msg?.requestId;
+    const authRef = msg?.authRef;
+    log.info('Setup trigger request received', { requestId, authRefLen: typeof authRef === 'string' ? authRef.length : 0 });
+    let status: 'success' | 'error' = 'success';
+    let errors: string[] | undefined;
+    if (typeof requestId !== 'string' || !requestId) {
+      log.warn('Setup trigger request missing requestId; dropping');
+      return;
+    }
+    if (this.setupTriggerHandler) {
+      try {
+        const res = await this.setupTriggerHandler(typeof authRef === 'string' ? authRef : '');
+        status = res.status;
+        errors = res.errors;
+      } catch (err) {
+        status = 'error';
+        errors = [getErrorMessage(err)];
+      }
+    }
+    // When no handler is registered (low-level runtime use), we still acknowledge so
+    // service-manager's best-effort dispatch sees a successful response rather than a
+    // timeout — there are simply no setup hooks to run.
+    this.sendMessage({
+      messageType: WSMessageType.SETUP_TRIGGER_RESPONSE,
+      requestId,
+      status,
+      ...(errors && errors.length > 0 ? { errors } : {}),
+    });
   }
 
   private async handleTransactionsMessage(batch: WSHandleTransactions): Promise<void> {

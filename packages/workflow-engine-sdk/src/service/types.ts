@@ -14,50 +14,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ServiceBindingAuth } from "@kaleido-io/core/http";
-export { ServiceBindingAuth };
-
-/**
- * Configuration for a single service binding.
- *
- * - `bindingType: 'hosted'` — routes requests through the WebSocket proxy
- *   transport. The `id` identifies the service instance on the proxy side
- *   (which maps to the actual service URL). No `url` or `auth` needed.
- * - `bindingType: 'non-hosted'` (default) — direct HTTP transport using the
- *   provided `url` and optional `auth`.
- */
-export type ServiceBindingConfig =
-  | NonHostedServiceBindingConfig
-  | HostedServiceBindingConfig;
-
-export interface NonHostedServiceBindingConfig {
-  /** Routing key identifying the target service type (e.g. 'asset-manager', 'key-manager', 'apigw') */
-  type: string;
-  bindingType: "non-hosted";
-  /** Base URL for direct HTTP. */
-  url: string;
-  /** Auth credentials for direct HTTP. */
-  auth: ServiceBindingAuth;
-  /** Max retry attempts (default: 3) */
-  maxRetries?: number;
-  /** Request timeout in ms (default: 30000) */
-  timeout?: number;
-}
-
-export interface HostedServiceBindingConfig {
-  /** Routing key identifying the target service type (e.g. 'asset-manager', 'key-manager', 'apigw') */
-  type: string;
-  bindingType: "hosted";
-  /** Service instance identifier. Sent to the proxy to resolve the actual service URL. */
-  id: string;
-  /** Max retry attempts (default: 3) */
-  maxRetries?: number;
-  /** Request timeout in ms (default: 30000) */
-  timeout?: number;
-}
-
-/**
- * Map of named service bindings parsed from config.
- * Keys are binding names (e.g. 'asset-manager'), values are their config.
- */
-export type ServiceBindingsMap = Record<string, ServiceBindingConfig>;
+// The service-binding vocabulary is owned by @kaleido-io/core (alongside
+// ServiceClientOptions / ServiceBindingAuth / the binding resolvers). These are
+// re-exported here so the workflow-engine-sdk public API is unchanged for
+// existing importers of `../service/types`.
+export { ServiceBindingAuth } from "@kaleido-io/core/http";
+export {
+  ServiceBindingConfig,
+  NonHostedServiceBindingConfig,
+  HostedServiceBindingConfig,
+  ServiceBindingsMap,
+} from "@kaleido-io/core";

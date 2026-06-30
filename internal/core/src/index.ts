@@ -15,4 +15,15 @@
 // limitations under the License.
 
 export * from './http/index.js';
-export { resolveServiceBinding } from './config/service-binding.js';
+export {
+  resolveServiceBinding,
+  resolveServiceBindingFromMap,
+} from './config/service-binding.js';
+export type {
+  ServiceBindingConfig,
+  NonHostedServiceBindingConfig,
+  HostedServiceBindingConfig,
+  ServiceBindingsMap,
+} from './config/service-binding.js';
+export type { SetupContext } from './context/index.js';
+export { createSetupContext } from './context/index.js';

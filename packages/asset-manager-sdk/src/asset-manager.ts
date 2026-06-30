@@ -58,7 +58,8 @@ import {
   TransferInput,
   UpsertManyResult,
 } from "./interfaces/index.js";
-import { newLogger, type SetupContext } from "@kaleido-io/workflow-engine-sdk";
+import type { SetupContext } from '@kaleido-io/core/context';
+import { newLogger } from './log/logger.js';
 
 const log = newLogger("AssetManagerClient");
 
@@ -104,11 +105,30 @@ function resolveOptions(
 
 export class AssetManagerClient extends ServiceClient {
   private readonly apiVersion: string;
+  private readonly defaultBulkUpsertSignal?: AbortSignal;
+
+  /**
+   * Build an AssetManagerClient from a named service binding in the Kaleido
+   * config file (`service-bindings.<bindingName>`).
+   *
+   * This path resolves direct HTTP (non-hosted) bindings from config and
+   * constructs the client with explicit `ServiceClientOptions`.
+   */
+  static fromConfigFile(
+    bindingName: string = 'asset-manager',
+    configFilePath?: string,
+  ): AssetManagerClient {
+    const opts = resolveServiceBinding(bindingName, configFilePath);
+    return new AssetManagerClient(opts);
+  }
 
   constructor(ctxOrOptsOrName: SetupContext | ServiceClientOptions | string, bindingName?: string) {
     const opts = resolveOptions(ctxOrOptsOrName, bindingName);
     super(createServiceTransport(opts));
     this.apiVersion = apiVersion(opts);
+    if (typeof ctxOrOptsOrName !== 'string' && 'getServiceClientOptions' in ctxOrOptsOrName) {
+      this.defaultBulkUpsertSignal = ctxOrOptsOrName.signal;
+    }
   }
 
   /**
@@ -116,7 +136,10 @@ export class AssetManagerClient extends ServiceClient {
    * Each process batch should call this to get a fresh builder with no accumulated state.
    */
   getNewBulkUpsertBuilder(options?: BulkUpsertBuilderOptions): BulkUpsertBuilder {
-    return new BulkUpsertBuilder(this, options);
+    return new BulkUpsertBuilder(this, {
+      ...options,
+      signal: options?.signal ?? this.defaultBulkUpsertSignal,
+    });
   }
 
   // Status

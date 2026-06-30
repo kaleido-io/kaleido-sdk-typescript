@@ -26,7 +26,7 @@ into the [Kaleido Asset Manager](https://docs.kaleido.io/platform/digital-assets
 
 ```bash
 # 1. Initialize a new project from this template
-npx @kaleido-io/samples-sdk init my-btc-indexer --template btc-indexer
+npx @kaleido-io/kaleido-sdk init my-btc-indexer --template btc-indexer
 cd my-btc-indexer
 
 # 2. Install dependencies

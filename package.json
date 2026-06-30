@@ -30,11 +30,11 @@
     "samples/*"
   ],
   "scripts": {
-    "build:packages": "npm run build --prefix internal/core && npm run build -w packages/workflow-engine-sdk && npm run build -w packages/connector-sdk && npm run build -w packages/asset-manager-sdk",
+    "build:packages": "npm run build --prefix internal/core && npm run build -w packages/workflow-engine-sdk && npm run build -w packages/connector-sdk && npm run build -w packages/asset-manager-sdk && npm run build -w packages/kaleido-sdk",
     "patch-local-deps": "node scripts/patch-local-deps.js",
     "build:samples": "npm run build -w samples/workflow-engine-provider -w samples/erc20-indexer -w samples/btc-indexer -w samples/canton-cip56-indexer -w samples/native-eth-indexer -w samples/bulk-upsert-sample -w samples/dependency-ordering-sample --if-present",
     "build": "npm run build:packages && npm run build:samples",
-    "test:packages": "npm run test --prefix internal/core && npm test -w packages/asset-manager-sdk -w packages/workflow-engine-sdk",
+    "test:packages": "npm run test --prefix internal/core && npm test -w packages/asset-manager-sdk -w packages/workflow-engine-sdk -w packages/kaleido-sdk",
     "test:samples": "npm test -w samples/workflow-engine-provider -w samples/erc20-indexer -w samples/btc-indexer -w samples/canton-cip56-indexer -w samples/native-eth-indexer",
     "test": "npm run test:packages && npm run test:samples",
     "lint": "npm run lint -w packages/workflow-engine-sdk"

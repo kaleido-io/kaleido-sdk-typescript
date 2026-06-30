@@ -53,6 +53,33 @@ export enum WSMessageType {
   ENGINE_API_SUBMIT_TRANSACTIONS_RESULT = 'engineapi_submit_transactions_result',
   SERVICE_PROXY_REQUEST = 'service-proxy-request',
   SERVICE_PROXY_RESPONSE = 'service-proxy-response',
+  SETUP_TRIGGER_REQUEST = 'setup-trigger-request',
+  SETUP_TRIGGER_RESPONSE = 'setup-trigger-response',
+}
+
+/**
+ * Setup trigger request: emitted by the provider-proxy when an admin dispatches
+ * a deploy-time setup() via service-manager. The `authRef` references a bearer
+ * the proxy has cached for the duration of the setup; the SDK passes it through
+ * SetupContext so any service-proxy calls inside setup() are authorised as the
+ * deploying user.
+ */
+export interface SetupTriggerRequest {
+  messageType: WSMessageType.SETUP_TRIGGER_REQUEST;
+  requestId: string;
+  authRef: string;
+}
+
+/**
+ * Setup trigger response: the SDK's reply to a SETUP_TRIGGER_REQUEST. status is
+ * "success" when all setup hooks completed; "error" otherwise, with errors[]
+ * carrying one entry per failed hook.
+ */
+export interface SetupTriggerResponse {
+  messageType: WSMessageType.SETUP_TRIGGER_RESPONSE;
+  requestId: string;
+  status: 'success' | 'error';
+  errors?: string[];
 }
 
 export enum WSHandlerType {

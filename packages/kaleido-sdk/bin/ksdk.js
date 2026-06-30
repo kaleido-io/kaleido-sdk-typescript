@@ -41,19 +41,19 @@ if (command === 'init') {
   });
 } else {
   console.log(`
-@kaleido-io/samples-sdk CLI
+@kaleido-io/kaleido-sdk CLI
 
 Usage:
-  npx @kaleido-io/samples-sdk <command> [options]
+  npx @kaleido-io/kaleido-sdk <command> [options]
 
 Commands:
   init <project-name>    Create a new provider project from template
 
 Examples:
-  npx @kaleido-io/samples-sdk init my-provider
+  npx @kaleido-io/kaleido-sdk init my-provider
 
 For more information, run:
-  npx @kaleido-io/samples-sdk init --help
+  npx @kaleido-io/kaleido-sdk init --help
 `);
   process.exit(command ? 1 : 0);
 }

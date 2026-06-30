@@ -14,6 +14,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+export {
+  newLogger,
+  setLoggerFactory,
+  defaultLoggerFactory,
+} from '@kaleido-io/workflow-engine-sdk';
+export type { Logger, LoggerFactory } from '@kaleido-io/workflow-engine-sdk';
+
 export * from './evm/index.js';
 export * from './btc/index.js';
 export * from './canton/index.js';

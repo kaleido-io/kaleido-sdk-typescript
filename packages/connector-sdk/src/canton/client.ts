@@ -14,7 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { type SetupContext, ensureStream } from '@kaleido-io/workflow-engine-sdk';
+import type { SetupContext } from '@kaleido-io/core/context';
+import { ensureStream, ConfigLoader } from '@kaleido-io/workflow-engine-sdk';
 import type { CantonContractEventsConfig } from './index.js';
 
 /**
@@ -23,6 +24,19 @@ import type { CantonContractEventsConfig } from './index.js';
  */
 export class CantonConnectorClient {
   private readonly bindingName: string;
+
+  static fromConfigFile(
+    bindingName: string = 'canton-connector',
+    configFilePath?: string,
+  ): CantonConnectorClient {
+    const bindings = ConfigLoader.loadServiceBindings(configFilePath);
+    if (Object.keys(bindings).length > 0 && !bindings[bindingName]) {
+      throw new Error(
+        `Service binding '${bindingName}' not found. Available bindings: ${Object.keys(bindings).join(', ') || '(none)'}`,
+      );
+    }
+    return new CantonConnectorClient(bindingName);
+  }
 
   constructor(bindingName: string = 'canton-connector') {
     this.bindingName = bindingName;

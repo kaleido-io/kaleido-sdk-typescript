@@ -14,19 +14,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { SetupContext } from '@kaleido-io/core/context';
+import { defineConfig } from 'tsup';
 
-/**
- * Context injected into indexer `indexBatch` callbacks.
- * Extends {@link SetupContext} with the request-scoped ID for the current batch.
- */
-export interface IndexerContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
-  readonly requestId: string;
-}
-
-export function createIndexerContext<C>(
-  setupCtx: SetupContext<C>,
-  requestId: string,
-): IndexerContext<C> {
-  return { ...setupCtx, requestId };
-}
+export default defineConfig({
+  entry: {
+    'src/index': 'src/index.ts',
+  },
+  format: ['esm'],
+  dts: true,
+  sourcemap: true,
+  clean: true,
+  // Keep npm packages and the published @kaleido-io/* service SDKs external —
+  // they are real runtime dependencies. Bundle @kaleido-io/core inline so the
+  // types/utilities it provides are erased at compile time rather than becoming
+  // a runtime dependency (matching workflow-engine-sdk / asset-manager-sdk).
+  external: [/^[^./]/],
+  noExternal: ['@kaleido-io/core'],
+});

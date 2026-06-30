@@ -1,4 +1,4 @@
-import { newLogger } from "@kaleido-io/workflow-engine-sdk";
+import { newLogger } from './log/logger.js';
 import {
   ActivityBulkInput,
   AddressBulkInput,

@@ -18,9 +18,100 @@ import * as fs from 'fs';
 import yaml from 'js-yaml';
 import type { ServiceClientOptions } from '../http/service_client.js';
 import type { ServiceBindingAuth } from '../http/types.js';
+import type { IWSProxy } from '../http/ws_proxy_transport.js';
 
 const KALEIDO_CONFIG_FILE = 'KALEIDO_CONFIG_FILE';
 const WFE_CONFIG_FILE = 'WFE_CONFIG_FILE';
+
+/**
+ * Configuration for a single service binding.
+ *
+ * - `bindingType: 'hosted'` — routes requests through the WebSocket proxy
+ *   transport. The `id` identifies the service instance on the proxy side
+ *   (which maps to the actual service URL). No `url` or `auth` needed.
+ * - `bindingType: 'non-hosted'` (default) — direct HTTP transport using the
+ *   provided `url` and optional `auth`.
+ */
+export type ServiceBindingConfig =
+  | NonHostedServiceBindingConfig
+  | HostedServiceBindingConfig;
+
+export interface NonHostedServiceBindingConfig {
+  /** Routing key identifying the target service type (e.g. 'asset-manager', 'key-manager', 'apigw') */
+  type: string;
+  bindingType: 'non-hosted';
+  /** Base URL for direct HTTP. */
+  url: string;
+  /** Auth credentials for direct HTTP. */
+  auth: ServiceBindingAuth;
+  /** Max retry attempts (default: 3) */
+  maxRetries?: number;
+  /** Request timeout in ms (default: 30000) */
+  timeout?: number;
+}
+
+export interface HostedServiceBindingConfig {
+  /** Routing key identifying the target service type (e.g. 'asset-manager', 'key-manager', 'apigw') */
+  type: string;
+  bindingType: 'hosted';
+  /** Service instance identifier. Sent to the proxy to resolve the actual service URL. */
+  id: string;
+  /** Max retry attempts (default: 3) */
+  maxRetries?: number;
+  /** Request timeout in ms (default: 30000) */
+  timeout?: number;
+}
+
+/**
+ * Map of named service bindings parsed from config.
+ * Keys are binding names (e.g. 'asset-manager'), values are their config.
+ */
+export type ServiceBindingsMap = Record<string, ServiceBindingConfig>;
+
+/**
+ * Resolve a parsed service binding to ServiceClientOptions.
+ *
+ * Non-hosted bindings resolve to a direct HTTP transport with no further
+ * dependencies. Hosted bindings require a WebSocket proxy adapter (`wsProxy`),
+ * which only the workflow-engine-sdk runtime can supply once connected — pass
+ * the adapter obtained from `WorkflowEngineClient.getWSProxyAdapter()`.
+ */
+export function resolveServiceBindingFromMap(
+  binding: ServiceBindingConfig,
+  wsProxy?: IWSProxy,
+): ServiceClientOptions {
+  switch (binding.bindingType) {
+    case 'hosted':
+      if (!wsProxy) {
+        throw new Error(
+          `Service binding of type '${binding.type}' is a hosted binding and requires a ` +
+            `live workflow-engine connection to resolve — supply a wsProxy adapter`,
+        );
+      }
+      return {
+        transport: 'ws-proxy',
+        wsProxy,
+        serviceType: binding.type,
+        id: binding.id,
+      };
+
+    case 'non-hosted':
+      return {
+        transport: 'http',
+        url: binding.url,
+        auth: binding.auth,
+        maxRetries: binding.maxRetries,
+        timeout: binding.timeout,
+      };
+
+    default: {
+      const _exhaustive: never = binding;
+      throw new Error(
+        `Service binding has unknown bindingType: ${(_exhaustive as ServiceBindingConfig).bindingType}`,
+      );
+    }
+  }
+}
 
 function resolveConfigPath(configFilePath?: string): string {
   return (

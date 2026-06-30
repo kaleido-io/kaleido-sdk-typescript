@@ -29,8 +29,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Fallback only used when a package's version can't be read from the cloned repo.
-// Must NOT be derived from samples-sdk's own version — the @kaleido-io/* SDK
-// packages are versioned independently, so '^<samples-sdk version>' would pin to
+// Must NOT be derived from kaleido-sdk's own version — the @kaleido-io/* SDK
+// packages are versioned independently, so '^<kaleido-sdk version>' would pin to
 // a version that doesn't exist for them. '*' resolves to the latest published.
 const FALLBACK_VERSION = '*';
 
@@ -86,7 +86,7 @@ const args = process.argv.slice(2);
 
 if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
   console.log(`
-Usage: npx @kaleido-io/samples-sdk init [project-name] [options]
+Usage: npx @kaleido-io/kaleido-sdk init [project-name] [options]
 
   project-name        Name of the new project directory to create.
                       Omit to add a template into the current project.
@@ -96,9 +96,9 @@ Options:
   --help, -h          Show this help message
 
 Examples:
-  npx @kaleido-io/samples-sdk init my-provider --template workflow-engine-provider
-  npx @kaleido-io/samples-sdk init @my-org/my-provider --template erc20-indexer
-  npx @kaleido-io/samples-sdk init --template erc20-indexer    # add to current project
+  npx @kaleido-io/kaleido-sdk init my-provider --template workflow-engine-provider
+  npx @kaleido-io/kaleido-sdk init @my-org/my-provider --template erc20-indexer
+  npx @kaleido-io/kaleido-sdk init --template erc20-indexer    # add to current project
 `);
   process.exit(0);
 }
@@ -227,7 +227,7 @@ try {
   // Build a per-package version map by reading manifests directly from git objects.
   // git show fetches the blob lazily for remote partial clones and works with local paths too.
   for (const manifestPath of [
-    'packages/samples-sdk/package.json',
+    'packages/kaleido-sdk/package.json',
     'packages/workflow-engine-sdk/package.json',
     'packages/connector-sdk/package.json',
     'packages/asset-manager-sdk/package.json',

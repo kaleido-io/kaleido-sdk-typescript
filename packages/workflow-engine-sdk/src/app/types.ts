@@ -16,7 +16,8 @@
 
 import type { TransactionHandler } from '../interfaces/handlers.js';
 import type { EventProcessorEvent } from '../factories/event_processor.js';
-import type { SetupContext, IndexerContext } from './context.js';
+import type { SetupContext } from '@kaleido-io/core/context';
+import type { IndexerContext } from './context.js';
 
 /**
  * Handler definition for an event-processor indexer.

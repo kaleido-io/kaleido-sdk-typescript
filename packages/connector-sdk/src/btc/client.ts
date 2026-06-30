@@ -14,8 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { SetupContext } from '@kaleido-io/workflow-engine-sdk';
+import type { SetupContext } from '@kaleido-io/core/context';
 import { ensureStream } from '@kaleido-io/workflow-engine-sdk';
+import { ConfigLoader } from '@kaleido-io/workflow-engine-sdk';
 import type { BTCTransactionEventsConfig } from './stream-config.js';
 
 /**
@@ -24,7 +25,21 @@ import type { BTCTransactionEventsConfig } from './stream-config.js';
  * to repeat it at every call site.
  */
 export class BTCConnectorClient {
-  constructor(private readonly bindingName: string = 'btc-connector') {}
+  static fromConfigFile(
+    bindingName: string = 'btc-connector',
+    configFilePath?: string,
+  ): BTCConnectorClient {
+    const bindings = ConfigLoader.loadServiceBindings(configFilePath);
+    if (Object.keys(bindings).length > 0 && !bindings[bindingName]) {
+      throw new Error(
+        `Service binding '${bindingName}' not found. Available bindings: ${Object.keys(bindings).join(', ') || '(none)'}`,
+      );
+    }
+    return new BTCConnectorClient(bindingName);
+  }
+
+  constructor(private readonly bindingName: string = 'btc-connector') {
+  }
 
   /**
    * Idempotently create or update a transactionEvents stream on the BTC Connector.

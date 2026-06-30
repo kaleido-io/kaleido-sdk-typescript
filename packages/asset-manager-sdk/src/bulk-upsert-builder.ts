@@ -16,7 +16,6 @@ import {
   TransferBulkInput,
 } from "./interfaces/index.js";
 import { BulkUpsertAutoFlush } from "./bulk-upsert-autoflush.js";
-import { RequestContext } from "@kaleido-io/workflow-engine-sdk";
 
 export interface IBulkUpsertClient {
   bulkUpsert(input: BulkUpsertInput, options?: AxiosRequestConfig): Promise<unknown>;
@@ -47,10 +46,10 @@ export enum DuplicateStrategy {
 export interface BulkUpsertBuilderOptions {
 
   /**
-   * Primary use case is to use this within the indexer, where we are working
-   * within the request context of an active workflow engine request.
+   * Abort signal for in-flight bulk upsert requests — e.g. pass `ctx.signal`
+   * from an indexer batch handler so upserts cancel when the batch is aborted.
    */
-  reqContext?: RequestContext;
+  signal?: AbortSignal;
 
   /**
    * When `true` (default), if a bulk upsert fails with an invalid-reference
@@ -90,13 +89,13 @@ export class BulkUpsertBuilder {
   private updates: BulkUpsertInput = {};
   private finalizers: (() => void | Promise<void>)[] = [];
   private count: number = 0;
-  private reqContext: RequestContext | undefined;
+  private signal: AbortSignal | undefined;
 
   constructor(
     private client: IBulkUpsertClient,
     private options: BulkUpsertBuilderOptions = {},
   ) {
-    this.reqContext= options?.reqContext;
+    this.signal = options?.signal;
   }
 
   autoFlush(flushAt: number): BulkUpsertAutoFlush {
@@ -287,7 +286,7 @@ export class BulkUpsertBuilder {
     try {
       if (this.hasUpdates()) {
         try {
-          await this.client.bulkUpsert(this.updates, { signal: this.reqContext?.signal });
+          await this.client.bulkUpsert(this.updates, { signal: this.signal });
         } catch (err) {
           if ((this.options.retryOnInvalidRef ?? true) && isInvalidRefError(err)) {
             await this.retryIndividually();
@@ -320,7 +319,7 @@ export class BulkUpsertBuilder {
         if (!Array.isArray(items)) continue;
         for (let i = 0; i < items.length; i++) {
           try {
-            await this.client.bulkUpsert({ [key]: [items[i]] }, { signal: this.reqContext?.signal });
+            await this.client.bulkUpsert({ [key]: [items[i]] }, { signal: this.signal });
             items.splice(i--, 1);
             anySucceeded = true;
           } catch (err) {

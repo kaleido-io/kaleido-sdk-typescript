@@ -14,8 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { SetupContext } from '@kaleido-io/workflow-engine-sdk';
+import type { SetupContext } from '@kaleido-io/core/context';
 import { ensureStream } from '@kaleido-io/workflow-engine-sdk';
+import { ConfigLoader } from '@kaleido-io/workflow-engine-sdk';
 import type { EVMTransactionEventsConfig } from './stream-config.js';
 
 /**
@@ -27,6 +28,19 @@ import type { EVMTransactionEventsConfig } from './stream-config.js';
  */
 export class EVMConnectorClient {
   private readonly connectorBindingName: string;
+
+  static fromConfigFile(
+    bindingName: string = 'evm-connector',
+    configFilePath?: string,
+  ): EVMConnectorClient {
+    const bindings = ConfigLoader.loadServiceBindings(configFilePath);
+    if (Object.keys(bindings).length > 0 && !bindings[bindingName]) {
+      throw new Error(
+        `Service binding '${bindingName}' not found. Available bindings: ${Object.keys(bindings).join(', ') || '(none)'}`,
+      );
+    }
+    return new EVMConnectorClient(bindingName);
+  }
 
   constructor(bindingName: string = 'evm-connector') {
     this.connectorBindingName = bindingName;
