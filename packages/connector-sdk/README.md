@@ -24,19 +24,21 @@ Typical use cases:
 
 Applications using the Connector SDK can run in one of 2 modes. Hosted or non-hosted.
 
+Step-by-step instructions: **[Running locally](#running-locally)** (development) · **[Hosting on the Kaleido platform](#hosting-on-the-kaleido-platform)** (production).
+
 ### Hosted
 
 The application is built as a docker images which is uploaded to the Kaleido Artifact Registry. A provider service is created inside the Kaleido platform to instantiate an instance of the provider which runs as a Kaleido managed service.
 
 In hosted mode the application has conenction and auth context information automatically provided to it by service-bindings.
 
-This is the intended usage mode for running a provider in production.
+This is the intended usage mode for running a provider in production. See [Hosting on the Kaleido platform](#hosting-on-the-kaleido-platform) for build, push, and deploy steps.
 
 ### Non-hosted
 
 The application runs locally on your development workstation, either as a typescript application or as a dockerfile. Connection information is provided as configuration via non-hosted service bindings which contain connection information required to connect to Kaleido platform services.
 
-Running in this mode is intended to allow you to iterate quickly during development of a provider. It is not reccomended to run in non-hosted mode for production use-cases.
+Running in this mode is intended to allow you to iterate quickly during development of a provider. It is not reccomended to run in non-hosted mode for production use-cases. See [Running locally](#running-locally) for setup and verification steps.
 
 ## Quick start
 
@@ -437,6 +439,167 @@ await new CantonConnectorClient('canton-connector').ensureStream(ctx, {
 
 For the low-level `ensureStream` API (without chain client wrappers), see `@kaleido-io/workflow-engine-sdk`.
 
+## Stream configuration types
+
+### `EVMTransactionEventsConfig`
+
+Configuration for EVM connector stream factories (`evmTransactions`, `nativeEthTransactions`). Key fields:
+
+| Field | Description |
+|---|---|
+| `abi` | ABI JSON for decoding logs, inputs, and errors |
+| `fromBlock` | `'latest'`, `'earliest'`, or block number string |
+| `batchSize` / `batchTimeout` / `pollTimeout` | Batch delivery tuning |
+| `requiredConfirmations` | Block confirmations before delivery |
+| `logFilters` | Address + event signature filters (OR-combined) |
+| `unfiltered` | Must be `true` when no filters are set |
+| `enableBlockTrace` | Capture native ETH transfers via trace |
+| `eventMode` | `'all'`, `'require_decoded'`, or `'filter_decoded'` |
+| `catchupPageSize` / `catchupBlockFetchAhead` | Catch-up performance |
+| `includeInputs` / `includeBinaryInput` / `includeBinaryLogs` | Payload shape controls |
+
+Also exported: `EVMLogFilter`.
+
+### `BTCTransactionEventsConfig`
+
+Configuration for the BTC `transactionEvents` factory. Key fields: `fromBlock`, `batchSize`, `batchTimeout`, `pollTimeout`, `requiredConfirmations`, `unfiltered`, `catchupPageSize`, `batchUTXOSoftLimit`.
+
+### `CantonContractEventsConfig`
+
+Configuration for the Canton `contractEvents` factory:
+
+| Field | Description |
+|---|---|
+| `fromOffset` / `fromCurrentOffset` | Starting ledger position |
+| `includeCreatedEventBlob` | Include created-event blob in payloads |
+| `userId` | Canton user id for the subscription |
+| `filters.parties` | Parties to listen on |
+| `filters.templateIds` | Template filters (`#Package:Module:Entity`) |
+| `filters.interfaceIds` | Interface filters |
+| `stream.batchSize` / `stream.pollTimeout` / `stream.channelBufferSize` | Delivery tuning |
+
+Also exported: `CantonContractEventsFilters`, `CantonContractEventsStream`.
+
+## Event and payload types
+
+Use these types when implementing `indexBatch` handlers (`EventProcessorEvent<T>` from `@kaleido-io/workflow-engine-sdk`).
+
+### EVM (`@kaleido-io/connector-sdk/evm`)
+
+| Type | Description |
+|---|---|
+| `EVMTransactionEvent` | Top-level event delivered to your handler |
+| `EVMBlockInfo` | Block metadata |
+| `EVMTransaction` | Raw transaction fields |
+| `EVMTransactionReceipt` | Receipt summary |
+| `EVMDecodedLogEvent` | ABI-decoded log (`signature`, `address`, `data`) |
+| `EVMDecodedError` / `EVMDecodedFunctionInput` | Decoded revert / input |
+| `EVMNativeETHTransfer` | Native ETH transfer from block trace |
+
+### BTC (`@kaleido-io/connector-sdk/btc`)
+
+| Type | Description |
+|---|---|
+| `BTCTransactionEvent` | Top-level event (`network`, `block`, `tx`) |
+| `TxSummary` | Transaction with `vin` / `vout` |
+| `TxSummaryVIn` / `TxSummaryVOut` | Inputs and outputs |
+| `BlockIdentity` | Block height and hash |
+| `NetworkInfo` | Network name and magic |
+
+### Canton (`@kaleido-io/connector-sdk/canton`)
+
+| Type | Description |
+|---|---|
+| `CantonContractEvent` | Created / archived / exercised event |
+| `ContractInterfaceView` | Interface view on a contract event |
+| `HoldingView` / `TransferData` | CIP-56 decoded view shapes |
+| `HOLDING_INTERFACE` / `TRANSFER_INSTRUCTION_INTERFACE` | Well-known interface id strings |
+
+## BTC transaction specification types
+
+The BTC module exports types for building precise Bitcoin transactions via the connector (mirrors the connector's Go `btctypes` package):
+
+| Type | Description |
+|---|---|
+| `TransactionSpec` | Full transaction: `inputs`, `outputs`, optional `availableKeys`, `lockTime` |
+| `InputSpec` | Spend a UTXO (`txid`, `vout`, `scriptPubKey`, signing hints) |
+| `OutputSpec` | Create an output (`valueSat`, `scriptType`, `spenders`, …) |
+| `OutPointSpec` | UTXO outpoint reference |
+| `AvailableKey` | Key material for auto-matching signers |
+| `ScriptType` | Bitcoin script type strings (`p2pkh`, `p2wpkh`, `p2tr`, …) |
+| `SignatureHashType` | Sighash flags (`all`, `none`, `single`, …) |
+
+## Using with workflow engine indexers
+
+Indexers register on `WorkflowEngineClient` and receive connector events in `indexBatch`. Typical flow:
+
+1. **`setup(ctx)`** — call `connectorClient.ensureStream(ctx, …)` to create the stream; optionally bootstrap Asset Manager state
+2. **`indexBatch(ctx, events)`** — process typed events (often bulk-upserting into Asset Manager)
+
+```typescript
+import { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
+import { EVMConnectorClient } from '@kaleido-io/connector-sdk/evm';
+import type { EVMTransactionEvent } from '@kaleido-io/connector-sdk/evm';
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+
+interface MyConfig {
+  stream: { connectorBindingName: string; factory: string; name: string; eventSourceConfig: object };
+}
+
+class MyIndexer {
+  async setup(ctx) {
+    const { stream } = ctx.config as MyConfig;
+    await new EVMConnectorClient(stream.connectorBindingName).ensureStream(ctx, {
+      factory: stream.factory,
+      name: stream.name,
+      eventSourceConfig: stream.eventSourceConfig,
+    });
+  }
+
+  async indexBatch(ctx, events: { data: EVMTransactionEvent }[]) {
+    const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder();
+    for (const { data } of events) {
+      // map data.decodedEvents, data.ethTransfers, etc.
+    }
+    await builder.execute();
+  }
+}
+
+WorkflowEngineClient.fromConfigFile<MyConfig>()
+  .indexer('my-indexer', new MyIndexer())
+  .start();
+```
+
+See the [Workflow Engine SDK README](../workflow-engine-sdk/README.md) for indexer registration, and the [Asset Manager SDK README](../asset-manager-sdk/README.md) for bulk upsert patterns.
+
+## Logging
+
+Structured logging is re-exported from `@kaleido-io/workflow-engine-sdk` (same implementation as other Kaleido SDKs):
+
+```typescript
+import { newLogger, setLoggerFactory } from '@kaleido-io/connector-sdk';
+
+const log = newLogger('my-indexer');
+log.info('Ensuring EVM stream', { name: 'erc20-transfers' });
+```
+
+## Samples
+
+Relevant samples in this repository:
+
+| Sample | Chain | Demonstrates |
+|---|---|---|
+| [`samples/erc20-indexer`](../../samples/erc20-indexer) | EVM | `EVMConnectorClient`, ERC-20 log filters, Asset Manager upsert |
+| [`samples/native-eth-indexer`](../../samples/native-eth-indexer) | EVM | `nativeEthTransactions` factory, ETH transfers |
+| [`samples/btc-indexer`](../../samples/btc-indexer) | BTC | `BTCConnectorClient`, UTXO/event mapping |
+| [`samples/canton-cip56-indexer`](../../samples/canton-cip56-indexer) | Canton | `CantonConnectorClient`, CIP-56 interface views |
+
+See [Quick start](#quick-start) for scaffolding an indexer project from a template.
+
+## Deploying and running providers
+
+Detailed runbooks for the two modes in [Running hosted or non-hosted](#running-hosted-or-non-hosted). Configure bindings and app settings first via the [Configuration Model](#configuration-model).
+
 ## Running locally
 
 Use **non-hosted** mode to develop a provider on your workstation. Your process connects **outbound** to the workflow engine and to any **non-hosted** service bindings in `config.yaml`. Kaleido does not run the provider binary for you in this mode.
@@ -723,163 +886,6 @@ resource "kaleido_platform_service" "my_provider_service" {
    - Bulk upsert has per-request limits; reduce stream `batchSize` or use auto-flush thresholds in the indexer.
 
 Detailed, chain-specific notes: [`samples/btc-indexer`](../../samples/btc-indexer), [`samples/erc20-indexer`](../../samples/erc20-indexer), [`samples/canton-cip56-indexer`](../../samples/canton-cip56-indexer), [`samples/native-eth-indexer`](../../samples/native-eth-indexer), [`samples/workflow-engine-provider`](../../samples/workflow-engine-provider).
-
-## Stream configuration types
-
-### `EVMTransactionEventsConfig`
-
-Configuration for EVM connector stream factories (`evmTransactions`, `nativeEthTransactions`). Key fields:
-
-| Field | Description |
-|---|---|
-| `abi` | ABI JSON for decoding logs, inputs, and errors |
-| `fromBlock` | `'latest'`, `'earliest'`, or block number string |
-| `batchSize` / `batchTimeout` / `pollTimeout` | Batch delivery tuning |
-| `requiredConfirmations` | Block confirmations before delivery |
-| `logFilters` | Address + event signature filters (OR-combined) |
-| `unfiltered` | Must be `true` when no filters are set |
-| `enableBlockTrace` | Capture native ETH transfers via trace |
-| `eventMode` | `'all'`, `'require_decoded'`, or `'filter_decoded'` |
-| `catchupPageSize` / `catchupBlockFetchAhead` | Catch-up performance |
-| `includeInputs` / `includeBinaryInput` / `includeBinaryLogs` | Payload shape controls |
-
-Also exported: `EVMLogFilter`.
-
-### `BTCTransactionEventsConfig`
-
-Configuration for the BTC `transactionEvents` factory. Key fields: `fromBlock`, `batchSize`, `batchTimeout`, `pollTimeout`, `requiredConfirmations`, `unfiltered`, `catchupPageSize`, `batchUTXOSoftLimit`.
-
-### `CantonContractEventsConfig`
-
-Configuration for the Canton `contractEvents` factory:
-
-| Field | Description |
-|---|---|
-| `fromOffset` / `fromCurrentOffset` | Starting ledger position |
-| `includeCreatedEventBlob` | Include created-event blob in payloads |
-| `userId` | Canton user id for the subscription |
-| `filters.parties` | Parties to listen on |
-| `filters.templateIds` | Template filters (`#Package:Module:Entity`) |
-| `filters.interfaceIds` | Interface filters |
-| `stream.batchSize` / `stream.pollTimeout` / `stream.channelBufferSize` | Delivery tuning |
-
-Also exported: `CantonContractEventsFilters`, `CantonContractEventsStream`.
-
-## Event and payload types
-
-Use these types when implementing `indexBatch` handlers (`EventProcessorEvent<T>` from `@kaleido-io/workflow-engine-sdk`).
-
-### EVM (`@kaleido-io/connector-sdk/evm`)
-
-| Type | Description |
-|---|---|
-| `EVMTransactionEvent` | Top-level event delivered to your handler |
-| `EVMBlockInfo` | Block metadata |
-| `EVMTransaction` | Raw transaction fields |
-| `EVMTransactionReceipt` | Receipt summary |
-| `EVMDecodedLogEvent` | ABI-decoded log (`signature`, `address`, `data`) |
-| `EVMDecodedError` / `EVMDecodedFunctionInput` | Decoded revert / input |
-| `EVMNativeETHTransfer` | Native ETH transfer from block trace |
-
-### BTC (`@kaleido-io/connector-sdk/btc`)
-
-| Type | Description |
-|---|---|
-| `BTCTransactionEvent` | Top-level event (`network`, `block`, `tx`) |
-| `TxSummary` | Transaction with `vin` / `vout` |
-| `TxSummaryVIn` / `TxSummaryVOut` | Inputs and outputs |
-| `BlockIdentity` | Block height and hash |
-| `NetworkInfo` | Network name and magic |
-
-### Canton (`@kaleido-io/connector-sdk/canton`)
-
-| Type | Description |
-|---|---|
-| `CantonContractEvent` | Created / archived / exercised event |
-| `ContractInterfaceView` | Interface view on a contract event |
-| `HoldingView` / `TransferData` | CIP-56 decoded view shapes |
-| `HOLDING_INTERFACE` / `TRANSFER_INSTRUCTION_INTERFACE` | Well-known interface id strings |
-
-## BTC transaction specification types
-
-The BTC module exports types for building precise Bitcoin transactions via the connector (mirrors the connector's Go `btctypes` package):
-
-| Type | Description |
-|---|---|
-| `TransactionSpec` | Full transaction: `inputs`, `outputs`, optional `availableKeys`, `lockTime` |
-| `InputSpec` | Spend a UTXO (`txid`, `vout`, `scriptPubKey`, signing hints) |
-| `OutputSpec` | Create an output (`valueSat`, `scriptType`, `spenders`, …) |
-| `OutPointSpec` | UTXO outpoint reference |
-| `AvailableKey` | Key material for auto-matching signers |
-| `ScriptType` | Bitcoin script type strings (`p2pkh`, `p2wpkh`, `p2tr`, …) |
-| `SignatureHashType` | Sighash flags (`all`, `none`, `single`, …) |
-
-## Using with workflow engine indexers
-
-Indexers register on `WorkflowEngineClient` and receive connector events in `indexBatch`. Typical flow:
-
-1. **`setup(ctx)`** — call `connectorClient.ensureStream(ctx, …)` to create the stream; optionally bootstrap Asset Manager state
-2. **`indexBatch(ctx, events)`** — process typed events (often bulk-upserting into Asset Manager)
-
-```typescript
-import { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
-import { EVMConnectorClient } from '@kaleido-io/connector-sdk/evm';
-import type { EVMTransactionEvent } from '@kaleido-io/connector-sdk/evm';
-import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
-
-interface MyConfig {
-  stream: { connectorBindingName: string; factory: string; name: string; eventSourceConfig: object };
-}
-
-class MyIndexer {
-  async setup(ctx) {
-    const { stream } = ctx.config as MyConfig;
-    await new EVMConnectorClient(stream.connectorBindingName).ensureStream(ctx, {
-      factory: stream.factory,
-      name: stream.name,
-      eventSourceConfig: stream.eventSourceConfig,
-    });
-  }
-
-  async indexBatch(ctx, events: { data: EVMTransactionEvent }[]) {
-    const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder();
-    for (const { data } of events) {
-      // map data.decodedEvents, data.ethTransfers, etc.
-    }
-    await builder.execute();
-  }
-}
-
-WorkflowEngineClient.fromConfigFile<MyConfig>()
-  .indexer('my-indexer', new MyIndexer())
-  .start();
-```
-
-See the [Workflow Engine SDK README](../workflow-engine-sdk/README.md) for indexer registration, and the [Asset Manager SDK README](../asset-manager-sdk/README.md) for bulk upsert patterns.
-
-## Logging
-
-Structured logging is re-exported from `@kaleido-io/workflow-engine-sdk` (same implementation as other Kaleido SDKs):
-
-```typescript
-import { newLogger, setLoggerFactory } from '@kaleido-io/connector-sdk';
-
-const log = newLogger('my-indexer');
-log.info('Ensuring EVM stream', { name: 'erc20-transfers' });
-```
-
-## Samples
-
-Relevant samples in this repository:
-
-| Sample | Chain | Demonstrates |
-|---|---|---|
-| [`samples/erc20-indexer`](../../samples/erc20-indexer) | EVM | `EVMConnectorClient`, ERC-20 log filters, Asset Manager upsert |
-| [`samples/native-eth-indexer`](../../samples/native-eth-indexer) | EVM | `nativeEthTransactions` factory, ETH transfers |
-| [`samples/btc-indexer`](../../samples/btc-indexer) | BTC | `BTCConnectorClient`, UTXO/event mapping |
-| [`samples/canton-cip56-indexer`](../../samples/canton-cip56-indexer) | Canton | `CantonConnectorClient`, CIP-56 interface views |
-
-See [Quick start](#quick-start) for scaffolding an indexer project from a template.
 
 ## License
 

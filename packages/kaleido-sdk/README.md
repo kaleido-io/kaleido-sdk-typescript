@@ -90,6 +90,26 @@ Also exported from this package: `KaleidoClientConfig`, `SetupContext`, `createS
 
 For workflow engine handlers, asset manager REST APIs, connector stream setup, and chain-specific types, see the individual package READMEs rather than duplicating those examples here.
 
+## Running hosted or non-hosted
+
+Applications built with the Kaleido SDK — providers and indexers using `KaleidoClient` or the bundled service SDKs — can run in one of 2 modes. Hosted or non-hosted.
+
+Step-by-step instructions: **[Running locally](#running-locally)** (development) · **[Hosting on the Kaleido platform](#hosting-on-the-kaleido-platform)** (production).
+
+### Hosted
+
+The application is built as a docker images which is uploaded to the Kaleido Artifact Registry. A provider service is created inside the Kaleido platform to instantiate an instance of the provider which runs as a Kaleido managed service.
+
+In hosted mode the application has conenction and auth context information automatically provided to it by service-bindings.
+
+This is the intended usage mode for running a provider in production. See [Hosting on the Kaleido platform](#hosting-on-the-kaleido-platform) for build, push, and deploy steps.
+
+### Non-hosted
+
+The application runs locally on your development workstation, either as a typescript application or as a dockerfile. Connection information is provided as configuration via non-hosted service bindings which contain connection information required to connect to Kaleido platform services.
+
+Running in this mode is intended to allow you to iterate quickly during development of a provider. It is not reccomended to run in non-hosted mode for production use-cases. See [Running locally](#running-locally) for setup and verification steps.
+
 ## Quick Start: Scaffold a Project
 
 Install the package (globally optional — `npx` works without a prior install):
@@ -275,6 +295,49 @@ By default configuration is sourced from the folloging environment variables:
 - `CONFIG_FILE` - path to `provider-config.yaml`
 
 These paths are used to locate configuration when isntantiating new clients using the `fromConfigFile()` methods with no path argument. Using these environment variables means that you can inject configuration into a docker container at development time. When running hosted within the Kaleido platform the platform will write configuration information for service bindings in KALEIDO_CONFIG_FILE and will write the provided config file into CONFIG_FILE.
+
+## Logging
+
+All SDK packages share the same structured logger (implemented in `@kaleido-io/core` and re-exported by each public SDK). If you use multiple SDKs in one application, import logging from **one** package and use it consistently — `setLoggerFactory()` applies to that package's bundled logger.
+
+When you use the single entry point, import from `@kaleido-io/kaleido-sdk`:
+
+```ts
+import { newLogger, setLoggerFactory } from '@kaleido-io/kaleido-sdk';
+
+const log = newLogger('my-app');
+
+log.info('Provider started', { providerName: 'my-indexer' });
+log.debug('Processing batch', { count: 42 });
+log.warn('Retrying request', { attempt: 2 });
+log.error('Batch failed', { error: err.message });
+```
+
+To plug in your own backend (pino, winston, NestJS logger, etc.):
+
+```ts
+import { setLoggerFactory } from '@kaleido-io/kaleido-sdk';
+
+setLoggerFactory((context) => ({
+  debug: (msg, ...args) => myLogger.debug(`[${context}] ${msg}`, ...args),
+  info: (msg, ...args) => myLogger.info(`[${context}] ${msg}`, ...args),
+  warn: (msg, ...args) => myLogger.warn(`[${context}] ${msg}`, ...args),
+  error: (msg, ...args) => myLogger.error(`[${context}] ${msg}`, ...args),
+}));
+```
+
+If you depend on a single service SDK only, import `newLogger` and `setLoggerFactory` from that package instead — see each package README for its import path.
+
+## Package Documentation
+
+- [Kaleido TypeScript SDKs (monorepo)](../../README.md)
+- [Workflow Engine SDK docs](../workflow-engine-sdk/README.md)
+- [Asset Manager SDK docs](../asset-manager-sdk/README.md)
+- [Connector SDK docs](../connector-sdk/README.md)
+
+## Deploying and running providers
+
+Detailed runbooks for the two modes in [Running hosted or non-hosted](#running-hosted-or-non-hosted). Configure bindings and app settings first via the [Configuration Model](#configuration-model).
 
 ## Running locally
 
@@ -562,45 +625,6 @@ resource "kaleido_platform_service" "my_provider_service" {
    - Bulk upsert has per-request limits; reduce stream `batchSize` or use auto-flush thresholds in the indexer.
 
 Detailed, chain-specific notes: [`samples/btc-indexer`](../../samples/btc-indexer), [`samples/erc20-indexer`](../../samples/erc20-indexer), [`samples/canton-cip56-indexer`](../../samples/canton-cip56-indexer), [`samples/native-eth-indexer`](../../samples/native-eth-indexer), [`samples/workflow-engine-provider`](../../samples/workflow-engine-provider).
-
-## Logging
-
-All SDK packages share the same structured logger (implemented in `@kaleido-io/core` and re-exported by each public SDK). If you use multiple SDKs in one application, import logging from **one** package and use it consistently — `setLoggerFactory()` applies to that package's bundled logger.
-
-When you use the single entry point, import from `@kaleido-io/kaleido-sdk`:
-
-```ts
-import { newLogger, setLoggerFactory } from '@kaleido-io/kaleido-sdk';
-
-const log = newLogger('my-app');
-
-log.info('Provider started', { providerName: 'my-indexer' });
-log.debug('Processing batch', { count: 42 });
-log.warn('Retrying request', { attempt: 2 });
-log.error('Batch failed', { error: err.message });
-```
-
-To plug in your own backend (pino, winston, NestJS logger, etc.):
-
-```ts
-import { setLoggerFactory } from '@kaleido-io/kaleido-sdk';
-
-setLoggerFactory((context) => ({
-  debug: (msg, ...args) => myLogger.debug(`[${context}] ${msg}`, ...args),
-  info: (msg, ...args) => myLogger.info(`[${context}] ${msg}`, ...args),
-  warn: (msg, ...args) => myLogger.warn(`[${context}] ${msg}`, ...args),
-  error: (msg, ...args) => myLogger.error(`[${context}] ${msg}`, ...args),
-}));
-```
-
-If you depend on a single service SDK only, import `newLogger` and `setLoggerFactory` from that package instead — see each package README for its import path.
-
-## Package Documentation
-
-- [Kaleido TypeScript SDKs (monorepo)](../../README.md)
-- [Workflow Engine SDK docs](../workflow-engine-sdk/README.md)
-- [Asset Manager SDK docs](../asset-manager-sdk/README.md)
-- [Connector SDK docs](../connector-sdk/README.md)
 
 ## License
 
