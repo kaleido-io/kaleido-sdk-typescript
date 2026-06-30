@@ -243,8 +243,6 @@ If you depend on a single service SDK only, import `newLogger` and `setLoggerFac
 
 ## Example usage by Package
 
-The examples below are intentionally repetitive so users can quickly map from “what app am I writing?” to “which client constructor should I use?”.
-
 ### 1) Workflow Engine SDK (provider/runtime entry)
 
 ```ts
