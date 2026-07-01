@@ -14,13 +14,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { IndexerHandlerDef } from '@kaleido-io/workflow-engine-sdk';
+import type { EventProcessorDef } from '@kaleido-io/workflow-engine-sdk';
 import { newLogger } from '@kaleido-io/core-sdk/log';
 
 const log = newLogger('echo-event-processor');
 
-export const echoHandlerDef: IndexerHandlerDef = {
-  indexBatch: async (_ctx, events) => {
+export const echoHandlerDef: EventProcessorDef = {
+  processBatch: async (_ctx, events) => {
     for (const event of events) {
       log.info(`Event received: ${event.topic} - ${JSON.stringify(event.data, null, '\t')}`);
     }

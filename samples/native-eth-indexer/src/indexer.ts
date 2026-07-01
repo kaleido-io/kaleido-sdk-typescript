@@ -16,7 +16,7 @@
 
 import type {
   EventProcessorEvent,
-  IndexerContext,
+  EventProcessorContext,
 } from '@kaleido-io/workflow-engine-sdk';
 import { newLogger } from '@kaleido-io/core-sdk/log';
 import type { SetupContext } from '@kaleido-io/core-sdk/context';
@@ -67,8 +67,8 @@ export class ETHIndexer {
     }
   }
 
-  async indexBatch(
-    ctx: IndexerContext<ETHIndexerConfig>,
+  async processBatch(
+    ctx: EventProcessorContext<ETHIndexerConfig>,
     events: EventProcessorEvent<EVMTransactionEvent>[],
   ): Promise<void> {
     if (events.length === 0) return;

@@ -17,19 +17,19 @@
 import type { TransactionHandler } from '../interfaces/handlers.js';
 import type { EventProcessorEvent } from '../factories/event_processor.js';
 import type { SetupContext } from '@kaleido-io/core-sdk/context';
-import type { IndexerContext } from './context.js';
+import type { EventProcessorContext } from './context.js';
 
 /**
- * Handler definition for an event-processor indexer.
+ * Handler definition for an event processor.
  *
  * - `setup` — optional; called once before the WFE connection is established.
  *   Use it to call ensureStream, initialise assets/pools, or any other one-time work.
- * - `process` — called for every batch of events received from the WFE.
+ * - `processBatch` — called for every batch of events received from the WFE.
  */
-export interface IndexerHandlerDef<CustomConfig = unknown, EventDataType = unknown> {
+export interface EventProcessorDef<CustomConfig = unknown, EventDataType = unknown> {
   setup?: (ctx: SetupContext<CustomConfig>) => Promise<void>;
-  indexBatch: (
-    ctx: IndexerContext<CustomConfig>,
+  processBatch: (
+    ctx: EventProcessorContext<CustomConfig>,
     events: EventProcessorEvent<EventDataType>[],
   ) => Promise<void>;
 }

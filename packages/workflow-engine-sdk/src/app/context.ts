@@ -17,16 +17,16 @@
 import type { SetupContext } from '@kaleido-io/core-sdk/context';
 
 /**
- * Context injected into indexer `indexBatch` callbacks.
+ * Context injected into event processor `processBatch` callbacks.
  * Extends {@link SetupContext} with the request-scoped ID for the current batch.
  */
-export interface IndexerContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
+export interface EventProcessorContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
   readonly requestId: string;
 }
 
-export function createIndexerContext<C>(
+export function createEventProcessorContext<C>(
   setupCtx: SetupContext<C>,
   requestId: string,
-): IndexerContext<C> {
+): EventProcessorContext<C> {
   return { ...setupCtx, requestId };
 }

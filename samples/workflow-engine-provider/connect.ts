@@ -56,7 +56,7 @@ const app = WorkflowEngineClient.fromConfigFile()
   .transactionHandler('http-invoke', { handler: createTransactionHandler('http-invoke', httpInvokeActionMap) })
   .transactionHandler('snap-watcher', { handler: createTransactionHandler('snap-watcher', snapActionMap) })
   .transactionHandler('list-pools', listPoolsRegistration)
-  .indexer('echo', echoHandlerDef)
+  .eventProcessor('echo', echoHandlerDef)
   .eventSource(eventSource)
   .eventSource(dealerEventSource);
 

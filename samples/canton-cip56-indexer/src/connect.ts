@@ -18,6 +18,6 @@ import { WorkflowEngineClient, fatalError } from '@kaleido-io/workflow-engine-sd
 import { CantonCIP56Indexer } from './canton/indexer.js';
 
 WorkflowEngineClient.fromConfigFile()
-    .indexer('canton-cip56-indexer', new CantonCIP56Indexer())
+    .eventProcessor('canton-cip56-indexer', new CantonCIP56Indexer())
     .start()
     .catch(fatalError);

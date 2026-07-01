@@ -16,7 +16,7 @@
 
 import type {
   EventProcessorEvent,
-  IndexerContext,
+  EventProcessorContext,
 } from '@kaleido-io/workflow-engine-sdk';
 import { newLogger } from '@kaleido-io/core-sdk/log';
 import type { SetupContext } from '@kaleido-io/core-sdk/context';
@@ -66,8 +66,8 @@ export class ERC20Indexer {
     }
   }
 
-  async indexBatch(
-    ctx: IndexerContext<ERC20Config>,
+  async processBatch(
+    ctx: EventProcessorContext<ERC20Config>,
     events: EventProcessorEvent<EVMTransactionEvent>[],
   ): Promise<void> {
 

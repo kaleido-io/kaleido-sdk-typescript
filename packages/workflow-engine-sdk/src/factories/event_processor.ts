@@ -25,6 +25,8 @@ import {
 } from '../types/core';
 import { newLogger } from '../log/logger';
 import { formatError, getErrorMessage } from '../utils/errors';
+import type { EventProcessorDef } from '../app/types.js';
+import type { SetupContext } from '@kaleido-io/core-sdk/context';
 
 const log = newLogger('event_processor_factory');
 
@@ -37,46 +39,29 @@ export interface EventProcessorEvent<DT> {
   data: DT;
 }
 
-/**
- * Batch function signature for event processors.
- *
- * Receives the request context and a typed batch of events to index. Returns
- * `Promise<void>` — there is no checkpoint or processed-event return value;
- * position tracking for the underlying data source belongs in the event source
- * checkpoint, not here. Throwing marks the batch as failed (the error is caught
- * and surfaced to the engine via the batch result).
- */
-export type EventProcessorBatchFn<DT = unknown> = (
+type RawBatchFn<DT> = (
   reqContext: RequestContext,
   events: EventProcessorEvent<DT>[],
   authRef?: string,
 ) => Promise<void>;
 
-/**
- * Builder interface for configuring event processors with optional lifecycle hooks.
- */
-export interface EventProcessorBuilder<DT = unknown> extends EventProcessor {
-  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventProcessorBuilder<DT>;
-  withCloseFn(closeFn: () => void): EventProcessorBuilder<DT>;
-}
-
-class EventProcessorBase<DT> implements EventProcessorBuilder<DT> {
+class EventProcessorBase<DT> implements EventProcessor {
   readonly name: string;
-  private batchFn: EventProcessorBatchFn<DT>;
+  private batchFn: RawBatchFn<DT>;
   private initFn?: (engAPI: EngineAPI) => Promise<void>;
   private closeFn?: () => void;
 
-  constructor(name: string, batchFn: EventProcessorBatchFn<DT>) {
+  constructor(name: string, batchFn: RawBatchFn<DT>) {
     this.name = name;
     this.batchFn = batchFn;
   }
 
-  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventProcessorBuilder<DT> {
+  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): this {
     this.initFn = initFn;
     return this;
   }
 
-  withCloseFn(closeFn: () => void): EventProcessorBuilder<DT> {
+  withCloseFn(closeFn: () => void): this {
     this.closeFn = closeFn;
     return this;
   }
@@ -115,25 +100,39 @@ class EventProcessorBase<DT> implements EventProcessorBuilder<DT> {
 }
 
 /**
- * Create a new event processor with a typed batch function.
+ * Internal factory used by the client to wrap a raw batch function into an
+ * EventProcessor handler for the runtime. Not part of the public API.
+ */
+export function createEventProcessorBase<DT>(
+  name: string,
+  batchFn: RawBatchFn<DT>,
+): EventProcessor {
+  return new EventProcessorBase<DT>(name, batchFn);
+}
+
+/**
+ * Create an event processor handler definition from a batch function.
  *
- * @param name - Handler name to register with the workflow engine
- * @param batchFn - Function that processes a typed batch of events
- * @returns EventProcessorBuilder for chaining optional configuration
+ * Equivalent to writing `{ processBatch: batchFn }` directly, but consistent
+ * with the `createEventSource` / `createTransactionHandler` factory style.
+ *
+ * The batch function receives an {@link EventProcessorContext} with typed
+ * access to `ctx.config`, `ctx.getServiceClientOptions`, a per-request
+ * `ctx.signal` (respects the WFE request deadline), and `ctx.requestId`.
+ *
+ * @param batchFn - Called for every batch of events received from the WFE.
+ * @param setup   - Optional setup hook called once before the WFE connection
+ *                  is established. Use it to call `ensureStream`, initialise
+ *                  assets/pools, or any other one-time work.
  *
  * @example
- * const processor = createEventProcessor<TokenTransfer>(
- *   'token-indexer',
- *   async (reqContext, events) => {
- *     for (const event of events) {
- *       await writeToStore(event.data);
- *     }
- *   }
- * );
+ * .eventProcessor('my-processor', createEventProcessor(async (_ctx, events) => {
+ *   for (const event of events) await writeToStore(event.data);
+ * }))
  */
-export function createEventProcessor<DT = unknown>(
-  name: string,
-  batchFn: EventProcessorBatchFn<DT>
-): EventProcessorBuilder<DT> {
-  return new EventProcessorBase<DT>(name, batchFn);
+export function createEventProcessor<C = unknown, E = unknown>(
+  batchFn: (ctx: import('../app/context.js').EventProcessorContext<C>, events: EventProcessorEvent<E>[]) => Promise<void>,
+  setup?: (ctx: SetupContext<C>) => Promise<void>,
+): EventProcessorDef<C, E> {
+  return setup ? { setup, processBatch: batchFn } : { processBatch: batchFn };
 }

@@ -71,7 +71,7 @@ This sample is yours to fork. Common customizations:
 
 - **Multiple contracts** — create a separate stream and event processor for the ERC-20 contract constructor, to dynamically create the asset and pool definitions in the Asset Manager. And update the ERC-20 indexer to upsert the addresses and transfers for any contract address.
 - **Scoped event filtering** — edit `stream.eventSourceConfig` in `config/provider-config.yaml` to filter events for indexed fields within the event signature i.e. index certain `from` and `to` addresses.
-- **Additional event types** — extend `indexBatch` in `src/erc20/indexer.ts`.
+- **Additional event types** — extend `processBatch` in `src/erc20/indexer.ts`.
 
 ## Hosting on the Kaleido platform
 

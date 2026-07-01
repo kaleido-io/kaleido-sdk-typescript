@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/workflow-engine-sdk';
+import type { EventProcessorEvent, EventProcessorContext } from '@kaleido-io/workflow-engine-sdk';
 import { AssetManagerClient, BulkUpsertBuilder } from '@kaleido-io/asset-manager-sdk';
 import type { IDataModelClient } from '@kaleido-io/asset-manager-sdk';
 import type { EVMTransactionEvent } from '@kaleido-io/connector-sdk/evm';
@@ -40,7 +40,7 @@ const ETH_CONFIG: ETHIndexerConfig = {
 
 type MockClient = { bulkUpsert: ReturnType<typeof vi.fn>; bulkQuery: ReturnType<typeof vi.fn> };
 
-function mockIndexerContext(client: MockClient, config: ETHIndexerConfig = ETH_CONFIG): IndexerContext<ETHIndexerConfig> {
+function mockEventProcessorContext(client: MockClient, config: ETHIndexerConfig = ETH_CONFIG): EventProcessorContext<ETHIndexerConfig> {
   const amWithBuilder = {
     ...client,
     getNewBulkUpsertBuilder: (opts?: unknown) => new BulkUpsertBuilder(client as unknown as IDataModelClient, opts as never),
@@ -107,7 +107,7 @@ function makeEvent(data: EVMTransactionEvent): EventProcessorEvent<EVMTransactio
 describe('ETHIndexer.setup()', () => {
   it('upserts asset, address, and pool with create_or_ignore', async () => {
     const client: MockClient = { bulkUpsert: vi.fn().mockResolvedValue({}), bulkQuery: vi.fn() };
-    const ctx = mockIndexerContext(client);
+    const ctx = mockEventProcessorContext(client);
     const indexer = new ETHIndexer();
     await indexer.setup(ctx);
 
@@ -128,7 +128,7 @@ describe('ETHIndexer.setup()', () => {
 describe('ETHIndexer.process()', () => {
   let mockClient: MockClient;
   let indexer: ETHIndexer;
-  let ctx: IndexerContext<ETHIndexerConfig>;
+  let ctx: EventProcessorContext<ETHIndexerConfig>;
 
   beforeEach(async () => {
     mockClient = {
@@ -138,27 +138,27 @@ describe('ETHIndexer.process()', () => {
         addresses: { items: [], count: 0, allItems: true },
       }),
     };
-    ctx = mockIndexerContext(mockClient);
+    ctx = mockEventProcessorContext(mockClient);
     indexer = new ETHIndexer();
     await indexer.setup(ctx);
     vi.clearAllMocks();
   });
 
   it('makes no calls for an empty batch', async () => {
-    await indexer.indexBatch(ctx, []);
+    await indexer.processBatch(ctx, []);
     expect(mockClient.bulkUpsert).not.toHaveBeenCalled();
     expect(mockClient.bulkQuery).not.toHaveBeenCalled();
   });
 
   it('throws on chain id mismatch', async () => {
     const event = makeEvent(makeTxEvent({ chainId: '99999' }));
-    await expect(indexer.indexBatch(ctx, [event])).rejects.toThrow(/Network mismatch/);
+    await expect(indexer.processBatch(ctx, [event])).rejects.toThrow(/Network mismatch/);
   });
 
   it('upserts a transfer for each ETH transfer in the event', async () => {
     const event = makeEvent(makeTxEvent());
 
-    await indexer.indexBatch(ctx, [event]);
+    await indexer.processBatch(ctx, [event]);
 
     expect(mockClient.bulkQuery).not.toHaveBeenCalled();
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
@@ -181,13 +181,13 @@ describe('ETHIndexer.process()', () => {
 
   it('skips events with no ETH transfers', async () => {
     const event = makeEvent(makeTxEvent({ ethTransfers: [] }));
-    await indexer.indexBatch(ctx, [event]);
+    await indexer.processBatch(ctx, [event]);
     expect(mockClient.bulkUpsert).not.toHaveBeenCalled();
   });
 
   it('calls bulkUpsert once per batch regardless of transfer count', async () => {
     const events = [makeEvent(makeTxEvent()), makeEvent(makeTxEvent())];
-    await indexer.indexBatch(ctx, events);
+    await indexer.processBatch(ctx, events);
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
   });
 });

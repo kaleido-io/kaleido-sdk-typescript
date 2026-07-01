@@ -18,6 +18,8 @@ export * from './http/index.js';
 export {
   resolveServiceBinding,
   resolveServiceBindingFromMap,
+  loadServiceBindings,
+  parseServiceBindingsSection,
 } from './config/service-binding.js';
 export type {
   ServiceBindingConfig,

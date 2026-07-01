@@ -18,6 +18,6 @@ import { WorkflowEngineClient, fatalError } from '@kaleido-io/workflow-engine-sd
 import { ERC20Indexer } from './erc20/indexer.js';
 
 WorkflowEngineClient.fromConfigFile()
-    .indexer('erc20-indexer', new ERC20Indexer())
+    .eventProcessor('erc20-indexer', new ERC20Indexer())
     .start()
     .catch(fatalError);

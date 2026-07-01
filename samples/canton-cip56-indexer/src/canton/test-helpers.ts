@@ -18,7 +18,7 @@ import { vi } from 'vitest';
 import type { CantonContractEvent, BatchContext, TransferContext, ContractInfo } from './types.js';
 import type {
   EventProcessorEvent,
-  IndexerContext,
+  EventProcessorContext,
 } from '@kaleido-io/workflow-engine-sdk';
 import type {
   IDataModelClient,
@@ -31,7 +31,7 @@ import type {
 import { AssetManagerClient, BulkUpsertBuilder } from '@kaleido-io/asset-manager-sdk';
 import type { CantonConfig } from '../config.js';
 
-export function mockIndexerContext(am: IDataModelClient): IndexerContext<CantonConfig> {
+export function mockEventProcessorContext(am: IDataModelClient): EventProcessorContext<CantonConfig> {
   const amWithBuilder = {
     ...am,
     getNewBulkUpsertBuilder: (opts?: unknown) => new BulkUpsertBuilder(am, opts as never),

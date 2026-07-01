@@ -53,9 +53,9 @@ describe('SetupContext via WorkflowEngineClient', () => {
   it('surfaces config, providerName, handlerName via setup hook', async () => {
     const client = makeTestClient({ foo: 1 });
     let capturedCtx: Record<string, unknown> | undefined;
-    client.indexer('my-handler', {
+    client.eventProcessor('my-handler', {
       setup: async (ctx) => { capturedCtx = ctx as never; },
-      indexBatch: async (_ctx, _events) => {},
+      processBatch: async (_ctx, _events) => {},
     });
     await client.start();
     expect(capturedCtx!['config']).toEqual({ foo: 1 });
@@ -66,9 +66,9 @@ describe('SetupContext via WorkflowEngineClient', () => {
   it('getServiceClientOptions resolves from bindings', async () => {
     const client = makeTestClient({});
     let opts: Record<string, unknown> | undefined;
-    client.indexer('h', {
+    client.eventProcessor('h', {
       setup: async (ctx) => { opts = ctx.getServiceClientOptions('asset-manager') as never; },
-      indexBatch: async (_ctx, _events) => {},
+      processBatch: async (_ctx, _events) => {},
     });
     await client.start();
     expect(opts).toMatchObject({ transport: 'http', url: 'http://am' });
@@ -82,14 +82,14 @@ describe('SetupContext via WorkflowEngineClient', () => {
 describe('WorkflowEngineClient builder', () => {
   it('throws on duplicate handler name', () => {
     const client = makeTestClient({});
-    const noop = { indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) };
-    client.indexer('my-handler', noop);
-    expect(() => client.indexer('my-handler', noop)).toThrow("Handler 'my-handler' is already registered");
+    const noop = { processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) };
+    client.eventProcessor('my-handler', noop);
+    expect(() => client.eventProcessor('my-handler', noop)).toThrow("Handler 'my-handler' is already registered");
   });
 
   it('throws on duplicate name across handler types', () => {
     const client = makeTestClient({});
-    client.indexer('shared', { indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
+    client.eventProcessor('shared', { processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
     expect(() =>
       client.transactionHandler('shared', {
         handler: { name: 'shared', init: jest.fn() as never, close: jest.fn() as never, transactionHandlerBatch: jest.fn() as never },
@@ -100,7 +100,7 @@ describe('WorkflowEngineClient builder', () => {
   it('calls setup hook after connect on start()', async () => {
     const client = makeTestClient({});
     const setupFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
-    client.indexer('idx', { setup: setupFn, indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
+    client.eventProcessor('ep', { setup: setupFn, processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
 
     await client.start();
 
@@ -116,7 +116,7 @@ describe('WorkflowEngineClient builder', () => {
   it('setup() calls setup hooks but does NOT call connect', async () => {
     const client = makeTestClient({});
     const setupFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
-    client.indexer('idx', { setup: setupFn, indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
+    client.eventProcessor('ep', { setup: setupFn, processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
 
     await client.setup();
 
@@ -130,7 +130,7 @@ describe('WorkflowEngineClient builder', () => {
     jest.spyOn(client, 'disconnect').mockImplementation(() => {});
     jest.spyOn(client, 'registerEventProcessor').mockImplementation(() => {});
     const setupFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
-    client.indexer('idx', { setup: setupFn, indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
+    client.eventProcessor('ep', { setup: setupFn, processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
 
     await client.start();
 
@@ -146,7 +146,7 @@ describe('WorkflowEngineClient builder', () => {
     const setupFn = jest.fn(async (ctx: any) => {
       capturedAuthRef = ctx.getServiceClientOptions('asset-manager').authRef;
     });
-    client.indexer('idx', { setup: setupFn as never, indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
+    client.eventProcessor('ep', { setup: setupFn as never, processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
     // No start() — we exercise the trigger callback directly.
     // Override the binding-lookup mock so the real getServiceClientOptions runs and surfaces authRef.
     (client.getServiceClientOptions as unknown as jest.Mock).mockImplementation(
@@ -163,21 +163,21 @@ describe('WorkflowEngineClient builder', () => {
   it('runSetupOnTrigger collects errors and returns error status', async () => {
     const client = makeTestClient({});
     const setupFn = jest.fn<() => Promise<void>>().mockRejectedValue(new Error('boom'));
-    client.indexer('idx', { setup: setupFn, indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
+    client.eventProcessor('ep', { setup: setupFn, processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
 
     const result = await client.runSetupOnTrigger('a');
 
     expect(result.status).toBe('error');
-    expect(result.errors).toEqual(['idx: boom']);
+    expect(result.errors).toEqual(['ep: boom']);
   });
 
   it('registers event processor on start()', async () => {
     const client = makeTestClient({});
-    client.indexer('my-idx', { indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
+    client.eventProcessor('my-ep', { processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
 
     await client.start();
 
-    expect(client.registerEventProcessor).toHaveBeenCalledWith('my-idx', expect.anything());
+    expect(client.registerEventProcessor).toHaveBeenCalledWith('my-ep', expect.anything());
   });
 
   it('registers event source on start()', async () => {
@@ -196,17 +196,17 @@ describe('WorkflowEngineClient builder', () => {
 
   it('stop() calls disconnect', async () => {
     const client = makeTestClient({});
-    client.indexer('idx', { indexBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
+    client.eventProcessor('ep', { processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
     await client.start();
     client.stop();
     expect(client.disconnect).toHaveBeenCalledTimes(1);
   });
 
-  it('injects correct ctx into process callback', async () => {
+  it('injects correct ctx into processBatch callback', async () => {
     const client = makeTestClient({ key: 'value' });
     let capturedCtx: Record<string, unknown> | undefined;
-    client.indexer('idx', {
-      indexBatch: async (ctx, _events) => { capturedCtx = ctx as never; },
+    client.eventProcessor('ep', {
+      processBatch: async (ctx, _events) => { capturedCtx = ctx as never; },
     });
 
     await client.start();
@@ -218,8 +218,8 @@ describe('WorkflowEngineClient builder', () => {
 
     expect(capturedCtx!['requestId']).toBe('req-abc');
     expect(capturedCtx!['config']).toEqual({ key: 'value' });
-    expect(capturedCtx!['handlerName']).toBe('idx');
-    // The indexer context must carry the per-request signal (deadline/cancellation),
+    expect(capturedCtx!['handlerName']).toBe('ep');
+    // The context must carry the per-request signal (deadline/cancellation),
     // not a start-level signal that is never aborted.
     expect(capturedCtx!['signal']).toBe(reqSignal);
   });

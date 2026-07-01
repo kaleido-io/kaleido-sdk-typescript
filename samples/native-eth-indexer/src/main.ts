@@ -18,6 +18,6 @@ import { WorkflowEngineClient, fatalError } from '@kaleido-io/workflow-engine-sd
 import { ETHIndexer } from './indexer.js';
 
 WorkflowEngineClient.fromConfigFile()
-    .indexer('native-eth-indexer', new ETHIndexer())
+    .eventProcessor('native-eth-indexer', new ETHIndexer())
     .start()
     .catch(fatalError);

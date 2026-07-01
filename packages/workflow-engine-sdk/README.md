@@ -6,8 +6,7 @@ Using the Workflow engine SDK you can build applications called `providers` that
 
 transaction handlers - Providers that execute workflow stage actions when the engine sends transaction batches (e.g. business logic, external API calls, stage transitions).
 event sources - Providers that poll or subscribe to external systems and emit events (with checkpoints) into the workflow engine.
-event processors - Providers that receive event batches from the engine and run your processing logic against them.
-indexers - Providers specialized for ingesting batched events into a datastore such as the Kaleido asset manager.
+event processors - Providers that receive event batches from the engine and run your processing logic against them. Includes optional setup hooks, typed config, and service-binding helpers — suited for anything from simple event logging to ingesting events into a datastore.
 
 More information on the workflow engine programming model is avalable from the [Kaleido platform docsite](https://docs.kaleido.io/platform/web3-middleware/workflowengine/)
 
@@ -107,7 +106,7 @@ In add-to-existing mode, your root project files are not overwritten (for exampl
 | `config/config.sample.yaml` | Platform connection settings. |
 | `config/provider-config.sample.yaml` | Application-specific config template consumed by your application code. |
 | `src/main.ts` | Starting point that wires SDK clients/handlers for the selected template. |
-| `Dockerfile` | Container build for running the provider/indexer in deployment environments. |
+| `Dockerfile` | Container build for running the provider in deployment environments. |
 | `tsconfig.json` | TypeScript compiler settings for the scaffolded project. |
 | `vitest.config.ts` | Test runner configuration included by templates that ship tests. |
 
@@ -255,8 +254,8 @@ import { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
     allowlist: string[];
   }
   WorkflowEngineClient.fromConfigFile<MyConfig>()
-    .indexer('my-indexer', {
-      async indexBatch(ctx, events) {
+    .eventProcessor('my-processor', {
+      async processBatch(ctx, events) {
         const { batchSize, allowlist } = ctx.config;
         // use batchSize, allowlist...
       },
@@ -480,30 +479,14 @@ WorkflowEngineClient.fromConfigFile()
 
 Providers that receive event batches from the engine and run processing logic against them.
 
-Event processors use the `createEventProcessor` factory and the low-level `registerEventProcessor` API (there is no `.eventProcessor()` on the fluent builder). Register before calling `connect()` or `start()`:
+Use the fluent `.eventProcessor()` builder method. The batch function receives an `EventProcessorContext` with:
 
-```typescript
-import {
-  WorkflowEngineClient,
-  createEventProcessor,
-} from '@kaleido-io/workflow-engine-sdk';
+- `ctx.config` — typed access to your `provider-config.yaml`
+- `ctx.getServiceClientOptions(bindingName)` — resolve a service binding (works for both hosted and non-hosted bindings)
+- `ctx.signal` — per-request `AbortSignal` that respects the WFE request deadline
+- `ctx.requestId` — per-batch request ID for correlation logging
 
-const processor = createEventProcessor('my-processor', async (_ctx, events) => {
-  for (const event of events) {
-    await handle(event);
-  }
-});
-
-const client = WorkflowEngineClient.fromConfigFile();
-client.registerEventProcessor('my-processor', processor);
-await client.start();
-```
-
-Closures in the batch function are supported. For setup hooks, typed `ctx.config`, and service-binding helpers, use an **indexer** instead (see below) — indexers are implemented as event processors under the hood.
-
-## Indexers
-
-Event processors with an optional `setup` hook and `IndexerContext` (`ctx.config`, `getServiceClientOptions`, per-request `signal`). Suited for ingesting batched events into any datastore.
+An optional `setup` hook runs once before the WFE connection is established (or on deploy trigger in `deferred` mode). Use it to create streams, bootstrap resources, or run one-time initialisation. **`setup` must be idempotent** — it may be called more than once (e.g. on reconnect or re-deploy), so operations inside it should be safe to repeat, such as using `create_or_ignore` upserts or `ensureStream` which is designed for this purpose.
 
 ```typescript
 import { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
@@ -513,11 +496,11 @@ interface MyConfig {
 }
 
 WorkflowEngineClient.fromConfigFile<MyConfig>()
-  .indexer('my-indexer', {
+  .eventProcessor('my-processor', {
     setup: async (ctx) => {
       /* ensureStream, bootstrap resources, etc. */
     },
-    indexBatch: async (ctx, events) => {
+    processBatch: async (ctx, events) => {
       const { batchSize } = ctx.config;
       for (const event of events) await persist(event, batchSize);
     },
@@ -525,18 +508,74 @@ WorkflowEngineClient.fromConfigFile<MyConfig>()
   .start();
 ```
 
-Pass an inline definition (closures) or a class instance that satisfies `IndexerHandlerDef`:
+Pass an inline definition or a class instance that satisfies `EventProcessorDef`:
 
 ```typescript
-class MyIndexer {
+class MyProcessor {
   async setup(ctx) { /* ... */ }
-  async indexBatch(ctx, events) { /* ... */ }
+  async processBatch(ctx, events) { /* ... */ }
 }
 
 WorkflowEngineClient.fromConfigFile<MyConfig>()
-  .indexer('my-indexer', new MyIndexer())
+  .eventProcessor('my-processor', new MyProcessor())
   .start();
 ```
+
+Use `createEventProcessor` for the factory style (consistent with `createEventSource` / `createTransactionHandler`):
+
+```typescript
+import { WorkflowEngineClient, createEventProcessor } from '@kaleido-io/workflow-engine-sdk';
+
+WorkflowEngineClient.fromConfigFile<MyConfig>()
+  .eventProcessor('my-processor', createEventProcessor(
+    async (ctx, events) => {
+      for (const event of events) await persist(event);
+    },
+  ))
+  .start();
+```
+
+### Example: building an indexer with the Asset Manager SDK
+
+A common pattern is using an event processor to ingest batched blockchain events into an external system — for example the [Kaleido Asset Manager](https://docs.kaleido.io/platform/web3-middleware/asset-manager/), a database, or any other datastore. The `setup` hook is the right place to bootstrap resources, call `ensureStream` to create the connector stream on first deploy, and any other one-time work. The `processBatch` function then maps each event to the appropriate write operations on the target system.
+
+```typescript
+import { WorkflowEngineClient, createEventProcessor } from '@kaleido-io/workflow-engine-sdk';
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+import { EVMConnectorClient } from '@kaleido-io/connector-sdk/evm';
+
+interface MyConfig {
+  contractAddress: string;
+  stream: { connectorBindingName: string; name: string; factory: string; eventSourceConfig: unknown };
+}
+
+WorkflowEngineClient.fromConfigFile<MyConfig>()
+  .eventProcessor('erc20-indexer', createEventProcessor(
+    async (ctx, events) => {
+      const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder();
+      for (const event of events) {
+        // map event.data to upsert operations...
+        builder.upsertTransfer({ /* ... */ });
+      }
+      await builder.execute();
+    },
+    async (ctx) => {
+      // Bootstrap the asset pool and create the connector stream on first deploy
+      const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder();
+      builder.upsertAsset({ name: 'my-token', updateType: 'create_or_ignore' });
+      await builder.execute();
+
+      await new EVMConnectorClient(ctx.config.stream.connectorBindingName).ensureStream(ctx, {
+        factory: ctx.config.stream.factory,
+        name: ctx.config.stream.name,
+        eventSourceConfig: ctx.config.stream.eventSourceConfig,
+      });
+    },
+  ))
+  .start();
+```
+
+For larger indexers, the class form is often cleaner — see the full working examples in [`samples/erc20-indexer`](../../samples/erc20-indexer), [`samples/btc-indexer`](../../samples/btc-indexer), [`samples/native-eth-indexer`](../../samples/native-eth-indexer), and [`samples/canton-cip56-indexer`](../../samples/canton-cip56-indexer).
 
 ## Logging
 
@@ -573,7 +612,7 @@ handler: async (transaction, input) => {
 };
 ```
 
-Event processors and indexers should throw from the batch function to mark a batch as failed; the SDK surfaces the error to the engine.
+Event processors should throw from the batch function to mark a batch as failed; the SDK surfaces the error to the engine.
 
 ### Connection errors
 
@@ -750,7 +789,7 @@ Detailed runbooks for the two modes in [Running hosted or non-hosted](#running-h
 
 Use **non-hosted** mode to develop a provider on your workstation. Your process connects **outbound** to the workflow engine and to any **non-hosted** service bindings in `config.yaml`. Kaleido does not run the provider binary for you in this mode.
 
-This flow applies to providers built with `@kaleido-io/workflow-engine-sdk` (transaction handlers, event sources, event processors, and indexers). Indexers often also use `@kaleido-io/asset-manager-sdk` and `@kaleido-io/connector-sdk`; the same local run steps apply.
+This flow applies to providers built with `@kaleido-io/workflow-engine-sdk` (transaction handlers, event sources, and event processors). Event processors that ingest blockchain events often also use `@kaleido-io/asset-manager-sdk` and `@kaleido-io/connector-sdk`; the same local run steps apply.
 
 ### Prerequisites
 
@@ -846,7 +885,7 @@ npm run start:dev
 
 - Logs show handler registration and a successful connection to the workflow engine.
 - The provider appears in the **Workflow engine** provider list in the Kaleido UI.
-- **Indexers:** if `provider-config.yaml` defines a `stream` block, confirm `setup()` creates the connector stream on first run (check connector UI or logs).
+- **Event processors with streams:** if `provider-config.yaml` defines a `stream` block, confirm `setup()` creates the connector stream on first run (check connector UI or logs).
 - **Transaction handlers:** submit a test workflow that invokes your handler (see [`samples/workflow-engine-provider`](../../samples/workflow-engine-provider)).
 
 Working config examples per template: [`samples/`](../../samples/).
@@ -926,11 +965,11 @@ npm run promote:docker   # or promote:podman, or promote:crane if copying from a
 
 At runtime the platform sets `KALEIDO_CONFIG_FILE` (hosted service bindings) and `CONFIG_FILE` (your uploaded provider config). Do not bake environment-specific URLs into the image for hosted bindings.
 
-### 4. Streaming events to the provider (indexers)
+### 4. Streaming events to the provider (event processors)
 
-Indexers typically call `ensureStream` in `setup()` using the `stream` block in `provider-config.yaml` (via `@kaleido-io/connector-sdk`). On first startup the stream is created or updated to deliver batches to your registered handler.
+Event processors that ingest blockchain events typically call `ensureStream` in `setup()` using the `stream` block in `provider-config.yaml` (via `@kaleido-io/connector-sdk`). On first startup the stream is created or updated to deliver batches to your registered handler.
 
-Event path: **connector** → workflow engine **stream** → your **indexer** `indexBatch` handler → (often) **Asset manager** bulk upsert.
+Event path: **connector** → workflow engine **stream** → your **event processor** `processBatch` handler → (often) **Asset manager** bulk upsert.
 
 If you need to create or adjust a stream manually, use the connector service UI and the appropriate stream factory, for example:
 
@@ -1028,7 +1067,7 @@ resource "kaleido_platform_service" "my_provider_service" {
 
 3. **Asset manager or downstream API errors**
    - Inspect Provider logs for auth or binding failures on bulk upsert calls.
-   - Misconfigured streams may deliver events your indexer cannot map (wrong contract, party, or network).
-   - Bulk upsert has per-request limits; reduce stream `batchSize` or use auto-flush thresholds in the indexer.
+   - Misconfigured streams may deliver events your event processor cannot map (wrong contract, party, or network).
+   - Bulk upsert has per-request limits; reduce stream `batchSize` or use auto-flush thresholds in the event processor.
 
 Detailed, chain-specific notes: [`samples/btc-indexer`](../../samples/btc-indexer), [`samples/erc20-indexer`](../../samples/erc20-indexer), [`samples/canton-cip56-indexer`](../../samples/canton-cip56-indexer), [`samples/native-eth-indexer`](../../samples/native-eth-indexer), [`samples/workflow-engine-provider`](../../samples/workflow-engine-provider).

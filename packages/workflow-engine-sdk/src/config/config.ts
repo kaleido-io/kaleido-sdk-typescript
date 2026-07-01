@@ -28,10 +28,9 @@ import {
 import { newLogger } from "../log/logger";
 import { SDKErrors, newError } from "../i18n/errors";
 import {
-  ServiceBindingConfig,
-  ServiceBindingAuth,
   ServiceBindingsMap,
 } from "../service/types";
+import { loadServiceBindings, parseServiceBindingsSection } from "@kaleido-io/core-sdk";
 
 /**
  * Environment variable name for the Kaleido-managed config file path (service bindings etc.).
@@ -482,142 +481,11 @@ export class ConfigLoader {
     }
   }
 
-  /**
-   * Parse the "service-bindings" section from a YAML config file.
-   * Returns an empty map if the section is absent.
-   *
-   * Config file format:
-   * ```yaml
-   * service-bindings:
-   *   asset-manager:
-   *     type: asset-manager
-   *     url: https://example.com/api/v1
-   *     auth:
-   *       type: basic
-   *       username: key
-   *       password: secret
-   *   key-manager:
-   *     type: key-manager
-   *     url: https://example.com/km/api/v1
-   *     auth:
-   *       type: token
-   *       token: my-token
-   *       scheme: Bearer
-   * ```
-   */
   static loadServiceBindings(configFilePath?: string): ServiceBindingsMap {
-    const configPath = (
-      configFilePath ??
-      process.env[KALEIDO_CONFIG_FILE] ??
-      process.env[WFE_CONFIG_FILE] ??
-      ""
-    ).trim();
-    if (!configPath) {
-      return {};
-    }
-
-    let raw: string;
-    try {
-      raw = fs.readFileSync(configPath, "utf8");
-    } catch {
-      return {};
-    }
-
-    const parsed = yaml.load(raw) as Record<string, unknown> | undefined;
-    if (!parsed || typeof parsed !== "object") {
-      return {};
-    }
-
-    // Service bindings may be at the top level or nested under "workflow-engine"
-    // (the latter is the format injected by the kap-operator for hosted providers).
-    const wfeSection = parsed["workflow-engine"] as Record<string, unknown> | undefined;
-    const bindingsSection = (parsed["service-bindings"] ??
-      wfeSection?.["service-bindings"]) as Record<string, unknown> | undefined;
-    if (!bindingsSection || typeof bindingsSection !== "object") {
-      return {};
-    }
-
-    return ConfigLoader.parseServiceBindingsSection(bindingsSection);
+    return loadServiceBindings(configFilePath);
   }
 
-  /**
-   * Parse a service-bindings object (already extracted from YAML) into typed config.
-   */
-  static parseServiceBindingsSection(
-    section: Record<string, unknown>,
-  ): ServiceBindingsMap {
-    const bindings: ServiceBindingsMap = {};
-
-    for (const [name, value] of Object.entries(section)) {
-      if (!value || typeof value !== "object") {
-        log.warn(`Skipping invalid service binding: ${name}`);
-        continue;
-      }
-      const entry = value as Record<string, unknown>;
-
-      const serviceType = cfgStrField(entry, "type") || name;
-      const bindingType = cfgStrField(entry, "bindingType");
-      const maxRetries = cfgNumField(entry, "maxRetries");
-      const timeout = cfgNumField(entry, "timeout");
-
-      let binding: ServiceBindingConfig;
-
-      if (bindingType === "hosted") {
-        const id = cfgStrField(entry, "id");
-        if (!id) {
-          log.warn(`Skipping hosted binding '${name}': missing required 'id' field`);
-          continue;
-        }
-        binding = { type: serviceType, bindingType, id, maxRetries, timeout };
-      } else {
-        const url = cfgStrField(entry, "url");
-        if (!url) {
-          log.warn(`Skipping non-hosted binding '${name}': missing required 'url' field`);
-          continue;
-        }
-        const authObj = cfgObjField(entry, "auth");
-        if (!authObj) {
-          log.warn(`Skipping non-hosted binding '${name}': missing required 'auth' field`);
-          continue;
-        }
-        binding = {
-          type: serviceType,
-          bindingType: "non-hosted",
-          url,
-          auth: ConfigLoader.parseServiceBindingAuth(authObj),
-          maxRetries,
-          timeout,
-        };
-      }
-
-      bindings[name] = binding;
-    }
-
-    return bindings;
-  }
-
-  private static parseServiceBindingAuth(
-    authObj: Record<string, unknown>,
-  ): ServiceBindingAuth {
-    const authType = cfgStrField(authObj, "type") || "basic";
-    const auth: ServiceBindingAuth = {
-      type: authType as "basic" | "token",
-    };
-
-    if (authType === "basic") {
-      const username = cfgStrField(authObj, "username");
-      const password = cfgStrField(authObj, "password");
-      if (username) auth.username = username;
-      if (password) auth.password = password;
-    } else if (authType === "token") {
-      const token = cfgStrField(authObj, "token");
-      const header = cfgStrField(authObj, "header");
-      const scheme = cfgStrField(authObj, "scheme");
-      if (token) auth.token = token;
-      if (header) auth.header = header;
-      if (scheme) auth.scheme = scheme;
-    }
-
-    return auth;
+  static parseServiceBindingsSection(section: Record<string, unknown>): ServiceBindingsMap {
+    return parseServiceBindingsSection(section);
   }
 }

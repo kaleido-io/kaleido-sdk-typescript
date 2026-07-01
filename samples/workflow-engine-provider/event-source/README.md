@@ -34,7 +34,7 @@ The event processor (`event-processor.ts`) listens for batches of events and log
    ```typescript
    const app = WorkflowEngineClient.fromConfigFile()
      .eventSource(eventSource)
-     .indexer('echo', echoHandlerDef);
+     .eventProcessor('echo', echoHandlerDef);
 
    await app.start(); // registers the provider and handlers with the workflow engine
    ```

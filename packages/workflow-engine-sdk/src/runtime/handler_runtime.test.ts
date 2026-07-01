@@ -52,8 +52,8 @@ const handlerRuntimeConfig: HandlerRuntimeConfig = {
 
 const heartbeatConfig: HandlerRuntimeConfig = {
     ...handlerRuntimeConfig,
-    pingIntervalMs: 10, // 10ms for very fast testing
-    pongTimeoutMs: 5, // 5ms for very fast testing
+    pingIntervalMs: 50,  // also controls handshakeTimeout in the runtime — 50ms is reliable on localhost under load
+    pongTimeoutMs: 40,   // generous enough for a loaded CI runner to process the pong event
     maxAttempts: 1, // Don't retry to avoid timeouts
 };
 
@@ -1025,8 +1025,8 @@ describe('HandlerRuntime', () => {
             expect(mockLogger.debug).toHaveBeenCalledWith(
                 'Setting up WebSocket heartbeat',
                 expect.objectContaining({
-                    pingInterval: 10,
-                    pongTimeout: 5
+                    pingInterval: 50,
+                    pongTimeout: 40
                 })
             );
 
@@ -1058,20 +1058,14 @@ describe('HandlerRuntime', () => {
             // Clear previous logs
             mockLogger.warn.mockClear();
 
-            // Wait for first ping to be sent (which sets up pongTimeout)
-            // With pingIntervalMs: 100, we need to wait at least 100ms
-            await new Promise(resolve => setTimeout(resolve, 110));
+            // Wait for at least one ping cycle (pingIntervalMs: 50ms)
+            await new Promise(resolve => setTimeout(resolve, 60));
 
             // Verify ping was sent
             expect(pingReceived).toBe(true);
 
-            // Server should have responded with pong (since mockShouldRespondToPings is true)
-            // Wait a bit for the pong to be processed
-            await new Promise(resolve => setTimeout(resolve, 10));
-
-            // Now wait for the pongTimeout period (50ms) plus a small buffer
-            // If the pong handler worked correctly, the timeout should have been cleared
-            // and we should NOT see the "Pong timeout" warning
+            // Wait longer than pongTimeoutMs (40ms) so that if the pong handler failed
+            // to clear the timeout, the warning would have fired by now
             await new Promise(resolve => setTimeout(resolve, 60));
 
             // Verify that the pong timeout warning was NOT called
@@ -1140,8 +1134,8 @@ describe('HandlerRuntime', () => {
 
             expect(handlerRuntime.isWebSocketConnected).toBe(true);
 
-            // Wait for first ping to be sent (10ms interval + small buffer)
-            await new Promise(resolve => setTimeout(resolve, 15));
+            // Wait for first ping to be sent (50ms interval + small buffer)
+            await new Promise(resolve => setTimeout(resolve, 60));
 
             // Verify connection is still alive (pong should have been received)
             // The ws library automatically responds to pings with pong
@@ -1186,12 +1180,12 @@ describe('HandlerRuntime', () => {
             // Wait a bit more for connection
             await new Promise(resolve => setTimeout(resolve, 10));
 
-            // Wait for first ping cycle (10ms)
-            await new Promise(resolve => setTimeout(resolve, 15));
+            // Wait for first ping cycle (50ms)
+            await new Promise(resolve => setTimeout(resolve, 60));
             expect(handlerRuntime.isWebSocketConnected).toBe(true);
 
-            // Wait for second ping cycle (another 10ms)
-            await new Promise(resolve => setTimeout(resolve, 15));
+            // Wait for second ping cycle (another 50ms)
+            await new Promise(resolve => setTimeout(resolve, 60));
             expect(handlerRuntime.isWebSocketConnected).toBe(true);
 
             handlerRuntime.stop();

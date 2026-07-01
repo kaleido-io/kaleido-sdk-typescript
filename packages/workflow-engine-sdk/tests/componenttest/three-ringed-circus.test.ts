@@ -27,8 +27,8 @@ import {
   WSEvaluateTransaction,
   WithStageDirector,
   PatchOpType,
-  newLogger,
 } from '../../src/index';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import { loadTestConfig } from './test-config';
 import { fetchWithRetry } from './fetch-utils';
 

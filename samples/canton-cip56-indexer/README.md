@@ -79,8 +79,8 @@ Set `CONFIG_FILE` env var to point to this file (default: `./config/provider-con
 This sample is yours to fork. Common customizations:
 
 - **Additional interface filters** — edit `interfaceIds` in `config/provider-config.yaml` to subscribe to more Canton contract interfaces.
-- **Custom handler logic** — extend `indexBatch` in `src/canton/indexer.ts` to process additional contract types.
-- **Multiple indexers** — create additional classes extending `Indexer` and register them in `src/connect.ts`.
+- **Custom handler logic** — extend `processBatch` in `src/canton/indexer.ts` to process additional contract types.
+- **Multiple processors** — create additional classes and register them via `.eventProcessor(...)` in `src/connect.ts`.
 
 ## Hosting on the Kaleido platform
 

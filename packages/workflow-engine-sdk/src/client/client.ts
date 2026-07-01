@@ -30,14 +30,14 @@ import { ServiceClientOptions } from '@kaleido-io/core-sdk/http';
 import { WSProxyAdapter } from '../service/ws_proxy_adapter';
 import { ConfigLoader, KALEIDO_CONFIG_FILE, WFE_CONFIG_FILE, CONFIG_FILE } from '../config/config';
 import { newLogger } from '../log/logger';
-import { createEventProcessor, EventProcessorEvent } from '../factories/event_processor';
+import { createEventProcessorBase, EventProcessorEvent } from '../factories/event_processor';
 import { RequestContext } from '../types/core';
 import {
   SetupContext,
   createSetupContext,
 } from '@kaleido-io/core-sdk/context';
-import { createIndexerContext } from '../app/context';
-import type { IndexerHandlerDef, TransactionHandlerRegistration } from '../app/types';
+import { createEventProcessorContext } from '../app/context';
+import type { EventProcessorDef, TransactionHandlerRegistration } from '../app/types';
 
 const log = newLogger('WorkflowEngineClient');
 
@@ -96,7 +96,7 @@ export interface WorkflowEngineClientConfig {
 }
 
 type RegisteredHandler =
-  | { name: string; type: 'indexer'; def: IndexerHandlerDef<unknown, unknown> }
+  | { name: string; type: 'eventProcessor'; def: EventProcessorDef<unknown, unknown> }
   | { name: string; type: 'transactionHandler'; def: TransactionHandlerRegistration }
   | { name: string; type: 'eventSource'; source: EventSource };
 
@@ -187,12 +187,12 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
   }
 
   /**
-   * Register an event-processor indexer.
+   * Register an event processor handler.
    * The handler name must be unique within this client.
    */
-  indexer<C = CustomConfig, E = unknown>(name: string, def: IndexerHandlerDef<C, E>): this {
+  eventProcessor<C = CustomConfig, E = unknown>(name: string, def: EventProcessorDef<C, E>): this {
     this.assertUniqueHandlerName(name);
-    this.registeredHandlers.push({ name, type: 'indexer', def: def as IndexerHandlerDef<unknown, unknown> });
+    this.registeredHandlers.push({ name, type: 'eventProcessor', def: def as EventProcessorDef<unknown, unknown> });
     return this;
   }
 
@@ -402,19 +402,18 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
 
   private registerBuilderHandlers(): void {
     for (const registered of this.registeredHandlers) {
-      if (registered.type === 'indexer') {
+      if (registered.type === 'eventProcessor') {
         const { name, def } = registered;
         this.registerEventProcessor(
           name,
-          createEventProcessor(
+          createEventProcessorBase(
             name,
             async (reqCtx: RequestContext, events: EventProcessorEvent<unknown>[]) => {
-              // Use the per-request signal so the indexer batch observes the
-              // request deadline / cancellation — not a start-level signal that
-              // is never aborted.
+              // Use the per-request signal so the batch observes the request
+              // deadline / cancellation — not a start-level signal that is never aborted.
               const setupCtx = this.buildSetupContext(name, reqCtx.signal, reqCtx.authRef);
-              const ctx = createIndexerContext(setupCtx, reqCtx.requestId);
-              return def.indexBatch(ctx, events);
+              const ctx = createEventProcessorContext(setupCtx, reqCtx.requestId);
+              return def.processBatch(ctx, events);
             },
           ),
         );

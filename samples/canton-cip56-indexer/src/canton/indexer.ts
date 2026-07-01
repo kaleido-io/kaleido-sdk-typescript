@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import { newLogger } from '@kaleido-io/core-sdk/log';
-import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/workflow-engine-sdk';
+import type { EventProcessorEvent, EventProcessorContext } from '@kaleido-io/workflow-engine-sdk';
 import type { SetupContext } from '@kaleido-io/core-sdk/context';
 import { CantonConnectorClient } from '@kaleido-io/connector-sdk/canton';
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
@@ -76,8 +76,8 @@ export class CantonCIP56Indexer {
     }
   }
 
-  async indexBatch(
-    ctx: IndexerContext<CantonConfig>,
+  async processBatch(
+    ctx: EventProcessorContext<CantonConfig>,
     events: EventProcessorEvent<CantonContractEvent>[],
   ): Promise<void> {
     log.debug(`Batch received: ${events.length} events`);

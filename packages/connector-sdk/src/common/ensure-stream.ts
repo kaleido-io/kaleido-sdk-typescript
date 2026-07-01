@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { newLogger } from '../log/logger.js';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import type { SetupContext } from '@kaleido-io/core-sdk/context';
 import { ConnectorClient } from './connector-client.js';
 

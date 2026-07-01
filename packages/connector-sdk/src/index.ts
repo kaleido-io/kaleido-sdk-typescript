@@ -14,6 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+export * from './common/ensure-stream.js';
 export * from './evm/index.js';
 export * from './btc/index.js';
 export * from './canton/index.js';

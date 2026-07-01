@@ -28,14 +28,14 @@ jest.mock('../log/logger', () => ({
   newLogger: jest.fn(() => mockLogger),
 }));
 
-import { ConfigLoader } from '../config/config';
+import { loadServiceBindings, parseServiceBindingsSection } from './service-binding';
 
-const FIXTURES_DIR = path.join(process.cwd(), 'tests', 'fixtures');
+const FIXTURES_DIR = path.join(__dirname, 'fixtures');
 
-describe('ConfigLoader.loadServiceBindings', () => {
+describe('loadServiceBindings', () => {
   it('should parse service bindings from config file', () => {
-    const configPath = path.join(FIXTURES_DIR, 'wfe-config-with-bindings.yaml');
-    const bindings = ConfigLoader.loadServiceBindings(configPath);
+    const configPath = path.join(FIXTURES_DIR, 'config-with-bindings.yaml');
+    const bindings = loadServiceBindings(configPath);
 
     // 3 valid bindings: asset-manager, key-manager, hosted-service
     // no-url-binding is skipped (no bindingType:hosted and no url)
@@ -78,13 +78,15 @@ describe('ConfigLoader.loadServiceBindings', () => {
   });
 
   it('should return empty map when config has no service-bindings section', () => {
-    const configPath = path.join(FIXTURES_DIR, 'wfe-config.yaml');
-    const bindings = ConfigLoader.loadServiceBindings(configPath);
+    // Use the wfe-config fixture from the bindings fixture (no service-bindings key)
+    const configPath = path.join(FIXTURES_DIR, 'config-with-bindings.yaml');
+    // Pass a path to a YAML with no service-bindings — simulate by using a nonexistent section
+    const bindings = loadServiceBindings('/nonexistent/path.yaml');
     expect(Object.keys(bindings)).toHaveLength(0);
   });
 
   it('should return empty map when config file does not exist', () => {
-    const bindings = ConfigLoader.loadServiceBindings('/nonexistent/path.yaml');
+    const bindings = loadServiceBindings('/nonexistent/path.yaml');
     expect(Object.keys(bindings)).toHaveLength(0);
   });
 
@@ -94,34 +96,26 @@ describe('ConfigLoader.loadServiceBindings', () => {
     delete process.env.KALEIDO_CONFIG_FILE;
     delete process.env.WFE_CONFIG_FILE;
     try {
-      const bindings = ConfigLoader.loadServiceBindings();
+      const bindings = loadServiceBindings();
       expect(Object.keys(bindings)).toHaveLength(0);
     } finally {
-      if (originalKaleido !== undefined) {
-        process.env.KALEIDO_CONFIG_FILE = originalKaleido;
-      }
-      if (originalWfe !== undefined) {
-        process.env.WFE_CONFIG_FILE = originalWfe;
-      }
+      if (originalKaleido !== undefined) process.env.KALEIDO_CONFIG_FILE = originalKaleido;
+      if (originalWfe !== undefined) process.env.WFE_CONFIG_FILE = originalWfe;
     }
   });
 });
 
-describe('ConfigLoader.parseServiceBindingsSection', () => {
+describe('parseServiceBindingsSection', () => {
   it('should parse a section with basic auth (non-hosted)', () => {
     const section = {
       'my-service': {
         type: 'my-type',
         bindingType: 'non-hosted',
         url: 'https://example.com',
-        auth: {
-          type: 'basic',
-          username: 'u',
-          password: 'p',
-        },
+        auth: { type: 'basic', username: 'u', password: 'p' },
       },
     };
-    const bindings = ConfigLoader.parseServiceBindingsSection(section);
+    const bindings = parseServiceBindingsSection(section);
     expect(bindings['my-service']).toEqual({
       type: 'my-type',
       bindingType: 'non-hosted',
@@ -140,7 +134,7 @@ describe('ConfigLoader.parseServiceBindingsSection', () => {
         auth: { type: 'basic', username: 'u', password: 'p' },
       },
     };
-    const bindings = ConfigLoader.parseServiceBindingsSection(section);
+    const bindings = parseServiceBindingsSection(section);
     expect(bindings['asset-manager'].type).toBe('asset-manager');
   });
 
@@ -152,7 +146,7 @@ describe('ConfigLoader.parseServiceBindingsSection', () => {
         id: 'u:1234',
       },
     };
-    const bindings = ConfigLoader.parseServiceBindingsSection(section);
+    const bindings = parseServiceBindingsSection(section);
     expect(bindings['my-am']).toEqual({
       type: 'asset-manager',
       bindingType: 'hosted',
@@ -168,7 +162,7 @@ describe('ConfigLoader.parseServiceBindingsSection', () => {
       'invalid': null,
       'also-invalid': 'not-an-object',
     } as any;
-    const bindings = ConfigLoader.parseServiceBindingsSection(section);
+    const bindings = parseServiceBindingsSection(section);
     expect(Object.keys(bindings)).toHaveLength(1);
     expect(bindings['valid']).toBeDefined();
   });

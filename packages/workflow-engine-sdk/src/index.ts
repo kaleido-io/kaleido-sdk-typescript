@@ -98,13 +98,8 @@ export {
 // Event processor factory
 export {
   createEventProcessor,
-  EventProcessorBuilder,
   EventProcessorEvent,
-  EventProcessorBatchFn,
 } from './factories/event_processor';
-
-// Indexer factory
-export { createIndexer } from './factories/indexer';
 
 // Stage director helpers
 export {
@@ -149,8 +144,5 @@ export { HandlerRuntimeMode } from "./runtime/handler_runtime";
 
 // ── Builder API ───────────────────────────────────────────────────────────────
 
-export type { IndexerContext } from './app/context';
-export { createIndexerContext } from './app/context';
-export type { IndexerHandlerDef, TransactionHandlerRegistration } from './app/types';
-export { ensureStream } from './stream/ensure-stream';
-export type { EnsureStreamOptions } from './stream/ensure-stream';
+export type { EventProcessorContext } from './app/context';
+export type { EventProcessorDef, TransactionHandlerRegistration } from './app/types';

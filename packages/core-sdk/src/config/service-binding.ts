@@ -19,9 +19,29 @@ import yaml from 'js-yaml';
 import type { ServiceClientOptions } from '../http/service_client.js';
 import type { ServiceBindingAuth } from '../http/types.js';
 import type { IWSProxy } from '../http/ws_proxy_transport.js';
+import { newLogger } from '../log/logger.js';
 
 const KALEIDO_CONFIG_FILE = 'KALEIDO_CONFIG_FILE';
 const WFE_CONFIG_FILE = 'WFE_CONFIG_FILE';
+
+const log = newLogger('service-binding');
+
+function cfgStr(rec: Record<string, unknown>, key: string): string {
+  const v = rec[key];
+  return typeof v === 'string' ? v.trim() : '';
+}
+
+function cfgNum(rec: Record<string, unknown>, key: string): number | undefined {
+  const v = rec[key];
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') { const n = parseInt(v, 10); return Number.isNaN(n) ? undefined : n; }
+  return undefined;
+}
+
+function cfgObj(rec: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
+  const v = rec[key];
+  return v != null && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : undefined;
+}
 
 /**
  * Configuration for a single service binding.
@@ -194,4 +214,99 @@ export function resolveServiceBinding(
     ...(maxRetries !== undefined && { maxRetries }),
     ...(timeout !== undefined && { timeout }),
   };
+}
+
+function parseServiceBindingAuth(authObj: Record<string, unknown>): ServiceBindingAuth {
+  const authType = cfgStr(authObj, 'type') || 'basic';
+  const auth: ServiceBindingAuth = { type: authType as 'basic' | 'token' };
+  if (authType === 'basic') {
+    const username = cfgStr(authObj, 'username');
+    const password = cfgStr(authObj, 'password');
+    if (username) auth.username = username;
+    if (password) auth.password = password;
+  } else if (authType === 'token') {
+    const token = cfgStr(authObj, 'token');
+    const header = cfgStr(authObj, 'header');
+    const scheme = cfgStr(authObj, 'scheme');
+    if (token) auth.token = token;
+    if (header) auth.header = header;
+    if (scheme) auth.scheme = scheme;
+  }
+  return auth;
+}
+
+/**
+ * Parse a plain object (already extracted from YAML) into a typed ServiceBindingsMap.
+ * Invalid or incomplete entries are skipped with a warning.
+ */
+export function parseServiceBindingsSection(
+  section: Record<string, unknown>,
+): ServiceBindingsMap {
+  const bindings: ServiceBindingsMap = {};
+  for (const [name, value] of Object.entries(section)) {
+    if (!value || typeof value !== 'object') {
+      log.warn(`Skipping invalid service binding: ${name}`);
+      continue;
+    }
+    const entry = value as Record<string, unknown>;
+    const serviceType = cfgStr(entry, 'type') || name;
+    const bindingType = cfgStr(entry, 'bindingType');
+    const maxRetries = cfgNum(entry, 'maxRetries');
+    const timeout = cfgNum(entry, 'timeout');
+
+    if (bindingType === 'hosted') {
+      const id = cfgStr(entry, 'id');
+      if (!id) { log.warn(`Skipping hosted binding '${name}': missing required 'id' field`); continue; }
+      bindings[name] = { type: serviceType, bindingType, id, maxRetries, timeout };
+    } else {
+      const url = cfgStr(entry, 'url');
+      if (!url) { log.warn(`Skipping non-hosted binding '${name}': missing required 'url' field`); continue; }
+      const authObj = cfgObj(entry, 'auth');
+      if (!authObj) { log.warn(`Skipping non-hosted binding '${name}': missing required 'auth' field`); continue; }
+      bindings[name] = {
+        type: serviceType,
+        bindingType: 'non-hosted',
+        url,
+        auth: parseServiceBindingAuth(authObj),
+        maxRetries,
+        timeout,
+      };
+    }
+  }
+  return bindings;
+}
+
+/**
+ * Load and parse service bindings from the Kaleido config file.
+ *
+ * Reads `service-bindings` from the top level or nested under `workflow-engine`.
+ * Returns an empty map (rather than throwing) when the file is absent or has no
+ * bindings section — callers that require a specific binding should validate the result.
+ */
+export function loadServiceBindings(configFilePath?: string): ServiceBindingsMap {
+  const configPath = (
+    configFilePath ??
+    process.env[KALEIDO_CONFIG_FILE] ??
+    process.env[WFE_CONFIG_FILE] ??
+    ''
+  ).trim();
+  if (!configPath) return {};
+
+  let raw: string;
+  try {
+    raw = fs.readFileSync(configPath, 'utf8');
+  } catch {
+    return {};
+  }
+
+  const parsed = yaml.load(raw) as Record<string, unknown> | undefined;
+  if (!parsed || typeof parsed !== 'object') return {};
+
+  const wfeSection = parsed['workflow-engine'] as Record<string, unknown> | undefined;
+  const bindingsSection = (
+    parsed['service-bindings'] ?? wfeSection?.['service-bindings']
+  ) as Record<string, unknown> | undefined;
+  if (!bindingsSection || typeof bindingsSection !== 'object') return {};
+
+  return parseServiceBindingsSection(bindingsSection);
 }

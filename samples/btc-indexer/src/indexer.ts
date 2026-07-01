@@ -16,7 +16,7 @@
 
 import type {
   EventProcessorEvent,
-  IndexerContext,
+  EventProcessorContext,
 } from '@kaleido-io/workflow-engine-sdk';
 import { newLogger } from '@kaleido-io/core-sdk/log';
 import type { SetupContext } from '@kaleido-io/core-sdk/context';
@@ -91,8 +91,8 @@ export class BTCIndexer {
     }
   }
 
-  async indexBatch(
-    ctx: IndexerContext<BTCIndexerConfig>,
+  async processBatch(
+    ctx: EventProcessorContext<BTCIndexerConfig>,
     events: EventProcessorEvent<BTCTransactionEvent>[],
   ): Promise<void> {
     if (events.length === 0) return;

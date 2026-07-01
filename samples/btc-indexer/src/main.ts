@@ -19,7 +19,7 @@ import { BTCIndexer } from './indexer.js';
 import { createCoinSelectorHandler } from './coin-selector.js';
 
 WorkflowEngineClient.fromConfigFile()
-    .indexer('bitcoin-indexer', new BTCIndexer())
+    .eventProcessor('bitcoin-indexer', new BTCIndexer())
     .transactionHandler('btc-coin-selector', createCoinSelectorHandler())
     .start()
     .catch(fatalError);
