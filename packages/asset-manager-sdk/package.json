@@ -17,6 +17,7 @@
     "postbuild": "tsc-esm-fix --target='dist'",
     "clean": "rm -rf dist",
     "dev": "tsc --watch",
+    "lint": "eslint . --config eslint.config.mjs",
     "test": "jest --coverage"
   },
   "files": [
@@ -29,13 +30,19 @@
     "deepmerge": "^4.3.1"
   },
   "devDependencies": {
+    "@eslint/compat": "^2.0.0",
+    "@eslint/js": "^10.0.0",
     "@jest/globals": "^30.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.0.0",
+    "eslint": "^10.0.0",
+    "eslint-plugin-notice": "^1.0.0",
+    "globals": "^17.3.0",
     "jest": "^30.0.0",
     "ts-jest": "^29.1.0",
     "tsc-esm-fix": "^3.1.2",
-    "typescript": "^5.2.0"
+    "typescript": "^5.2.0",
+    "typescript-eslint": "^8.56.0"
   },
   "jest": {
     "preset": "ts-jest",

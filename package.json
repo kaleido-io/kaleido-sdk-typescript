@@ -34,9 +34,9 @@
     "patch-local-deps": "node scripts/patch-local-deps.js",
     "build:samples": "npm run build -w samples/workflow-engine-provider -w samples/erc20-indexer -w samples/btc-indexer -w samples/canton-cip56-indexer -w samples/native-eth-indexer -w samples/bulk-upsert-sample -w samples/dependency-ordering-sample --if-present",
     "build": "npm run build:packages && npm run build:samples",
-    "test:packages": "npm test -w packages/core-sdk -w packages/asset-manager-sdk -w packages/workflow-engine-sdk -w packages/kaleido-sdk",
+    "test:packages": "npm test -w packages/core-sdk -w packages/asset-manager-sdk -w packages/workflow-engine-sdk -w packages/connector-sdk -w packages/kaleido-sdk --if-present",
     "test:samples": "npm test -w samples/workflow-engine-provider -w samples/erc20-indexer -w samples/btc-indexer -w samples/canton-cip56-indexer -w samples/native-eth-indexer",
     "test": "npm run test:packages && npm run test:samples",
-    "lint": "npm run lint -w packages/workflow-engine-sdk"
+    "lint:packages": "npm run lint -w packages/core-sdk -w packages/workflow-engine-sdk -w packages/connector-sdk -w packages/asset-manager-sdk -w packages/kaleido-sdk --if-present"
   }
 }

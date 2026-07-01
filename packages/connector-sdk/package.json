@@ -27,7 +27,9 @@
     "prebuild": "npm run clean",
     "build": "tsc",
     "postbuild": "tsc-esm-fix --target='dist'",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "lint": "eslint . --config eslint.config.mjs",
+    "test": "jest --coverage"
   },
   "files": [
     "dist/**/*",
@@ -38,9 +40,39 @@
     "@kaleido-io/core-sdk": "^1.0.0-rc1"
   },
   "devDependencies": {
+    "@eslint/compat": "^2.0.0",
+    "@eslint/js": "^10.0.0",
+    "@jest/globals": "^30.0.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.0.0",
+    "eslint": "^10.0.0",
+    "eslint-plugin-notice": "^1.0.0",
+    "globals": "^17.3.0",
+    "jest": "^30.0.0",
+    "ts-jest": "^29.1.0",
     "tsc-esm-fix": "^3.1.2",
-    "typescript": "^5.2.0"
+    "typescript": "^5.2.0",
+    "typescript-eslint": "^8.56.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src"
+    ],
+    "testMatch": [
+      "**/?(*.)+(spec|test).ts"
+    ],
+    "transform": {
+      "^.+\\.ts$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^@kaleido-io/core-sdk$": "<rootDir>/../core-sdk/src/index.ts",
+      "^@kaleido-io/core-sdk/(.+)$": "<rootDir>/../core-sdk/src/$1/index.ts",
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "maxWorkers": 1,
+    "coverageProvider": "v8"
   },
   "engines": {
     "node": ">=20"

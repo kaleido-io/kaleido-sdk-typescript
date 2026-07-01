@@ -1,4 +1,4 @@
-// Copyright © 2026 Kaleido, Inc.
+// Copyright © <%= YEAR %> Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -13,14 +13,3 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-export { AssetManagerClient } from "./asset-manager.js";
-export {
-  BulkUpsertBuilder,
-  BulkUpsertBuilderOptions,
-  BulkUpsertInvalidRefError,
-  DuplicateStrategy,
-  IDataModelClient,
-  IBulkQueryClient,
-  IBulkUpsertClient,
-} from "./bulk-upsert-builder.js";
-export * from "./interfaces/index.js";

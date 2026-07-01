@@ -79,7 +79,6 @@ describe('loadServiceBindings', () => {
 
   it('should return empty map when config has no service-bindings section', () => {
     // Use the wfe-config fixture from the bindings fixture (no service-bindings key)
-    const configPath = path.join(FIXTURES_DIR, 'config-with-bindings.yaml');
     // Pass a path to a YAML with no service-bindings — simulate by using a nonexistent section
     const bindings = loadServiceBindings('/nonexistent/path.yaml');
     expect(Object.keys(bindings)).toHaveLength(0);

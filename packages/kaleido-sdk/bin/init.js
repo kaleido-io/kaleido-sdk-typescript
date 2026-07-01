@@ -16,7 +16,7 @@
 // limitations under the License.
 
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
-import { dirname, join, relative, resolve } from 'path';
+import { dirname, join, relative } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
 import { tmpdir } from 'os';

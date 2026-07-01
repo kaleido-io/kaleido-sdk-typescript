@@ -162,6 +162,7 @@ export function resolveServiceBinding(
   } catch (err: unknown) {
     throw new Error(
       `Cannot read config file '${configPath}': ${(err as Error).message}`,
+      { cause: err },
     );
   }
 

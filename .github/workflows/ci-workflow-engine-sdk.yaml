@@ -1,4 +1,4 @@
-name: Kaleido Workflow Engine TypeScript SDK CI
+name: Kaleido SDK CI
 
 on:
   pull_request:
@@ -26,12 +26,14 @@ jobs:
       - name: Install workspace dependencies
         run: npm install
 
-      - run: npm run lint -w packages/workflow-engine-sdk
+      - name: Lint packages
+        run: npm run lint:packages
 
       - name: Build packages (dependency order)
         run: npm run build:packages
 
-      - run: npm run test:packages
+      - name: Test packages
+        run: npm run test:packages
 
   samples:
     name: Build & Test (samples)
@@ -54,7 +56,7 @@ jobs:
         run: npm run build:samples
 
       - name: Test samples
-        run: npm test -w samples/workflow-engine-provider -w samples/erc20-indexer -w samples/btc-indexer -w samples/canton-cip56-indexer -w samples/native-eth-indexer --if-present
+        run: npm run test:samples
 
   docker:
     name: Docker Builds (Samples)
