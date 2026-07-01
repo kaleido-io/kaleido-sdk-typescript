@@ -31,12 +31,11 @@ jobs:
         run: npm pack
         working-directory: packages/kaleido-sdk
 
-      - name: Run ksdk init from tarball
+      - name: Run ksdk init
         run: |
-          TARBALL=$(ls "$GITHUB_WORKSPACE"/packages/kaleido-sdk/kaleido-io-kaleido-sdk-*.tgz)
           mkdir -p /tmp/ksdk-init-test
           cd /tmp/ksdk-init-test
-          KSDK_REPO_URL="$GITHUB_WORKSPACE" npx "file:$TARBALL" init my-${{ matrix.template }} --template ${{ matrix.template }}
+          KSDK_REPO_URL="$GITHUB_WORKSPACE" node "$GITHUB_WORKSPACE/packages/kaleido-sdk/bin/ksdk.js" init my-${{ matrix.template }} --template ${{ matrix.template }}
 
       - name: Verify generated project
         run: |
@@ -94,9 +93,8 @@ jobs:
 
       - name: Run ksdk init in add-to-existing mode
         run: |
-          TARBALL=$(ls "$GITHUB_WORKSPACE"/packages/kaleido-sdk/kaleido-io-kaleido-sdk-*.tgz)
           cd /tmp/ksdk-add-test
-          KSDK_REPO_URL="$GITHUB_WORKSPACE" npx "file:$TARBALL" init --template ${{ matrix.template }}
+          KSDK_REPO_URL="$GITHUB_WORKSPACE" node "$GITHUB_WORKSPACE/packages/kaleido-sdk/bin/ksdk.js" init --template ${{ matrix.template }}
 
       - name: Verify add-to-existing result
         run: |

@@ -43,7 +43,7 @@
     "@kaleido-io/core-sdk": "^1.0.0-rc1",
     "@kaleido-io/workflow-engine-sdk": "^1.0.0-rc1",
     "@kaleido-io/asset-manager-sdk": "^1.0.0-rc1",
-    "@kaleido-io/connector-sdk": "^0.1.0-rc1"
+    "@kaleido-io/connector-sdk": "^1.0.0-rc1"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.0",
