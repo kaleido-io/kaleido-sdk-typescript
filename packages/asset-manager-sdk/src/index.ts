@@ -1,12 +1,3 @@
-export {
-  newLogger,
-  setLoggerFactory,
-  defaultLoggerFactory,
-} from './log/logger.js';
-export type { Logger, LoggerFactory } from './log/logger.js';
-
-export type { SetupContext } from '@kaleido-io/core/context';
-
 export { AssetManagerClient } from "./asset-manager.js";
 export {
   BulkUpsertBuilder,

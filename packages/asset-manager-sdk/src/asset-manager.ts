@@ -3,8 +3,8 @@ import {
   ServiceClient,
   ServiceClientOptions,
   createServiceTransport,
-} from "@kaleido-io/core/http";
-import { resolveServiceBinding } from "@kaleido-io/core";
+} from "@kaleido-io/core-sdk/http";
+import { resolveServiceBinding } from "@kaleido-io/core-sdk";
 import { BulkUpsertBuilder, type BulkUpsertBuilderOptions } from "./bulk-upsert-builder.js";
 import {
   Activity,
@@ -58,7 +58,7 @@ import {
   TransferInput,
   UpsertManyResult,
 } from "./interfaces/index.js";
-import type { SetupContext } from '@kaleido-io/core/context';
+import type { SetupContext } from '@kaleido-io/core-sdk/context';
 import { newLogger } from './log/logger.js';
 
 const log = newLogger("AssetManagerClient");

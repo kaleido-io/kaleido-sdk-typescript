@@ -14,8 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { newLogger } from '@kaleido-io/workflow-engine-sdk';
-import type { EventProcessorEvent, IndexerContext, SetupContext } from '@kaleido-io/workflow-engine-sdk';
+import { newLogger } from '@kaleido-io/core-sdk/log';
+import type { EventProcessorEvent, IndexerContext } from '@kaleido-io/workflow-engine-sdk';
+import type { SetupContext } from '@kaleido-io/core-sdk/context';
 import { CantonConnectorClient } from '@kaleido-io/connector-sdk/canton';
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
 import type {

@@ -17,8 +17,8 @@
 import {
   WorkflowEngineClient,
   createTransactionHandler,
-  type ServiceClientOptions,
 } from "@kaleido-io/workflow-engine-sdk";
+import type { ServiceClientOptions } from "@kaleido-io/core-sdk/http";
 import { AssetManagerClient } from "@kaleido-io/asset-manager-sdk";
 import dotenv from "dotenv";
 

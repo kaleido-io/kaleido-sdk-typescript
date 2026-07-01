@@ -14,14 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The service-binding vocabulary is owned by @kaleido-io/core (alongside
-// ServiceClientOptions / ServiceBindingAuth / the binding resolvers). These are
-// re-exported here so the workflow-engine-sdk public API is unchanged for
-// existing importers of `../service/types`.
-export { ServiceBindingAuth } from "@kaleido-io/core/http";
+export { ServiceBindingAuth } from "@kaleido-io/core-sdk/http";
 export {
   ServiceBindingConfig,
   NonHostedServiceBindingConfig,
   HostedServiceBindingConfig,
   ServiceBindingsMap,
-} from "@kaleido-io/core";
+} from "@kaleido-io/core-sdk";

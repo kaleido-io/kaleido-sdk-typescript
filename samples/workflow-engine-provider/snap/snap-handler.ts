@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import { BasicStageDirector, EvalResult, InvocationMode, WithStageDirector, WSEvaluateTransaction } from '@kaleido-io/workflow-engine-sdk';
-import { newLogger } from '@kaleido-io/workflow-engine-sdk';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 
 const log = newLogger('snap-handler');
 

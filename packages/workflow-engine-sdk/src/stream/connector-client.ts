@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ServiceClient, ServiceClientOptions, createServiceTransport } from '../service/index.js';
+import { ServiceClient, ServiceClientOptions, createServiceTransport } from '@kaleido-io/core-sdk/http';
 
 /**
  * Minimal HTTP/WS-proxy client used by ensureStream to call connector REST APIs.

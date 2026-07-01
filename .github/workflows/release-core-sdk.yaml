@@ -1,4 +1,4 @@
-name: Kaleido Workflow Engine TypeScript SDK Release
+name: Kaleido Core TypeScript SDK Release
 
 permissions:
   contents: read
@@ -58,7 +58,7 @@ jobs:
         with:
           node-version: '22.x'
           registry-url: 'https://registry.npmjs.org'
-      
+
       - name: Upgrade npm for OIDC support
         shell: bash
         run: |
@@ -83,16 +83,16 @@ jobs:
       - name: Override SDK version
         uses: ./.github/actions/update-json
         with:
-          file: 'packages/workflow-engine-sdk/package.json'
+          file: 'packages/core-sdk/package.json'
           key: 'version'
           value: ${{ steps.prep_version.outputs.clean_version }}
-      
+
       - name: Parse NPM tags
         id: parse_tags
         shell: bash
         run: |
           TAG_LIST="${{ inputs.sdk_tag }}"
-          
+
           # Group all writes to the GITHUB_OUTPUT file
           {
             # The first tag in the list is the primary one
@@ -106,13 +106,8 @@ jobs:
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
-      - name: Build core dependency
-        working-directory: packages/core-sdk
-        shell: bash
-        run: npm install && npm run build
-
       - name: Publish to npm with primary tag
-        working-directory: packages/workflow-engine-sdk
+        working-directory: packages/core-sdk
         shell: bash
         run: |
           set -e
@@ -129,10 +124,10 @@ jobs:
         shell: bash
         run: |
           # The version for `dist-tag add` must not have the 'v' prefix
-          PACKAGE_SPEC="@kaleido-io/workflow-engine-sdk@${{ steps.prep_version.outputs.clean_version }}"
-          
+          PACKAGE_SPEC="@kaleido-io/core-sdk@${{ steps.prep_version.outputs.clean_version }}"
+
           echo "Adding tags for $PACKAGE_SPEC..."
-          
+
           # Loop through the newline-separated list of additional tags
           while IFS= read -r tag; do
             if [[ -n "$tag" ]]; then
@@ -140,4 +135,3 @@ jobs:
               npm dist-tag add "$PACKAGE_SPEC" "$tag"
             fi
           done <<< "${{ steps.parse_tags.outputs.additional_tags }}"
-  

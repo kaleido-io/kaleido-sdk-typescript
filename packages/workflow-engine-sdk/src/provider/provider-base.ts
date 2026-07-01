@@ -16,7 +16,7 @@
 
 import axios, { AxiosInstance, CreateAxiosDefaults } from "axios";
 import { WorkflowEngineClient, WorkflowEngineClientConfig } from "../client/client";
-import { configureHttpClient, HttpClientOptions } from "../service";
+import { configureHttpClient, HttpClientOptions } from "@kaleido-io/core-sdk/http";
 import { kidColon } from "../utils/kidutils";
 import { newLogger } from "../log/logger";
 

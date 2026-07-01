@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { SetupContext } from '@kaleido-io/core/context';
+import type { SetupContext } from '@kaleido-io/core-sdk/context';
 import { ensureStream } from '@kaleido-io/workflow-engine-sdk';
 import { ConfigLoader } from '@kaleido-io/workflow-engine-sdk';
 import type { EVMTransactionEventsConfig } from './stream-config.js';

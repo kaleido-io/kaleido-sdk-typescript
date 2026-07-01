@@ -14,35 +14,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Re-export all shared transport infrastructure from @kaleido-io/service-client.
-// Public API of workflow-engine-sdk is unchanged.
-export {
-  ServiceTransport,
-  HTTPTransport,
-  HTTPTransportOptions,
-  WSProxyTransport,
-  WSProxyTransportOptions,
-  WSProxyServiceClient,
-  IWSProxy,
-  WSProxyResponse,
-  ServiceClient,
-  ServiceClientOptions,
-  createServiceTransport,
-  ServiceBindingAuth,
-  configureHttpClient,
-  HttpClientOptions,
-  RetryConfig,
-  RequestConfigWithRetry,
-} from "@kaleido-io/core/http";
-
-// WFE-specific binding configuration types (hosted vs non-hosted)
-export {
-  ServiceBindingConfig,
-  NonHostedServiceBindingConfig,
-  HostedServiceBindingConfig,
-  ServiceBindingsMap,
-} from "./types";
-
 // WFE-specific WS proxy adapter (implements IWSProxy for the WFE protocol)
 export { WSProxyAdapter, ProxyAdapterRuntime } from "./ws_proxy_adapter";
 

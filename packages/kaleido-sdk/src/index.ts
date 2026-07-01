@@ -20,13 +20,3 @@
 
 export { KaleidoClient } from './kaleido-client.js';
 export type { KaleidoClientConfig } from './kaleido-client.js';
-
-export type { SetupContext } from '@kaleido-io/core/context';
-export { createSetupContext } from '@kaleido-io/core/context';
-
-export {
-  newLogger,
-  setLoggerFactory,
-  defaultLoggerFactory,
-} from './log/logger.js';
-export type { Logger, LoggerFactory } from './log/logger.js';

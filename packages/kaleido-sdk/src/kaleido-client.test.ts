@@ -21,7 +21,7 @@ import { join } from 'path';
 import {
   resolveServiceBindingFromMap,
   type ServiceBindingsMap,
-} from '@kaleido-io/core';
+} from '@kaleido-io/core-sdk';
 import { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
 import {

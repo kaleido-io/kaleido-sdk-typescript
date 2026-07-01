@@ -36,6 +36,7 @@
         "README.md"
     ],
     "dependencies": {
+        "@kaleido-io/core-sdk": "*",
         "@kaleido-io/workflow-engine-sdk": "*",
         "@kaleido-io/asset-manager-sdk": "*",
         "dotenv": "^17.2.3",

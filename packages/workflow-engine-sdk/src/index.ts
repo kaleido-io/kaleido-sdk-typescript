@@ -65,8 +65,6 @@ export {
   createWorkflowEngineClient,
 } from './client/client_factory';
 
-export { newLogger, setLoggerFactory, defaultLoggerFactory, LoggerFactory } from './log/logger';
-
 // ============================================================================
 // Core Types & Interfaces
 // ============================================================================
@@ -118,23 +116,8 @@ export {
 // Configuration
 export * from "./config/config";
 
-// Service Bindings & Transport
+// WFE-specific WS proxy adapter
 export {
-  ServiceTransport,
-  ServiceClient,
-  ServiceClientOptions,
-  createServiceTransport,
-  HTTPTransport,
-  HTTPTransportOptions,
-  WSProxyTransport,
-  WSProxyTransportOptions,
-  ServiceBindingAuth,
-  ServiceBindingConfig,
-  ServiceBindingsMap,
-  configureHttpClient,
-  HttpClientOptions,
-  RetryConfig,
-  RequestConfigWithRetry,
   WSProxyAdapter,
   ProxyAdapterRuntime,
 } from "./service/index";
@@ -158,9 +141,6 @@ export {
   fatalError,
 } from "./utils/errors";
 
-// Logger
-export * from "./log/logger";
-
 export * from "./i18n/errors";
 
 export type { HandlerBindingTarget } from "./types/flows";
@@ -169,8 +149,6 @@ export { HandlerRuntimeMode } from "./runtime/handler_runtime";
 
 // ── Builder API ───────────────────────────────────────────────────────────────
 
-export type { SetupContext } from '@kaleido-io/core/context';
-export { createSetupContext } from '@kaleido-io/core/context';
 export type { IndexerContext } from './app/context';
 export { createIndexerContext } from './app/context';
 export type { IndexerHandlerDef, TransactionHandlerRegistration } from './app/types';

@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import { newLogger } from '../log/logger.js';
-import type { SetupContext } from '@kaleido-io/core/context';
+import type { SetupContext } from '@kaleido-io/core-sdk/context';
 import { ConnectorClient } from './connector-client.js';
 
 const log = newLogger('ensureStream');

@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import type { IndexerHandlerDef } from '@kaleido-io/workflow-engine-sdk';
-import { newLogger } from '@kaleido-io/workflow-engine-sdk';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 
 const log = newLogger('echo-event-processor');
 

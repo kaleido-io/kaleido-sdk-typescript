@@ -1,10 +1,14 @@
 {
-  "name": "@kaleido-io/core",
+  "name": "@kaleido-io/core-sdk",
   "version": "1.0.0-rc1",
-  "description": "Core utilities for Kaleido SDKs",
+  "description": "Core utilities for Kaleido SDKs — HTTP transport, logging, and service-binding resolution",
   "type": "module",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaleido-io/kaleido-sdk-typescript.git"
+  },
   "typesVersions": {
     "*": {
       "http": [
@@ -44,11 +48,21 @@
     "test": "jest --coverage",
     "dev": "tsc --watch"
   },
+  "keywords": [
+    "kaleido",
+    "sdk",
+    "typescript",
+    "http",
+    "logging",
+    "service-binding"
+  ],
+  "author": "Kaleido",
+  "license": "Apache-2.0",
   "files": [
     "dist/**/*",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
-  "license": "Apache-2.0",
   "dependencies": {
     "axios": "^1.13.0",
     "axios-retry": "^4.5.0",

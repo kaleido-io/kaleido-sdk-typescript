@@ -14,9 +14,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The logger is defined once in @kaleido-io/core and re-exported here so the SDK
-// and the bundled core share a single implementation and a single
-// setLoggerFactory state — a factory set via the SDK also governs core's own
-// logs (HTTP transport, ws-proxy). Do not redefine the logger here.
-export { newLogger, setLoggerFactory, defaultLoggerFactory } from "@kaleido-io/core/log";
-export type { Logger, LoggerFactory } from "@kaleido-io/core/log";
+export { newLogger, setLoggerFactory, defaultLoggerFactory } from "@kaleido-io/core-sdk/log";
+export type { Logger, LoggerFactory } from "@kaleido-io/core-sdk/log";

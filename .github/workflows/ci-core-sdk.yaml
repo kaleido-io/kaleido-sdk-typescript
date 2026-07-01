@@ -1,21 +1,21 @@
-name: Core CI
+name: Core SDK CI
 
 on:
   pull_request:
     paths:
-      - 'internal/core/**'
-      - '.github/workflows/ci-core.yaml'
+      - 'packages/core-sdk/**'
+      - '.github/workflows/ci-core-sdk.yaml'
 
 permissions:
   contents: read
 
 jobs:
-  core:
-    name: Build (Core)
+  core-sdk:
+    name: Build and Test (Core SDK)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: internal/core
+        working-directory: packages/core-sdk
     steps:
       - uses: actions/checkout@v4
 
@@ -26,3 +26,5 @@ jobs:
       - run: npm install
 
       - run: npm run build
+
+      - run: npm test

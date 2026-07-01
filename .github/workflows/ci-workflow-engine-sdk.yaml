@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - 'packages/**'
-      - 'internal/**'
       - 'samples/**'
       - '.github/workflows/ci-workflow-engine-sdk.yaml'
       - '.github/workflows/ci-docker-samples.yaml'
@@ -32,7 +31,7 @@ jobs:
       - name: Build packages (dependency order)
         run: npm run build:packages
 
-      - run: npm test -w packages/asset-manager-sdk -w packages/workflow-engine-sdk
+      - run: npm run test:packages
 
   samples:
     name: Build & Test (samples)

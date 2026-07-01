@@ -17,10 +17,9 @@
 import type {
   EventProcessorEvent,
   IndexerContext,
-
-  SetupContext,
 } from '@kaleido-io/workflow-engine-sdk';
-import { newLogger } from '@kaleido-io/workflow-engine-sdk';
+import { newLogger } from '@kaleido-io/core-sdk/log';
+import type { SetupContext } from '@kaleido-io/core-sdk/context';
 import type { TransferBulkInput } from '@kaleido-io/asset-manager-sdk';
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
 import type { EVMTransactionEvent } from '@kaleido-io/connector-sdk/evm';

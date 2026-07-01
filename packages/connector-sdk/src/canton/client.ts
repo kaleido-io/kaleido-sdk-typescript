@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { SetupContext } from '@kaleido-io/core/context';
+import type { SetupContext } from '@kaleido-io/core-sdk/context';
 import { ensureStream, ConfigLoader } from '@kaleido-io/workflow-engine-sdk';
 import type { CantonContractEventsConfig } from './index.js';
 

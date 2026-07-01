@@ -26,7 +26,7 @@ import {
   EventProcessor,
 } from '../interfaces/handlers';
 import { ServiceBindingsMap, ServiceBindingConfig } from '../service/types';
-import { ServiceClientOptions } from '@kaleido-io/core/http';
+import { ServiceClientOptions } from '@kaleido-io/core-sdk/http';
 import { WSProxyAdapter } from '../service/ws_proxy_adapter';
 import { ConfigLoader, KALEIDO_CONFIG_FILE, WFE_CONFIG_FILE, CONFIG_FILE } from '../config/config';
 import { newLogger } from '../log/logger';
@@ -35,7 +35,7 @@ import { RequestContext } from '../types/core';
 import {
   SetupContext,
   createSetupContext,
-} from '@kaleido-io/core/context';
+} from '@kaleido-io/core-sdk/context';
 import { createIndexerContext } from '../app/context';
 import type { IndexerHandlerDef, TransactionHandlerRegistration } from '../app/types';
 

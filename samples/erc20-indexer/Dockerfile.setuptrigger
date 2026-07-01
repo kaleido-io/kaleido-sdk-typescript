@@ -1,47 +1,44 @@
-# Build from monorepo root: docker build -f samples/btc-indexer/Dockerfile.withsdk .
+# Build from monorepo root: docker build -f samples/erc20-indexer/Dockerfile.setuptrigger -t <tag> .
+# Variant of Dockerfile.withsdk that also copies the workspace packages into the runtime
+# stage so symlinks under node_modules/@kaleido-io/* resolve. Used for the deploy-time
+# setup-trigger E2E test against an unpublished local SDK.
 FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 
-# Copy workspace manifests first for layer caching
 COPY package.json package-lock.json ./
 COPY packages/core-sdk/package.json ./packages/core-sdk/
 COPY packages/asset-manager-sdk/package.json ./packages/asset-manager-sdk/
 COPY packages/connector-sdk/package.json ./packages/connector-sdk/
 COPY packages/workflow-engine-sdk/package.json ./packages/workflow-engine-sdk/
-COPY samples/btc-indexer/package.json ./samples/btc-indexer/
+COPY samples/erc20-indexer/package.json ./samples/erc20-indexer/
 
 RUN npm ci
 
-# Build packages/core-sdk
 COPY packages/core-sdk ./packages/core-sdk
 RUN npm run build -w packages/core-sdk
 
-# Build workspace packages
 COPY packages/workflow-engine-sdk ./packages/workflow-engine-sdk
 COPY packages/asset-manager-sdk ./packages/asset-manager-sdk
 COPY packages/connector-sdk ./packages/connector-sdk
 RUN npm run build -w packages/workflow-engine-sdk -w packages/asset-manager-sdk -w packages/connector-sdk
 
-# Build the sample
-COPY samples/btc-indexer/tsconfig.json ./samples/btc-indexer/
-COPY samples/btc-indexer/src ./samples/btc-indexer/src
-RUN npm run build -w samples/btc-indexer
+COPY samples/erc20-indexer/tsconfig.json ./samples/erc20-indexer/
+COPY samples/erc20-indexer/src ./samples/erc20-indexer/src
+RUN npm run build -w samples/erc20-indexer
 
-# Runtime stage — distroless for minimal attack surface and image size
-# No shell, no package manager: only the Node runtime and your compiled JS.
 FROM gcr.io/distroless/nodejs22-debian12
 
 WORKDIR /app
 
+# Bring across both node_modules AND the workspace packages so symlinks resolve.
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/samples/btc-indexer/dist ./samples/btc-indexer/dist
-COPY --from=builder /app/samples/btc-indexer/package.json ./samples/btc-indexer/
-COPY samples/btc-indexer/config ./config
+COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/samples/erc20-indexer/dist ./samples/erc20-indexer/dist
+COPY --from=builder /app/samples/erc20-indexer/package.json ./samples/erc20-indexer/
 
 ENV CONFIG_FILE=./config/provider-config.yaml
 
-# distroless node images use nonroot (uid 65532) by default
 USER nonroot
 
-CMD ["/app/samples/btc-indexer/dist/src/main.js"]
+CMD ["/app/samples/erc20-indexer/dist/src/connect.js"]

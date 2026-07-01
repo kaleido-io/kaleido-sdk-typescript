@@ -17,10 +17,9 @@
 import type {
   EventProcessorEvent,
   IndexerContext,
-
-  SetupContext,
 } from '@kaleido-io/workflow-engine-sdk';
-import { newLogger } from '@kaleido-io/workflow-engine-sdk';
+import { newLogger } from '@kaleido-io/core-sdk/log';
+import type { SetupContext } from '@kaleido-io/core-sdk/context';
 import type {
   Address,
   BulkQueryInput,

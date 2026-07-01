@@ -15,11 +15,11 @@
 // limitations under the License.
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { ServiceTransport } from '@kaleido-io/core/http';
+import { ServiceTransport } from '@kaleido-io/core-sdk/http';
 import { AssetManagerClient } from './asset-manager.js';
 
-jest.mock('@kaleido-io/core/http', () => ({
-    ...(jest.requireActual('@kaleido-io/core/http') as object),
+jest.mock('@kaleido-io/core-sdk/http', () => ({
+    ...(jest.requireActual('@kaleido-io/core-sdk/http') as object),
     createServiceTransport: jest.fn(() => mockTransport),
 }));
 

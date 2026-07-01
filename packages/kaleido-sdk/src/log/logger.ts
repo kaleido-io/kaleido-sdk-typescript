@@ -14,5 +14,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { newLogger, setLoggerFactory, defaultLoggerFactory } from '@kaleido-io/core/log';
-export type { Logger, LoggerFactory } from '@kaleido-io/core/log';
+export { newLogger, setLoggerFactory, defaultLoggerFactory } from '@kaleido-io/core-sdk/log';
+export type { Logger, LoggerFactory } from '@kaleido-io/core-sdk/log';

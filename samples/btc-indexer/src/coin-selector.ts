@@ -21,12 +21,12 @@ import {
   createTransactionHandler,
   EvalResult,
   InvocationMode,
-  SetupContext,
   TransactionHandlerBatchIn,
   TransactionHandlerBatchOut,
   TransactionHandlerRegistration,
   WithStageDirector,
 } from '@kaleido-io/workflow-engine-sdk';
+import type { SetupContext } from '@kaleido-io/core-sdk';
 
 export interface BTCCoinSelectorConfig {
   tokenName: string;

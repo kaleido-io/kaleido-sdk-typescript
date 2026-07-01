@@ -18,7 +18,7 @@ import {
   resolveServiceBindingFromMap,
   type ServiceClientOptions,
   type ServiceBindingsMap,
-} from '@kaleido-io/core';
+} from '@kaleido-io/core-sdk';
 import {
   WorkflowEngineClient,
   ConfigLoader,
@@ -60,8 +60,7 @@ export interface KaleidoClientConfig {
  * ```
  *
  * The facade delegates entirely to the underlying SDK packages and adds no new
- * transport behaviour of its own. It depends on `@kaleido-io/core` only at build
- * time (its binding-resolution types and helpers), not as a runtime dependency.
+ * transport behaviour of its own. Binding resolution delegates to `@kaleido-io/core-sdk`.
  */
 export class KaleidoClient {
   private readonly wfeConfig?: WorkflowEngineClientConfig;

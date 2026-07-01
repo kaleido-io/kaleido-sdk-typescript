@@ -50,8 +50,8 @@ if (!existsSync(pkgPath)) {
 
 // ── Discover local @kaleido-io/* packages ────────────────────────────────────
 
-// @kaleido-io/* packages live under packages/ and internal/ (e.g. @kaleido-io/core).
-const searchDirs = ['packages', 'internal'].map((d) => join(REPO_ROOT, d));
+// @kaleido-io/* packages live under packages/
+const searchDirs = ['packages'].map((d) => join(REPO_ROOT, d));
 const localPackages = {};   // name → source dir
 
 for (const searchDir of searchDirs) {

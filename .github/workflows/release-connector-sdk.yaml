@@ -111,7 +111,7 @@ jobs:
       # dist/ must exist for tsc to resolve the workspace dependency. Build that
       # chain (core → workflow-engine-sdk) first, mirroring root `build:packages`.
       - name: Build core dependency
-        working-directory: internal/core
+        working-directory: packages/core-sdk
         shell: bash
         run: npm install && npm run build
 

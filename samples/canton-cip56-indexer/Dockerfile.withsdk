@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Copy workspace manifests first for layer caching
 COPY package.json package-lock.json ./
-COPY internal/core/package.json ./internal/core/
+COPY packages/core-sdk/package.json ./packages/core-sdk/
 COPY packages/asset-manager-sdk/package.json ./packages/asset-manager-sdk/
 COPY packages/connector-sdk/package.json ./packages/connector-sdk/
 COPY packages/workflow-engine-sdk/package.json ./packages/workflow-engine-sdk/
@@ -13,9 +13,9 @@ COPY samples/canton-cip56-indexer/package.json ./samples/canton-cip56-indexer/
 
 RUN npm ci
 
-# Build internal/core
-COPY internal/core ./internal/core
-RUN npm run build --prefix internal/core
+# Build packages/core-sdk
+COPY packages/core-sdk ./packages/core-sdk
+RUN npm run build -w packages/core-sdk
 
 # Build workspace packages
 COPY packages/workflow-engine-sdk ./packages/workflow-engine-sdk

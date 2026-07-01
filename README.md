@@ -6,12 +6,11 @@ This repository contains Kaleido's TypeScript SDK packages for interacting with 
 
 ## Packages
 
+- [`@kaleido-io/core-sdk`](./packages/core-sdk/README.md) — Core utilities shared across all SDK packages: HTTP transport, logging, and service-binding resolution. Import logging and setup context from here.
 - [`@kaleido-io/workflow-engine-sdk`](./packages/workflow-engine-sdk/README.md) — Workflow engine SDK, allows you to build workflow engine hosted applications such as event sources, transaction handlers, event processors and indexers
 - [`@kaleido-io/asset-manager-sdk`](./packages/asset-manager-sdk/README.md) — Asset manager SDK allows you to interact with Kaleido's asset manager tokenization service to bulk query and upsert data into the asset model
 - [`@kaleido-io/connector-sdk`](./packages/connector-sdk/README.md) — Connector sdk provides connector helpers and chain-specific types (EVM, BTC, Canton)
 - [`@kaleido-io/kaleido-sdk`](./packages/kaleido-sdk/README.md) — optional umbrella package that serves as a single entry point for applications using multiple SDK pacakges (`KaleidoClient`) and provides ability to scaffold projects based on templates `npx ... init`
-
-`@kaleido-io/core` is shared internal infrastructure (HTTP transport, logging, service-binding helpers) bundled into the public SDK packages. Application code should import logging and clients from a public SDK package, not from `@kaleido-io/core` directly.
 
 ## Using a single service SDK
 
@@ -210,12 +209,10 @@ These paths are used to locate configuration when isntantiating new clients usin
 
 ## Logging
 
-All SDK packages share the same structured logger (implemented in `@kaleido-io/core` and re-exported by each public SDK). If you use multiple SDKs in one application, import logging from **one** package and use it consistently — `setLoggerFactory()` applies to that package's bundled logger.
-
-When you use the umbrella entry point, import from `@kaleido-io/kaleido-sdk`:
+All SDK packages share the same structured logger from `@kaleido-io/core-sdk`. Import logging from there regardless of which service SDKs your application uses:
 
 ```ts
-import { newLogger, setLoggerFactory } from '@kaleido-io/kaleido-sdk';
+import { newLogger, setLoggerFactory } from '@kaleido-io/core-sdk';
 
 const log = newLogger('my-app');
 
@@ -228,7 +225,7 @@ log.error('Batch failed', { error: err.message });
 To plug in your own backend (pino, winston, NestJS logger, etc.):
 
 ```ts
-import { setLoggerFactory } from '@kaleido-io/kaleido-sdk';
+import { setLoggerFactory } from '@kaleido-io/core-sdk';
 
 setLoggerFactory((context) => ({
   debug: (msg, ...args) => myLogger.debug(`[${context}] ${msg}`, ...args),
@@ -237,8 +234,6 @@ setLoggerFactory((context) => ({
   error: (msg, ...args) => myLogger.error(`[${context}] ${msg}`, ...args),
 }));
 ```
-
-If you depend on a single service SDK only, import `newLogger` and `setLoggerFactory` from that package instead — see each package README for its import path.
 
 
 ## Example usage by Package
@@ -354,6 +349,7 @@ const am = client.assetManagerClient();
 
 ## Package Documentation
 
+- [Core SDK docs](./packages/core-sdk/README.md)
 - [Workflow Engine SDK docs](./packages/workflow-engine-sdk/README.md)
 - [Asset Manager SDK docs](./packages/asset-manager-sdk/README.md)
 - [Connector SDK docs](./packages/connector-sdk/README.md)
