@@ -27,7 +27,7 @@ import {
     WithStageDirector,
     TransactionHandlerBatchIn
 } from '../src/index';
-import { newLogger } from '../src/log/logger';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import { FlowStageTypes } from '../src/types/flows';
 
 const logger = newLogger('BatchTest');

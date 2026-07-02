@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { newLogger, setLoggerFactory, defaultLoggerFactory, Logger, LoggerFactory } from '../../src/log/logger';
+import { newLogger, setLoggerFactory, defaultLoggerFactory, Logger, LoggerFactory } from './logger';
 
 // Matches e.g. "2026-05-13T14:23:45.123Z "
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z /;

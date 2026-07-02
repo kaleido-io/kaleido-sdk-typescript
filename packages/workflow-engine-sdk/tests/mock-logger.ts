@@ -24,7 +24,7 @@ export const mockLogger = {
     error: jest.fn()
 };
 
-jest.mock('../src/log/logger', () => ({
+jest.mock('@kaleido-io/core-sdk/log', () => ({
     newLogger: jest.fn(() => mockLogger),
     setLoggerFactory: jest.fn(),
 }));
