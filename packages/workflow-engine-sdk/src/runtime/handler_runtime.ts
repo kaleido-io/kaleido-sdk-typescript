@@ -155,6 +155,14 @@ export class HandlerRuntime {
    */
   private setupTriggerHandler?: (authRef: string) => Promise<{ status: 'success' | 'error'; errors?: string[] }>;
 
+  /**
+   * Per-provider capabilities declared on REGISTER_PROVIDER. Set by
+   * WorkflowEngineClient just before connect(), based on inspecting the actual
+   * handlers the customer registered. Direct-runtime users leave this empty —
+   * the platform then treats each capability as its conservative default.
+   */
+  private providerCapabilities: import('../types/core').ProviderCapabilities = {};
+
   constructor(config: HandlerRuntimeConfig) {
     if (config.server) {
       this.mode = HandlerRuntimeMode.INBOUND;
@@ -208,6 +216,17 @@ export class HandlerRuntime {
     handler: (authRef: string) => Promise<{ status: 'success' | 'error'; errors?: string[] }>,
   ): void {
     this.setupTriggerHandler = handler;
+  }
+
+  /**
+   * Set the per-provider capabilities to declare on the next (or current) WS
+   * connection. Called by WorkflowEngineClient right before connect(), after
+   * all handlers are registered — the client inspects its own handler list to
+   * derive each flag (`hasSetupHooks`, etc). Idempotent; overwrites previous
+   * value. Reconnects re-send the latest declared value.
+   */
+  setProviderCapabilities(caps: import('../types/core').ProviderCapabilities): void {
+    this.providerCapabilities = { ...caps };
   }
 
   /**
@@ -512,13 +531,19 @@ export class HandlerRuntime {
       eventProcessors: this.eventProcessors.size
     });
 
-    // Register provider
-    this.sendMessage({
+    // Register provider. `capabilities` is omitted when no flags are set so
+    // the message stays byte-identical to the pre-1.0 wire format for callers
+    // that never declare any capability (e.g. direct-runtime users).
+    const registerMsg: Record<string, unknown> = {
       messageType: WSMessageType.REGISTER_PROVIDER,
       id: this.generateId(),
       providerName: this.config.providerName,
       providerMetadata: this.config.providerMetadata,
-    });
+    };
+    if (Object.keys(this.providerCapabilities).length > 0) {
+      registerMsg.capabilities = this.providerCapabilities;
+    }
+    this.sendMessage(registerMsg);
 
     // Register all transaction handlers
     for (const name of this.transactionHandlers.keys()) {

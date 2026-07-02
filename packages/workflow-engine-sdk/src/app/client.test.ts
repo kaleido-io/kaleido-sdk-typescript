@@ -224,3 +224,64 @@ describe('WorkflowEngineClient builder', () => {
     expect(capturedCtx!['signal']).toBe(reqSignal);
   });
 });
+
+// ---------------------------------------------------------------------------
+// REGISTER_PROVIDER capabilities declaration
+//
+// The runtime declares per-provider flags in REGISTER_PROVIDER. hasSetupHooks
+// must reflect the customer's actual handler registrations at the moment of
+// connect — not a coarse per-SDK flag. Two providers on the same SDK version,
+// one with setup() and one without, must report different values.
+// ---------------------------------------------------------------------------
+
+describe('REGISTER_PROVIDER capabilities', () => {
+  function grabRuntime(client: WorkflowEngineClient): { setProviderCapabilities: jest.Mock } {
+    // The runtime is private; reach into it and spy on the setter.
+    const runtime = (client as unknown as { runtime: { setProviderCapabilities: (c: unknown) => void } }).runtime;
+    const spy = jest.spyOn(runtime, 'setProviderCapabilities') as unknown as jest.Mock;
+    return { setProviderCapabilities: spy };
+  }
+
+  it('declares hasSetupHooks=true when any registered handler defines setup', async () => {
+    const client = makeTestClient({});
+    const runtime = grabRuntime(client);
+    client.eventProcessor('with-setup', {
+      setup: async () => {},
+      processBatch: async () => {},
+    });
+    await client.start();
+    expect(runtime.setProviderCapabilities).toHaveBeenCalledWith({ hasSetupHooks: true });
+  });
+
+  it('declares hasSetupHooks=false when no handler defines setup', async () => {
+    const client = makeTestClient({});
+    const runtime = grabRuntime(client);
+    client.eventProcessor('no-setup', {
+      processBatch: async () => {},
+    });
+    await client.start();
+    expect(runtime.setProviderCapabilities).toHaveBeenCalledWith({ hasSetupHooks: false });
+  });
+
+  it('declares hasSetupHooks=false when only event sources are registered (no setup concept)', async () => {
+    const client = makeTestClient({});
+    const runtime = grabRuntime(client);
+    const mockSource = {
+      name: 'src',
+      init: jest.fn(), close: jest.fn(),
+      eventSourcePoll: jest.fn(), eventSourceValidateConfig: jest.fn(), eventSourceDelete: jest.fn(),
+    } as unknown as EventSource;
+    client.eventSource(mockSource);
+    await client.start();
+    expect(runtime.setProviderCapabilities).toHaveBeenCalledWith({ hasSetupHooks: false });
+  });
+
+  it('mixed registration: setup on one processor, none on another → true', async () => {
+    const client = makeTestClient({});
+    const runtime = grabRuntime(client);
+    client.eventProcessor('ep-no-setup', { processBatch: async () => {} });
+    client.eventProcessor('ep-with-setup', { setup: async () => {}, processBatch: async () => {} });
+    await client.start();
+    expect(runtime.setProviderCapabilities).toHaveBeenCalledWith({ hasSetupHooks: true });
+  });
+});

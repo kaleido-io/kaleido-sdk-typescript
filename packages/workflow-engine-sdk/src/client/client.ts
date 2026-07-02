@@ -238,6 +238,13 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
    */
   async start(): Promise<void> {
     this.registerBuilderHandlers();
+    // Declare per-provider capabilities on the WS. Computed here (after
+    // registerBuilderHandlers ran, before connect() opens the socket) so the
+    // very first REGISTER_PROVIDER message carries the flags. On reconnect the
+    // runtime re-sends the same declared value.
+    this.runtime.setProviderCapabilities({
+      hasSetupHooks: this.hasAnySetupHook(),
+    });
     await this.connect();
     if (this.wfeConfig.setupLifecycle === 'deferred') {
       // Trigger handler is registered ONLY in deferred mode. In boot mode, any stray
@@ -430,5 +437,16 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     if (this.registeredHandlers.some((h) => h.name === name)) {
       throw new Error(`Handler '${name}' is already registered`);
     }
+  }
+
+  /**
+   * True iff at least one registered handler defines a `setup` hook. Event
+   * sources are excluded because the EventSource interface has no `setup`
+   * concept. Called at start() time to populate ProviderCapabilities.
+   */
+  private hasAnySetupHook(): boolean {
+    return this.registeredHandlers.some(
+      (h) => h.type !== 'eventSource' && (h.def as { setup?: unknown }).setup != null,
+    );
   }
 }

@@ -241,6 +241,28 @@ export interface WSHandleTransactionsResult extends WSHandlerEnvelope {
  */
 export interface WSRegisterProvider extends WSHandlerEnvelope {
   providerName: string;
+  /**
+   * Optional per-provider capability flags declared at connect time.
+   * Additive: new flags can be introduced without a wire-format break —
+   * receivers ignore unknown fields, and missing fields are treated as their
+   * conservative default (`false` in every case defined so far).
+   */
+  capabilities?: ProviderCapabilities;
+}
+
+/**
+ * Per-provider capability flags surfaced to the platform on registration.
+ * Values are computed from the customer's actual handler registrations, not
+ * fixed per SDK version — a provider built on the new SDK that doesn't define
+ * any setup() hook correctly reports `hasSetupHooks: false`.
+ */
+export interface ProviderCapabilities {
+  /**
+   * True iff at least one registered handler on this provider defines a
+   * `setup()` lifecycle hook. Used by the platform to decide whether to
+   * surface a "Run setup" action for this deployment.
+   */
+  hasSetupHooks?: boolean;
 }
 
 /**
