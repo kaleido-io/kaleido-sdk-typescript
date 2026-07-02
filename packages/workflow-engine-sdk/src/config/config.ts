@@ -25,7 +25,7 @@ import {
   parseInboundServerAddressPort,
   cfgStringMapField,
 } from "./config_helpers";
-import { newLogger } from "../log/logger";
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import { SDKErrors, newError } from "../i18n/errors";
 import {
   ServiceBindingsMap,

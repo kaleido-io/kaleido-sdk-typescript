@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import axios, { AxiosError } from "axios";
-import { newLogger } from "../log/logger";
+import { newLogger } from '@kaleido-io/core-sdk/log';
 
 const log = newLogger('kaleido-sdk');
 

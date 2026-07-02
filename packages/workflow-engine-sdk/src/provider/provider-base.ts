@@ -18,7 +18,7 @@ import axios, { AxiosInstance, CreateAxiosDefaults } from "axios";
 import { WorkflowEngineClient, WorkflowEngineClientConfig } from "../client/client";
 import { configureHttpClient, HttpClientOptions } from "@kaleido-io/core-sdk/http";
 import { kidColon } from "../utils/kidutils";
-import { newLogger } from "../log/logger";
+import { newLogger } from '@kaleido-io/core-sdk/log';
 
 export interface PlatformConfig extends HttpClientOptions {
     url?: string;

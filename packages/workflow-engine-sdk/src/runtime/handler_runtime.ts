@@ -41,7 +41,7 @@ import {
 } from '../interfaces/handlers';
 import { EngineClient } from './engine_client';
 import { WSProxyAdapter } from '../service/ws_proxy_adapter';
-import { newLogger } from '../log/logger';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import { formatError, getErrorMessage } from '../utils/errors';
 import { newError, SDKErrors } from '../i18n/errors';
 

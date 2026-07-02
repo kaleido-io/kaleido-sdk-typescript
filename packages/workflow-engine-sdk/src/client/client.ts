@@ -29,7 +29,7 @@ import { ServiceBindingsMap, ServiceBindingConfig } from '../service/types';
 import { ServiceClientOptions } from '@kaleido-io/core-sdk/http';
 import { WSProxyAdapter } from '../service/ws_proxy_adapter';
 import { ConfigLoader, KALEIDO_CONFIG_FILE, WFE_CONFIG_FILE, CONFIG_FILE } from '../config/config';
-import { newLogger } from '../log/logger';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import { createEventProcessorBase, EventProcessorEvent } from '../factories/event_processor';
 import { RequestContext } from '../types/core';
 import {

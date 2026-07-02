@@ -28,7 +28,7 @@ import {
   ListenerEvent,
   WSEventStreamInfo,
 } from '../types/core';
-import { newLogger } from '../log/logger';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import { formatError, getErrorMessage } from '../utils/errors';
 
 const log = newLogger('event_source_factory');

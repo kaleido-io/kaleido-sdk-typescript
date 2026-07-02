@@ -28,7 +28,7 @@ import {
   ActionConfig,
   TransactionHandlerBatchIn
 } from '../interfaces/handlers';
-import { newLogger } from '../log/logger';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import {
   EvalResult,
   ExecutableTransaction,

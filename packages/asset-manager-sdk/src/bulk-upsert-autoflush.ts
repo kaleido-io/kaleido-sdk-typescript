@@ -13,7 +13,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { newLogger } from './log/logger.js';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import {
   ActivityBulkInput,
   AddressBulkInput,

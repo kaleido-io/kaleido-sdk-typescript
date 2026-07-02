@@ -23,7 +23,7 @@ import {
   WSEventProcessorBatchRequest,
   WSEventProcessorBatchResult,
 } from '../types/core';
-import { newLogger } from '../log/logger';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import { formatError, getErrorMessage } from '../utils/errors';
 import type { EventProcessorDef } from '../app/types.js';
 import type { SetupContext } from '@kaleido-io/core-sdk/context';

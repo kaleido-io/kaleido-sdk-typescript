@@ -74,7 +74,7 @@ import {
   UpsertManyResult,
 } from "./interfaces/index.js";
 import type { SetupContext } from '@kaleido-io/core-sdk/context';
-import { newLogger } from './log/logger.js';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 
 const log = newLogger("AssetManagerClient");
 
