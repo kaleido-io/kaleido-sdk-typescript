@@ -228,6 +228,7 @@ try {
   // git show fetches the blob lazily for remote partial clones and works with local paths too.
   for (const manifestPath of [
     'packages/kaleido-sdk/package.json',
+    'packages/core-sdk/package.json',
     'packages/workflow-engine-sdk/package.json',
     'packages/connector-sdk/package.json',
     'packages/asset-manager-sdk/package.json',
