@@ -1,0 +1,33 @@
+# Configuration for the BTC Indexer (KALEIDO_CONFIG_FILE).
+# When running as a Hosted provider, this file is managed by the Kaleido platform.
+# Copy this file to config/config.yaml and fill in your values.
+# Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
+
+workflow-engine:
+  providerName: bitcoin-indexer
+  providerMetadata:
+    displayName: BTC Indexer
+    description: Indexes BTC Transfer events into the Kaleido Asset Manager
+  url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-bitcoin-env/s:workflow-engine/rest
+  auth:
+    type: basic
+    username: myuser
+    password: my-api-key
+
+service-bindings:
+  asset-manager:
+    type: asset-manager
+    bindingType: non-hosted
+    url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-bitcoin-env/s:my-asset-manager/rest
+    auth:
+      type: basic
+      username: myuser
+      password: my-api-key
+  btc-connector:
+    type: btc-connector
+    bindingType: non-hosted
+    url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-bitcoin-env/s:my-bitcoin-connector/rest
+    auth:
+      type: basic
+      username: myuser
+      password: my-api-key

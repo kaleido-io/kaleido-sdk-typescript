@@ -1,0 +1,37 @@
+{
+  "name": "native-eth-indexer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/src/main.js",
+  "scripts": {
+    "prebuild": "npm run clean",
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "start": "node dist/src/main.js",
+    "start:dev": "tsx ./src/main.ts",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "package:docker": "docker build --platform linux/amd64 -t native-eth-indexer:latest .",
+    "package:podman": "podman build --platform linux/amd64 -t native-eth-indexer:latest .",
+    "promote:docker": "docker tag native-eth-indexer:latest ${ARTIFACT_REGISTRY}/native-eth-indexer:${IMAGE_TAG} && docker push ${ARTIFACT_REGISTRY}/native-eth-indexer:${IMAGE_TAG}",
+    "promote:podman": "podman tag native-eth-indexer:latest ${ARTIFACT_REGISTRY}/native-eth-indexer:${IMAGE_TAG} && podman push ${ARTIFACT_REGISTRY}/native-eth-indexer:${IMAGE_TAG}",
+    "promote:crane": "crane copy ${SOURCE_REGISTRY}/native-eth-indexer:${IMAGE_TAG} ${ARTIFACT_REGISTRY}/native-eth-indexer:${IMAGE_TAG}"
+  },
+  "dependencies": {
+    "@kaleido-io/core-sdk": "*",
+    "@kaleido-io/workflow-engine-sdk": "*",
+    "@kaleido-io/connector-sdk": "*",
+    "@kaleido-io/asset-manager-sdk": "*",
+    "js-yaml": "^4.1.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.5.2",
+    "@vitest/coverage-v8": "^4.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  }
+}

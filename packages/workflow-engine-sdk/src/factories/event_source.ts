@@ -20,6 +20,7 @@ import {
   EngineAPI,
 } from '../interfaces/handlers';
 import {
+  RequestContext,
   WSEventSourceConfig,
   WSListenerPollRequest,
   WSListenerPollResult,
@@ -27,8 +28,8 @@ import {
   ListenerEvent,
   WSEventStreamInfo,
 } from '../types/core';
-import { newLogger } from '../log/logger';
-import { getErrorMessage } from '../utils/errors';
+import { newLogger } from '@kaleido-io/core-sdk/log';
+import { formatError, getErrorMessage } from '../utils/errors';
 
 const log = newLogger('event_source_factory');
 
@@ -53,7 +54,8 @@ export interface EventSourceEvent<DT> {
  */
 export type EventSourcePollFn<CP, CF, DT> = (
   config: EventSourceConf<CF>,
-  checkpointIn: CP | null
+  checkpointIn: CP | null,
+  authRef?: string,
 ) => Promise<{ checkpointOut: CP; events: EventSourceEvent<DT>[] }>;
 
 /**
@@ -75,21 +77,21 @@ export type EventSourceConfigParserFn<CF> = (
 ) => Promise<CF>;
 
 /**
- * Factory interface for building event sources with optional configuration.
+ * Builder interface for configuring event sources with optional lifecycle hooks.
  */
-export interface EventSourceFactory<CP, CF, DT> extends EventSource {
-  withDeleteFn(deleteFn: EventSourceDeleteFn): EventSourceFactory<CP, CF, DT>;
-  withConfigParser(parserFn: EventSourceConfigParserFn<CF>): EventSourceFactory<CP, CF, DT>;
-  withInitialCheckpoint(buildFn: EventSourceBuildInitialCheckpointFn<CP, CF>): EventSourceFactory<CP, CF, DT>;
-  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventSourceFactory<CP, CF, DT>;
-  withCloseFn(closeFn: () => void): EventSourceFactory<CP, CF, DT>;
+export interface EventSourceBuilder<CP, CF, DT> extends EventSource {
+  withDeleteFn(deleteFn: EventSourceDeleteFn): EventSourceBuilder<CP, CF, DT>;
+  withConfigParser(parserFn: EventSourceConfigParserFn<CF>): EventSourceBuilder<CP, CF, DT>;
+  withInitialCheckpoint(buildFn: EventSourceBuildInitialCheckpointFn<CP, CF>): EventSourceBuilder<CP, CF, DT>;
+  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventSourceBuilder<CP, CF, DT>;
+  withCloseFn(closeFn: () => void): EventSourceBuilder<CP, CF, DT>;
 }
 
 /**
  * Internal event source implementation.
  */
-class EventSourceBase<CP, CF, DT> implements EventSourceFactory<CP, CF, DT> {
-  private _name: string;
+class EventSourceBase<CP, CF, DT> implements EventSourceBuilder<CP, CF, DT> {
+  readonly name: string;
   private pollFn: EventSourcePollFn<CP, CF, DT>;
   private deleteFn?: EventSourceDeleteFn;
   private configParserFn?: EventSourceConfigParserFn<CF>;
@@ -100,35 +102,31 @@ class EventSourceBase<CP, CF, DT> implements EventSourceFactory<CP, CF, DT> {
   private confs: Map<string, EventSourceConf<CF>> = new Map();
 
   constructor(name: string, pollFn: EventSourcePollFn<CP, CF, DT>) {
-    this._name = name;
+    this.name = name;
     this.pollFn = pollFn;
   }
 
-  name(): string {
-    return this._name;
-  }
-
-  withDeleteFn(deleteFn: EventSourceDeleteFn): EventSourceFactory<CP, CF, DT> {
+  withDeleteFn(deleteFn: EventSourceDeleteFn): EventSourceBuilder<CP, CF, DT> {
     this.deleteFn = deleteFn;
     return this;
   }
 
-  withConfigParser(parserFn: EventSourceConfigParserFn<CF>): EventSourceFactory<CP, CF, DT> {
+  withConfigParser(parserFn: EventSourceConfigParserFn<CF>): EventSourceBuilder<CP, CF, DT> {
     this.configParserFn = parserFn;
     return this;
   }
 
-  withInitialCheckpoint(buildFn: EventSourceBuildInitialCheckpointFn<CP, CF>): EventSourceFactory<CP, CF, DT> {
+  withInitialCheckpoint(buildFn: EventSourceBuildInitialCheckpointFn<CP, CF>): EventSourceBuilder<CP, CF, DT> {
     this.buildInitialCheckpointFn = buildFn;
     return this;
   }
 
-  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventSourceFactory<CP, CF, DT> {
+  withInitFn(initFn: (engAPI: EngineAPI) => Promise<void>): EventSourceBuilder<CP, CF, DT> {
     this.initFn = initFn;
     return this;
   }
 
-  withCloseFn(closeFn: () => void): EventSourceFactory<CP, CF, DT> {
+  withCloseFn(closeFn: () => void): EventSourceBuilder<CP, CF, DT> {
     this.closeFn = closeFn;
     return this;
   }
@@ -186,7 +184,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceFactory<CP, CF, DT> {
   /**
    * Validate config and optionally set initial checkpoint.
    */
-  async eventSourceValidateConfig(result: any, request: any): Promise<void> {
+  async eventSourceValidateConfig(_reqContext: RequestContext, result: any, request: any): Promise<void> {
     try {
       const parsedConfig = await this.buildConf(
         {
@@ -211,6 +209,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceFactory<CP, CF, DT> {
    * Mutates the `result` parameter to match the engine's output-by-reference API.
    */
   async eventSourcePoll(
+    _reqContext: RequestContext,
     config: WSEventSourceConfig,
     result: WSListenerPollResult,
     request: WSListenerPollRequest
@@ -226,7 +225,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceFactory<CP, CF, DT> {
       const checkpointIn: CP | null = request.checkpoint ?? null;
 
       // Call user's poll function
-      const pollResult = await this.pollFn(esConf, checkpointIn);
+      const pollResult = await this.pollFn(esConf, checkpointIn, request.authRef);
 
       // Map events to ListenerEvent format
       result.events = pollResult.events.map((evt): ListenerEvent => ({
@@ -238,7 +237,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceFactory<CP, CF, DT> {
       // Set checkpoint
       result.checkpoint = pollResult.checkpointOut;
     } catch (error) {
-      log.error('Poll failed', { error });
+      log.error('Poll failed', { error: formatError(error) });
       result.error = getErrorMessage(error);
     }
   }
@@ -246,7 +245,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceFactory<CP, CF, DT> {
   /**
    * Delete event source and clear cached config.
    */
-  async eventSourceDelete(result: WSHandlerEnvelope, request: any): Promise<void> {
+  async eventSourceDelete(_reqContext: RequestContext, result: WSHandlerEnvelope, request: any): Promise<void> {
     try {
       if (this.deleteFn) {
         await this.deleteFn({
@@ -257,7 +256,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceFactory<CP, CF, DT> {
 
       this.confs.delete(request.streamId);
     } catch (error) {
-      log.error('Delete failed', { error });
+      log.error('Delete failed', { error: formatError(error) });
       result.error = getErrorMessage(error);
     }
   }
@@ -268,11 +267,11 @@ class EventSourceBase<CP, CF, DT> implements EventSourceFactory<CP, CF, DT> {
  *
  * @param name - Handler name to register with the workflow engine
  * @param pollFn - Function that polls for new events
- * @returns EventSourceFactory for chaining configuration
+ * @returns EventSourceBuilder for chaining configuration
  */
-export function newEventSource<CP, CF, DT>(
+export function createEventSource<CP, CF, DT>(
   name: string,
   pollFn: EventSourcePollFn<CP, CF, DT>
-): EventSourceFactory<CP, CF, DT> {
+): EventSourceBuilder<CP, CF, DT> {
   return new EventSourceBase<CP, CF, DT>(name, pollFn);
 }

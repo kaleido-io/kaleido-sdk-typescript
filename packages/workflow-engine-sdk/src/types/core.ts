@@ -51,6 +51,35 @@ export enum WSMessageType {
   EVENT_PROCESSOR_BATCH_RESULT = 'event_processor_batch_result',
   ENGINE_API_SUBMIT_TRANSACTIONS = 'engineapi_submit_transactions',
   ENGINE_API_SUBMIT_TRANSACTIONS_RESULT = 'engineapi_submit_transactions_result',
+  SERVICE_PROXY_REQUEST = 'service-proxy-request',
+  SERVICE_PROXY_RESPONSE = 'service-proxy-response',
+  SETUP_TRIGGER_REQUEST = 'setup-trigger-request',
+  SETUP_TRIGGER_RESPONSE = 'setup-trigger-response',
+}
+
+/**
+ * Setup trigger request: emitted by the provider-proxy when an admin dispatches
+ * a deploy-time setup() via service-manager. The `authRef` references a bearer
+ * the proxy has cached for the duration of the setup; the SDK passes it through
+ * SetupContext so any service-proxy calls inside setup() are authorised as the
+ * deploying user.
+ */
+export interface SetupTriggerRequest {
+  messageType: WSMessageType.SETUP_TRIGGER_REQUEST;
+  requestId: string;
+  authRef: string;
+}
+
+/**
+ * Setup trigger response: the SDK's reply to a SETUP_TRIGGER_REQUEST. status is
+ * "success" when all setup hooks completed; "error" otherwise, with errors[]
+ * carrying one entry per failed hook.
+ */
+export interface SetupTriggerResponse {
+  messageType: WSMessageType.SETUP_TRIGGER_RESPONSE;
+  requestId: string;
+  status: 'success' | 'error';
+  errors?: string[];
 }
 
 export enum WSHandlerType {
@@ -79,10 +108,10 @@ export interface StageDirector {
 }
 
 /**
- * Interface for types that can provide a StageDirector
+ * Interface for types that carry StageDirector routing metadata
  */
 export interface WithStageDirector {
-  getStageDirector(): StageDirector;
+  readonly stageDirector: StageDirector;
 }
 
 /**
@@ -162,12 +191,22 @@ export interface WSEvaluateReplyResult {
   deadline?: string;
 }
 
+export interface RequestContext {
+  requestId: string;
+  authTokens?: Record<string, string>;
+  /** Auth reference forwarded from the WFE request — used by ws-proxy transport to inject credentials. */
+  authRef?: string;
+  signal: AbortSignal;
+  cancel(): void;
+}
+
 /**
  * WebSocket message envelope
  */
 export interface WSHandlerEnvelope {
   messageType: WSMessageType;
   id: string;
+  deadline?: string | null;
   handlerType?: WSHandlerType;
   handler?: string;
   error?: string;
@@ -181,10 +220,7 @@ export interface WSEventProcessorBatchRequest extends WSHandlerEnvelope {
   authRef?: string;
 }
 
-export interface WSEventProcessorBatchResult extends WSHandlerEnvelope {
-  checkpoint?: any;
-  events: ListenerEvent[];
-}
+export interface WSEventProcessorBatchResult extends WSHandlerEnvelope {}
 
 /**
  * Transaction handling transaction (batch of evaluate transactions).
@@ -205,6 +241,28 @@ export interface WSHandleTransactionsResult extends WSHandlerEnvelope {
  */
 export interface WSRegisterProvider extends WSHandlerEnvelope {
   providerName: string;
+  /**
+   * Optional per-provider capability flags declared at connect time.
+   * Additive: new flags can be introduced without a wire-format break —
+   * receivers ignore unknown fields, and missing fields are treated as their
+   * conservative default (`false` in every case defined so far).
+   */
+  capabilities?: ProviderCapabilities;
+}
+
+/**
+ * Per-provider capability flags surfaced to the platform on registration.
+ * Values are computed from the customer's actual handler registrations, not
+ * fixed per SDK version — a provider built on the new SDK that doesn't define
+ * any setup() hook correctly reports `hasSetupHooks: false`.
+ */
+export interface ProviderCapabilities {
+  /**
+   * True iff at least one registered handler on this provider defines a
+   * `setup()` lifecycle hook. Used by the platform to decide whether to
+   * surface a "Run setup" action for this deployment.
+   */
+  hasSetupHooks?: boolean;
 }
 
 /**
@@ -307,4 +365,44 @@ export interface ExecutableTransaction<T = any> {
   transaction: WSEvaluateTransaction;         // The transaction being processed
   input: T;                           // Parsed input for the transaction
   result?: WSEvaluateReplyResult;     // Result after execution (if completed)
+}
+
+/**
+ * Service proxy request sent over WebSocket to provider-proxy.
+ * Mirrors task-engine's ServiceProxyRequest message shape.
+ *
+ * The `id` identifies the target service instance on the proxy side,
+ * which maps to the actual service URL. The request contains only
+ * the HTTP method, path, headers, and body — the proxy resolves
+ * the full URL from the `id`.
+ */
+export interface ServiceProxyRequest {
+  messageType: WSMessageType.SERVICE_PROXY_REQUEST;
+  requestId: string;
+  serviceType: string;
+  /** Service instance identifier — the proxy resolves this to the actual service URL. */
+  id: string;
+  /** Correlates with cached auth tokens on the proxy side (from WSEvaluateTransaction.authRef). */
+  authRef?: string;
+  invocationId?: string;
+  request: {
+    method: string;
+    path?: string;
+    headers?: Record<string, string>;
+    params?: Record<string, string>;
+    bodyBase64?: string;
+  };
+}
+
+/**
+ * Service proxy response received over WebSocket from provider-proxy.
+ * Mirrors task-engine's ServiceProxyResponse message shape.
+ */
+export interface ServiceProxyResponse {
+  messageType: WSMessageType.SERVICE_PROXY_RESPONSE;
+  requestId: string;
+  status: number;
+  headers?: Record<string, string>;
+  bodyBase64?: string;
+  error?: string;
 }

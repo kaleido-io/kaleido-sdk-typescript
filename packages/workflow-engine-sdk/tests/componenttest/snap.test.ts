@@ -20,14 +20,14 @@ import * as path from 'path';
 import {
   WorkflowEngineClient,
   ConfigLoader,
-  newDirectedTransactionHandler,
+  createTransactionHandler,
   BasicStageDirector,
   InvocationMode,
   EvalResult,
   WSEvaluateTransaction,
   WithStageDirector,
-  newLogger,
 } from '../../src/index';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import { loadTestConfig } from './test-config';
 import { fetchWithRetry } from './fetch-utils';
 
@@ -161,7 +161,7 @@ describe('Snap Component Test', () => {
       }
     });
 
-    const watcherHandler = newDirectedTransactionHandler('watcher', watcherActionMap);
+    const watcherHandler = createTransactionHandler('watcher', watcherActionMap);
     watcherClient.registerTransactionHandler('watcher', watcherHandler);
 
     await watcherClient.connect();

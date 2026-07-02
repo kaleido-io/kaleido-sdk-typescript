@@ -15,8 +15,8 @@
 // limitations under the License.
 
 
-import { describe, it, expect } from '@jest/globals';
-import { getErrorMessage } from './errors';
+import { describe, it, expect, jest, afterEach } from '@jest/globals';
+import { getErrorMessage, fatalError, formatError } from './errors';
 
 describe('errors', () => {
     it('should get error message from Error object', () => {
@@ -28,5 +28,38 @@ describe('errors', () => {
     it('should get error message from string', () => {
         const message = getErrorMessage('test error');
         expect(message).toBe('test error');
+    });
+});
+
+describe('formatError', () => {
+    it('is null-safe', () => {
+        expect(formatError(null)).toBe('null');
+        expect(formatError(undefined)).toBe('undefined');
+    });
+
+    it('formats an Error', () => {
+        expect(formatError(new Error('boom'))).toContain('boom');
+    });
+
+    it('stringifies non-Error throwables', () => {
+        expect(formatError('plain string')).toContain('plain string');
+    });
+});
+
+describe('fatalError', () => {
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    it('exits with code 1 on Error', () => {
+        const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as (code?: string | number | null) => never);
+        fatalError(new Error('boom'));
+        expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('exits with code 1 on string error', () => {
+        const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as (code?: string | number | null) => never);
+        fatalError('something went wrong');
+        expect(exitSpy).toHaveBeenCalledWith(1);
     });
 });

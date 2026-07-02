@@ -1,0 +1,15 @@
+# Provider-specific configuration for the workflow-engine-provider (CONFIG_FILE).
+# Contains settings bundled with the provider image.
+# Copy this file to config/provider-config.yaml and fill in your values.
+# Set CONFIG_FILE env var to point to your config (default: ./config/provider-config.yaml).
+
+name: example-provider
+metadata:
+  displayName: Example provider
+  description: An example provider for the Kaleido Workflow Engine
+
+# Example: HTTP invoke handler (used by http-invoke/handlers.ts)
+httpInvoke:
+  url: https://httpbin.org/get
+  invocationMode: PARALLEL
+  apiKeyHeader: X-API-KEY  # header name; value from env API_KEY

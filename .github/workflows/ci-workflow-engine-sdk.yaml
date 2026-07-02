@@ -1,21 +1,21 @@
-name: Kaleido Workflow Engine TypeScript SDK CI
+name: Kaleido SDK CI
 
 on:
   pull_request:
     paths:
-      - 'packages/workflow-engine-sdk/**'
+      - 'packages/**'
+      - 'samples/**'
       - '.github/workflows/ci-workflow-engine-sdk.yaml'
+      - '.github/workflows/ci-docker-samples.yaml'
+      - '.github/workflows/ci-ksdk-init.yaml'
 
 permissions:
   contents: read
 
 jobs:
-  sdk:
-    name: Lint, Build & Test (SDK)
+  packages:
+    name: Lint, Build & Test (packages)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/workflow-engine-sdk
     steps:
       - uses: actions/checkout@v4
 
@@ -23,20 +23,22 @@ jobs:
         with:
           node-version: '22.x'
 
-      - run: npm install
+      - name: Install workspace dependencies
+        run: npm install
 
-      - run: npm run lint
+      - name: Lint packages
+        run: npm run lint:packages
 
-      - run: npm run build
+      - name: Build packages (dependency order)
+        run: npm run build:packages
 
-      - run: npm test
+      - name: Test packages
+        run: npm run test:packages
 
-  template-erc20-indexer:
-    name: Build & Test (erc20-indexer template)
+  samples:
+    name: Build & Test (samples)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/workflow-engine-sdk/templates/erc20-indexer
+    needs: packages
     steps:
       - uses: actions/checkout@v4
 
@@ -44,33 +46,24 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: Install SDK (local)
-        working-directory: packages/workflow-engine-sdk
-        run: npm install && npm run build
+      - name: Install workspace dependencies
+        run: npm install
 
-      - run: npm install
+      - name: Build packages (required by samples)
+        run: npm run build:packages
 
-      - run: npm run build
+      - name: Build samples
+        run: npm run build:samples
 
-  template-getting-started:
-    name: Build & Test (getting-started template)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/workflow-engine-sdk/templates/getting-started
-    steps:
-      - uses: actions/checkout@v4
+      - name: Test samples
+        run: npm run test:samples
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
+  docker:
+    name: Docker Builds (Samples)
+    needs: packages
+    uses: ./.github/workflows/ci-docker-samples.yaml
 
-      - name: Install SDK (local)
-        working-directory: packages/workflow-engine-sdk
-        run: npm install && npm run build
-
-      - run: npm install
-
-      - run: npm run build
-
-      - run: npm test
+  ksdk-init:
+    name: ksdk init (templates)
+    needs: packages
+    uses: ./.github/workflows/ci-ksdk-init.yaml

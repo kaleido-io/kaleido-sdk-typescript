@@ -1,0 +1,88 @@
+{
+  "name": "@kaleido-io/kaleido-sdk",
+  "version": "1.0.0-rc1",
+  "description": "Kaleido SDK umbrella: KaleidoClient convenience facade and project scaffolding CLI",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaleido-io/kaleido-sdk-typescript.git"
+  },
+  "keywords": ["kaleido", "sdk", "typescript", "blockchain", "workflow-engine", "asset-manager"],
+  "author": "Kaleido",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "bin": {
+    "ksdk": "./bin/ksdk.js"
+  },
+  "files": [
+    "dist/**/*",
+    "bin/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "prebuild": "npm run clean",
+    "build": "tsc",
+    "postbuild": "tsc-esm-fix --target='dist'",
+    "clean": "rm -rf dist",
+    "dev": "tsc --watch",
+    "lint": "eslint . --config eslint.config.mjs",
+    "test": "jest --coverage"
+  },
+  "dependencies": {
+    "@kaleido-io/core-sdk": "^1.0.0-rc1",
+    "@kaleido-io/workflow-engine-sdk": "^1.0.0-rc1",
+    "@kaleido-io/asset-manager-sdk": "^1.0.0-rc1",
+    "@kaleido-io/connector-sdk": "^1.0.0-rc1"
+  },
+  "devDependencies": {
+    "@eslint/compat": "^2.0.0",
+    "@eslint/js": "^10.0.0",
+    "@jest/globals": "^30.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^10.0.0",
+    "eslint-plugin-notice": "^1.0.0",
+    "globals": "^17.3.0",
+    "jest": "^30.0.0",
+    "ts-jest": "^29.1.0",
+    "tsc-esm-fix": "^3.1.2",
+    "typescript": "^5.2.0",
+    "typescript-eslint": "^8.56.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src"
+    ],
+    "testMatch": [
+      "**/?(*.)+(spec|test).ts"
+    ],
+    "transform": {
+      "^.+\\.ts$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^@kaleido-io/workflow-engine-sdk$": "<rootDir>/../workflow-engine-sdk/src/index.ts",
+      "^@kaleido-io/asset-manager-sdk$": "<rootDir>/../asset-manager-sdk/src/index.ts",
+      "^@kaleido-io/connector-sdk$": "<rootDir>/../connector-sdk/src/index.ts",
+      "^@kaleido-io/connector-sdk/(.+)$": "<rootDir>/../connector-sdk/src/$1/index.ts",
+      "^@kaleido-io/core-sdk$": "<rootDir>/../core-sdk/src/index.ts",
+      "^@kaleido-io/core-sdk/(.+)$": "<rootDir>/../core-sdk/src/$1/index.ts",
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "maxWorkers": 1,
+    "coverageProvider": "v8"
+  },
+  "sideEffects": false
+}

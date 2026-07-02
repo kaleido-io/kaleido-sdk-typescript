@@ -21,9 +21,10 @@ import {
   WSMessageType,
   WSEngineAPISubmitTransactions,
   WSEngineAPISubmitTransactionsResult,
+  RequestContext,
 } from '../types/core';
 import { EngineAPI } from '../interfaces/handlers';
-import { newLogger } from '../log/logger';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import { SDKErrors, newError } from '../i18n/errors';
 
 const log = newLogger('engine_client');
@@ -33,8 +34,7 @@ const log = newLogger('engine_client');
  */
 export interface EngineClientRuntime {
   sendMessage(message: any): void;
-  getActiveHandlerContext(): { requestId: string; authTokens: Record<string, string> } | undefined;
-  isWebSocketConnected(): boolean;
+  isWebSocketConnected: boolean;
 }
 
 /**
@@ -57,17 +57,16 @@ export class EngineClient implements EngineAPI {
    * Submit async transactions to the workflow engine
    */
   async submitAsyncTransactions(
+    reqContext: RequestContext,
     authRef: string,
     transactions: AsyncTransactionInput[]
   ): Promise<IdempotentSubmitResult[]> {
-    if (!this.runtime.isWebSocketConnected()) {
+    if (!this.runtime.isWebSocketConnected) {
       throw newError(SDKErrors.MsgSDKEngineNotConnected);
     }
 
-    const activeContext = this.runtime.getActiveHandlerContext();
-    if (!activeContext) {
-      throw newError(SDKErrors.MsgSDKEngineReqNoActiveRequest);
-    }
+    // Check the context is still active
+    reqContext.signal?.throwIfAborted();
 
     const requestId = this.generateId();
     log.debug('Submitting async transactions', { 
@@ -79,7 +78,7 @@ export class EngineClient implements EngineAPI {
     const request: WSEngineAPISubmitTransactions = {
       messageType: WSMessageType.ENGINE_API_SUBMIT_TRANSACTIONS,
       id: requestId,
-      activeRequestId: activeContext.requestId,
+      activeRequestId: reqContext.requestId,      
       authRef: authRef,
       transactions: transactions,
     };

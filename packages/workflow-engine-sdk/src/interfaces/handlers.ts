@@ -16,34 +16,38 @@
 
 
 import {
-  EvalResult,
-  InvocationMode,
-  WSEvaluateTransaction,
-  WSHandleTransactionsResult,
-  WSHandleTransactions,
-  WSEvaluateReplyResult,
-  WSEventSourceConfig,
-  WSListenerPollRequest,
-  WSListenerPollResult,
-  WithStageDirector,
-  Trigger,
-  Patch,
   AsyncTransactionInput,
-  IdempotentSubmitResult,
+  EvalResult,
   HandlerEvent,
+  IdempotentSubmitResult,
+  InvocationMode,
+  Patch,
+  RequestContext,
+  Trigger,
+  WSEvaluateTransaction,
   WSEventProcessorBatchRequest,
   WSEventProcessorBatchResult,
+  WSEventSourceConfig,
+  WSHandleTransactions,
+  WSHandleTransactionsResult,
+  WSListenerPollRequest,
+  WSListenerPollResult,
+  WithStageDirector
 } from '../types/core';
 
 /**
  * EngineAPI interface
  */
 export interface EngineAPI {
-  submitAsyncTransactions(authRef: string, transactions: AsyncTransactionInput[]): Promise<IdempotentSubmitResult[]>;
+  submitAsyncTransactions(
+    reqContext: RequestContext,
+    authRef: string,
+    transactions: AsyncTransactionInput[],
+  ): Promise<IdempotentSubmitResult[]>;
 }
 
 export interface Handler {
-  name(): string;
+  readonly name: string;
   init(engAPI: EngineAPI): Promise<void>;
   close(): void;
 }
@@ -56,17 +60,17 @@ export interface EventSource extends Handler {
   /**
    * Poll for events and update the result object
    */
-  eventSourcePoll(config: WSEventSourceConfig, result: WSListenerPollResult, request: WSListenerPollRequest): Promise<void>;
+  eventSourcePoll(reqContext: RequestContext, config: WSEventSourceConfig, result: WSListenerPollResult, request: WSListenerPollRequest): Promise<void>;
 
   /**
    * Validate the event source config
    */
-  eventSourceValidateConfig(result: any, request: any): Promise<void>;
+  eventSourceValidateConfig(reqContext: RequestContext, result: any, request: any): Promise<void>;
 
   /**
    * Delete the event source
   */
-  eventSourceDelete(result: any, request: any): Promise<void>;
+  eventSourceDelete(reqContext: RequestContext, result: any, request: any): Promise<void>;
 }
 
 /**
@@ -74,6 +78,7 @@ export interface EventSource extends Handler {
  */
 export interface TransactionHandler extends Handler {
   transactionHandlerBatch(
+    reqContext: RequestContext,
     result: WSHandleTransactionsResult,
     batch: WSHandleTransactions
   ): Promise<void>;
@@ -84,6 +89,7 @@ export interface TransactionHandler extends Handler {
  */
 export interface EventProcessor extends Handler {
   eventProcessorBatch(
+    reqContext: RequestContext,
     result: WSEventProcessorBatchResult,
     batch: WSEventProcessorBatchRequest
   ): Promise<void>;
@@ -92,7 +98,7 @@ export interface EventProcessor extends Handler {
 /**
  * Function type for handling individual directed requests
  */
-export type DirectedTransactionHandler<T extends WithStageDirector> = (
+export type TransactionHandlerFn<T extends WithStageDirector> = (
   transaction: WSEvaluateTransaction,
   input: T
 ) => Promise<{ result: EvalResult; output?: any; error?: Error; triggers?: Trigger[]; events?: HandlerEvent[]; extraUpdates?: Patch; customStage?: string; deadline?: string }>;
@@ -100,7 +106,7 @@ export type DirectedTransactionHandler<T extends WithStageDirector> = (
 /**
  * Input for batch directed transaction handling
  */
-export interface DirectedTransactionBatchIn<T extends WithStageDirector> {
+export interface TransactionHandlerBatchIn<T extends WithStageDirector> {
   transaction: WSEvaluateTransaction;
   value: T;
 }
@@ -108,7 +114,7 @@ export interface DirectedTransactionBatchIn<T extends WithStageDirector> {
 /**
  * Output for batch directed transaction handling
  */
-export interface DirectedTransactionBatchOut<_T extends WithStageDirector> {
+export interface TransactionHandlerBatchOut {
   result: EvalResult;
   output?: any;
   error?: Error;
@@ -123,50 +129,16 @@ export interface DirectedTransactionBatchOut<_T extends WithStageDirector> {
 /**
  * Function type for handling batch directed transactions.
  */
-export type DirectedTransactionBatchHandler<T extends WithStageDirector> = (
-  transactions: DirectedTransactionBatchIn<T>[]
-) => Promise<DirectedTransactionBatchOut<T>[]>;
+export type TransactionHandlerBatchFn<T extends WithStageDirector> = (
+  transactions: TransactionHandlerBatchIn<T>[]
+) => Promise<TransactionHandlerBatchOut[]>;
 
 /**
  * Configuration for a directed action
  */
-export interface DirectedActionConfig<T extends WithStageDirector> {
+export interface ActionConfig<T extends WithStageDirector> {
   invocationMode: InvocationMode;
-  handler?: DirectedTransactionHandler<T>;
-  batchHandler?: DirectedTransactionBatchHandler<T>;
+  handler?: TransactionHandlerFn<T>;
+  batchHandler?: TransactionHandlerBatchFn<T>;
 }
 
-/**
- * Simple handler interface compatible with existing code
- */
-export interface IHandler {
-  init(): Promise<void>;
-  handle(transactions: WSEvaluateTransaction[]): Promise<WSEvaluateReplyResult[]>;
-  close?(): void; // Optional for backward compatibility
-}
-
-/**
- * Transaction handler for batch evaluation with services support
- */
-export interface TransactionHandler<SVCS = any> extends Handler {
-  transactionHandlerBatch(
-    reply: WSHandleTransactionsResult,
-    batch: WSHandleTransactions,
-    svcs?: SVCS
-  ): Promise<void>;
-}
-
-/**
- * Listener handler for event streams with services support
- */
-export interface ListenerHandler<SVCS = any> extends Handler {
-  /**
-   * Configure the listener when it's first set up
-   */
-  configure?(config: WSEventSourceConfig, svcs?: SVCS): Promise<void>;
-
-  /**
-   * Poll for events and update the result object
-   */
-  poll(request: WSListenerPollRequest, svcs?: SVCS): Promise<WSListenerPollResult>;
-}

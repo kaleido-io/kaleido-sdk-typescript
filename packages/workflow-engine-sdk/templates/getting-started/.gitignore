@@ -1,5 +1,0 @@
-coverage
-*.tgz
-build
-dist
-.env

@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import * as fs from "fs";
-import * as yaml from "js-yaml";
+import yaml from "js-yaml";
 import { WorkflowEngineClientConfig, ServerConfig } from "../client/client";
 import {
   cfgStrField,
@@ -23,46 +23,59 @@ import {
   cfgNumField,
   cfgObjField,
   parseInboundServerAddressPort,
+  cfgStringMapField,
 } from "./config_helpers";
-import { newLogger } from "../log/logger";
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import { SDKErrors, newError } from "../i18n/errors";
+import {
+  ServiceBindingsMap,
+} from "../service/types";
+import { loadServiceBindings, parseServiceBindingsSection } from "@kaleido-io/core-sdk";
 
 /**
- * Environment variable name for the workflow engine config file path.
+ * Environment variable name for the Kaleido-managed config file path (service bindings etc.).
  */
+export const KALEIDO_CONFIG_FILE = "KALEIDO_CONFIG_FILE";
+
+/** @deprecated Use KALEIDO_CONFIG_FILE */
 export const WFE_CONFIG_FILE = "WFE_CONFIG_FILE";
 
 /**
- * Config key names
+ * Environment variable name for the developer-managed provider-specific config file path.
+ * When set, takes precedence over the default path './config/provider-config.yaml'.
  */
-export const ConfigWorkflowEngineProviderName = "providerName";
-export const ConfigWorkflowEngineProviderMetadata = "providerMetadata";
-export const ConfigWorkflowEngineUrl = "url";
-export const ConfigWorkflowEngineAuth = "auth";
-export const ConfigWorkflowEngineMaxRetries = "maxRetries";
-export const ConfigWorkflowEngineRetryDelay = "retryDelay";
-export const ConfigWorkflowEngineServer = "server";
+export const CONFIG_FILE = "CONFIG_FILE";
 
-/**
- * Config key names for server subsection
- */
-export const ConfigServerAddress = "address";
-export const ConfigServerPort = "port";
-export const ConfigServerReadBufferSize = "readBufferSize";
-export const ConfigServerWriteBufferSize = "writeBufferSize";
-export const ConfigServerHeartbeatInterval = "heartbeatInterval";
-export const ConfigServerThrottleRPS = "requestsPerSecond";
-export const ConfigServerThrottleBurst = "burst";
-export const ConfigServerTls = "tls";
+const WFE_CONFIG_KEYS = {
+  providerName: "providerName",
+  providerMetadata: "providerMetadata",
+  url: "url",
+  auth: "auth",
+  maxRetries: "maxRetries",
+  retryDelay: "retryDelay",
+  server: "server",
+  headers: "headers",
+  setupLifecycle: "setupLifecycle",
+} as const;
 
-/**
- * Config key names for server.tls subsection
- */
-export const ConfigTlsEnabled = "enabled";
-export const ConfigTlsCaFile = "caFile";
-export const ConfigTlsCertFile = "certFile";
-export const ConfigTlsKeyFile = "keyFile";
-export const ConfigTlsClientAuth = "clientAuth";
+const SERVER_CONFIG_KEYS = {
+  address: "address",
+  port: "port",
+  readBufferSize: "readBufferSize",
+  writeBufferSize: "writeBufferSize",
+  heartbeatInterval: "heartbeatInterval",
+  throttleRPS: "requestsPerSecond",
+  throttleBurst: "burst",
+  tls: "tls",
+} as const;
+
+const TLS_CONFIG_KEYS = {
+  enabled: "enabled",
+  caFile: "caFile",
+  certFile: "certFile",
+  keyFile: "keyFile",
+  clientAuth: "clientAuth",
+} as const;
 
 const log = newLogger("config");
 
@@ -139,6 +152,7 @@ export interface WorkflowEngineConfig {
   workflowEngine: {
     url: string;
     auth: AuthConfig;
+    headers?: Record<string, string>;
     maxRetries?: number;
     retryDelay?: string;
   };
@@ -192,6 +206,7 @@ export class ConfigLoader {
 
     return {
       url: ConfigLoader.httpUrlToWsUrl(config.workflowEngine.url),
+      headers: config.workflowEngine.headers,
       providerName,
       options: {
         headers: {
@@ -236,13 +251,13 @@ export class ConfigLoader {
 
   static retryDelayMsFromSection(section: Record<string, unknown>): number {
     return ConfigLoader.retryDelayRawToMs(
-      cfgStrOrNumAsString(section, ConfigWorkflowEngineRetryDelay),
+      cfgStrOrNumAsString(section, WFE_CONFIG_KEYS.retryDelay),
     );
   }
 
   /**
    * Load WorkflowEngineClientConfig from a YAML file.
-   * Uses WFE_CONFIG_FILE env if configFilePath is not provided.
+   * Uses KALEIDO_CONFIG_FILE env (or WFE_CONFIG_FILE for backward compatibility) if configFilePath is not provided.
    * Only the root key "workflow-engine" is supported in the config file.
    *
    * - Outbound: use "url" and "auth"; the app connects to the workflow engine.
@@ -253,11 +268,12 @@ export class ConfigLoader {
   ): WorkflowEngineClientConfig {
     const configPath = (
       configFilePath ??
+      process.env[KALEIDO_CONFIG_FILE] ??
       process.env[WFE_CONFIG_FILE] ??
       ""
     ).trim();
     if (!configPath) {
-      throw newError(SDKErrors.MsgSDKConfigFileNotSet, WFE_CONFIG_FILE);
+      throw newError(SDKErrors.MsgSDKConfigFileNotSet, KALEIDO_CONFIG_FILE);
     }
     const raw = fs.readFileSync(configPath, "utf8");
     const parsed = yaml.load(raw) as Record<string, unknown> | undefined;
@@ -273,17 +289,19 @@ export class ConfigLoader {
 
     const providerName = cfgStrField(
       section,
-      ConfigWorkflowEngineProviderName,
+      WFE_CONFIG_KEYS.providerName,
     );
     if (!providerName) {
       throw newError(SDKErrors.MsgSDKProviderNameNotSet);
     }
 
-    const serverSection = cfgObjField(section, ConfigWorkflowEngineServer);
+    const serverSection = cfgObjField(section, WFE_CONFIG_KEYS.server);
 
     const url =
-      cfgStrField(section, ConfigWorkflowEngineUrl) || undefined;
-    const auth = section[ConfigWorkflowEngineAuth] as
+      cfgStrField(section, WFE_CONFIG_KEYS.url) || undefined;
+    const headers =
+      cfgStringMapField(section, WFE_CONFIG_KEYS.headers) || undefined;
+    const auth = section[WFE_CONFIG_KEYS.auth] as
       | WorkflowEngineConfig["workflowEngine"]["auth"]
       | undefined;
 
@@ -292,24 +310,25 @@ export class ConfigLoader {
     if (inbound && serverSection) {
       const addrPort = parseInboundServerAddressPort(
         serverSection,
-        ConfigServerAddress,
-        ConfigServerPort,
+        SERVER_CONFIG_KEYS.address,
+        SERVER_CONFIG_KEYS.port,
       );
       if (addrPort) {
-        const tlsSection = cfgObjField(serverSection, ConfigServerTls);
+        const tlsSection = cfgObjField(serverSection, SERVER_CONFIG_KEYS.tls);
         const serverConfig: ServerConfig = {
           address: addrPort.address,
           port: addrPort.port,
         };
-        if (tlsSection && tlsSection[ConfigTlsEnabled] === true) {
+        if (tlsSection && tlsSection[TLS_CONFIG_KEYS.enabled] === true) {
           serverConfig.tls = ConfigLoader.buildServerTlsFromSection(tlsSection);
         }
         const clientConfig: WorkflowEngineClientConfig = {
           server: serverConfig,
+          headers,
           providerName,
           maxAttempts: cfgNumField(
             section,
-            ConfigWorkflowEngineMaxRetries,
+            WFE_CONFIG_KEYS.maxRetries,
           ),
           reconnectDelay: ConfigLoader.retryDelayMsFromSection(section),
         };
@@ -328,13 +347,14 @@ export class ConfigLoader {
         workflowEngine: {
           url,
           auth,
+          headers,
           maxRetries: cfgNumField(
             section,
-            ConfigWorkflowEngineMaxRetries,
+            WFE_CONFIG_KEYS.maxRetries,
           ),
           retryDelay: cfgStrOrNumAsString(
             section,
-            ConfigWorkflowEngineRetryDelay,
+            WFE_CONFIG_KEYS.retryDelay,
           ),
         },
       };
@@ -359,9 +379,9 @@ export class ConfigLoader {
     cert?: Buffer;
     key?: Buffer;
   } {
-    const certFile = cfgStrField(tlsSection, ConfigTlsCertFile);
-    const keyFile = cfgStrField(tlsSection, ConfigTlsKeyFile);
-    const caFile = cfgStrField(tlsSection, ConfigTlsCaFile);
+    const certFile = cfgStrField(tlsSection, TLS_CONFIG_KEYS.certFile);
+    const keyFile = cfgStrField(tlsSection, TLS_CONFIG_KEYS.keyFile);
+    const caFile = cfgStrField(tlsSection, TLS_CONFIG_KEYS.caFile);
     return {
       enabled: true,
       ...(caFile && { ca: fs.readFileSync(caFile) }),
@@ -386,9 +406,9 @@ export class ConfigLoader {
       key?: Buffer;
       rejectUnauthorized?: boolean;
     } = {};
-    const caFile = cfgStrField(tlsSection, ConfigTlsCaFile);
-    const certFile = cfgStrField(tlsSection, ConfigTlsCertFile);
-    const keyFile = cfgStrField(tlsSection, ConfigTlsKeyFile);
+    const caFile = cfgStrField(tlsSection, TLS_CONFIG_KEYS.caFile);
+    const certFile = cfgStrField(tlsSection, TLS_CONFIG_KEYS.certFile);
+    const keyFile = cfgStrField(tlsSection, TLS_CONFIG_KEYS.keyFile);
     if (caFile) {
       opts.ca = fs.readFileSync(caFile);
       opts.rejectUnauthorized = true;
@@ -406,19 +426,27 @@ export class ConfigLoader {
   ): void {
     const metaObj = cfgObjField(
       section,
-      ConfigWorkflowEngineProviderMetadata,
+      WFE_CONFIG_KEYS.providerMetadata,
     );
-    if (!metaObj) {
-      return;
-    }
-    const meta: Record<string, string> = {};
-    for (const [k, v] of Object.entries(metaObj)) {
-      if (typeof v === "string") {
-        meta[k] = v;
+    if (metaObj) {
+      const meta: Record<string, string> = {};
+      for (const [k, v] of Object.entries(metaObj)) {
+        if (typeof v === "string") {
+          meta[k] = v;
+        }
+      }
+      if (Object.keys(meta).length > 0) {
+        clientConfig.providerMetadata = meta;
       }
     }
-    if (Object.keys(meta).length > 0) {
-      clientConfig.providerMetadata = meta;
+    // Lifecycle: operator-rendered field that opts a deployment into deploy-time
+    // setup() triggering. Absent on platforms predating the setup-trigger flow —
+    // the default `'boot'` preserves today's behaviour.
+    const lifecycle = cfgStrField(section, WFE_CONFIG_KEYS.setupLifecycle);
+    if (lifecycle === "boot" || lifecycle === "deferred") {
+      clientConfig.setupLifecycle = lifecycle;
+    } else if (lifecycle) {
+      log.warn(`Unknown setupLifecycle '${lifecycle}'; using default 'boot'`);
     }
   }
 
@@ -451,5 +479,13 @@ export class ConfigLoader {
     if (config.workflowEngine.retryDelay) {
       log.info(`  Retry Delay: ${config.workflowEngine.retryDelay}`);
     }
+  }
+
+  static loadServiceBindings(configFilePath?: string): ServiceBindingsMap {
+    return loadServiceBindings(configFilePath);
+  }
+
+  static parseServiceBindingsSection(section: Record<string, unknown>): ServiceBindingsMap {
+    return parseServiceBindingsSection(section);
   }
 }

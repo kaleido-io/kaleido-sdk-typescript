@@ -16,6 +16,7 @@ export default [
       "dist/**",
       "dist-esm/**",
       "template/dist/**",
+      "templates/**/dist/**",
       "coverage/**",
       "node_modules/**",
       "copyright.js",

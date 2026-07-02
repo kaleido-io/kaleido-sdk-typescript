@@ -165,7 +165,7 @@ actionMap.set("my-action", {
   }),
 });
 
-const handler = newDirectedTransactionHandler("handler-name", actionMap);
+const handler = createTransactionHandler("handler-name", actionMap);
 client.registerTransactionHandler("handler-name", handler);
 await client.connect();
 ```

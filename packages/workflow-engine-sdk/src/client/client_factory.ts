@@ -48,7 +48,7 @@ function isEventProcessor(h: Handler): h is EventProcessor {
 /**
  * Build a handler set from one or more handlers
  */
-export function HandlerSetFor(
+export function handlerSetFor(
   ...handlers: Array<TransactionHandler | EventSource | EventProcessor>
 ): HandlerSet {
   return handlers;
@@ -56,18 +56,24 @@ export function HandlerSetFor(
 
 /**
  * Create and start a handler provider.
- * Loads WFE config from file when configFile or WFE_CONFIG_FILE is set,
+ * Loads Kaleido config from file when configFile or KALEIDO_CONFIG_FILE is set,
  * then creates the client, registers all handlers, connects, and returns the provider.
  */
-export async function NewWorkflowEngineClient(
+export async function createWorkflowEngineClient(
   handlerSet: HandlerSet,
-  configFile?: string /** Path to WFE config file; if empty, process.env[WFE_CONFIG_FILE] is used. */,
+  configFile?: string /** Path to Kaleido config file; if empty, process.env[KALEIDO_CONFIG_FILE] is used. */,
 ): Promise<WorkflowEngineClient> {
   const clientConfig = ConfigLoader.loadClientConfigFromFile(configFile);
+
+  const serviceBindings = ConfigLoader.loadServiceBindings(configFile);
+  if (Object.keys(serviceBindings).length > 0) {
+    clientConfig.serviceBindings = serviceBindings;
+  }
+
   const client = new WorkflowEngineClient(clientConfig);
 
   for (const handler of handlerSet) {
-    const name = handler.name();
+    const name = handler.name;
     if (isTransactionHandler(handler)) {
       client.registerTransactionHandler(name, handler);
     } else if (isEventSource(handler)) {

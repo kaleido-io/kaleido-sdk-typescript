@@ -1,0 +1,33 @@
+# Configuration for the Canton CIP-56 Indexer (KALEIDO_CONFIG_FILE).
+# When running as a Hosted provider, this file is managed by the Kaleido platform.
+# Copy this file to config/config.yaml and fill in your values.
+# Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
+
+workflow-engine:
+  providerName: canton-cip56-indexer
+  providerMetadata:
+    displayName: Canton CIP-56 Indexer
+    description: Indexes Canton CIP-56 token holding and transfer events into the Kaleido Asset Manager
+  url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-canton-env/s:workflow-engine/rest
+  auth:
+    type: basic
+    username: myuser
+    password: my-api-key
+
+service-bindings:
+  asset-manager:
+    type: asset-manager
+    bindingType: non-hosted
+    url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-canton-env/s:my-asset-manager/rest
+    auth:
+      type: basic
+      username: myuser
+      password: my-api-key
+  canton-connector:
+    type: canton-connector
+    bindingType: non-hosted
+    url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-canton-env/s:my-canton-connector/rest
+    auth:
+      type: basic
+      username: myuser
+      password: my-api-key

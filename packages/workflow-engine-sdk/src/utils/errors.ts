@@ -14,7 +14,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import axios, { AxiosError } from "axios";
+import { newLogger } from '@kaleido-io/core-sdk/log';
+
+const log = newLogger('kaleido-sdk');
 
 export const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);
+}
+
+export const formatError = (error: any): string => {
+    if (error === null || error === undefined) {
+      return String(error);
+    }
+    let message: string;
+    if (axios.isAxiosError(error) && error.request) {
+      const axiosErr = error as AxiosError;
+      const data: any = axiosErr.response?.data as any;
+      const dataMessage = data?.message || data?.error || JSON.stringify(data);
+      message = `${axiosErr.request?.method} ${axiosErr.request?.url} failed [${axiosErr?.status}] ${error.message}: ${dataMessage}`
+    } else {
+      message = error.message || String(error);
+    }
+    if (typeof error.stack == 'string') {
+      message = message + '\n' + error.stack;
+    }
+    return message;
+}
+
+export const fatalError = (error: unknown): never => {
+    log.error(formatError(error));
+    process.exit(1);
 }

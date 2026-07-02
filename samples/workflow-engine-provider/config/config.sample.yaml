@@ -1,0 +1,32 @@
+# Configuration for the workflow-engine-provider (KALEIDO_CONFIG_FILE).
+# When running as a Hosted provider, this file is managed by the Kaleido platform.
+# Copy this file to config/config.yaml and fill in your values.
+# Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
+#
+# providerName must match the name exported from provider.ts.
+workflow-engine:
+  providerName: example-provider
+  providerMetadata:
+    displayName: Example provider
+    description: An example provider for the Kaleido Workflow Engine
+  url: https://my-account.my-kaleido.io/endpoint/my-environment/my-workflow-engine/rest
+  auth:
+    type: basic
+    username: my-api-key-name
+    password: my-api-key
+  # retryDelay: 2s
+  # maxRetries: 5   # omit for infinite retries
+
+# Service bindings — required for the list-pools sample.
+# For non-hosted (direct HTTP) use bindingType: non-hosted with url + auth.
+# For hosted (via provider-proxy) use bindingType: hosted with the service instance id.
+#
+# service-bindings:
+#   asset-manager:
+#     type: asset-manager
+#     bindingType: non-hosted
+#     url: https://my-account.my-kaleido.io/endpoint/my-environment/my-asset-manager/rest
+#     auth:
+#       type: basic
+#       username: my-api-key-name
+#       password: my-api-key

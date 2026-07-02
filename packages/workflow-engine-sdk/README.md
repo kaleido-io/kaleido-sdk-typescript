@@ -1,133 +1,211 @@
 # Kaleido Workflow Engine TypeScript SDK
 
-A TypeScript SDK for building handlers that integrate with the Kaleido workflow engine. Build transaction handlers, event sources, and event processors that participate in workflows with full type safety and automatic reconnection.
+A TypeScript SDK for building handlers that integrate with the Kaleido workflow engine. This is one of several SDK pacakges provided to interact with the Kaleido platform. For details of other SDK packages or general information about Kaleido SDKs see the [Kaleido Typsescript SDK Readme](../../README.md) 
+
+Using the Workflow engine SDK you can build applications called `providers` that interact with the workflow engine. The different types of providers supported are:
+
+transaction handlers - Providers that execute workflow stage actions when the engine sends transaction batches (e.g. business logic, external API calls, stage transitions).
+event sources - Providers that poll or subscribe to external systems and emit events (with checkpoints) into the workflow engine.
+event processors - Providers that receive event batches from the engine and run your processing logic against them. Includes optional setup hooks, typed config, and service-binding helpers — suited for anything from simple event logging to ingesting events into a datastore.
+
+More information on the workflow engine programming model is avalable from the [Kaleido platform docsite](https://docs.kaleido.io/platform/web3-middleware/workflowengine/)
+
+## Running hosted or non-hosted
+
+Providers built with the Workflow engine SDK can run in one of 2 modes. Hosted or non-hosted.
+
+Step-by-step instructions: **[Running locally](#running-locally)** (development) · **[Hosting on the Kaleido platform](#hosting-on-the-kaleido-platform)** (production).
+
+### Hosted
+
+The provider is built as a docker images which is uploaded to the Kaleido Artifact Registry. A provider service is created inside the Kaleido platform to instantiate an instance of the provider which runs as a Kaleido managed service.
+
+In hosted mode the providers has conenction and auth context information automatically provided to it by service-bindings.
+
+This is the intended usage mode for running a provider in production. See [Hosting on the Kaleido platform](#hosting-on-the-kaleido-platform) for build, push, and deploy steps.
+
+### Non-hosted
+
+The provider runs locally on your development workstation, either as a typescript application or as a dockerfile. Connection information is provided as configuration via non-hosted service bindings which contain connection information required to connect to Kaleido platform services.
+
+Running in this mode is intended to allow you to iterate quickly during development of a provider. It is not reccomended to run in non-hosted mode for production use-cases. See [Running locally](#running-locally) for setup and verification steps.
+
 
 ## Quick start
 
+### Scaffolding from a template
+
+The `kaleido-sdk` pacakage allows you to scaffold a new or existing project from and example to get started quickly:
+
+Scaffold a new provider project from a template:
+
+```bash
+# Start from the workflow-engine-provider template
+npx @kaleido-io/kaleido-sdk init <project-name> --template workflow-engine-provider
+
+# Start from the ERC-20 indexer template
+npx @kaleido-io/kaleido-sdk init <project-name> --template erc20-indexer
+
+# Start from the Bitcoin indexer template
+npx @kaleido-io/kaleido-sdk init <project-name> --template btc-indexer
+```
+
+Omit `--template` in an interactive terminal and you'll be prompted to choose one.
+
+Scaffold a new provider project into an existing project:
+
+Omit the project name to copy template source files into the current directory
+instead of creating a new one. Only the `src/` and `config/` directories are
+merged in — root files (`tsconfig.json`, `Dockerfile`, etc.) are left untouched:
+
+```bash
+cd my-existing-project
+npx @kaleido-io/kaleido-sdk init --template erc20-indexer
+```
+
+Any `@kaleido-io/*` dependencies required by the template are added to your
+`package.json` automatically. Run `npm install` afterwards.
+
+### What gets created on disk
+
+When you scaffold a **new project**, you should see a layout like:
+
+```text
+my-project/
+  config/
+    config.sample.yaml
+    provider-config.sample.yaml
+  src/
+    main.ts
+    ... template-specific source files ...
+  Dockerfile
+  package.json
+  README.md
+  tsconfig.json
+  vitest.config.ts
+```
+
+When you scaffold **into an existing project** (`init --template ...` with no project name), only template-owned source/config files are added:
+
+```text
+<existing-project>/
+  config/
+    config.sample.yaml
+    provider-config.sample.yaml
+  src/
+    main.ts
+    ... template-specific source files ...
+```
+
+In add-to-existing mode, your root project files are not overwritten (for example `tsconfig.json`, `Dockerfile`, `.gitignore`), and your existing `package.json` is updated with any missing `@kaleido-io/*` dependencies required by that template.
+
+#### Scaffolded file purpose
+
+| File | Purpose |
+|---|---|
+| `config/config.sample.yaml` | Platform connection settings. |
+| `config/provider-config.sample.yaml` | Application-specific config template consumed by your application code. |
+| `src/main.ts` | Starting point that wires SDK clients/handlers for the selected template. |
+| `Dockerfile` | Container build for running the provider in deployment environments. |
+| `tsconfig.json` | TypeScript compiler settings for the scaffolded project. |
+| `vitest.config.ts` | Test runner configuration included by templates that ship tests. |
+
 ### Installation
+
+If you do not wish to start from a template you can simply import the SDK directly
 
 ```bash
 npm install @kaleido-io/workflow-engine-sdk
 ```
 
-### Create a new project
-
-Scaffold a new provider project from a template. The `--template` flag is required:
+If you are using multiple SDK packaages you may wish to use the multi-service client:
 
 ```bash
-# Start from the getting-started template
-npx @kaleido-io/workflow-engine-sdk init <project-name> --template getting-started
-
-# Start from the ERC-20 indexer template
-npx @kaleido-io/workflow-engine-sdk init <project-name> --template erc20-indexer
+npm install @kaleido-io/kaleido-sdk
 ```
 
-Available templates:
+Note that this will pull in all SDK pacakges as transitive dependncies.
 
-- **getting-started** — basic provider with example transaction handlers and event sources
-- **erc20-indexer** — provider that indexes ERC-20 token events from an EVM chain
 
-This creates a new project directory with boilerplate config and a starter
-provider that connects to your Kaleido workflow engine.
 
-### Integrating into an existing project
+## Configuration Model
+
+Most provider flows use two config files:
+
+- `config.yaml` (platform connectivity and service bindings)
+- `provider-config.yaml` (your app-specific config)
+
+This separation lets one codebase run in different environments by changing config only. For example:
+
+- local provider running from Docker on a developer machine
+- hosted provider running from a published image in Kaleido infrastructure
+
+In both cases, your SDK usage can stay the same; only configuration values change.
+
+### Platform config (`config.yaml`)
+
+```yaml
+workflow-engine:
+  providerName: my-provider
+  url: https://wfe.example.com
+  auth:
+    type: token
+    token: ${WFE_TOKEN}
+    scheme: Bearer
+
+service-bindings:
+  asset-manager:
+    type: asset-manager
+    bindingType: non-hosted
+    url: https://am.example.com/api/v1
+    auth:
+      type: token
+      token: ${AM_TOKEN}
+      scheme: Bearer
+
+  # Hosted binding example (resolved via ws-proxy)
+  evm-connector:
+    type: connector
+    bindingType: hosted
+    id: svc-connector-001
+```
+
+### Service bindings
+
+A service binding provides a mapping between the name of a service and it's conenction information. Because this is held in config this means that you can swap between hosted bindings where the connectivity information is autoamtically provided by the platform and non-hosted bindings where you provide the connection information. 
+
+This means that you can seaamlessly transition between running an application locally on your development workstation in order to iterate quickly and running hosted within the Kaleido platform.
+
+When constructing a client you can specify the name of a service binding in order to have the client configured with the appropriate connection for that service. For example:
 
 ```typescript
-import {
-  WorkflowEngineClient,
-  ConfigLoader,
-  WorkflowEngineConfig,
-  newDirectedTransactionHandler,
-  InvocationMode,
-  EvalResult,
-} from "@kaleido-io/workflow-engine-sdk";
-import * as fs from "fs";
-import * as yaml from "js-yaml";
-
-// 1. Load configuration (your application handles file loading)
-const configFile = fs.readFileSync("./config.yaml", "utf8");
-const config: WorkflowEngineConfig = yaml.load(
-  configFile,
-) as WorkflowEngineConfig;
-
-// 2. Use SDK's ConfigLoader to create client config with your provider name
-//    The SDK handles authentication header setup and URL conversion automatically
-const clientConfig = ConfigLoader.createClientConfig(config, "my-service");
-
-// 3. Create client
-const client = new WorkflowEngineClient(clientConfig);
-
-// 4. Create and register transaction handler
-const actionMap = new Map([
-  [
-    "myAction",
-    {
-      invocationMode: InvocationMode.PARALLEL,
-      handler: async (transaction, input) => {
-        return {
-          result: EvalResult.COMPLETE,
-          output: { success: true },
-        };
-      },
-    },
-  ],
-]);
-
-const handler = newDirectedTransactionHandler("my-handler", actionMap);
-client.registerTransactionHandler("my-handler", handler);
-
-// 5. Connect
-await client.connect();
+const amClient1 = AssetManagerClient.fromConfigFile('assetManager1');
+const amClient2 = AssetManagerClient.fromConfigFile('assetManager2');
 ```
 
-## Core concepts
-
-### WorkflowEngineClient
-
-The main entry point that manages:
-
-- Handler registration (transaction handlers and event sources)
-- WebSocket connection lifecycle
-- Automatic reconnection and re-registration
-- Message routing between engine and handlers
-
-```typescript
-const client = new WorkflowEngineClient({
-  url: "ws://localhost:5503/ws",
-  providerName: "my-service",
-  authToken: "your-token",
-  authHeaderName: "X-Kld-Authz", // Optional, defaults to X-Kld-Authz
-  reconnectDelay: 2000, // Optional, ms between reconnect attempts
-  maxAttempts: undefined, // Optional, undefined = infinite retries (recommended)
-});
-
-// Register handlers
-client.registerTransactionHandler("handler-name", transactionHandler);
-client.registerEventSource("source-name", eventSource);
-
-// Connect
-await client.connect();
-
-// Check connection status
-if (client.isConnected()) {
-  console.log("Connected!");
-}
-
-// Disconnect
-client.disconnect();
+```yaml
+service-bindings:
+  assetManager1:
+    type: asset-manager
+    bindingType: non-hosted
+    url: https://am.example.kaleido.cloud/api/v1
+    auth:
+      type: token
+      token: ${AM_TOKEN}
+      scheme: Bearer
+  assetManager2:
+    type: asset-manager
+    bindingType: non-hosted
+    url: https://am2.example.kaleido.cloud/api/v1
+    auth:
+      type: token
+      token: ${AM_TOKEN}
+      scheme: Bearer
 ```
 
-### Configuration file format
+The exception to this pattern is in the connection to the Workflow engine itself. The workflow engine is a singleton and this connection is also managed through the Provider Proxy running on the Kaleido platform, therefore this has it's own first-class stanza in the configuration file. The workflow engine connection is defined using the top level `workflow-engine` root-key in the config yaml file.
 
-The SDK only accepts the root key **`workflow-engine`** in config files (not `workflowEngine`). Use one of two modes:
-
-- **Outbound:** Provide `url` and `auth`. The app (SDK client) connects to the workflow engine at that URL.
-- **Inbound:** Provide `server` with `address` and `port`. The app creates a WebSocket server on that address/port; the workflow engine connects to the app. Auth is not used. Optional `server.tls` (`enabled`, `caFile`, `certFile`, `keyFile`, `clientAuth`) enables TLS for the server.
-
-Delay fields (`retryDelay`, etc.) use time strings: `ms`, `s`, `m`, `h` (e.g. `"2s"`, `"30s"`, `"100ms"`, `"1m"`).
-
-**Example — outbound (local dev) with basic auth:**
-
+**Example - with basic auth:**
 ```yaml
 workflow-engine:
   providerName: my-service
@@ -155,571 +233,168 @@ workflow-engine:
   retryDelay: 2s
 ```
 
-**Example — inbound (app creates WebSocket server):**
+When you are running in `hosted` mode the platform instead uses a websocket connection to communicate with the workflow engine. The configuration for this web socket connection is automatically generated by a platform when you create a provider service.
+
+
+### Provider config (`provider-config.yaml`)
+
+This file is for your own application settings (batch size, allowlists, polling windows, etc.), not platform connection details. When you are implementing a provider the configuration is automatically made available for you as ctx.config. For example:
 
 ```yaml
-workflow-engine:
-  providerName: my-service
-  providerMetadata: {}
-  server:
-    address: "0.0.0.0"
-    port: 6000
-    heartbeatInterval: "30s"
-    requestsPerSecond: 100
-    burst: 200
+batchSize: 50
+allowlist:
+    - '0x0000000000000000000000000000000000000001'
+    - '0x0000000000000000000000000000000000000002'
 ```
 
-Load and use configuration:
+```ts
+import { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
+  interface MyConfig {
+    batchSize: number;
+    allowlist: string[];
+  }
+  WorkflowEngineClient.fromConfigFile<MyConfig>()
+    .eventProcessor('my-processor', {
+      async processBatch(ctx, events) {
+        const { batchSize, allowlist } = ctx.config;
+        // use batchSize, allowlist...
+      },
+    })
+    .start();
+```
 
+### Environment Variables
+
+By default configuration is sourced from the folloging environment variables:
+
+- `KALEIDO_CONFIG_FILE` - path to `config.yaml` (preferred)
+- `CONFIG_FILE` - path to `provider-config.yaml`
+
+These paths are used to locate configuration when isntantiating new clients using the `fromConfigFile()` methods with no path argument. Using these environment variables means that you can inject configuration into a docker container at development time. When running hosted within the Kaleido platform the platform will write configuration information for service bindings in KALEIDO_CONFIG_FILE and will write the provided config file into CONFIG_FILE.
+
+## Core concepts
+
+### WorkflowEngineClient
+
+The main entry point that manages:
+
+- Handler registration (transaction handlers and event sources)
+- Connection lifecycle
+- Automatic reconnection and re-registration
+- Message routing between engine and handlers
+
+
+Obtaining a client: 
+
+Service bindings (reccomended)
 ```typescript
-import {
-  ConfigLoader,
-  WorkflowEngineConfig,
-} from "@kaleido-io/workflow-engine-sdk";
-import * as fs from "fs";
-import * as yaml from "js-yaml";
-
-// Your application loads configuration (the SDK doesn't load files)
-const configFile = fs.readFileSync("./config.yaml", "utf8");
-const config: WorkflowEngineConfig = yaml.load(
-  configFile,
-) as WorkflowEngineConfig;
-
-// Use SDK's ConfigLoader to create client config with provider name (REQUIRED)
-// Note: SDK automatically converts http:// to ws:// and adds /ws path
-const clientConfig = ConfigLoader.createClientConfig(config, "my-service");
-
-// Optionally log summary (without sensitive data)
-ConfigLoader.logConfigSummary(config);
-
-// Create client
-const client = new WorkflowEngineClient(clientConfig);
+const client = WorkflowEngineClient.fromConfigFile();
 ```
 
-**URL Handling:**
-
-- Config file uses HTTP URL: `http://localhost:5503` or `https://example.com`
-- SDK automatically converts to WebSocket: `ws://localhost:5503/ws` or `wss://example.com/ws`
-- `/ws` path is automatically added if not present
-
-### Use configuration files setup
-
-Two config files are required for this setup:
-
-1. **WFE config (SDK contract)** — Workflow engine connection and identity. Path from `WFE_CONFIG_FILE` or pass `configFile` to `NewWorkflowEngineClient`. Root key in YAML must be **`workflow-engine`**. **Outbound:** `providerName`, `url`, and `auth`. **Inbound:** `providerName` and `server` (address, port); the app creates a WebSocket server and the engine connects to it. Optional `server.tls` for TLS. Delay fields use time strings (e.g. `retryDelay: "2s"`).
-2. **Provider config (application-owned)** — App-specific settings. Path from `CONFIG_FILE` or `-f`; your app loads and uses it (e.g. to build handlers). The SDK does not read or define its schema.
-
-Example run:
-
-```bash
-CONFIG_FILE=./config.yaml WFE_CONFIG_FILE=./wfe-config.yaml node connect.js
+Service bindings, non-default config file
+```ts
+const client = WorkflowEngineClient.fromConfigFile('/path/to/file.yaml');
 ```
 
-### New workflow engine client using config file
-
-To initialize a Workflow Engine Client with using single function, use `NewWorkflowEngineClient` and `HandlerSetFor`:
-
+Explicit service bindings
 ```typescript
-import {
-  NewWorkflowEngineClient,
-  HandlerSetFor,
-  WFE_CONFIG_FILE,
-} from "@kaleido-io/workflow-engine-sdk";
-
-// Build your handlers (e.g. from provider config in app code)
-const handler = newEventProcessorFromConfig(providerConfig);
-const txHandler = newDirectedTransactionHandler("my-handler", actionMap);
-
-// Create and start runtime (loads WFE config from file, registers handlers, connects)
-const runtime = await NewWorkflowEngineClient(
-  HandlerSetFor(handler, txHandler),
-  process.env[WFE_CONFIG_FILE] ?? "./wfe-config.yaml",
-);
-// runtime is already connected
-// On shutdown:
-runtime.disconnect();
+const client = new WorkflowEngineClient({
+  url: "ws://localhost:5503/ws",
+  providerName: "my-service",
+  authToken: "your-token",
+  authHeaderName: "X-Kld-Authz", // Optional, defaults to X-Kld-Authz
+  reconnectDelay: 2000, // Optional, ms between reconnect attempts
+  maxAttempts: undefined, // Optional, undefined = infinite retries (recommended)
+});
 ```
 
-- **HandlerSetFor(...handlers)**: Builds a handler set from one or more transaction handlers, event sources, or event processors.
-- **NewWorkflowEngineClient(handlerSet, configFile?)**: Loads WFE config from file (when `configFile` or `WFE_CONFIG_FILE` env is set), creates the client, registers all handlers, connects, and returns the client. Uses `ConfigLoader.loadClientConfigFromFile` under the hood.
+Usage
+```ts
+// Register handlers
+client.registerTransactionHandler("handler-name", transactionHandler);
+client.registerEventSource("source-name", eventSource);
 
-To load client config from a WFE config file without using `NewWorkflowEngineClient` (e.g. for custom startup), use `ConfigLoader.loadClientConfigFromFile(configFilePath?)`. If `configFilePath` is omitted, `process.env[WFE_CONFIG_FILE]` is used. The file must use the root key **`workflow-engine`** only. **Outbound:** include `providerName`, `url`, and `auth`. **Inbound:** include `providerName` and `server` (address, port); the app will create a WebSocket server and auth is not used.
+// Connect
+await client.connect();
 
-### Configuration Schema
-
-```typescript
-interface WorkflowEngineConfig {
-  workflowEngine: {
-    mode?: HandlerRuntimeMode; // Defaults to outbound
-    port?: number; // port used for the web socket server in inbound mode
-    url?: string; // Workflow engine URL
-    auth?: AuthConfig; // Authentication (see below)
-    timeout?: string; // Request timeout (e.g. "30s")
-    maxRetries?: number; // Max reconnection attempts (undefined = infinite)
-    retryDelay?: string; // Delay between retries (e.g. "2s")
-    batchSize?: number; // Batch size for handlers
-    batchTimeout?: string; // Batch timeout (e.g. "500ms")
-    pollDuration?: string; // Event source poll duration
-  };
+// Check connection status
+if (client.isConnected) {
+  console.log("Connected!");
 }
 
-// Authentication types
-type AuthConfig = BasicAuth | TokenAuth;
-
-interface BasicAuth {
-  type: "basic"; // Must be 'basic'
-  username: string; // Username
-  password: string; // Password
-}
-
-interface TokenAuth {
-  type: "token"; // Must be 'token'
-  token: string; // API token
-  header?: string; // Header name (default: 'Authorization')
-  scheme?: string; // Scheme (e.g. 'Bearer', default: '')
-}
-```
-
-### Configuration examples (config file: root key `workflow-engine` only)
-
-**Outbound — basic auth:**
-
-```yaml
-workflow-engine:
-  providerName: my-service
-  url: http://localhost:5503
-  auth:
-    type: basic
-    username: admin
-    password: secret123
-```
-
-**Outbound — token auth (raw token):**
-
-```yaml
-workflow-engine:
-  providerName: my-service
-  url: http://localhost:5503
-  auth:
-    type: token
-    token: dev-token-123
-    header: X-Kld-Authz
-    scheme: ""   # Empty string = raw token
-```
-
-**Outbound — token auth (bearer):**
-
-```yaml
-workflow-engine:
-  providerName: my-service
-  url: http://localhost:5503
-  auth:
-    type: token
-    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-    scheme: Bearer
-```
-
-**Hosted (server; auth not needed):**
-
-```yaml
-workflow-engine:
-  providerName: my-service
-  providerMetadata: {}
-  server:
-    address: "0.0.0.0"
-    port: 6000
-    heartbeatInterval: "30s"
-    requestsPerSecond: 100
-    burst: 200
-```
-
-**With environment variable overrides:**
-
-```typescript
-import * as fs from "fs";
-import * as yaml from "js-yaml";
-import {
-  ConfigLoader,
-  WorkflowEngineConfig,
-} from "@kaleido-io/workflow-engine-sdk";
-
-// Your application loads and merges config with env vars
-const configFile = fs.readFileSync("./config.yaml", "utf8");
-const config: WorkflowEngineConfig = yaml.load(
-  configFile,
-) as WorkflowEngineConfig;
-
-// Override URL from environment
-if (process.env.WORKFLOW_ENGINE_URL) {
-  config.workflowEngine.url = process.env.WORKFLOW_ENGINE_URL;
-}
-
-// Override token from environment
-if (
-  process.env.WORKFLOW_ENGINE_TOKEN &&
-  config.workflowEngine.auth.type === "token"
-) {
-  config.workflowEngine.auth.token = process.env.WORKFLOW_ENGINE_TOKEN;
-}
-
-// SDK transforms config into client config
-const clientConfig = ConfigLoader.createClientConfig(config, "my-service");
+// Disconnect
+client.disconnect();
 ```
 
 ## Transaction handlers
 
-### Using the factory pattern
+Providers that execute workflow stage actions when the engine sends transaction batches.
 
-The recommended approach for building transaction handlers:
+Register with the fluent builder on `WorkflowEngineClient.fromConfigFile()`. Pass a factory-built handler, or a registration object / closure from a helper function:
 
 ```typescript
 import {
-  newDirectedTransactionHandler,
+  WorkflowEngineClient,
+  createTransactionHandler,
   InvocationMode,
   EvalResult,
-  Patch,
-} from "@kaleido-io/workflow-engine-sdk";
+} from '@kaleido-io/workflow-engine-sdk';
 
-// Define your input type
-interface MyInput {
-  action: string;
-  data: string;
-}
-
-// Create action map
 const actionMap = new Map([
   [
-    "processData",
+    'process',
     {
       invocationMode: InvocationMode.PARALLEL,
-      handler: async (transaction, input: MyInput) => {
-        // Process the data
-        const result = processData(input.data);
-
-        return {
-          result: EvalResult.COMPLETE,
-          output: { processed: result },
-          extraUpdates: [Patch.add("/processedData", result)],
-        };
-      },
-    },
-  ],
-
-  [
-    "batchProcess",
-    {
-      invocationMode: InvocationMode.BATCH,
-      batchHandler: async (transactions) => {
-        // Process all transactions together
-        const results = await processBatch(transactions.map((r) => r.value));
-
-        return results.map((result) => ({
-          result: EvalResult.COMPLETE,
-          output: result,
-        }));
-      },
+      handler: async (_tx, input) => ({
+        result: EvalResult.COMPLETE,
+        output: { ok: true },
+      }),
     },
   ],
 ]);
 
-// Create handler
-const handler = newDirectedTransactionHandler("my-handler", actionMap)
-  .withInitFn(async (engAPI) => {
-    // Initialize resources
-    console.log("Handler initialized");
+WorkflowEngineClient.fromConfigFile()
+  .transactionHandler('my-handler', {
+    handler: createTransactionHandler('my-handler', actionMap),
+    setup: async (ctx) => {
+      /* optional one-time init; ctx.config from provider-config.yaml */
+    },
   })
-  .withCloseFn(() => {
-    // Cleanup resources
-    console.log("Handler closed");
-  });
-
-client.registerTransactionHandler("my-handler", handler);
+  .start();
 ```
 
-### Invocation modes
-
-**PARALLEL**: Each transaction processed independently in parallel
+A closure or factory that returns `{ handler, setup? }` is also supported:
 
 ```typescript
-{
-  invocationMode: InvocationMode.PARALLEL,
-  handler: async (transaction, input) => {
-    // Process single transaction
-    return { result: EvalResult.COMPLETE };
-  }
-}
-```
-
-**BATCH**: All transactions in batch processed together
-
-```typescript
-{
-  invocationMode: InvocationMode.BATCH,
-  batchHandler: async (transactions) => {
-    // Process all transactions at once
-    const results = await batchProcess(transactions);
-    return results;
-  }
-}
-```
-
-### Eval results
-
-Return appropriate result based on outcome:
-
-- `EvalResult.COMPLETE` - Success, proceed to next stage
-- `EvalResult.WAITING` - Stay in current stage (waiting for event)
-- `EvalResult.FIXABLE_ERROR` - Retry later
-- `EvalResult.TRANSIENT_ERROR` - Temporary error, retry
-- `EvalResult.HARD_FAILURE` - Permanent failure, go to failure stage
-
-### State updates
-
-Use JSON Patch operations to update workflow state:
-
-```typescript
-import { Patch } from "@kaleido-io/workflow-engine-sdk";
-
-return {
-  result: EvalResult.COMPLETE,
-  stateUpdates: [
-    Patch.add("/newField", "value"),
-    Patch.replace("/existingField", "newValue"),
-    Patch.remove("/oldField"),
-    Patch.add("/array/-", "append to array"),
-  ],
-};
-```
-
-### Custom stage transitions
-
-Override the default next stage:
-
-```typescript
-return {
-  result: EvalResult.COMPLETE,
-  customStage: "custom-next-stage", // Override default nextStage
-  output: { data: "result" },
-};
-```
-
-### Triggers
-
-Emit events to trigger other workflows:
-
-```typescript
-return {
-  result: EvalResult.COMPLETE,
-  triggers: [
-    { topic: "user.created" },
-    { topic: "notification.send", ephemeral: true },
-  ],
-};
-```
-
-### Handler events
-
-Emit events directly from handlers:
-
-```typescript
-return {
-  result: EvalResult.COMPLETE,
-  events: [{ topic: "something-happened", data: {} }],
-};
-```
-
-## Event sources
-
-Event sources poll external systems and emit events to the workflow engine.
-
-### Creating an Event Source
-
-```typescript
-import { newEventSource } from "@kaleido-io/workflow-engine-sdk";
-
-// Define your types
-interface MyCheckpoint {
-  lastId: number;
-}
-
-interface MyConfig {
-  topic: string;
-  pollInterval: number;
-}
-
-interface MyEventData {
-  id: number;
-  data: string;
-}
-
-// Create event source
-const eventSource = newEventSource<MyCheckpoint, MyConfig, MyEventData>(
-  "my-event-source",
-  async (config, checkpointIn) => {
-    // Poll for events
-    const events = await fetchNewEvents(
-      config.config.topic,
-      checkpointIn?.lastId || 0,
-    );
-
-    // Return checkpoint and events
-    return {
-      checkpointOut: {
-        lastId: events[events.length - 1]?.id || checkpointIn?.lastId || 0,
-      },
-      events: events.map((e) => ({
-        idempotencyKey: `event-${e.id}`,
-        topic: config.config.topic,
-        data: e,
-      })),
-    };
-  },
-)
-  .withInitialCheckpoint(async (config) => {
-    // Build initial checkpoint
-    return { lastId: 0 };
-  })
-  .withConfigParser(async (info, configData) => {
-    // Parse and validate config
-    const config = configData as MyConfig;
-    if (!config.topic) {
-      throw new Error("topic is required");
-    }
-    return config;
-  })
-  .withDeleteFn(async (info) => {
-    // Cleanup on deletion
-    console.log(`Deleting event source: ${info.streamName}`);
-  })
-  .withInitFn(async (engAPI) => {
-    // Initialize resources
-    console.log("Event source initialized");
-  })
-  .withCloseFn(() => {
-    // Cleanup resources
-    console.log("Event source closed");
-  });
-
-// Register event source
-client.registerEventSource("my-event-source", eventSource);
-```
-
-### Event source lifecycle
-
-1. **Validation**: `withConfigParser` validates stream configuration
-2. **Initial checkpoint**: `withInitialCheckpoint` creates starting point
-3. **Polling**: Poll function called repeatedly to fetch events
-4. **Checkpoint update**: Checkpoint saved after each successful poll
-5. **Resumption**: On restart, polling resumes from last checkpoint
-
-### Real-world example: stellar ledgers
-
-```typescript
-interface StellarBlockCheckpoint {
-  lastLedger: number;
-}
-
-interface StellarBlockConfig {
-  topic: string;
-  fromLedger?: string;
-  batchSize?: number;
-}
-
-interface MinimalLedger {
-  sequence: number;
-  hash: string;
-  closedAt: string;
-}
-
-const stellarBlocks = newEventSource<
-  StellarBlockCheckpoint,
-  StellarBlockConfig,
-  MinimalLedger
->("stellarBlocks", async (config, checkpointIn) => {
-  const startLedger = checkpointIn
-    ? checkpointIn.lastLedger + 1
-    : await getLatestLedger();
-  const batchSize = config.config.batchSize || 10;
-
-  const events = [];
-  let newCheckpoint = startLedger - 1;
-
-  for (let i = 0; i < batchSize; i++) {
-    try {
-      const ledger = await fetchLedger(startLedger + i);
-      events.push({
-        idempotencyKey: ledger.hash,
-        topic: config.config.topic,
-        data: {
-          sequence: ledger.sequence,
-          hash: ledger.hash,
-          closedAt: ledger.closed_at,
-        },
-      });
-      newCheckpoint = ledger.sequence;
-    } catch (error) {
-      break; // Ledger not yet available
-    }
-  }
-
+function createMyHandler() {
   return {
-    checkpointOut: { lastLedger: newCheckpoint },
-    events,
+    handler: createTransactionHandler('my-handler', actionMap),
+    setup: async (ctx) => { /* ... */ },
   };
-})
-  .withInitialCheckpoint(async (config) => {
-    const ledgerNum =
-      config.fromLedger === "latest"
-        ? await getLatestLedger()
-        : parseInt(config.fromLedger || "0", 10);
-    return { lastLedger: ledgerNum };
-  })
-  .withConfigParser(async (info, configData) => {
-    const config = configData as StellarBlockConfig;
-    if (!config.topic) {
-      throw new Error("topic is required");
-    }
-    return config;
-  });
+}
+
+WorkflowEngineClient.fromConfigFile()
+  .transactionHandler('my-handler', createMyHandler())
+  .start();
 ```
 
-### Creating event streams
+### EngineAPI
 
-Event streams connect event sources to workflows:
-
-```bash
-curl -X PUT http://localhost:5503/api/v1/streams/my-stream \
-  -H "Content-Type: application/json" \
-  -H "X-Kld-Authz: dev-token-123" \
-  -d '{
-    "name": "my-stream",
-    "started": true,
-    "type": "correlation_stream",
-    "listenerHandler": "my-event-source",
-    "listenerHandlerProvider": "my-service",
-    "config": {
-      "topic": "my-topic",
-      "pollInterval": 1000
-    }
-  }'
-```
-
-## EngineAPI
-
-The `EngineAPI` interface allows handlers to make synchronous API calls back to the workflow engine during transaction processing.
-
-### Submitting Async Transactions
+The `EngineAPI` interface allows transaction handlers to make API calls back to the workflow engine during processing.
 
 ```typescript
 async function myHandler(transaction, input, engAPI: EngineAPI) {
-  // Submit transactions to the engine
-  const results = await engAPI.submitAsyncTransactions(transaction.authRef, [
-    {
-      workflowId: "flw:abc123",
-      operation: "process",
-      input: { data: "value" },
-    },
-  ]);
+  const results = await engAPI.submitAsyncTransactions(
+    input.id,
+    transaction.authRef,
+    [
+      {
+        workflowId: 'flw:abc123',
+        operation: 'process',
+        input: { data: 'value' },
+      },
+    ],
+  );
 
   return {
     result: EvalResult.COMPLETE,
@@ -728,7 +403,7 @@ async function myHandler(transaction, input, engAPI: EngineAPI) {
 }
 ```
 
-## StageDirector pattern
+### StageDirector pattern
 
 For workflows with action-based routing and automatic stage transitions:
 
@@ -736,7 +411,7 @@ For workflows with action-based routing and automatic stage transitions:
 import {
   BasicStageDirector,
   WithStageDirector,
-} from "@kaleido-io/workflow-engine-sdk";
+} from '@kaleido-io/workflow-engine-sdk';
 
 interface MyInput extends WithStageDirector {
   data: string;
@@ -748,218 +423,214 @@ class MyInputImpl implements MyInput {
 
   constructor(input: any) {
     this.stageDirector = new BasicStageDirector(
-      input.action, // Action to execute
-      input.outputPath, // Where to store output
-      input.nextStage, // Stage on success
-      input.failureStage, // Stage on failure
+      input.action,
+      input.outputPath,
+      input.nextStage,
+      input.failureStage,
     );
     this.data = input.data;
-  }
-
-  getStageDirector() {
-    return this.stageDirector;
   }
 }
 
 // The SDK automatically wraps plain JSON objects from the engine
-// with a getStageDirector() method, so you can also use plain objects:
+// with a `stageDirector` property, so you can also use plain objects:
 const actionMap = new Map([
   [
-    "myAction",
+    'myAction',
     {
       invocationMode: InvocationMode.PARALLEL,
-      handler: async (transaction, input: any) => {
-        // input.action, input.outputPath, input.nextStage are available
-        return {
-          result: EvalResult.COMPLETE,
-          output: { processed: input.data },
-        };
-      },
+      handler: async (transaction, input: any) => ({
+        result: EvalResult.COMPLETE,
+        output: { processed: input.data },
+      }),
     },
   ],
 ]);
 ```
 
-## Error handling
+## Event sources
 
-### Handler errors
+Providers that poll or subscribe to external systems and emit events (with checkpoints) into the workflow engine.
 
-Return appropriate error results:
+Build the source with `createEventSource`, then register it on the client. Closures in the poll function are supported:
 
 ```typescript
-handler: async (transaction, input) => {
-  try {
-    const result = await riskyOperation(input);
-    return {
-      result: EvalResult.COMPLETE,
-      output: result,
-    };
-  } catch (error) {
-    if (isTransient(error)) {
-      return {
-        result: EvalResult.TRANSIENT_ERROR,
-        error: error as Error,
-      };
-    } else {
-      return {
-        result: EvalResult.HARD_FAILURE,
-        error: error as Error,
-      };
-    }
-  }
-};
+import { WorkflowEngineClient, createEventSource } from '@kaleido-io/workflow-engine-sdk';
+
+const myEventSource = createEventSource('my-event-source', async (config, checkpointIn) => ({
+  checkpointOut: { lastId: (checkpointIn?.lastId ?? 0) + 1 },
+  events: [{ idempotencyKey: 'evt-1', topic: 'my-topic', data: { value: 1 } }],
+}));
+
+WorkflowEngineClient.fromConfigFile()
+  .eventSource(myEventSource)
+  .start();
 ```
 
-### Connection errors
-
-The client automatically handles:
-
-- WebSocket disconnections
-- Automatic reconnection with exponential backoff
-- Handler re-registration on reconnect
-- Connection health monitoring
-
-Monitor connection events:
+You can also pass a pre-built `EventSource` instance from a factory:
 
 ```typescript
-// The SDK logs connection events automatically
-// Check connection status programmatically:
-if (!client.isConnected()) {
-  console.warn("Client disconnected, will auto-reconnect");
+WorkflowEngineClient.fromConfigFile()
+  .eventSource(createTickerEventSource())
+  .start();
+```
+
+## Event processors
+
+Providers that receive event batches from the engine and run processing logic against them.
+
+Use the fluent `.eventProcessor()` builder method. The batch function receives an `EventProcessorContext` with:
+
+- `ctx.config` — typed access to your `provider-config.yaml`
+- `ctx.getServiceClientOptions(bindingName)` — resolve a service binding (works for both hosted and non-hosted bindings)
+- `ctx.signal` — per-request `AbortSignal` that respects the WFE request deadline
+- `ctx.requestId` — per-batch request ID for correlation logging
+
+An optional `setup` hook runs once before the WFE connection is established (or on deploy trigger in `deferred` mode). Use it to create streams, bootstrap resources, or run one-time initialisation. **`setup` must be idempotent** — it may be called more than once (e.g. on reconnect or re-deploy), so operations inside it should be safe to repeat, such as using `create_or_ignore` upserts or `ensureStream` which is designed for this purpose.
+
+```typescript
+import { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
+
+interface MyConfig {
+  batchSize: number;
 }
+
+WorkflowEngineClient.fromConfigFile<MyConfig>()
+  .eventProcessor('my-processor', {
+    setup: async (ctx) => {
+      /* ensureStream, bootstrap resources, etc. */
+    },
+    processBatch: async (ctx, events) => {
+      const { batchSize } = ctx.config;
+      for (const event of events) await persist(event, batchSize);
+    },
+  })
+  .start();
 ```
+
+Pass an inline definition or a class instance that satisfies `EventProcessorDef`:
+
+```typescript
+class MyProcessor {
+  async setup(ctx) { /* ... */ }
+  async processBatch(ctx, events) { /* ... */ }
+}
+
+WorkflowEngineClient.fromConfigFile<MyConfig>()
+  .eventProcessor('my-processor', new MyProcessor())
+  .start();
+```
+
+Use `createEventProcessor` for the factory style (consistent with `createEventSource` / `createTransactionHandler`):
+
+```typescript
+import { WorkflowEngineClient, createEventProcessor } from '@kaleido-io/workflow-engine-sdk';
+
+WorkflowEngineClient.fromConfigFile<MyConfig>()
+  .eventProcessor('my-processor', createEventProcessor(
+    async (ctx, events) => {
+      for (const event of events) await persist(event);
+    },
+  ))
+  .start();
+```
+
+### Example: building an indexer with the Asset Manager SDK
+
+A common pattern is using an event processor to ingest batched blockchain events into an external system — for example the [Kaleido Asset Manager](https://docs.kaleido.io/platform/web3-middleware/asset-manager/), a database, or any other datastore. The `setup` hook is the right place to bootstrap resources, call `ensureStream` to create the connector stream on first deploy, and any other one-time work. The `processBatch` function then maps each event to the appropriate write operations on the target system.
+
+```typescript
+import { WorkflowEngineClient, createEventProcessor } from '@kaleido-io/workflow-engine-sdk';
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+import { EVMConnectorClient } from '@kaleido-io/connector-sdk/evm';
+
+interface MyConfig {
+  contractAddress: string;
+  stream: { connectorBindingName: string; name: string; factory: string; eventSourceConfig: unknown };
+}
+
+WorkflowEngineClient.fromConfigFile<MyConfig>()
+  .eventProcessor('erc20-indexer', createEventProcessor(
+    async (ctx, events) => {
+      const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder();
+      for (const event of events) {
+        // map event.data to upsert operations...
+        builder.upsertTransfer({ /* ... */ });
+      }
+      await builder.execute();
+    },
+    async (ctx) => {
+      // Bootstrap the asset pool and create the connector stream on first deploy
+      const builder = new AssetManagerClient(ctx).getNewBulkUpsertBuilder();
+      builder.upsertAsset({ name: 'my-token', updateType: 'create_or_ignore' });
+      await builder.execute();
+
+      await new EVMConnectorClient(ctx.config.stream.connectorBindingName).ensureStream(ctx, {
+        factory: ctx.config.stream.factory,
+        name: ctx.config.stream.name,
+        eventSourceConfig: ctx.config.stream.eventSourceConfig,
+      });
+    },
+  ))
+  .start();
+```
+
+For larger indexers, the class form is often cleaner — see the full working examples in [`samples/erc20-indexer`](../../samples/erc20-indexer), [`samples/btc-indexer`](../../samples/btc-indexer), [`samples/native-eth-indexer`](../../samples/native-eth-indexer), and [`samples/canton-cip56-indexer`](../../samples/canton-cip56-indexer).
 
 ## Logging
 
 The SDK uses a structured logger:
 
 ```typescript
-import { newLogger } from "@kaleido-io/workflow-engine-sdk";
+import { newLogger } from '@kaleido-io/workflow-engine-sdk';
 
-const log = newLogger("my-component");
+const log = newLogger('my-component');
 
-log.debug("Debug message", { metadata: "value" });
-log.info("Info message", { userId: 123 });
-log.warn("Warning message", { reason: "low memory" });
-log.error("Error message", { error: err.message });
+log.debug('Debug message', { metadata: 'value' });
+log.info('Info message', { userId: 123 });
+log.warn('Warning message', { reason: 'low memory' });
+log.error('Error message', { error: err.message });
 ```
 
-## Testing
+## Error handling
 
-### Unit tests
+### Handler errors
 
-Mock the EngineAPI and test handlers in isolation:
-
-```typescript
-import { jest } from "@jest/globals";
-
-describe("MyHandler", () => {
-  it("should process data correctly", async () => {
-    const mockEngAPI = {
-      submitAsyncTransactions: jest.fn().mockResolvedValue([]),
-    };
-
-    const transaction = {
-      transactionId: "ftx:test123",
-      workflowId: "flw:test",
-      input: { action: "process", data: "test" },
-    };
-
-    const result = await myHandler(transaction, transaction.input, mockEngAPI);
-
-    expect(result.result).toBe(EvalResult.COMPLETE);
-    expect(result.output).toBeDefined();
-  });
-});
-```
-
-### Component tests
-
-Test with a running workflow engine:
+Return appropriate `EvalResult` values from transaction handlers:
 
 ```typescript
-import {
-  WorkflowEngineClient,
-  ConfigLoader,
-  WorkflowEngineConfig,
-} from "@kaleido-io/workflow-engine-sdk";
-import * as fs from "fs";
-import * as yaml from "js-yaml";
-
-// Helper to load test config (your test infrastructure)
-function loadTestConfig(): WorkflowEngineConfig {
-  const configFile = fs.readFileSync("./test-config.yaml", "utf8");
-  const config: WorkflowEngineConfig = yaml.load(
-    configFile,
-  ) as WorkflowEngineConfig;
-
-  // Override with environment variables if present
-  if (process.env.WORKFLOW_ENGINE_URL) {
-    config.workflowEngine.url = process.env.WORKFLOW_ENGINE_URL;
-  }
-
-  return config;
-}
-
-describe("Component Test", () => {
-  let client: WorkflowEngineClient;
-  const testConfig = loadTestConfig();
-
-  beforeAll(async () => {
-    // Use SDK's ConfigLoader to transform config
-    const clientConfig = ConfigLoader.createClientConfig(
-      testConfig,
-      "test-provider",
-    );
-    client = new WorkflowEngineClient(clientConfig);
-
-    client.registerTransactionHandler("my-handler", handler);
-    await client.connect();
-  });
-
-  afterAll(() => {
-    client.disconnect();
-  });
-
-  it("should process workflow end-to-end", async () => {
-    // For REST API calls, extract auth headers from SDK config
-    function getAuthHeaders(): Record<string, string> {
-      const clientConfig = ConfigLoader.createClientConfig(
-        testConfig,
-        "test-client",
-      );
-      return clientConfig.options?.headers || {};
+handler: async (transaction, input) => {
+  try {
+    const result = await riskyOperation(input);
+    return { result: EvalResult.COMPLETE, output: result };
+  } catch (error) {
+    if (isTransient(error)) {
+      return { result: EvalResult.TRANSIENT_ERROR, error: error as Error };
     }
-
-    const authHeaders = getAuthHeaders();
-
-    // Create workflow
-    const workflowResponse = await fetch(
-      "http://localhost:5503/api/v1/workflows",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-yaml",
-          ...authHeaders, // SDK handles auth automatically
-        },
-        body: workflowYAML,
-      },
-    );
-
-    // Wait for completion and verify results
-  });
-});
+    return { result: EvalResult.HARD_FAILURE, error: error as Error };
+  }
+};
 ```
 
-## Examples
+Event processors should throw from the batch function to mark a batch as failed; the SDK surfaces the error to the engine.
 
-### Complete transaction handler example
+### Connection errors
+
+The client automatically handles WebSocket disconnections, reconnection with backoff, handler re-registration on reconnect, and connection health monitoring.
+
+```typescript
+if (!client.isConnected) {
+  console.warn('Client disconnected, will auto-reconnect');
+}
+```
+
+## Complete transaction handler example
 
 ```typescript
 import {
   WorkflowEngineClient,
   WorkflowEngineConfig,
-  newDirectedTransactionHandler,
+  createTransactionHandler,
   InvocationMode,
   EvalResult,
   Patch,
@@ -1036,7 +707,7 @@ async function main() {
   ]);
 
   // Create handler
-  const handler = newDirectedTransactionHandler("payment-handler", actionMap)
+  const handler = createTransactionHandler("payment-handler", actionMap)
     .withInitFn(async (engAPI) => {
       console.log("Payment handler initialized");
     })
@@ -1054,64 +725,9 @@ async function main() {
 main().catch(console.error);
 ```
 
-### Complete event source example
+## Multiple handlers
 
-See the Stellar blocks example in the Event Sources section above for a complete real-world event source implementation.
-
-## Architecture
-
-### Client architecture
-
-```
-WorkflowEngineClient (Public API)
-    ↓
-HandlerRuntime (Connection Management)
-    ↓
-WebSocket Connection
-    ↓
-Workflow Engine
-```
-
-### Handler execution flow
-
-```
-1. Workflow Engine sends WSHandleTransactions
-2. HandlerRuntime routes to registered handler
-3. Handler processes transactions
-4. Handler returns WSHandleTransactionsResult with results
-5. Runtime sends reply back to engine
-6. Engine updates workflow state
-```
-
-### Event source flow
-
-```
-1. Engine sends WSListenerPollRequest
-2. HandlerRuntime routes to event source
-3. Event source polls external system
-4. Event source returns events + checkpoint
-5. Engine processes events
-6. Engine triggers workflows matching topics
-7. Engine saves checkpoint
-```
-
-## Advanced topics
-
-### Custom authentication
-
-```typescript
-const client = new WorkflowEngineClient({
-  url: "ws://localhost:5503/ws",
-  providerName: "my-service",
-  options: {
-    headers: {
-      Authorization: `Bearer ${process.env.AUTH_TOKEN}`,
-    },
-  },
-});
-```
-
-### Multiple handlers
+A single application using the workflow engine SDK can register multiple handlers:
 
 ```typescript
 // Register multiple handlers
@@ -1123,53 +739,6 @@ client.registerEventSource("source2", source2);
 // All handlers use the same WebSocket connection
 await client.connect();
 ```
-
-### Configuration validation
-
-```typescript
-import {
-  ConfigLoader,
-  WorkflowEngineConfig,
-} from "@kaleido-io/workflow-engine-sdk";
-import * as fs from "fs";
-import * as yaml from "js-yaml";
-
-try {
-  // Your application loads config
-  const configFile = fs.readFileSync("./config.yaml", "utf8");
-  const config: WorkflowEngineConfig = yaml.load(
-    configFile,
-  ) as WorkflowEngineConfig;
-
-  // Validate required fields
-  if (!config.workflowEngine) {
-    throw new Error("Missing workflowEngine configuration");
-  }
-  if (!config.workflowEngine.url) {
-    throw new Error("Missing workflowEngine.url");
-  }
-  if (!config.workflowEngine.auth) {
-    throw new Error("Missing workflowEngine.auth");
-  }
-
-  // SDK logs summary (without sensitive data)
-  ConfigLoader.logConfigSummary(config);
-} catch (error) {
-  console.error("Invalid configuration:", error.message);
-  process.exit(1);
-}
-```
-
-## Best practices
-
-1. **Use the factory pattern**: `newDirectedTransactionHandler` and `newEventSource` provide clean, type-safe APIs
-2. **Handle errors gracefully**: Return appropriate `EvalResult` values
-3. **Use state updates**: Keep workflow state synchronized with JSON Patch
-4. **Implement idempotency**: Event sources should use checkpoints for resumability
-5. **Log structured data**: Use the built-in logger with metadata
-6. **Test thoroughly**: Unit test handlers, component test with real engine
-7. **Monitor connections**: Check `isConnected()` and handle reconnection
-8. **Clean up resources**: Implement `withCloseFn` for proper cleanup
 
 ## Troubleshooting
 
@@ -1212,44 +781,293 @@ authToken: process.env.AUTH_TOKEN; // Ensure token is valid
 3. Check provider name matches: `listenerHandlerProvider: 'my-service'`
 4. Ensure event source is registered before creating stream
 
-### State Updates Not Applied
+## Deploying and running providers
 
-**Problem**: JSON Patch operations fail silently
+Detailed runbooks for the two modes in [Running hosted or non-hosted](#running-hosted-or-non-hosted). Configure bindings and app settings first via the [Configuration Model](#configuration-model).
 
-**Solution**: Ensure paths are valid and operations are correct
+## Running locally
 
-```typescript
-// Use helper functions
-Patch.add('/newField', value)      // ✓ Correct
-{ op: 'add', path: '/newField' }  // ✗ Missing value
+Use **non-hosted** mode to develop a provider on your workstation. Your process connects **outbound** to the workflow engine and to any **non-hosted** service bindings in `config.yaml`. Kaleido does not run the provider binary for you in this mode.
 
-// Array append
-Patch.add('/array/-', item)        // ✓ Correct
-Patch.add('/array/999', item)      // ✗ Wrong index
+This flow applies to providers built with `@kaleido-io/workflow-engine-sdk` (transaction handlers, event sources, and event processors). Event processors that ingest blockchain events often also use `@kaleido-io/asset-manager-sdk` and `@kaleido-io/connector-sdk`; the same local run steps apply.
+
+### Prerequisites
+
+A Kaleido environment with the services your provider needs, for example:
+
+- **Workflow engine** (your provider connects to it outbound)
+- **Provider proxy** (for routing when testing against a remote environment)
+- **Asset manager**, **connectors**, or other services referenced in `service-bindings`
+
+Scaffold a project (recommended):
+
+```bash
+npx @kaleido-io/kaleido-sdk init my-provider --template workflow-engine-provider
+# or: erc20-indexer, btc-indexer, native-eth-indexer, canton-cip56-indexer
+cd my-provider
 ```
 
-## API reference
+Scaffolded templates include `npm run start:dev`, a `Dockerfile`, and sample files under `config/`.
 
-See the TypeScript type definitions for complete API documentation:
+### Steps
 
-- `WorkflowEngineClient` - Main client class
-- `WorkflowEngineConfig` - Configuration interface
-- `ConfigLoader` - Configuration transformation utilities
-- `TransactionHandler` - Handler interface
-- `EventSource` - Event source interface
-- `EngineAPI` - Engine API interface
-- `EvalResult` - Result enum
-- `InvocationMode` - Invocation mode enum
-- `Patch` - JSON Patch helpers
+**1. Install dependencies**
 
-### ConfigLoader
+```bash
+npm install
+```
 
-The `ConfigLoader` class provides utilities for transforming configuration:
+**2. Create configuration files**
 
-- `loadClientConfigFromFile(configFilePath?)` - Loads WFE config from a YAML file. Only the root key **`workflow-engine`** is supported. **Outbound:** `url` + `auth`. **Inbound:** `server` (address, port); app creates WebSocket server, optional `server.tls`. Uses `process.env[WFE_CONFIG_FILE]` when path is omitted.
-- `createClientConfig(config, providerName)` - Transforms `WorkflowEngineConfig` into `WorkflowEngineClientConfig` (converts HTTP to WebSocket URL, sets auth headers, parses time strings for delays).
-- `logConfigSummary(config)` - Logs configuration summary (without sensitive data).
+```bash
+cp config/config.sample.yaml config/config.yaml
+cp config/provider-config.sample.yaml config/provider-config.yaml
+```
 
-Time strings for delay fields (e.g. `retryDelay`) are parsed by `parseTimeStringToMs`: units `ms`, `s`, `m`, `h` (e.g. `"2s"`, `"30s"`, `"100ms"`, `"1m"`).
+**3. Edit `config/config.yaml`**
 
-**Note:** For file-based config, use `loadClientConfigFromFile` so the SDK handles the `workflow-engine` file format. Your application can still load YAML and call `createClientConfig` when using the in-memory `WorkflowEngineConfig` shape (e.g. with a `workflowEngine` property).
+Set the outbound workflow engine connection and non-hosted service bindings. The `workflow-engine.providerName` must match the name registered in your provider code.
+
+Example (non-hosted):
+
+```yaml
+workflow-engine:
+  providerName: my-provider
+  url: http://localhost:5503          # or your environment's WFE URL
+  auth:
+    type: token
+    token: ${WFE_TOKEN}
+    scheme: Bearer
+
+service-bindings:
+  asset-manager:
+    type: asset-manager
+    bindingType: non-hosted
+    url: https://am.example.com/api/v1
+    auth:
+      type: token
+      token: ${AM_TOKEN}
+      scheme: Bearer
+
+  evm-connector:
+    type: connector
+    bindingType: non-hosted
+    url: https://evm-connector.example.com
+    auth:
+      type: token
+      token: ${CONNECTOR_TOKEN}
+      scheme: Bearer
+```
+
+Point the SDK at this file (optional if your app defaults to `./config/config.yaml`):
+
+```bash
+export KALEIDO_CONFIG_FILE=./config/config.yaml
+```
+
+**4. Edit `config/provider-config.yaml`**
+
+Application settings only — batch sizes, stream filters, contract addresses, allowlists, etc. In handlers this is available as `ctx.config`. This file is **not** platform connectivity.
+
+```bash
+export CONFIG_FILE=./config/provider-config.yaml
+```
+
+**5. Start the provider**
+
+```bash
+npm run start:dev
+```
+
+(`start:dev` uses `tsx` in scaffolded templates; no build step required for local iteration.)
+
+**6. Verify**
+
+- Logs show handler registration and a successful connection to the workflow engine.
+- The provider appears in the **Workflow engine** provider list in the Kaleido UI.
+- **Event processors with streams:** if `provider-config.yaml` defines a `stream` block, confirm `setup()` creates the connector stream on first run (check connector UI or logs).
+- **Transaction handlers:** submit a test workflow that invokes your handler (see [`samples/workflow-engine-provider`](../../samples/workflow-engine-provider)).
+
+Working config examples per template: [`samples/`](../../samples/).
+
+---
+
+## Hosting on the Kaleido platform
+
+Use **hosted** mode for production. You build an OCI image, push it to your Kaleido **Artifact registry**, and create a **Provider** service. The platform injects hosted **service-bindings** and connects your provider inbound via the **Provider proxy** (WebSocket through the proxy, not outbound from your laptop).
+
+Scaffolded templates include a `Dockerfile` (distroless Node 22 on `linux/amd64`) and npm scripts for packaging and promotion.
+
+### Prerequisites
+
+In addition to the services your provider uses:
+
+- **Artifact registry** with an artifact **namespace** created
+- **Provider proxy** service
+
+Convert provider config to JSON for the Provider service UI (do this whenever you change app settings for upload):
+
+```bash
+yq -o=json config/provider-config.yaml > config/provider-config.json
+```
+
+### npm scripts (scaffolded templates)
+
+| Script | Purpose |
+|---|---|
+| `npm run package:docker` | Build OCI image locally (`linux/amd64`) |
+| `npm run package:podman` | Same, using Podman |
+| `npm run promote:docker` | Tag and push to `$ARTIFACT_REGISTRY/...:$IMAGE_TAG` |
+| `npm run promote:podman` | Same, using Podman |
+| `npm run promote:crane` | Copy an existing image from `$SOURCE_REGISTRY` via Crane |
+| `npm run patch-provider-runtime` | *(optional)* PATCH runtime image via platform API |
+
+Image names in these scripts match the scaffolded project name (e.g. `erc20-indexer`); adjust `package.json` if you rename the project.
+
+### 1. Building an OCI image
+
+```bash
+npm run package:docker   # or package:podman for Podman users
+```
+
+> **NOTE:** the image is built on `linux/amd64` for compatibility with the Kaleido platform. You will need to ensure that your build environment is compatible with `linux/amd64` for building the image. On macOS with Apple Silicon, Rosetta emulation must be enabled.
+
+The image uses [distroless/nodejs22](https://github.com/GoogleContainerTools/distroless) on `linux/amd64` for a minimal, shell-free runtime — required for hosting on the Kaleido platform.
+
+### 2. Pushing to the artifact registry
+
+Log in to the artifact registry for your environment:
+
+```bash
+docker login my-registry.my-kaleido.io
+```
+
+Push with a **new immutable tag** each release:
+
+```bash
+export IMAGE_TAG=v1-$(date +%Y%m%d%H%M%S)
+export ARTIFACT_REGISTRY=my-registry.my-kaleido.io/my-namespace
+npm run promote:docker   # or promote:podman, or promote:crane if copying from another OCI registry
+```
+
+### 3. Deploying the provider
+
+1. Go to the Kaleido platform UI within your running environment.
+2. Navigate to the **Operations and resources** page.
+3. Click the **+** button on the **Services** section to create a new service.
+4. Select the **Provider** service type.
+5. After you have named your service:
+   - **a.** Select your uploaded provider artifact **tag** from your namespaced repository.
+   - **b.** Drag and drop `config/provider-config.json` into the configuration file input box.
+6. Finish creating the **Provider** service.
+7. While the provider is provisioning, open the underlying **Provider** runtime and view **Logs** to ensure the provider is running correctly.
+8. Confirm the provider is connected in your **Provider proxy** service and registered in the **Workflow engine** provider list.
+
+At runtime the platform sets `KALEIDO_CONFIG_FILE` (hosted service bindings) and `CONFIG_FILE` (your uploaded provider config). Do not bake environment-specific URLs into the image for hosted bindings.
+
+### 4. Streaming events to the provider (event processors)
+
+Event processors that ingest blockchain events typically call `ensureStream` in `setup()` using the `stream` block in `provider-config.yaml` (via `@kaleido-io/connector-sdk`). On first startup the stream is created or updated to deliver batches to your registered handler.
+
+Event path: **connector** → workflow engine **stream** → your **event processor** `processBatch` handler → (often) **Asset manager** bulk upsert.
+
+If you need to create or adjust a stream manually, use the connector service UI and the appropriate stream factory, for example:
+
+| Chain | Connector | Common factory |
+|---|---|---|
+| EVM (contracts / logs) | EVM connector | `evmTransactions` |
+| EVM (native ETH) | EVM connector | `nativeEthTransactions` |
+| Bitcoin | BTC connector | `transactionEvents` |
+| Canton | Canton connector | `contractEvents` |
+
+See chain samples under [`samples/`](../../samples/) for stream configuration examples.
+
+### 5. Upgrading the provider
+
+Build and promote a new image tag:
+
+```bash
+npm run package:docker   # or package:podman
+export IMAGE_TAG=v2-$(date +%Y%m%d%H%M%S)
+npm run promote:docker   # or promote:podman, or promote:crane
+```
+
+Then update the running provider:
+
+- **UI** — edit the Provider service / runtime and select the new artifact tag, or
+- **API** — if your project includes `patch-provider-runtime`:
+
+  ```bash
+  # Requires platform URL and API credentials with permission to patch the runtime.
+  export PLATFORM_URL=https://my-kaleido.io
+  export ENV_ID=my-environment-id
+  export API_KEY=my-api-key
+  export API_SECRET=my-api-secret
+  export RUNTIME_NAME=my-provider-runtime
+  export IMAGE_REPOSITORY=my-namespace/my-provider
+  npm run patch-provider-runtime
+  ```
+
+To change application settings, update `provider-config.yaml`, regenerate `provider-config.json`, and upload via the UI (or Terraform `file_sets` below).
+
+For infrastructure-as-code, use the [Kaleido Terraform provider](https://github.com/kaleido-io/terraform-provider-kaleido):
+
+```hcl
+resource "kaleido_platform_runtime" "my_provider_runtime" {
+  name        = "my-provider-runtime"
+  type        = "Provider"
+  environment = var.environment_id
+  image = {
+    repository = "my-namespace/my-provider"
+    tag        = "v1"
+  }
+  config_json = jsonencode({})
+}
+
+resource "kaleido_platform_service" "my_provider_service" {
+  name        = "my-provider"
+  type        = "Provider"
+  environment = var.environment_id
+  runtime     = kaleido_platform_runtime.my_provider_runtime.id
+  config_json = jsonencode({
+    configFileJSON = {
+      fileRef = "#provider-config#config.json"
+    }
+  })
+
+  file_sets = {
+    provider_config = {
+      name = "provider-config"
+      files = {
+        config.json = {
+          type = "json"
+          data = {
+            text = file("config/provider-config.json")
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Troubleshooting (hosted)
+
+1. **New image tag not taking effect on the Provider runtime**
+   - Ensure the tag was pushed successfully to the artifact registry.
+   - Check Provider runtime logs for stop/restart during rollout.
+   - Image updates may take up to a few minutes to take effect.
+
+2. **Provider is not receiving events**
+   - Confirm the stream targets the correct provider name and handler.
+   - Confirm the Provider runtime is healthy and **Provider proxy** shows the provider connected.
+   - Check workflow engine logs for your stream ID (polling and delivery to the event processor).
+   - On the connector, verify chain connectivity; for large catch-up, try reducing `catchupPageSize` or `batchSize` in stream config.
+   - Provider proxy Swagger: `PUT /providers/{name}/reconnect` to force a reconnect.
+
+3. **Asset manager or downstream API errors**
+   - Inspect Provider logs for auth or binding failures on bulk upsert calls.
+   - Misconfigured streams may deliver events your event processor cannot map (wrong contract, party, or network).
+   - Bulk upsert has per-request limits; reduce stream `batchSize` or use auto-flush thresholds in the event processor.
+
+Detailed, chain-specific notes: [`samples/btc-indexer`](../../samples/btc-indexer), [`samples/erc20-indexer`](../../samples/erc20-indexer), [`samples/canton-cip56-indexer`](../../samples/canton-cip56-indexer), [`samples/native-eth-indexer`](../../samples/native-eth-indexer), [`samples/workflow-engine-provider`](../../samples/workflow-engine-provider).

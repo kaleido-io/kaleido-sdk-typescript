@@ -1,0 +1,28 @@
+# Provider-specific configuration for the BTC Indexer (CONFIG_FILE).
+# Contains settings bundled with the provider image.
+# Copy this file to config/provider-config.yaml and fill in your values.
+# Set CONFIG_FILE env var to point to your config (default: ./config/provider-config.yaml).
+
+# BTC network to index
+bulkQueryLimit: 100     # max fragments/addresses per AM query when resolving inputs
+upsertTriggerCount: 500 # flush after this many pending objects
+networkName: testnet4
+networkId: 0x283f161c
+tokenSymbol: tBTC
+tokenName: testnet4-btc
+
+# Stream configuration - used in setup to upsert the WFE stream.
+# stream.connectorBindingName must match a service-binding name in config.yaml.
+stream:
+  connectorBindingName: btc-connector
+  factory: transactionEvents
+  name: btc-indexer
+  description: Bitcoin transaction events
+  eventSourceConfig:
+    unfiltered: true
+    fromBlock: '0'
+    batchSize: 100
+    batchUTXOSoftLimit: 500
+    batchTimeout: 10s
+    pollTimeout: 30s
+    requiredConfirmations: 5

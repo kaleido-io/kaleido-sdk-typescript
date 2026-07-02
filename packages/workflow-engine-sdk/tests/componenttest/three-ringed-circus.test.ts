@@ -20,15 +20,15 @@ import * as path from 'path';
 import {
   WorkflowEngineClient,
   ConfigLoader,
-  newDirectedTransactionHandler,
+  createTransactionHandler,
   BasicStageDirector,
   InvocationMode,
   EvalResult,
   WSEvaluateTransaction,
   WithStageDirector,
   PatchOpType,
-  newLogger,
 } from '../../src/index';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 import { loadTestConfig } from './test-config';
 import { fetchWithRetry } from './fetch-utils';
 
@@ -174,7 +174,7 @@ describe('Three-Ringed Circus Component Test', () => {
       }
     });
 
-    const handler = newDirectedTransactionHandler('handler1', actionMap);
+    const handler = createTransactionHandler('handler1', actionMap);
     client.registerTransactionHandler('handler1', handler);
 
     await client.connect();

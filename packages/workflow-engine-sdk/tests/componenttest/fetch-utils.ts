@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { newLogger } from '../../src/log/logger';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 
 const logger = newLogger('FetchWithRetry');
 /**

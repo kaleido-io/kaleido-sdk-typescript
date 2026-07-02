@@ -1,0 +1,34 @@
+# Provider-specific configuration for the ERC-20 Indexer (CONFIG_FILE).
+# Contains settings bundled with the provider image.
+# Copy this file to config/provider-config.yaml and fill in your values.
+# Set CONFIG_FILE env var to point to your config (default: ./config/provider-config.yaml).
+
+# ERC-20 contract to index
+contractAddress: '0x0000000000000000000000000000000000000000'
+contractName: MyToken
+contractSymbol: TKN
+chain: ethereum   # Informational label attached to indexed transfers (e.g. "ethereum", "polygon", "base", "besu")
+
+# Direct Asset Manager credentials for setup() when deployed as a hosted provider.
+# The ws-proxy transport only injects auth for per-transaction calls; setup() has
+# no transaction context so must call the AM directly with its own credentials.
+# Omit this section for local dev (non-hosted) — it is not needed there.
+# setupAssetManager:
+#   url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-env/s:my-asset-manager/rest
+#   auth:
+#     username: myuser
+#     password: my-api-key
+
+# EVM stream configuration. Used in the setup hook to upsert the WFE stream.
+# stream.connectorBindingName must match the service-binding name in config.yaml for the connector.
+stream:
+  connectorBindingName: evm-connector
+  factory: evmTransactions
+  name: erc20-indexer
+  description: ERC-20 Transfer events
+  eventSourceConfig:
+    abi: [] # paste ABI here or use the post-stream utility to create the stream with abi.json
+    fromBlock: '0'
+    batchSize: 50
+    batchTimeout: 5s
+    requiredConfirmations: 1

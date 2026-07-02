@@ -16,6 +16,8 @@
 
 
 import https from 'https';
+import { IncomingMessage } from 'http';
+import { Transform } from 'stream';
 import WebSocket, { ClientOptions, WebSocketServer } from 'ws';
 import { backOff } from 'exponential-backoff';
 import {
@@ -28,6 +30,8 @@ import {
   WSListenerPollResult,
   WSEventProcessorBatchResult,
   WSEventProcessorBatchRequest,
+  ServiceProxyResponse,
+  RequestContext,
 } from '../types/core';
 import {
   Handler,
@@ -36,8 +40,9 @@ import {
   EventProcessor,
 } from '../interfaces/handlers';
 import { EngineClient } from './engine_client';
-import { newLogger } from '../log/logger';
-import { getErrorMessage } from '../utils/errors';
+import { WSProxyAdapter } from '../service/ws_proxy_adapter';
+import { newLogger } from '@kaleido-io/core-sdk/log';
+import { formatError, getErrorMessage } from '../utils/errors';
 import { newError, SDKErrors } from '../i18n/errors';
 
 const log = newLogger('handler_runtime');
@@ -125,8 +130,14 @@ export class HandlerRuntime {
 
   private reconnectResolve?: (value: void | PromiseLike<void>) => void;
   private reconnectReject?: (reason?: any) => void;
+  private reconnectTimer?: NodeJS.Timeout;
   private isConnected = false;
   private shouldReconnect = true;
+  // True while a connectWebSocket() backOff loop is actively (re)connecting. Used
+  // so onClose does not schedule a competing reconnect timer when backOff is
+  // already retrying (e.g. after an 'unexpected-response' that cleared
+  // reconnectReject before the socket's 'close' event fires).
+  private connecting = false;
 
   // Heartbeat for connection liveness detection
   private pingInterval?: NodeJS.Timeout;
@@ -135,7 +146,22 @@ export class HandlerRuntime {
   private readonly PONG_TIMEOUT_MS: number;
 
   private engineClient: EngineClient;
-  private activeHandlerContext?: { requestId: string; authTokens: Record<string, string> };
+  private wsProxyAdapter: WSProxyAdapter;
+
+  /**
+   * Optional handler invoked when a SETUP_TRIGGER_REQUEST arrives. Registered by
+   * WorkflowEngineClient; absent during low-level direct-runtime usage (which has
+   * no setup() lifecycle of its own).
+   */
+  private setupTriggerHandler?: (authRef: string) => Promise<{ status: 'success' | 'error'; errors?: string[] }>;
+
+  /**
+   * Per-provider capabilities declared on REGISTER_PROVIDER. Set by
+   * WorkflowEngineClient just before connect(), based on inspecting the actual
+   * handlers the customer registered. Direct-runtime users leave this empty —
+   * the platform then treats each capability as its conservative default.
+   */
+  private providerCapabilities: import('../types/core').ProviderCapabilities = {};
 
   constructor(config: HandlerRuntimeConfig) {
     if (config.server) {
@@ -151,6 +177,8 @@ export class HandlerRuntime {
     }
     this.config = config;
     this.engineClient = new EngineClient(this);
+    this.wsProxyAdapter = new WSProxyAdapter();
+    this.wsProxyAdapter.setRuntime(this);
     // Set heartbeat intervals from config or use defaults
     this.PING_INTERVAL_MS = config.pingIntervalMs ?? 30000; // 30 seconds default
     this.PONG_TIMEOUT_MS = config.pongTimeoutMs ?? 10000; // 10 seconds default
@@ -175,6 +203,37 @@ export class HandlerRuntime {
    */
   registerEventProcessor(name: string, handler: EventProcessor): void {
     this.eventProcessors.set(name, handler);
+  }
+
+  /**
+   * Register a callback invoked when the provider-proxy dispatches a setup trigger.
+   * The callback runs the registered setup hooks with the supplied authRef and returns
+   * the aggregated result. When no callback is registered (e.g. low-level direct-runtime
+   * use), incoming SETUP_TRIGGER_REQUEST messages are acknowledged with success — this
+   * keeps deploy-time triggers from failing against runtimes that have no setup hooks.
+   */
+  registerSetupTriggerHandler(
+    handler: (authRef: string) => Promise<{ status: 'success' | 'error'; errors?: string[] }>,
+  ): void {
+    this.setupTriggerHandler = handler;
+  }
+
+  /**
+   * Set the per-provider capabilities to declare on the next (or current) WS
+   * connection. Called by WorkflowEngineClient right before connect(), after
+   * all handlers are registered — the client inspects its own handler list to
+   * derive each flag (`hasSetupHooks`, etc). Idempotent; overwrites previous
+   * value. Reconnects re-send the latest declared value.
+   */
+  setProviderCapabilities(caps: import('../types/core').ProviderCapabilities): void {
+    this.providerCapabilities = { ...caps };
+  }
+
+  /**
+   * Get the WS proxy adapter for service proxy requests in hosted mode.
+   */
+  getWSProxyAdapter(): WSProxyAdapter {
+    return this.wsProxyAdapter;
   }
 
   /**
@@ -235,6 +294,11 @@ export class HandlerRuntime {
 
     this.shouldReconnect = false;
 
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
+
     // Clean up heartbeat
     this.cleanupHeartbeat();
 
@@ -267,29 +331,8 @@ export class HandlerRuntime {
   /**
    * Check if connected to the workflow engine
    */
-  isWebSocketConnected(): boolean {
+  get isWebSocketConnected(): boolean {
     return this.isConnected && this.ws?.readyState === WebSocket.OPEN;
-  }
-
-  /**
-   * Set active handler context for EngineAPI calls
-   */
-  setActiveHandlerContext(requestId: string, authTokens: Record<string, string>): void {
-    this.activeHandlerContext = { requestId, authTokens };
-  }
-
-  /**
-   * Clear active handler context
-   */
-  clearActiveHandlerContext(): void {
-    this.activeHandlerContext = undefined;
-  }
-
-  /**
-   * Get active handler context
-   */
-  getActiveHandlerContext(): { requestId: string; authTokens: Record<string, string> } | undefined {
-    return this.activeHandlerContext;
   }
 
   /**
@@ -344,8 +387,9 @@ export class HandlerRuntime {
   }
 
   private async connectWebSocket(): Promise<void> {
-
-    return backOff(
+    this.connecting = true;
+    try {
+      return await backOff(
       () =>
         new Promise<void>((resolve, reject) => {
           if (!this.config.url) {
@@ -359,6 +403,7 @@ export class HandlerRuntime {
               ...this.config.options?.headers,
               ...this.config.headers,
             },
+            handshakeTimeout: this.PING_INTERVAL_MS,
           };
 
           if (this.config.authToken) {
@@ -378,9 +423,35 @@ export class HandlerRuntime {
           this.ws.on('open', this.onOpen.bind(this));
           this.ws.on('message', this.onMessage.bind(this));
           this.ws.on('close', this.onClose.bind(this));
+          this.ws.on('unexpected-response', (_req: any, res: IncomingMessage) => {
+            let responseData = '';
+            res.pipe(
+              new Transform({
+                transform(chunk, _encoding, callback) {
+                  responseData += chunk;
+                  callback();
+                },
+                flush: () => {
+                  const msg = `Connect error [${res.statusCode}]: ${responseData}`;
+                  log.error('Unexpected HTTP response during WebSocket upgrade', {
+                    statusCode: res.statusCode,
+                    body: responseData,
+                  });
+                  if (this.reconnectReject) {
+                    this.reconnectReject(new Error(msg));
+                    this.reconnectReject = undefined;
+                    this.reconnectResolve = undefined;
+                  }
+                },
+              }),
+            );
+          });
         }),
       this.config.maxAttempts ? { numOfAttempts: this.config.maxAttempts } : {}
-    );
+      );
+    } finally {
+      this.connecting = false;
+    }
   }
 
   private onError(error: Error): void {
@@ -413,14 +484,23 @@ export class HandlerRuntime {
     // Clean up heartbeat
     this.cleanupHeartbeat();
 
+    // Cancel in-flight service proxy requests
+    this.wsProxyAdapter.cancelAll();
+
     if (this.reconnectReject) {
       this.reconnectReject(new Error('WebSocket closed'));
       this.reconnectReject = undefined;
       this.reconnectResolve = undefined;
-    } else if (this.shouldReconnect) {
+    } else if (this.shouldReconnect && !this.reconnectTimer && !this.connecting) {
+      // Skip when a backOff loop is already (re)connecting — otherwise an
+      // 'unexpected-response' (which rejects/clears reconnectReject so backOff
+      // retries) followed by a 'close' would spawn a second, competing loop.
       const delay = this.config.reconnectDelay || 1000;
       log.info('Reconnecting', { delay });
-      setTimeout(() => this.connectWebSocket(), delay);
+      this.reconnectTimer = setTimeout(() => {
+        this.reconnectTimer = undefined;
+        this.connectWebSocket();
+      }, delay);
     }
   }
 
@@ -435,7 +515,7 @@ export class HandlerRuntime {
         log.warn('Received non-string message data, ignoring');
       }
     } catch (error) {
-      log.error('Error processing message', { error });
+      log.error('Error processing message', { error: formatError(error) });
     }
   }
 
@@ -451,13 +531,19 @@ export class HandlerRuntime {
       eventProcessors: this.eventProcessors.size
     });
 
-    // Register provider
-    this.sendMessage({
+    // Register provider. `capabilities` is omitted when no flags are set so
+    // the message stays byte-identical to the pre-1.0 wire format for callers
+    // that never declare any capability (e.g. direct-runtime users).
+    const registerMsg: Record<string, unknown> = {
       messageType: WSMessageType.REGISTER_PROVIDER,
       id: this.generateId(),
       providerName: this.config.providerName,
       providerMetadata: this.config.providerMetadata,
-    });
+    };
+    if (Object.keys(this.providerCapabilities).length > 0) {
+      registerMsg.capabilities = this.providerCapabilities;
+    }
+    this.sendMessage(registerMsg);
 
     // Register all transaction handlers
     for (const name of this.transactionHandlers.keys()) {
@@ -513,6 +599,12 @@ export class HandlerRuntime {
       case WSMessageType.ENGINE_API_SUBMIT_TRANSACTIONS_RESULT:
         this.engineClient.handleResponse(msg);
         break;
+      case WSMessageType.SERVICE_PROXY_RESPONSE:
+        this.wsProxyAdapter.handleResponse(msg as ServiceProxyResponse);
+        break;
+      case WSMessageType.SETUP_TRIGGER_REQUEST:
+        this.handleSetupTriggerRequest(msg);
+        break;
       case WSMessageType.PROTOCOL_ERROR:
         log.error('Protocol error received', { error: msg.error });
         break;
@@ -523,6 +615,37 @@ export class HandlerRuntime {
       default:
         log.warn('Unknown message type', { messageType: msg.messageType });
     }
+  }
+
+  private async handleSetupTriggerRequest(msg: any): Promise<void> {
+    const requestId = msg?.requestId;
+    const authRef = msg?.authRef;
+    log.info('Setup trigger request received', { requestId, authRefLen: typeof authRef === 'string' ? authRef.length : 0 });
+    let status: 'success' | 'error' = 'success';
+    let errors: string[] | undefined;
+    if (typeof requestId !== 'string' || !requestId) {
+      log.warn('Setup trigger request missing requestId; dropping');
+      return;
+    }
+    if (this.setupTriggerHandler) {
+      try {
+        const res = await this.setupTriggerHandler(typeof authRef === 'string' ? authRef : '');
+        status = res.status;
+        errors = res.errors;
+      } catch (err) {
+        status = 'error';
+        errors = [getErrorMessage(err)];
+      }
+    }
+    // When no handler is registered (low-level runtime use), we still acknowledge so
+    // service-manager's best-effort dispatch sees a successful response rather than a
+    // timeout — there are simply no setup hooks to run.
+    this.sendMessage({
+      messageType: WSMessageType.SETUP_TRIGGER_RESPONSE,
+      requestId,
+      status,
+      ...(errors && errors.length > 0 ? { errors } : {}),
+    });
   }
 
   private async handleTransactionsMessage(batch: WSHandleTransactions): Promise<void> {
@@ -537,6 +660,7 @@ export class HandlerRuntime {
       count: batch.transactions.length
     });
 
+    const reqContext = this.newRequestContext(batch);
     const response: WSHandleTransactionsResult = {
       messageType: WSMessageType.HANDLE_TRANSACTIONS_RESULT,
       handler: batch.handler,
@@ -547,8 +671,7 @@ export class HandlerRuntime {
     try {
       const handler = this.transactionHandlers.get(batch.handler);
       if (handler) {
-        this.setActiveHandlerContext(batch.id, batch.authTokens || {});
-        await handler.transactionHandlerBatch(response, batch);
+        await handler.transactionHandlerBatch(reqContext, response, batch);
       } else {
         response.error = `No transaction handler registered: ${batch.handler}`;
         log.error(response.error);
@@ -559,10 +682,32 @@ export class HandlerRuntime {
         error: getErrorMessage(error)
       }));
     } finally {
-      this.clearActiveHandlerContext();
+      reqContext.cancel();
     }
 
     this.sendMessage(response);
+  }
+
+  newRequestContext(envelope: WSHandlerEnvelope): RequestContext {
+    const controller = new AbortController();
+    let timeoutId: NodeJS.Timeout | undefined;
+    if (typeof envelope?.deadline == 'string' && envelope.deadline.length > 0) {
+      const startTime = new Date().getTime();
+      const deadlineTimeout = new Date(envelope.deadline).getTime() - startTime;
+      timeoutId = setTimeout(() => {
+        controller.abort(`deadline exceeded after ${new Date().getTime() - startTime}ms`);
+      }, deadlineTimeout);
+    }
+    return {
+      requestId: envelope.id,
+      authTokens: envelope.authTokens,
+      authRef: (envelope as WSEventProcessorBatchRequest).authRef,
+      signal: controller.signal,
+      cancel: () => {
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+        controller.abort();
+      },
+    }
   }
 
   private async handleEventProcessorBatch(batch: WSEventProcessorBatchRequest): Promise<void> {
@@ -572,17 +717,16 @@ export class HandlerRuntime {
       count: batch.events.length
     });
 
+    const reqContext = this.newRequestContext(batch);
     const response: WSEventProcessorBatchResult = {
       messageType: WSMessageType.EVENT_PROCESSOR_BATCH_RESULT,
       id: batch.id,
       handler: batch.handler,
-      events: batch.events,
     };
     try {
       const eventProcessor = this.eventProcessors.get(batch.handler || '');
       if (eventProcessor) {
-        this.setActiveHandlerContext(batch.id, batch.authTokens || {});
-        await eventProcessor.eventProcessorBatch(response as any, batch as any);
+        await eventProcessor.eventProcessorBatch(reqContext, response, batch);
       } else {
         response.error = `No event processor registered: ${batch.handler}`;
         log.error(response.error);
@@ -591,7 +735,7 @@ export class HandlerRuntime {
       log.error('Event processor batch failed', { handler: batch.handler, error });
       response.error = getErrorMessage(error);
     } finally {
-      this.clearActiveHandlerContext();
+      reqContext.cancel();
     }
 
     this.sendMessage(response);
@@ -609,6 +753,7 @@ export class HandlerRuntime {
 
   private async handleEventSourcePoll(request: any): Promise<void> {
 
+    const reqContext = this.newRequestContext(request);
     const response: WSListenerPollResult = {
       messageType: WSMessageType.EVENT_SOURCE_POLL_RESULT,
       id: request.id,
@@ -621,8 +766,7 @@ export class HandlerRuntime {
       const config = this.eventSourceConfigs.get(request.streamId);
 
       if (eventSource && config) {
-        this.setActiveHandlerContext(request.id, request.authTokens || {});
-        await eventSource.eventSourcePoll(config, response, request);
+        await eventSource.eventSourcePoll(reqContext, config, response, request);
       } else {
         response.error = `No event source or config: ${request.handler}/${request.streamId}`;
         log.error(response.error);
@@ -631,7 +775,7 @@ export class HandlerRuntime {
       log.error('Event source poll failed', { handler: request.handler, error });
       response.error = getErrorMessage(error);
     } finally {
-      this.clearActiveHandlerContext();
+      reqContext.cancel();
     }
 
     this.sendMessage(response);
@@ -640,6 +784,7 @@ export class HandlerRuntime {
   private async handleEventSourceValidateConfig(request: any): Promise<void> {
     log.debug('Event source validate config', { handler: request.handler });
 
+    const reqContext = this.newRequestContext(request);
     const response: WSHandlerEnvelope = {
       messageType: WSMessageType.EVENT_SOURCE_VALIDATE_CONFIG_RESULT,
       id: request.id,
@@ -649,8 +794,7 @@ export class HandlerRuntime {
     try {
       const eventSource = this.eventSources.get(request.handler || '');
       if (eventSource) {
-        this.setActiveHandlerContext(request.id, request.authTokens || {});
-        await eventSource.eventSourceValidateConfig(response, request);
+        await eventSource.eventSourceValidateConfig(reqContext, response, request);
       } else {
         response.error = `No event source registered: ${request.handler}`;
         log.error(response.error);
@@ -662,7 +806,7 @@ export class HandlerRuntime {
       });
       response.error = getErrorMessage(error);
     } finally {
-      this.clearActiveHandlerContext();
+      reqContext.cancel();
     }
 
     this.sendMessage(response);
@@ -674,6 +818,7 @@ export class HandlerRuntime {
       stream: request.streamId
     });
 
+    const reqContext = this.newRequestContext(request);
     const response: WSHandlerEnvelope = {
       messageType: WSMessageType.EVENT_SOURCE_DELETE_RESULT,
       id: request.id,
@@ -683,8 +828,7 @@ export class HandlerRuntime {
     try {
       const eventSource = this.eventSources.get(request.handler || '');
       if (eventSource) {
-        this.setActiveHandlerContext(request.id, request.authTokens || {});
-        await eventSource.eventSourceDelete(response, request);
+        await eventSource.eventSourceDelete(reqContext, response, request);
         this.eventSourceConfigs.delete(request.streamId);
       } else {
         response.error = `No event source registered: ${request.handler}`;
@@ -694,7 +838,7 @@ export class HandlerRuntime {
       log.error('Event source delete failed', { handler: request.handler, error });
       response.error = getErrorMessage(error);
     } finally {
-      this.clearActiveHandlerContext();
+      reqContext.cancel();
     }
 
     this.sendMessage(response);

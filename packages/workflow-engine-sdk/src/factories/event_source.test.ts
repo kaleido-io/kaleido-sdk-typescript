@@ -20,7 +20,7 @@ import { describe, it, expect, jest } from '@jest/globals';
 //quietens the console during tests
 import '../../tests/mock-logger';
 
-import { EventSourceConf, newEventSource } from './event_source';
+import { EventSourceConf, createEventSource } from './event_source';
 import { WSEventSourceConfig, WSListenerPollRequest, WSListenerPollResult, WSHandlerEnvelope, WSMessageType, WSEventStreamInfo } from '../types/core';
 import { EngineClient, EngineClientRuntime } from '../runtime/engine_client';
 
@@ -38,7 +38,7 @@ interface TestEventData {
     message: string;
 }
 
-describe('newEventSource', () => {
+describe('createEventSource', () => {
 
     it('should create an event source', () => {
         const pollFn = jest.fn(async () => {
@@ -47,10 +47,10 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
 
         expect(eventSource).toBeDefined();
-        expect(eventSource.name()).toBe('test-event-source');
+        expect(eventSource.name).toBe('test-event-source');
     })
 
     it('should create an event source with init and close functions', async () => {
@@ -64,12 +64,11 @@ describe('newEventSource', () => {
         });
         const engineClientRuntime = {
             sendMessage: jest.fn(),
-            getActiveHandlerContext: jest.fn(() => ({ requestId: 'test', authTokens: { 'test': 'test' } })),
-            isWebSocketConnected: jest.fn(() => true),
+            isWebSocketConnected: true,
             generateId: jest.fn(() => 'test'),
         } as any as EngineClientRuntime;
         const engineClient = new EngineClient(engineClientRuntime);
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
             .withInitFn(initFn)
             .withCloseFn(closeFn);
         await eventSource.init(engineClient);
@@ -88,7 +87,7 @@ describe('newEventSource', () => {
                 ]
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
 
         const config: WSEventSourceConfig = {
             messageType: WSMessageType.EVENT_SOURCE_CONFIG,
@@ -115,7 +114,7 @@ describe('newEventSource', () => {
             checkpoint: { lastId: 0 }
         };
 
-        await eventSource.eventSourcePoll(config, result, request);
+        await eventSource.eventSourcePoll({} as any, config, result, request);
 
         expect(pollFn).toHaveBeenCalledTimes(1);
         expect(result.events).toHaveLength(2);
@@ -133,7 +132,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
 
         const config: WSEventSourceConfig = {
             messageType: WSMessageType.EVENT_SOURCE_CONFIG,
@@ -159,15 +158,50 @@ describe('newEventSource', () => {
             streamId: 'stream-1'
         };
 
-        await eventSource.eventSourcePoll(config, result, request);
+        await eventSource.eventSourcePoll({} as any, config, result, request);
         expect(pollFn).toHaveBeenCalledTimes(1);
+    })
+
+    it('should thread authRef from the poll request through to the poll function', async () => {
+        let capturedAuthRef: string | undefined;
+        const pollFn = jest.fn(async (_config: EventSourceConf<TestConfig>, _checkpoint: TestCheckpoint | null, authRef?: string) => {
+            capturedAuthRef = authRef;
+            return { checkpointOut: { lastId: 0 }, events: [] };
+        });
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
+
+        const config: WSEventSourceConfig = {
+            messageType: WSMessageType.EVENT_SOURCE_CONFIG,
+            id: 'config-id',
+            handler: 'test-event-source',
+            streamName: 'test-stream',
+            streamId: 'stream-1',
+            config: { endpoint: 'http://test.com' }
+        };
+        const result: WSListenerPollResult = {
+            messageType: WSMessageType.EVENT_SOURCE_POLL_RESULT,
+            id: 'poll-id',
+            handler: 'test-event-source',
+            events: []
+        };
+        const request: WSListenerPollRequest = {
+            messageType: WSMessageType.EVENT_SOURCE_POLL,
+            id: 'poll-id',
+            handler: 'test-event-source',
+            streamName: 'test-stream',
+            streamId: 'stream-1',
+            authRef: 'user-auth-ref-456',
+        };
+
+        await eventSource.eventSourcePoll({} as any, config, result, request);
+        expect(capturedAuthRef).toBe('user-auth-ref-456');
     })
 
     it('should handle poll errors', async () => {
         const pollFn = jest.fn(async () => {
             throw new Error('Poll failed');
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
 
         const config: WSEventSourceConfig = {
             messageType: WSMessageType.EVENT_SOURCE_CONFIG,
@@ -193,7 +227,7 @@ describe('newEventSource', () => {
             streamId: 'stream-1'
         };
 
-        await eventSource.eventSourcePoll(config, result, request);
+        await eventSource.eventSourcePoll({} as any, config, result, request);
         expect(result.error).toBe('Poll failed');
     })
 
@@ -207,7 +241,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
             .withInitialCheckpoint(buildInitialCheckpointFn);
 
         const result: WSHandlerEnvelope = {
@@ -225,7 +259,7 @@ describe('newEventSource', () => {
             config: { endpoint: 'http://test.com' }
         };
 
-        await eventSource.eventSourceValidateConfig(result, request);
+        await eventSource.eventSourceValidateConfig({} as any, result, request);
         expect(buildInitialCheckpointFn).toHaveBeenCalledTimes(1);
         expect(buildInitialCheckpointFn).toHaveBeenCalled();
     })
@@ -240,7 +274,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
             .withConfigParser(configParserFn);
 
         const result: WSHandlerEnvelope = {
@@ -258,7 +292,7 @@ describe('newEventSource', () => {
             config: { invalid: 'config' }
         };
 
-        await eventSource.eventSourceValidateConfig(result, request);
+        await eventSource.eventSourceValidateConfig({} as any, result, request);
         expect(result.error).toBe('Invalid config');
     })
 
@@ -273,7 +307,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
             .withConfigParser(configParserFn);
 
         const config: WSEventSourceConfig = {
@@ -300,7 +334,7 @@ describe('newEventSource', () => {
             streamId: 'stream-1'
         };
 
-        await eventSource.eventSourcePoll(config, result, request);
+        await eventSource.eventSourcePoll({} as any, config, result, request);
         expect(configParserFn).toHaveBeenCalledTimes(1);
     })
 
@@ -315,7 +349,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
             .withDeleteFn(deleteFn);
 
         const result: WSHandlerEnvelope = {
@@ -332,7 +366,7 @@ describe('newEventSource', () => {
             streamId: 'stream-1'
         };
 
-        await eventSource.eventSourceDelete(result, request);
+        await eventSource.eventSourceDelete({} as any, result, request);
         expect(deleteFn).toHaveBeenCalledTimes(1);
     })
 
@@ -346,7 +380,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn)
             .withDeleteFn(deleteFn);
 
         const result: WSHandlerEnvelope = {
@@ -363,7 +397,7 @@ describe('newEventSource', () => {
             streamId: 'stream-1'
         };
 
-        await eventSource.eventSourceDelete(result, request);
+        await eventSource.eventSourceDelete({} as any, result, request);
         expect(result.error).toBe('Delete failed');
     })
 
@@ -374,7 +408,7 @@ describe('newEventSource', () => {
                 events: []
             };
         });
-        const eventSource = newEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
+        const eventSource = createEventSource<TestCheckpoint, TestConfig, TestEventData>('test-event-source', pollFn);
 
         const config: WSEventSourceConfig = {
             messageType: WSMessageType.EVENT_SOURCE_CONFIG,
@@ -400,7 +434,7 @@ describe('newEventSource', () => {
             streamId: 'stream-1'
         };
 
-        await eventSource.eventSourcePoll(config, result1, request1);
+        await eventSource.eventSourcePoll({} as any, config, result1, request1);
 
         const result2: WSListenerPollResult = {
             messageType: WSMessageType.EVENT_SOURCE_POLL_RESULT,
@@ -418,7 +452,7 @@ describe('newEventSource', () => {
         };
 
         // Second poll should use cached config, so we don't pass config again
-        await eventSource.eventSourcePoll(config, result2, request2);
+        await eventSource.eventSourcePoll({} as any, config, result2, request2);
 
         // Poll function should be called twice, but config should be cached
         expect(pollFn).toHaveBeenCalledTimes(2);

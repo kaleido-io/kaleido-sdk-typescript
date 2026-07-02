@@ -39,29 +39,39 @@ export {
   CreateStreamResponse,
   UpdateStreamRequest,
   TransactionInput,
-} from './client/rest-client';
+} from "./client/rest-client";
 
 export {
   WorkflowEngineConfig,
   ConfigLoader,
+  KALEIDO_CONFIG_FILE,
   WFE_CONFIG_FILE,
+  CONFIG_FILE,
 } from './config/config';
 
 export {
-  HandlerSet,
-  HandlerSetFor,
-  NewWorkflowEngineClient,
-} from './client/client_factory';
+  ProviderBase,
+  ProviderConfig,
+} from './provider/provider-base';
 
-export { newLogger } from './log/logger';
+export {
+  kidColon,
+  kidDash,
+} from './utils/kidutils';
+
+export {
+  HandlerSet,
+  handlerSetFor,
+  createWorkflowEngineClient,
+} from './client/client_factory';
 
 // ============================================================================
 // Core Types & Interfaces
 // ============================================================================
 
-export * from './types/core';
-export * from './interfaces/handlers';
-export * from './interfaces/messages';
+export * from "./types/core";
+export * from "./interfaces/handlers";
+export * from "./interfaces/messages";
 
 // ============================================================================
 // Factories & Helpers
@@ -69,31 +79,43 @@ export * from './interfaces/messages';
 
 // Transaction handler factory
 export {
-  newDirectedTransactionHandler,
-  TransactionHandlerFactory,
-} from './factories/transaction_handler';
+  createTransactionHandler,
+  TransactionHandlerBuilder,
+} from "./factories/transaction_handler";
 
 // Event source factory
 export {
-  newEventSource,
-  EventSourceFactory,
+  createEventSource,
+  EventSourceBuilder,
   EventSourceConf,
   EventSourceEvent,
   EventSourcePollFn,
   EventSourceBuildInitialCheckpointFn,
   EventSourceDeleteFn,
   EventSourceConfigParserFn,
-} from './factories/event_source';
+} from "./factories/event_source";
+
+// Event processor factory
+export {
+  createEventProcessor,
+  EventProcessorEvent,
+} from './factories/event_processor';
 
 // Stage director helpers
 export {
   BasicStageDirector,
   StageDirectorHelper,
   evalDirected,
-} from './helpers/stage_director';
+} from "./helpers/stage_director";
 
 // Configuration
-export * from './config/config';
+export * from "./config/config";
+
+// WFE-specific WS proxy adapter
+export {
+  WSProxyAdapter,
+  ProxyAdapterRuntime,
+} from "./service/index";
 
 // Utilities
 // ============================================================================
@@ -107,13 +129,20 @@ export {
   moveOp,
   copyOp,
   testOp,
-} from './utils/patch';
+} from "./utils/patch";
 
-// Logger
-export * from './log/logger';
+export {
+  formatError,
+  fatalError,
+} from "./utils/errors";
 
-export * from './i18n/errors';
+export * from "./i18n/errors";
 
-export type { HandlerBindingTarget } from './types/flows';
+export type { HandlerBindingTarget } from "./types/flows";
 
-export { HandlerRuntimeMode } from './runtime/handler_runtime';
+export { HandlerRuntimeMode } from "./runtime/handler_runtime";
+
+// ── Builder API ───────────────────────────────────────────────────────────────
+
+export type { EventProcessorContext } from './app/context';
+export type { EventProcessorDef, TransactionHandlerRegistration } from './app/types';

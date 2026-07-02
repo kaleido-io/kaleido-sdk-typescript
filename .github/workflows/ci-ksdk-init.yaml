@@ -1,0 +1,121 @@
+name: Test ksdk init
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  init:
+    name: ksdk init --template ${{ matrix.template }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        template: [workflow-engine-provider, erc20-indexer, btc-indexer, canton-cip56-indexer]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Install workspace dependencies
+        run: npm install
+
+      - name: Build packages
+        run: npm run build:packages
+
+      - name: Pack sdk
+        run: npm pack
+        working-directory: packages/kaleido-sdk
+
+      - name: Run ksdk init
+        run: |
+          mkdir -p /tmp/ksdk-init-test
+          cd /tmp/ksdk-init-test
+          KSDK_REPO_URL="$GITHUB_WORKSPACE" node "$GITHUB_WORKSPACE/packages/kaleido-sdk/bin/ksdk.js" init my-${{ matrix.template }} --template ${{ matrix.template }}
+
+      - name: Verify generated project
+        run: |
+          PROJECT=/tmp/ksdk-init-test/my-${{ matrix.template }}
+          echo "--- Checking structure ---"
+          test -f "$PROJECT/package.json" && echo "package.json OK"
+          test -f "$PROJECT/tsconfig.json" && echo "tsconfig.json OK"
+          test -d "$PROJECT/src" && echo "src/ OK"
+          test ! -f "$PROJECT/Dockerfile.withsdk" && echo "Dockerfile.withsdk correctly absent"
+          echo "--- Checking version pinning ---"
+          node -e "
+            const pkg = JSON.parse(require('fs').readFileSync('$PROJECT/package.json', 'utf-8'));
+            const allDeps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies };
+            let failed = false;
+            for (const [dep, ver] of Object.entries(allDeps)) {
+              if (!dep.startsWith('@kaleido-io/')) continue;
+              if (ver === '*') {
+                console.error('FAIL: ' + dep + ' is still unpinned (*)');
+                failed = true;
+              } else {
+                console.log('OK:   ' + dep + ' => ' + ver);
+              }
+            }
+            if (failed) process.exit(1);
+          "
+
+  init-add:
+    name: ksdk init --template ${{ matrix.template }} (add to existing)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        template: [workflow-engine-provider, erc20-indexer, btc-indexer, canton-cip56-indexer]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Install workspace dependencies
+        run: npm install
+
+      - name: Build packages
+        run: npm run build:packages
+
+      - name: Pack sdk
+        run: npm pack
+        working-directory: packages/kaleido-sdk
+
+      - name: Create minimal existing project
+        run: |
+          mkdir -p /tmp/ksdk-add-test
+          echo '{"name":"existing-project","version":"1.0.0","type":"module","dependencies":{}}' \
+            > /tmp/ksdk-add-test/package.json
+
+      - name: Run ksdk init in add-to-existing mode
+        run: |
+          cd /tmp/ksdk-add-test
+          KSDK_REPO_URL="$GITHUB_WORKSPACE" node "$GITHUB_WORKSPACE/packages/kaleido-sdk/bin/ksdk.js" init --template ${{ matrix.template }}
+
+      - name: Verify add-to-existing result
+        run: |
+          PROJECT=/tmp/ksdk-add-test
+          echo "--- Checking src/ was copied ---"
+          test -d "$PROJECT/src" && echo "src/ OK"
+          echo "--- Checking root files were NOT copied ---"
+          test ! -f "$PROJECT/tsconfig.json" && echo "tsconfig.json correctly absent"
+          test ! -f "$PROJECT/Dockerfile"     && echo "Dockerfile correctly absent"
+          test ! -f "$PROJECT/.gitignore"     && echo ".gitignore correctly absent"
+          echo "--- Checking deps were merged and pinned ---"
+          node -e "
+            const pkg = JSON.parse(require('fs').readFileSync('$PROJECT/package.json', 'utf-8'));
+            const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+            let found = false, failed = false;
+            for (const [dep, ver] of Object.entries(allDeps)) {
+              if (!dep.startsWith('@kaleido-io/')) continue;
+              found = true;
+              if (ver === '*') { console.error('FAIL: ' + dep + ' still unpinned'); failed = true; }
+              else console.log('OK:   ' + dep + ' => ' + ver);
+            }
+            if (!found) { console.error('FAIL: no @kaleido-io/* deps were added'); failed = true; }
+            if (failed) process.exit(1);
+          "

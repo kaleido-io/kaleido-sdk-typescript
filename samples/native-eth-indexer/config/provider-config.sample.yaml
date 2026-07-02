@@ -1,0 +1,27 @@
+# Provider-specific configuration for the Native ETH Indexer (CONFIG_FILE).
+# Contains settings bundled with the provider image.
+# Copy this file to config/provider-config.yaml and fill in your values.
+# Set CONFIG_FILE env var to point to your config (default: ./config/provider-config.yaml).
+
+# Native ETH network to index
+upsertTriggerCount: 500
+networkName: sepolia
+chainId: '11155111'
+tokenSymbol: ETH
+tokenName: eth-sepolia
+
+# Stream configuration - used in setup to upsert the WFE stream.
+# stream.connectorBindingName must match a service-binding name in config.yaml.
+stream:
+  connectorBindingName: evm-connector
+  factory: nativeEthTransactions
+  name: native-eth-indexer
+  description: Native ETH transfer events
+  eventSourceConfig:
+    enableBlockTrace: true
+    unfiltered: true
+    fromBlock: '0'
+    batchSize: 50
+    batchTimeout: 5s
+    pollTimeout: 30s
+    requiredConfirmations: 1

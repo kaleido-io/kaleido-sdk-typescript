@@ -23,8 +23,8 @@
  * - Stream management (create, delete, start, stop)
  */
 
-import { newError, SDKErrors } from '../i18n/errors';
-import { WorkflowEngineClientConfig } from './client';
+import { newError, SDKErrors } from "../i18n/errors";
+import { WorkflowEngineClientConfig } from "./client";
 
 // ============================================================================
 // TypeScript Interfaces
@@ -116,7 +116,7 @@ export interface CreateWorkflowResponse {
 export interface CreateStreamRequest {
   name?: string;
   description?: string;
-  type?: 'event_stream' | 'correlation_stream' | 'transaction_dispatch';
+  type?: "event_stream" | "correlation_stream" | "transaction_dispatch";
   started?: boolean;
   config?: Record<string, unknown>;
   eventHandler?: string;
@@ -181,30 +181,33 @@ export class WorkflowEngineRestClient {
       }
       this.baseUrl = `https://${process.env.ACCOUNT}/endpoint/${process.env.ENVIRONMENT}/${process.env.WORKFLOW_ENGINE}/rest`;
     } else {
-      let restUrl = config.url.replace(/\/ws$/, '');
-      if (!restUrl.endsWith('/rest')) {
-        restUrl += '/rest';
+      let restUrl = config.url.replace(/\/ws$/, "");
+      if (!restUrl.endsWith("/rest")) {
+        restUrl += "/rest";
       }
-      if (restUrl.startsWith('ws://')) {
-        restUrl = restUrl.replace('ws://', 'http://');
-      } else if (config.url.startsWith('wss://')) {
-        restUrl = restUrl.replace('wss://', 'https://');
+      if (restUrl.startsWith("ws://")) {
+        restUrl = restUrl.replace("ws://", "http://");
+      } else if (config.url.startsWith("wss://")) {
+        restUrl = restUrl.replace("wss://", "https://");
       }
       this.baseUrl = restUrl;
     }
     if (!config?.authToken) {
       // Fall back to auth stored in options.headers (set by ConfigLoader.createClientConfig)
-      const optionsAuthHeader = config?.options?.headers?.['Authorization'];
+      const optionsAuthHeader = config?.options?.headers?.["Authorization"];
       if (optionsAuthHeader) {
         this.authToken = optionsAuthHeader;
       } else if (process.env.KEY_NAME && process.env.KEY_VALUE) {
-        this.authToken = `basic ${Buffer.from(`${process.env.KEY_NAME}:${process.env.KEY_VALUE}`).toString('base64')}`;
+        this.authToken = `basic ${Buffer.from(`${process.env.KEY_NAME}:${process.env.KEY_VALUE}`).toString("base64")}`;
       }
     } else {
       this.authToken = config?.authToken;
     }
-    this.authHeaderName = config?.authHeaderName || 'Authorization';
-    this.headers = config?.headers;
+    this.authHeaderName = config?.authHeaderName || "Authorization";
+    const optionsHeaders = config?.options?.headers as
+      | Record<string, string>
+      | undefined;
+    this.headers = { ...optionsHeaders, ...config?.headers };
   }
 
   /**
@@ -259,13 +262,13 @@ export class WorkflowEngineRestClient {
     timeout?: number,
   ): Promise<T> {
     const headers: Record<string, string> = {
-      accept: 'application/json',
-      'Content-Type': 'application/json',
+      accept: "application/json",
+      "Content-Type": "application/json",
       ...this.headers,
     };
 
     if (timeout) {
-      headers['Request-Timeout'] = `${timeout}m0s`;
+      headers["Request-Timeout"] = `${timeout}m0s`;
     }
 
     // Add authorization if credentials are available
@@ -312,7 +315,7 @@ export class WorkflowEngineRestClient {
     const endpoint = this.getWorkflowsEndpoint();
     return this.makeRequest<CreateWorkflowResponse>(
       endpoint,
-      'POST',
+      "POST",
       workflow,
       timeout,
     );
@@ -330,7 +333,7 @@ export class WorkflowEngineRestClient {
     timeout?: number,
   ): Promise<void> {
     const endpoint = this.getWorkflowEndpoint(workflowNameOrId);
-    return this.makeRequest<void>(endpoint, 'DELETE', undefined, timeout);
+    return this.makeRequest<void>(endpoint, "DELETE", undefined, timeout);
   }
 
   // ============================================================================
@@ -351,7 +354,7 @@ export class WorkflowEngineRestClient {
     const endpoint = this.getTransactionsEndpoint();
     return this.makeRequest<CreateTransactionResponse>(
       endpoint,
-      'POST',
+      "POST",
       transaction,
       timeout,
     );
@@ -369,7 +372,7 @@ export class WorkflowEngineRestClient {
     timeout?: number,
   ): Promise<void> {
     const endpoint = this.getTransactionEndpoint(idempotencyKeyOrId);
-    return this.makeRequest<void>(endpoint, 'DELETE', undefined, timeout);
+    return this.makeRequest<void>(endpoint, "DELETE", undefined, timeout);
   }
 
   // ============================================================================
@@ -390,7 +393,7 @@ export class WorkflowEngineRestClient {
     const endpoint = this.getStreamsEndpoint();
     return this.makeRequest<CreateStreamResponse>(
       endpoint,
-      'POST',
+      "POST",
       stream,
       timeout,
     );
@@ -411,9 +414,9 @@ export class WorkflowEngineRestClient {
   ): Promise<void> {
     let endpoint = this.getStreamEndpoint(streamNameOrId);
     if (force) {
-      endpoint += '?force=true';
+      endpoint += "?force=true";
     }
-    return this.makeRequest<void>(endpoint, 'DELETE', undefined, timeout);
+    return this.makeRequest<void>(endpoint, "DELETE", undefined, timeout);
   }
 
   /**
@@ -431,7 +434,7 @@ export class WorkflowEngineRestClient {
     const update: UpdateStreamRequest = { started: true };
     return this.makeRequest<CreateStreamResponse>(
       endpoint,
-      'PATCH',
+      "PATCH",
       update,
       timeout,
     );
@@ -452,7 +455,7 @@ export class WorkflowEngineRestClient {
     const update: UpdateStreamRequest = { started: false };
     return this.makeRequest<CreateStreamResponse>(
       endpoint,
-      'PATCH',
+      "PATCH",
       update,
       timeout,
     );
