@@ -1,14 +1,14 @@
-# Configuration for the custom-snippet-handler (KALEIDO_CONFIG_FILE).
+# Configuration for the simple-provider-typescript sample (KALEIDO_CONFIG_FILE).
 # When running as a Hosted provider, this file is managed by the Kaleido platform.
 # Copy this file to config/config.yaml and fill in your values.
 # Set KALEIDO_CONFIG_FILE env var to point to your config (default: ./config/config.yaml).
 #
 # providerName must match the name exported from provider.ts.
 workflow-engine:
-  providerName: custom-snippet-provider
+  providerName: simple-provider-typescript
   providerMetadata:
-    displayName: Custom snippet provider
-    description: A provider that renders custom snippet templates
+    displayName: Simple provider (TypeScript)
+    description: Dynamically loads custom handler implementations from config
   url: https://my-account.my-kaleido.io/endpoint/my-environment/my-workflow-engine/rest
   auth:
     type: basic

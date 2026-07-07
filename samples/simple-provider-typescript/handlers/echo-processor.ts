@@ -14,10 +14,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export default {
-  name: 'custom-snippet-provider',
-  metadata: {
-    displayName: 'Custom snippet provider',
-    description: 'A provider that renders custom snippet templates',
-  },
+import type { EventProcessorDef } from '@kaleido-io/workflow-engine-sdk';
+import { newLogger } from '@kaleido-io/core-sdk/log';
+
+const log = newLogger('echo-processor');
+
+export const processBatch: EventProcessorDef['processBatch'] = async (_ctx, events) => {
+  for (const event of events) {
+    log.info(`Event received: ${event.topic} - ${JSON.stringify(event.data)}`);
+  }
 };

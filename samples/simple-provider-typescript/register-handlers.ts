@@ -23,6 +23,8 @@ import {
   WorkflowEngineClient,
   createTransactionHandler,
   type ActionConfig,
+  type EventProcessorDef,
+  type EventSource,
   type WithStageDirector,
 } from '@kaleido-io/workflow-engine-sdk';
 import {
@@ -102,8 +104,6 @@ async function loadHandlerModule(
     throw new Error(`Failed to bundle mounted handler at ${importPath}: esbuild produced no output`);
   }
 
-  // esbuild's CJS interop emits __require() calls that throw in ESM data-URL modules.
-  // Anchor createRequire to this provider file (a real file:// URL), not the data URL.
   const code =
     `import { createRequire } from 'module';\n` +
     `const require = createRequire(${JSON.stringify(import.meta.url)});\n` +
@@ -134,7 +134,6 @@ export function handlerPathCandidates(configPath: string, handlerFile: string): 
   const tsPath = sourcePath.endsWith('.ts') ? sourcePath : undefined;
 
   if (isRunningCompiled()) {
-    // Prefer the extension named in config, then fall back to the other.
     if (tsPath) {
       add(tsPath);
       if (jsPath) {
@@ -170,7 +169,7 @@ export function resolveImportPath(configPath: string, handlerFile: string): stri
 
   throw new Error(
     `Handler file not found: ${candidates[0]} (tried: ${candidates.join(', ')}). ` +
-      `Ensure the file exists at the path given in provider-config.yaml — ` +
+      `Ensure the file exists at the path given in provider-config.json — ` +
       `the platform may mount snippet implementations at any absolute path.`,
   );
 }
@@ -220,9 +219,134 @@ export function extractActionMap(
 
   const exportNames = Object.keys(loaded);
   throw new Error(
-    `Handler "${handlerName}" at ${handlerFile} must export an "actionMap" Map ` +
+    `Transaction handler "${handlerName}" at ${handlerFile} must export an "actionMap" Map ` +
       `(loaded from ${importPath}; exports: ${exportNames.length > 0 ? exportNames.join(', ') : 'none'}).`,
   );
+}
+
+function resolveHandlerName(value: unknown): string | undefined {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+  const name = (value as { name?: unknown }).name;
+  if (typeof name === 'string') {
+    return name;
+  }
+  if (typeof name === 'function') {
+    return (name as (this: unknown) => string).call(value);
+  }
+  return undefined;
+}
+
+function isEventSource(value: unknown): value is EventSource {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as EventSource).eventSourcePoll === 'function'
+  );
+}
+
+export function extractEventSource(
+  loaded: Record<string, unknown>,
+  handlerName: string,
+  handlerFile: string,
+  importPath: string,
+): EventSource {
+  const defaultExport = loaded.default;
+  const fromDefault =
+    defaultExport &&
+    typeof defaultExport === 'object' &&
+    !Array.isArray(defaultExport) &&
+    'eventSource' in defaultExport
+      ? (defaultExport as { eventSource: unknown }).eventSource
+      : undefined;
+
+  for (const candidate of [loaded.eventSource, fromDefault, defaultExport]) {
+    if (isEventSource(candidate)) {
+      const sourceName = resolveHandlerName(candidate);
+      if (sourceName !== undefined && sourceName !== handlerName) {
+        throw new Error(
+          `Event source "${handlerName}" at ${handlerFile} exports eventSource.name "${sourceName}" ` +
+            `which does not match the config name.`,
+        );
+      }
+      return candidate;
+    }
+  }
+
+  const exportNames = Object.keys(loaded);
+  throw new Error(
+    `Event source "${handlerName}" at ${handlerFile} must export an "eventSource" ` +
+      `(loaded from ${importPath}; exports: ${exportNames.length > 0 ? exportNames.join(', ') : 'none'}).`,
+  );
+}
+
+function isProcessBatchFn(value: unknown): value is EventProcessorDef['processBatch'] {
+  return typeof value === 'function';
+}
+
+function isEventProcessorDef(value: unknown): value is EventProcessorDef {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as EventProcessorDef).processBatch === 'function'
+  );
+}
+
+export function extractEventProcessorDef(
+  loaded: Record<string, unknown>,
+  handlerName: string,
+  handlerFile: string,
+  importPath: string,
+): EventProcessorDef {
+  const defaultExport = loaded.default;
+  const fromDefault =
+    defaultExport &&
+    typeof defaultExport === 'object' &&
+    !Array.isArray(defaultExport)
+      ? (defaultExport as Record<string, unknown>)
+      : undefined;
+
+  for (const candidate of [loaded.eventProcessorDef, fromDefault, defaultExport]) {
+    if (isEventProcessorDef(candidate)) {
+      return candidate;
+    }
+  }
+
+  const fromNamed =
+    defaultExport &&
+    typeof defaultExport === 'object' &&
+    !Array.isArray(defaultExport) &&
+    'processBatch' in defaultExport
+      ? (defaultExport as { processBatch: unknown }).processBatch
+      : undefined;
+
+  for (const candidate of [loaded.processBatch, fromNamed]) {
+    if (isProcessBatchFn(candidate)) {
+      return { processBatch: candidate };
+    }
+  }
+
+  if (isProcessBatchFn(defaultExport)) {
+    return { processBatch: defaultExport };
+  }
+
+  const exportNames = Object.keys(loaded);
+  throw new Error(
+    `Event processor "${handlerName}" at ${handlerFile} must export a "processBatch" function ` +
+      `or an event processor def with processBatch ` +
+      `(loaded from ${importPath}; exports: ${exportNames.length > 0 ? exportNames.join(', ') : 'none'}).`,
+  );
+}
+
+async function loadHandlerExports(
+  configPath: string,
+  handler: HandlerDefinition,
+  options?: RegisterHandlersOptions,
+): Promise<{ importPath: string; loaded: Record<string, unknown> }> {
+  const importPath = resolveImportPath(configPath, handler.file);
+  const loaded = await loadHandlerModule(importPath, options?.cacheBust);
+  return { importPath, loaded };
 }
 
 export async function importHandlerModule(
@@ -230,10 +354,26 @@ export async function importHandlerModule(
   handler: HandlerDefinition,
   options?: RegisterHandlersOptions,
 ): Promise<HandlerModule> {
-  const importPath = resolveImportPath(configPath, handler.file);
-  const loaded = await loadHandlerModule(importPath, options?.cacheBust);
-
+  const { importPath, loaded } = await loadHandlerExports(configPath, handler, options);
   return { actionMap: extractActionMap(loaded, handler.name, handler.file, importPath) };
+}
+
+export async function importEventSourceModule(
+  configPath: string,
+  handler: HandlerDefinition,
+  options?: RegisterHandlersOptions,
+): Promise<EventSource> {
+  const { importPath, loaded } = await loadHandlerExports(configPath, handler, options);
+  return extractEventSource(loaded, handler.name, handler.file, importPath);
+}
+
+export async function importEventProcessorModule(
+  configPath: string,
+  handler: HandlerDefinition,
+  options?: RegisterHandlersOptions,
+): Promise<EventProcessorDef> {
+  const { importPath, loaded } = await loadHandlerExports(configPath, handler, options);
+  return extractEventProcessorDef(loaded, handler.name, handler.file, importPath);
 }
 
 export async function registerHandlersFromConfig(
@@ -244,11 +384,21 @@ export async function registerHandlersFromConfig(
 ): Promise<WorkflowEngineClient> {
   let registered = client;
 
-  for (const handler of config.handlers) {
+  for (const handler of config.transactionHandlers) {
     const { actionMap } = await importHandlerModule(configPath, handler, options);
     registered = registered.transactionHandler(handler.name, {
       handler: createTransactionHandler(handler.name, actionMap),
     });
+  }
+
+  for (const handler of config.eventSources) {
+    const source = await importEventSourceModule(configPath, handler, options);
+    registered = registered.eventSource(source);
+  }
+
+  for (const handler of config.eventProcessors) {
+    const def = await importEventProcessorModule(configPath, handler, options);
+    registered = registered.eventProcessor(handler.name, def);
   }
 
   return registered;

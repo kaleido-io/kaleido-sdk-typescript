@@ -19,44 +19,76 @@ import { copyFileSync, mkdtempSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { loadHandlersConfig } from './handlers-config';
-import { handlerPathCandidates, extractActionMap, importHandlerModule, isMountedHandlerPath, resolveImportPath } from './register-handlers';
+import {
+  handlerPathCandidates,
+  extractActionMap,
+  extractEventSource,
+  extractEventProcessorDef,
+  importHandlerModule,
+  importEventSourceModule,
+  importEventProcessorModule,
+  isMountedHandlerPath,
+  resolveImportPath,
+} from './register-handlers';
 
 describe('handlers-config', () => {
-  it('loads handlers from yaml', () => {
+  it('loads transactionHandlers from json', () => {
     const dir = mkdtempSync(join(tmpdir(), 'handlers-config-'));
-    const configPath = join(dir, 'provider-config.yaml');
+    const configPath = join(dir, 'provider-config.json');
     writeFileSync(
       configPath,
-      `handlers:
-  - name: hello
-    file: handlers/hello.ts
-`,
+      JSON.stringify({
+        transactionHandlers: [{ name: 'hello', file: 'handlers/hello.ts' }],
+      }),
     );
 
     expect(loadHandlersConfig(configPath)).toEqual({
-      handlers: [{ name: 'hello', file: 'handlers/hello.ts' }],
+      transactionHandlers: [{ name: 'hello', file: 'handlers/hello.ts' }],
+      eventSources: [],
+      eventProcessors: [],
     });
   });
 
-  it('allows an empty handlers array', () => {
+  it('loads all handler types from json', () => {
     const dir = mkdtempSync(join(tmpdir(), 'handlers-config-'));
-    const configPath = join(dir, 'provider-config.yaml');
-    writeFileSync(configPath, 'handlers: []\n');
-
-    expect(loadHandlersConfig(configPath)).toEqual({ handlers: [] });
-  });
-
-  it('rejects duplicate handler names', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'handlers-config-'));
-    const configPath = join(dir, 'provider-config.yaml');
+    const configPath = join(dir, 'provider-config.json');
     writeFileSync(
       configPath,
-      `handlers:
-  - name: hello
-    file: handlers/hello.ts
-  - name: hello
-    file: handlers/other.ts
-`,
+      JSON.stringify({
+        transactionHandlers: [{ name: 'hello', file: 'handlers/hello.ts' }],
+        eventSources: [{ name: 'tick-source', file: 'handlers/tick-source.ts' }],
+        eventProcessors: [{ name: 'echo', file: 'handlers/echo-processor.ts' }],
+      }),
+    );
+
+    expect(loadHandlersConfig(configPath)).toEqual({
+      transactionHandlers: [{ name: 'hello', file: 'handlers/hello.ts' }],
+      eventSources: [{ name: 'tick-source', file: 'handlers/tick-source.ts' }],
+      eventProcessors: [{ name: 'echo', file: 'handlers/echo-processor.ts' }],
+    });
+  });
+
+  it('allows empty handler sections', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'handlers-config-'));
+    const configPath = join(dir, 'provider-config.json');
+    writeFileSync(configPath, JSON.stringify({ transactionHandlers: [] }));
+
+    expect(loadHandlersConfig(configPath)).toEqual({
+      transactionHandlers: [],
+      eventSources: [],
+      eventProcessors: [],
+    });
+  });
+
+  it('rejects duplicate handler names across sections', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'handlers-config-'));
+    const configPath = join(dir, 'provider-config.json');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        transactionHandlers: [{ name: 'hello', file: 'handlers/hello.ts' }],
+        eventSources: [{ name: 'hello', file: 'handlers/tick-source.ts' }],
+      }),
     );
 
     expect(() => loadHandlersConfig(configPath)).toThrow(/Duplicate handler names/);
@@ -64,7 +96,7 @@ describe('handlers-config', () => {
 });
 
 describe('register-handlers', () => {
-  it('imports a handler module actionMap', async () => {
+  it('imports a transaction handler actionMap', async () => {
     const { actionMap } = await importHandlerModule(process.cwd(), {
       name: 'hello',
       file: 'handlers/hello.ts',
@@ -73,12 +105,30 @@ describe('register-handlers', () => {
     expect(actionMap.get('hello')).toBeDefined();
   });
 
+  it('imports an event source', async () => {
+    const source = await importEventSourceModule(process.cwd(), {
+      name: 'tick-source',
+      file: 'handlers/tick-source.ts',
+    });
+
+    expect(typeof source.eventSourcePoll).toBe('function');
+  });
+
+  it('imports an event processor def', async () => {
+    const def = await importEventProcessorModule(process.cwd(), {
+      name: 'echo',
+      file: 'handlers/echo-processor.ts',
+    });
+
+    expect(typeof def.processBatch).toBe('function');
+  });
+
   it('resolves absolute handler paths from config', () => {
     const originalArgv = process.argv[1];
     process.argv[1] = '/app/dist/connect.js';
 
     try {
-      const candidates = handlerPathCandidates('/config/provider-config.yaml', '/mnt/snippets/hello.ts');
+      const candidates = handlerPathCandidates('/config/provider-config.json', '/mnt/snippets/hello.ts');
       expect(candidates[0]).toBe('/mnt/snippets/hello.ts');
       expect(candidates).toContain('/mnt/snippets/hello.js');
     } finally {
@@ -115,25 +165,26 @@ describe('register-handlers', () => {
     expect(result).toBe(actionMap);
   });
 
-  it('extractActionMap accepts a plain object actionMap', () => {
-    const result = extractActionMap(
-      { actionMap: { hello: { handler: async () => ({}) } } },
-      'hello',
-      '/snippets/hello.ts',
-      '/snippets/hello.ts',
-    );
-    expect(result.get('hello')).toBeDefined();
+  it('extractEventSource validates config name matches export', () => {
+    const eventSource = {
+      name: () => 'tick-source',
+      eventSourcePoll: async () => {},
+      init: async () => {},
+      close: () => {},
+    };
+    expect(extractEventSource({ eventSource }, 'tick-source', 'tick.ts', '/tick.ts')).toBe(eventSource);
+    expect(() => extractEventSource({ eventSource }, 'wrong', 'tick.ts', '/tick.ts')).toThrow(/does not match/);
   });
 
-  it('extractActionMap accepts default export with actionMap', () => {
-    const actionMap = new Map([['hello', { handler: async () => ({}) }]]);
-    const result = extractActionMap(
-      { default: { actionMap } },
-      'hello',
-      '/snippets/hello.ts',
-      '/snippets/hello.ts',
-    );
-    expect(result).toBe(actionMap);
+  it('extractEventProcessorDef accepts processBatch export', () => {
+    const processBatch = async () => {};
+    expect(extractEventProcessorDef({ processBatch }, 'echo', 'echo.ts', '/echo.ts')).toEqual({
+      processBatch,
+    });
+  });
+
+  it('extractEventProcessorDef rejects missing export', () => {
+    expect(() => extractEventProcessorDef({}, 'echo', 'echo.ts', '/echo.ts')).toThrow(/processBatch/);
   });
 
   it('isMountedHandlerPath detects platform-mounted snippets', () => {

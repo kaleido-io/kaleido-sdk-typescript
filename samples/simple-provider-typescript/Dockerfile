@@ -1,4 +1,4 @@
-# Build from sample directory: docker build -t custom-snippet-handler:latest .
+# Build from sample directory: docker build -t simple-provider-typescript:latest .
 FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app

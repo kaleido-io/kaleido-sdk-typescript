@@ -1,0 +1,39 @@
+{
+  "name": "simple-provider-typescript",
+  "version": "0.0.1",
+  "scripts": {
+    "prebuild": "npm run clean",
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "start": "node dist/connect.js",
+    "start:dev": "tsx ./connect.ts",
+    "create-workflow": "tsx ./utils/post-workflow.ts",
+    "create-transaction": "tsx ./utils/post-transaction.ts",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "package:docker": "docker build --platform linux/amd64 -f Dockerfile.withsdk -t simple-provider-typescript:latest ../..",
+    "package:docker:standalone": "docker build --platform linux/amd64 -t simple-provider-typescript:latest .",
+    "upload:handlers": "bash scripts/upload-handlers.sh"
+  },
+  "private": true,
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "@vitest/coverage-v8": "^4.0.16",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  },
+  "type": "module",
+  "main": "dist/connect.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "@kaleido-io/core-sdk": "*",
+    "@kaleido-io/workflow-engine-sdk": "*",
+    "dotenv": "^17.2.3",
+    "esbuild": "^0.28.0"
+  }
+}

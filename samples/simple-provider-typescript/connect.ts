@@ -15,10 +15,12 @@
 // limitations under the License.
 
 import dotenv from 'dotenv';
+import { DEFAULT_PROVIDER_CONFIG_PATH } from './handlers-config.js';
 import { createConfiguredClient } from './register-handlers.js';
 import { isHotReloadEnabled, startWithHotReload } from './hot-reload.js';
 
 dotenv.config();
+process.env.CONFIG_FILE ??= DEFAULT_PROVIDER_CONFIG_PATH;
 
 if (isHotReloadEnabled()) {
   const session = await startWithHotReload();

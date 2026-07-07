@@ -17,7 +17,7 @@
 import { existsSync, watch, type FSWatcher } from 'fs';
 import { dirname } from 'path';
 import type { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
-import { loadHandlersConfig, resolveHandlerFilePath, resolveHandlersConfigPath } from './handlers-config.js';
+import { loadHandlersConfig, listHandlerDefinitions, resolveHandlerFilePath, resolveHandlersConfigPath } from './handlers-config.js';
 import { createConfiguredClient } from './register-handlers.js';
 
 const DEBOUNCE_MS = 300;
@@ -30,7 +30,6 @@ export function isHotReloadEnabled(): boolean {
   if (flag === '0' || flag === 'false' || flag === 'off') {
     return false;
   }
-  // Default on for tsx dev runs; off for compiled `node dist/connect.js`.
   return process.argv[1]?.endsWith('.ts') ?? false;
 }
 
@@ -91,7 +90,7 @@ export async function startWithHotReload(): Promise<HotReloadSession> {
 
   const config = loadHandlersConfig(configPath);
   const watchedDirs = new Set<string>();
-  for (const handler of config.handlers) {
+  for (const handler of listHandlerDefinitions(config)) {
     const handlerDir = dirname(resolveHandlerFilePath(configPath, handler.file));
     if (existsSync(handlerDir) && !watchedDirs.has(handlerDir)) {
       watchedDirs.add(handlerDir);
@@ -117,9 +116,23 @@ export async function startWithHotReload(): Promise<HotReloadSession> {
 
 function logRegisteredHandlers(label: string): void {
   const config = loadHandlersConfig();
-  const names = config.handlers.map((handler) => handler.name);
+  const parts: string[] = [];
+  if (config.transactionHandlers.length > 0) {
+    parts.push(
+      `${config.transactionHandlers.length} transaction: ${config.transactionHandlers.map((h) => h.name).join(', ')}`,
+    );
+  }
+  if (config.eventSources.length > 0) {
+    parts.push(`${config.eventSources.length} event source: ${config.eventSources.map((h) => h.name).join(', ')}`);
+  }
+  if (config.eventProcessors.length > 0) {
+    parts.push(
+      `${config.eventProcessors.length} event processor: ${config.eventProcessors.map((h) => h.name).join(', ')}`,
+    );
+  }
+
   console.log(
-    `[hot-reload] ${label} with ${names.length} handler(s)` +
-      (names.length > 0 ? `: ${names.join(', ')}` : ' (provider only)'),
+    `[hot-reload] ${label}` +
+      (parts.length > 0 ? ` with ${parts.join('; ')}` : ' (provider only, no handlers)'),
   );
 }

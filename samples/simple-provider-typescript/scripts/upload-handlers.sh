@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Upload custom-snippet-handler implementations to artifact-registry.
+# Upload simple-provider-typescript handler implementations to artifact-registry.
 #
 # Each handlers/*.ts file (excluding *.test.ts) is uploaded as multipart/form-data
 # (type=typescript, file=<bytes>) to:

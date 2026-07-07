@@ -1,6 +1,6 @@
 # Sample workflow
 
-Example workflow and transaction for the `hello` handler registered via `provider-config.yaml`.
+Example workflow and transaction for the `hello` handler registered via `provider-config.json`.
 
 ```bash
 npm run create-workflow snippet/flow.ts
