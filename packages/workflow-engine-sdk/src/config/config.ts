@@ -55,7 +55,6 @@ const WFE_CONFIG_KEYS = {
   retryDelay: "retryDelay",
   server: "server",
   headers: "headers",
-  setupLifecycle: "setupLifecycle",
 } as const;
 
 const SERVER_CONFIG_KEYS = {
@@ -438,15 +437,6 @@ export class ConfigLoader {
       if (Object.keys(meta).length > 0) {
         clientConfig.providerMetadata = meta;
       }
-    }
-    // Lifecycle: operator-rendered field that opts a deployment into deploy-time
-    // setup() triggering. Absent on platforms predating the setup-trigger flow —
-    // the default `'boot'` preserves today's behaviour.
-    const lifecycle = cfgStrField(section, WFE_CONFIG_KEYS.setupLifecycle);
-    if (lifecycle === "boot" || lifecycle === "deferred") {
-      clientConfig.setupLifecycle = lifecycle;
-    } else if (lifecycle) {
-      log.warn(`Unknown setupLifecycle '${lifecycle}'; using default 'boot'`);
     }
   }
 
