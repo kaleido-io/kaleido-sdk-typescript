@@ -15,14 +15,21 @@
     "type": "git",
     "url": "git+https://github.com/kaleido-io/kaleido-sdk-typescript.git"
   },
-  "keywords": ["kaleido", "sdk", "typescript", "blockchain", "workflow-engine", "asset-manager"],
+  "keywords": [
+    "kaleido",
+    "sdk",
+    "typescript",
+    "blockchain",
+    "workflow-engine",
+    "asset-manager"
+  ],
   "author": "Kaleido",
   "license": "Apache-2.0",
   "engines": {
     "node": ">=20.19.0"
   },
   "bin": {
-    "ksdk": "./bin/ksdk.js"
+    "ksdk": "bin/ksdk.js"
   },
   "files": [
     "dist/**/*",
