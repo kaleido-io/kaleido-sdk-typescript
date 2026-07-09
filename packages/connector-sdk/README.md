@@ -2,7 +2,7 @@
 
 TypeScript helpers and chain-specific types for Kaleido connectors (EVM, Bitcoin, Canton). Use this SDK from workflow engine providers — for example indexers — to idempotently create connector streams in `setup()` and to type-check event payloads in batch handlers.
 
-This package is one of several Kaleido TypeScript SDK packages. For details of other SDK packages or general information about Kaleido SDKs see the [Kaleido Typsescript SDK Readme](../../README.md)
+This package is one of several Kaleido TypeScript SDK packages. For details of other SDK packages or general information about Kaleido SDKs see the [Kaleido Typsescript SDK Readme](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/README.md)
 
 ## What this SDK provides
 
@@ -156,7 +156,7 @@ In both cases, your SDK usage can stay the same; only configuration values chang
 
 ### Platform config (`config.yaml`)
 
-Connector clients resolve connectivity from named entries under `service-bindings`. You also need a `workflow-engine` stanza when running a provider (see the [Workflow Engine SDK README](../workflow-engine-sdk/README.md)); connector stream setup uses both the WFE connection and the connector binding.
+Connector clients resolve connectivity from named entries under `service-bindings`. You also need a `workflow-engine` stanza when running a provider (see the [Workflow Engine SDK README](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/packages/workflow-engine-sdk/README.md)); connector stream setup uses both the WFE connection and the connector binding.
 
 ```yaml
 workflow-engine:
@@ -307,7 +307,7 @@ async setup(ctx: SetupContext<MyConfig>) {
 
 ### Environment Variables
 
-By default configuration is sourced from the folloging environment variables:
+By default configuration is sourced from the following environment variables:
 
 - `KALEIDO_CONFIG_FILE` - path to `config.yaml` (preferred)
 - `CONFIG_FILE` - path to `provider-config.yaml`
@@ -570,7 +570,7 @@ WorkflowEngineClient.fromConfigFile<MyConfig>()
   .start();
 ```
 
-See the [Workflow Engine SDK README](../workflow-engine-sdk/README.md) for indexer registration, and the [Asset Manager SDK README](../asset-manager-sdk/README.md) for bulk upsert patterns.
+See the [Workflow Engine SDK README](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/packages/workflow-engine-sdk/README.md) for indexer registration, and the [Asset Manager SDK README](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/packages/asset-manager-sdk/README.md) for bulk upsert patterns.
 
 ## Logging
 
@@ -589,10 +589,10 @@ Relevant samples in this repository:
 
 | Sample | Chain | Demonstrates |
 |---|---|---|
-| [`samples/erc20-indexer`](../../samples/erc20-indexer) | EVM | `EVMConnectorClient`, ERC-20 log filters, Asset Manager upsert |
-| [`samples/native-eth-indexer`](../../samples/native-eth-indexer) | EVM | `nativeEthTransactions` factory, ETH transfers |
-| [`samples/btc-indexer`](../../samples/btc-indexer) | BTC | `BTCConnectorClient`, UTXO/event mapping |
-| [`samples/canton-cip56-indexer`](../../samples/canton-cip56-indexer) | Canton | `CantonConnectorClient`, CIP-56 interface views |
+| [`samples/erc20-indexer`](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/erc20-indexer) | EVM | `EVMConnectorClient`, ERC-20 log filters, Asset Manager upsert |
+| [`samples/native-eth-indexer`](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/native-eth-indexer) | EVM | `nativeEthTransactions` factory, ETH transfers |
+| [`samples/btc-indexer`](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/btc-indexer) | BTC | `BTCConnectorClient`, UTXO/event mapping |
+| [`samples/canton-cip56-indexer`](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/canton-cip56-indexer) | Canton | `CantonConnectorClient`, CIP-56 interface views |
 
 See [Quick start](#quick-start) for scaffolding an indexer project from a template.
 
@@ -701,9 +701,9 @@ npm run start:dev
 - Logs show handler registration and a successful connection to the workflow engine.
 - The provider appears in the **Workflow engine** provider list in the Kaleido UI.
 - **Indexers:** if `provider-config.yaml` defines a `stream` block, confirm `setup()` creates the connector stream on first run (check connector UI or logs).
-- **Transaction handlers:** submit a test workflow that invokes your handler (see [`samples/workflow-engine-provider`](../../samples/workflow-engine-provider)).
+- **Transaction handlers:** submit a test workflow that invokes your handler (see [`samples/workflow-engine-provider`](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/workflow-engine-provider)).
 
-Working config examples per template: [`samples/`](../../samples/).
+Working config examples per template: [`samples/`](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/).
 
 ---
 
@@ -795,7 +795,7 @@ If you need to create or adjust a stream manually, use the connector service UI 
 | Bitcoin | BTC connector | `transactionEvents` |
 | Canton | Canton connector | `contractEvents` |
 
-See chain samples under [`samples/`](../../samples/) for stream configuration examples.
+See chain samples under [`samples/`](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/) for stream configuration examples.
 
 ### 5. Upgrading the provider
 
@@ -885,7 +885,7 @@ resource "kaleido_platform_service" "my_provider_service" {
    - Misconfigured streams may deliver events your indexer cannot map (wrong contract, party, or network).
    - Bulk upsert has per-request limits; reduce stream `batchSize` or use auto-flush thresholds in the indexer.
 
-Detailed, chain-specific notes: [`samples/btc-indexer`](../../samples/btc-indexer), [`samples/erc20-indexer`](../../samples/erc20-indexer), [`samples/canton-cip56-indexer`](../../samples/canton-cip56-indexer), [`samples/native-eth-indexer`](../../samples/native-eth-indexer), [`samples/workflow-engine-provider`](../../samples/workflow-engine-provider).
+Detailed, chain-specific notes: [`samples/btc-indexer`](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/btc-indexer), [`samples/erc20-indexer`](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/erc20-indexer), [`samples/canton-cip56-indexer`](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/canton-cip56-indexer), [`samples/native-eth-indexer`](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/native-eth-indexer), [`samples/workflow-engine-provider`](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/workflow-engine-provider).
 
 ## License
 
