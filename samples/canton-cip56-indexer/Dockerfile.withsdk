@@ -34,7 +34,19 @@ FROM gcr.io/distroless/nodejs22-debian12
 
 WORKDIR /app
 
+# node_modules contains symlinks like @kaleido-io/workflow-engine-sdk →
+# ../../packages/workflow-engine-sdk, so the built package directories must be
+# copied too or the symlinks will be dangling and Node will fail at import
+# time with ERR_MODULE_NOT_FOUND.
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/core-sdk/dist ./packages/core-sdk/dist
+COPY --from=builder /app/packages/core-sdk/package.json ./packages/core-sdk/package.json
+COPY --from=builder /app/packages/workflow-engine-sdk/dist ./packages/workflow-engine-sdk/dist
+COPY --from=builder /app/packages/workflow-engine-sdk/package.json ./packages/workflow-engine-sdk/package.json
+COPY --from=builder /app/packages/asset-manager-sdk/dist ./packages/asset-manager-sdk/dist
+COPY --from=builder /app/packages/asset-manager-sdk/package.json ./packages/asset-manager-sdk/package.json
+COPY --from=builder /app/packages/connector-sdk/dist ./packages/connector-sdk/dist
+COPY --from=builder /app/packages/connector-sdk/package.json ./packages/connector-sdk/package.json
 COPY --from=builder /app/samples/canton-cip56-indexer/dist ./samples/canton-cip56-indexer/dist
 COPY --from=builder /app/samples/canton-cip56-indexer/package.json ./samples/canton-cip56-indexer/
 
