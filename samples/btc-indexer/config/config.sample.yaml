@@ -16,7 +16,6 @@ workflow-engine:
 
 service-bindings:
   asset-manager:
-    type: asset-manager
     bindingType: non-hosted
     url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-bitcoin-env/s:my-asset-manager/rest
     auth:
@@ -24,7 +23,6 @@ service-bindings:
       username: myuser
       password: my-api-key
   btc-connector:
-    type: btc-connector
     bindingType: non-hosted
     url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-bitcoin-env/s:my-bitcoin-connector/rest
     auth:
