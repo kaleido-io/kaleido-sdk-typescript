@@ -224,9 +224,9 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
    * Run all handler `setup` hooks, then exit without connecting to WFE.
    * Use this as an init-container / migration step.
    */
-  async setup(): Promise<void> {
+  async setup(authRef?: string): Promise<void> {
     const controller = new AbortController();
-    await this.runSetupHooks(controller.signal);
+    await this.runSetupHooks(controller.signal, authRef);
     controller.abort();
   }
 
@@ -362,7 +362,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
         return {
           transport: 'ws-proxy',
           wsProxy: this.getWSProxyAdapter(),
-          serviceType: binding.type,
+          serviceType: binding.serviceType,
           id: binding.id,
           authRef,
         };
@@ -397,13 +397,13 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     );
   }
 
-  private async runSetupHooks(signal: AbortSignal): Promise<void> {
+  private async runSetupHooks(signal: AbortSignal, authRef?: string): Promise<void> {
     for (const registered of this.registeredHandlers) {
       if (registered.type === 'eventSource') continue;
       const { name, def } = registered;
       if (def.setup) {
         log.info(`Running setup hook for handler '${name}'`);
-        const ctx = this.buildSetupContext(name, signal);
+        const ctx = this.buildSetupContext(name, signal, authRef);
         await def.setup(ctx as SetupContext<unknown>);
       }
     }
