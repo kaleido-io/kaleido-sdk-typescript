@@ -1,6 +1,6 @@
 {
   "name": "@kaleido-io/core-sdk",
-  "version": "1.0.0-rc1",
+  "version": "1.0.0-rc2",
   "description": "Core utilities for Kaleido SDKs — HTTP transport, logging, and service-binding resolution",
   "type": "module",
   "main": "dist/src/index.js",

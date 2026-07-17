@@ -23,10 +23,10 @@ import type { ServiceBindingsMap } from '../service/types.js';
 // Helpers
 // ---------------------------------------------------------------------------
 
-type BindingMap = Record<string, { type: string; bindingType: 'non-hosted'; url: string; auth: Record<string, unknown> }>;
+type BindingMap = Record<string, { bindingType: 'non-hosted'; url: string; auth: Record<string, unknown> }>;
 
 const singleAMBindings: BindingMap = {
-  'asset-manager': { type: 'asset-manager', bindingType: 'non-hosted', url: 'http://am', auth: {} },
+  'asset-manager': { bindingType: 'non-hosted', url: 'http://am', auth: {} },
 };
 
 function makeTestClient<C>(config: C = {} as C, bindings: BindingMap = singleAMBindings) {
@@ -57,7 +57,7 @@ describe('SetupContext via WorkflowEngineClient', () => {
       setup: async (ctx) => { capturedCtx = ctx as never; },
       processBatch: async (_ctx, _events) => {},
     });
-    await client.start();
+    await client.setup();
     expect(capturedCtx!['config']).toEqual({ foo: 1 });
     expect(capturedCtx!['providerName']).toBe('test-provider');
     expect(capturedCtx!['handlerName']).toBe('my-handler');
@@ -70,7 +70,7 @@ describe('SetupContext via WorkflowEngineClient', () => {
       setup: async (ctx) => { opts = ctx.getServiceClientOptions('asset-manager') as never; },
       processBatch: async (_ctx, _events) => {},
     });
-    await client.start();
+    await client.setup();
     expect(opts).toMatchObject({ transport: 'http', url: 'http://am' });
   });
 });
@@ -97,37 +97,37 @@ describe('WorkflowEngineClient builder', () => {
     ).toThrow("Handler 'shared' is already registered");
   });
 
-  it('calls setup hook after connect on start()', async () => {
-    const client = makeTestClient({});
+  it('start() with only non-hosted bindings runs setup hooks at boot', async () => {
+    // Non-hosted transports carry their own credentials, so setup can safely
+    // run without an authRef. Preserves today's dev-loop behaviour for local
+    // and non-hosted deployments.
+    const client = WorkflowEngineClient._createForTest({}, {
+      providerName: 'test-provider',
+      serviceBindings: { 'am': { bindingType: 'non-hosted', url: 'http://am', auth: { type: 'basic', username: 'u', password: 'p' } } },
+    });
+    jest.spyOn(client, 'connect').mockResolvedValue(undefined);
+    jest.spyOn(client, 'registerEventProcessor').mockImplementation(() => {});
     const setupFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
     client.eventProcessor('ep', { setup: setupFn, processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
 
     await client.start();
 
-    expect(setupFn).toHaveBeenCalledTimes(1);
     expect(client.connect).toHaveBeenCalledTimes(1);
+    expect(setupFn).toHaveBeenCalledTimes(1);
     const setupOrder = (setupFn.mock.invocationCallOrder ?? [])[0]!;
     const connectOrder = ((client.connect as jest.Mock).mock.invocationCallOrder ?? [])[0]!;
-    // Setup runs after connect so hosted ws-proxy bindings have an established
-    // WebSocket before setup() tries to call platform services.
     expect(setupOrder).toBeGreaterThan(connectOrder);
   });
 
-  it('setup() calls setup hooks but does NOT call connect', async () => {
-    const client = makeTestClient({});
-    const setupFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
-    client.eventProcessor('ep', { setup: setupFn, processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
-
-    await client.setup();
-
-    expect(setupFn).toHaveBeenCalledTimes(1);
-    expect(client.connect).not.toHaveBeenCalled();
-  });
-
-  it('setupLifecycle=deferred: start() skips boot-time setup hooks', async () => {
-    const client = WorkflowEngineClient._createForTest({}, { providerName: 'test-provider', setupLifecycle: 'deferred' });
+  it('start() with a hosted binding defers setup until SETUP_TRIGGER_REQUEST', async () => {
+    // Hosted bindings inject a per-request authRef sourced from a user JWT.
+    // At boot there is no such JWT in scope, so setup MUST wait for the proxy
+    // to dispatch SETUP_TRIGGER_REQUEST with a valid authRef.
+    const client = WorkflowEngineClient._createForTest({}, {
+      providerName: 'test-provider',
+      serviceBindings: { 'am': { serviceType: 'AssetManagerService', bindingType: 'hosted', id: 's:am' } },
+    });
     jest.spyOn(client, 'connect').mockResolvedValue(undefined);
-    jest.spyOn(client, 'disconnect').mockImplementation(() => {});
     jest.spyOn(client, 'registerEventProcessor').mockImplementation(() => {});
     const setupFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
     client.eventProcessor('ep', { setup: setupFn, processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
@@ -138,9 +138,22 @@ describe('WorkflowEngineClient builder', () => {
     expect(setupFn).not.toHaveBeenCalled();
   });
 
+  it('setup() calls setup hooks but does NOT call connect', async () => {
+    // Explicit setup() bypasses the trigger dispatch — useful for init-container
+    // or non-hosted usage where no proxy is in the picture.
+    const client = makeTestClient({});
+    const setupFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    client.eventProcessor('ep', { setup: setupFn, processBatch: jest.fn<() => Promise<void>>().mockResolvedValue(undefined) });
+
+    await client.setup();
+
+    expect(setupFn).toHaveBeenCalledTimes(1);
+    expect(client.connect).not.toHaveBeenCalled();
+  });
+
   it('runSetupOnTrigger runs setup hooks and exposes authRef via SetupContext', async () => {
     const client = makeTestClient({}, {
-      'asset-manager': { type: 'asset-manager', bindingType: 'non-hosted', url: 'http://am', auth: {} },
+      'asset-manager': { bindingType: 'non-hosted', url: 'http://am', auth: {} },
     });
     let capturedAuthRef: string | undefined;
     const setupFn = jest.fn(async (ctx: any) => {

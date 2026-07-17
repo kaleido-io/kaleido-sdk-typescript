@@ -1,7 +1,7 @@
 name: Kaleido SDK Release
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 on:
   workflow_call:
@@ -143,3 +143,13 @@ jobs:
               npm dist-tag add "$PACKAGE_SPEC" "$tag"
             fi
           done <<< "${{ steps.parse_tags.outputs.additional_tags }}"
+
+      - name: Tag release commit
+        if: '!inputs.dry_run'
+        shell: bash
+        run: |
+          TAG="@kaleido-io/kaleido-sdk@${{ steps.prep_version.outputs.clean_version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f "$TAG" "${{ github.sha }}"
+          git push origin -f "refs/tags/$TAG"

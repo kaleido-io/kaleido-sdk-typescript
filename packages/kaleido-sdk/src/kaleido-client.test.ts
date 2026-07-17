@@ -33,13 +33,11 @@ import { KaleidoClient } from './kaleido-client.js';
 
 const nonHostedBindings: ServiceBindingsMap = {
   'asset-manager': {
-    type: 'asset-manager',
     bindingType: 'non-hosted',
     url: 'https://am.example/api/v1',
     auth: { type: 'token', token: 'secret' },
   },
   'asset-manager-2': {
-    type: 'asset-manager',
     bindingType: 'non-hosted',
     url: 'https://am2.example/api/v1',
     auth: { type: 'token', token: 'secret2' },
@@ -48,7 +46,7 @@ const nonHostedBindings: ServiceBindingsMap = {
 
 const hostedBindings: ServiceBindingsMap = {
   'hosted-am': {
-    type: 'asset-manager',
+    serviceType: 'AssetManagerService',
     bindingType: 'hosted',
     id: 'svc-123',
   },
@@ -69,7 +67,7 @@ describe('resolveServiceBindingFromMap (core helper)', () => {
     const opts = resolveServiceBindingFromMap(hostedBindings['hosted-am'], fakeProxy);
     expect(opts).toMatchObject({
       transport: 'ws-proxy',
-      serviceType: 'asset-manager',
+      serviceType: 'AssetManagerService',
       id: 'svc-123',
     });
   });
@@ -165,7 +163,6 @@ workflow-engine:
     password: p
 service-bindings:
   asset-manager:
-    type: asset-manager
     bindingType: non-hosted
     url: https://am.example/api/v1
     auth:
@@ -182,7 +179,6 @@ service-bindings:
     const file = writeConfig(`
 service-bindings:
   asset-manager:
-    type: asset-manager
     bindingType: non-hosted
     url: https://am.example/api/v1
     auth:

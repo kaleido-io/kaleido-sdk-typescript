@@ -23,7 +23,6 @@ workflow-engine:
 #
 # service-bindings:
 #   asset-manager:
-#     type: asset-manager
 #     bindingType: non-hosted
 #     url: https://my-account.my-kaleido.io/endpoint/my-environment/my-asset-manager/rest
 #     auth:

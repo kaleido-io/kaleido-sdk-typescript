@@ -42,7 +42,6 @@ describe('loadServiceBindings', () => {
     expect(Object.keys(bindings)).toHaveLength(3);
 
     expect(bindings['asset-manager']).toEqual({
-      type: 'asset-manager',
       bindingType: 'non-hosted',
       url: 'https://example.com/endpoint/env/am/rest/api/v1',
       auth: {
@@ -55,7 +54,6 @@ describe('loadServiceBindings', () => {
     });
 
     expect(bindings['key-manager']).toEqual({
-      type: 'key-manager',
       bindingType: 'non-hosted',
       url: 'https://example.com/endpoint/env/km/rest/api/v1',
       auth: {
@@ -69,7 +67,7 @@ describe('loadServiceBindings', () => {
     });
 
     expect(bindings['hosted-service']).toEqual({
-      type: 'asset-manager',
+      serviceType: 'AssetManagerService',
       bindingType: 'hosted',
       id: 'u:9999',
       maxRetries: undefined,
@@ -108,7 +106,6 @@ describe('parseServiceBindingsSection', () => {
   it('should parse a section with basic auth (non-hosted)', () => {
     const section = {
       'my-service': {
-        type: 'my-type',
         bindingType: 'non-hosted',
         url: 'https://example.com',
         auth: { type: 'basic', username: 'u', password: 'p' },
@@ -116,7 +113,6 @@ describe('parseServiceBindingsSection', () => {
     };
     const bindings = parseServiceBindingsSection(section);
     expect(bindings['my-service']).toEqual({
-      type: 'my-type',
       bindingType: 'non-hosted',
       url: 'https://example.com',
       auth: { type: 'basic', username: 'u', password: 'p' },
@@ -125,29 +121,17 @@ describe('parseServiceBindingsSection', () => {
     });
   });
 
-  it('should default type to binding name when type is missing', () => {
-    const section = {
-      'asset-manager': {
-        bindingType: 'non-hosted',
-        url: 'https://example.com',
-        auth: { type: 'basic', username: 'u', password: 'p' },
-      },
-    };
-    const bindings = parseServiceBindingsSection(section);
-    expect(bindings['asset-manager'].type).toBe('asset-manager');
-  });
-
-  it('should parse hosted bindings', () => {
+  it('should parse hosted bindings with serviceType', () => {
     const section = {
       'my-am': {
-        type: 'asset-manager',
+        serviceType: 'AssetManagerService',
         bindingType: 'hosted',
         id: 'u:1234',
       },
     };
     const bindings = parseServiceBindingsSection(section);
     expect(bindings['my-am']).toEqual({
-      type: 'asset-manager',
+      serviceType: 'AssetManagerService',
       bindingType: 'hosted',
       id: 'u:1234',
       maxRetries: undefined,
@@ -155,9 +139,20 @@ describe('parseServiceBindingsSection', () => {
     });
   });
 
+  it('should default serviceType to binding name when serviceType is missing', () => {
+    const section = {
+      'asset-manager': {
+        bindingType: 'hosted',
+        id: 'u:9999',
+      },
+    };
+    const bindings = parseServiceBindingsSection(section);
+    expect((bindings['asset-manager'] as { serviceType: string }).serviceType).toBe('asset-manager');
+  });
+
   it('should skip invalid entries', () => {
     const section = {
-      'valid': { type: 'x', bindingType: 'non-hosted', url: 'https://example.com', auth: { type: 'basic', username: 'u', password: 'p' } },
+      'valid': { bindingType: 'non-hosted', url: 'https://example.com', auth: { type: 'basic', username: 'u', password: 'p' } },
       'invalid': null,
       'also-invalid': 'not-an-object',
     } as any;

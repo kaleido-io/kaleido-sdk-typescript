@@ -77,22 +77,6 @@ export interface WorkflowEngineClientConfig {
   maxAttempts?: number;
   /** Service bindings for platform service access (asset-manager, key-manager, etc.) */
   serviceBindings?: ServiceBindingsMap;
-  /**
-   * Controls when setup() hooks run.
-   *
-   * - `'boot'` (default, backwards compatible): hooks run during start(), with no
-   *   authRef in scope. Hosted-binding calls inside setup() will lack authentication
-   *   and fail at the destination — matching today's behaviour.
-   * - `'deferred'`: hooks run only when the provider-proxy dispatches a
-   *   SETUP_TRIGGER_REQUEST (service-manager initiates this during deploy). The
-   *   trigger carries an authRef bound to the deploying user's JWT, so hooks can
-   *   safely call hosted services.
-   *
-   * The operator sets this field in the rendered KALEIDO_CONFIG_FILE on platforms
-   * that ship the deploy-time setup-trigger machinery. SDKs running against older
-   * platforms will not see the field and default to `'boot'`.
-   */
-  setupLifecycle?: 'boot' | 'deferred';
 }
 
 type RegisteredHandler =
@@ -144,20 +128,40 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
       wfeClientConfig.serviceBindings = serviceBindings;
     }
 
-    // Resolve the provider-specific config file: CONFIG_FILE env var, then default path.
-    const providerConfigPath = (process.env[CONFIG_FILE] ?? './config/provider-config.yaml').trim();
+    // Resolve the provider-specific ("custom") config file.
+    //
+    // Newer platforms set CONFIG_FILE to the exact mount path of the fileSet
+    // config (typically /etc/provider/config.{yaml,yml,json}); older platforms
+    // don't set it at all, so we also probe both the historical dev-loop
+    // default (./config/provider-config.yaml, matching sample templates) and
+    // the operator's DefaultConfigFileMountDir (/etc/provider/config.{yaml,yml,json})
+    // to cope with a platform that mounts the file but hasn't yet been
+    // upgraded to emit CONFIG_FILE.
+    const providerConfigCandidates = [
+      process.env[CONFIG_FILE],
+      './config/provider-config.yaml',
+      '/etc/provider/config.yaml',
+      '/etc/provider/config.yml',
+      '/etc/provider/config.json',
+    ].filter((p): p is string => typeof p === 'string' && p.trim() !== '').map((p) => p.trim());
 
     let customConfig: C = {} as C;
     let loadedFromProviderFile = false;
-    try {
-      const raw = fs.readFileSync(providerConfigPath, 'utf8');
-      customConfig = (yaml.load(raw) ?? {}) as C;
-      loadedFromProviderFile = true;
-    } catch {
-      // file absent or unreadable — fall back to 'config:' key in KALEIDO_CONFIG_FILE
+    for (const candidate of providerConfigCandidates) {
+      try {
+        const raw = fs.readFileSync(candidate, 'utf8');
+        customConfig = (yaml.load(raw) ?? {}) as C;
+        loadedFromProviderFile = true;
+        break;
+      } catch {
+        // try next candidate
+      }
     }
 
     if (!loadedFromProviderFile) {
+      // Fall back to a `config:` key inside the KALEIDO_CONFIG_FILE. This is
+      // the historical single-file layout used before the operator started
+      // mounting the fileSet at /etc/provider.
       const kaleidoConfigPath = (
         path ??
         process.env[KALEIDO_CONFIG_FILE] ??
@@ -221,20 +225,30 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
    * Run all handler `setup` hooks, then exit without connecting to WFE.
    * Use this as an init-container / migration step.
    */
-  async setup(): Promise<void> {
+  async setup(authRef?: string): Promise<void> {
     const controller = new AbortController();
-    await this.runSetupHooks(controller.signal);
+    await this.runSetupHooks(controller.signal, authRef);
     controller.abort();
   }
 
   /**
-   * Connect to WFE and register handlers. When `setupLifecycle: 'boot'` (default),
-   * setup() hooks also run here, after the connect — so that hosted ws-proxy
-   * bindings have an established WebSocket before setup() tries to call platform
-   * services. When `setupLifecycle: 'deferred'`, hooks do NOT run here; they run
-   * when the proxy dispatches a SETUP_TRIGGER_REQUEST (issued by service-manager
-   * as part of the deploy operation, carrying the deployer's authRef so hosted-
-   * binding calls inside setup() authenticate as the deploying user).
+   * Connect to WFE and register handlers. Setup lifecycle depends on the
+   * provider's service bindings:
+   *
+   * - If ANY binding is `hosted`, setup hooks are deferred until the provider-
+   *   proxy dispatches a SETUP_TRIGGER_REQUEST (issued by a user-initiated
+   *   POST /providers/{name}/setup). That trigger carries an authRef bound to
+   *   the caller's JWT so hosted-binding calls inside setup() authenticate as
+   *   that user.
+   * - If all bindings are non-hosted (or none are declared), hooks run at
+   *   boot immediately after connect. Non-hosted transports carry their own
+   *   credentials in config, so no per-request authRef is needed.
+   *
+   * The trigger handler is always registered so that a stray trigger against
+   * a non-hosted deployment still gets a well-formed response.
+   *
+   * For init-container / migration use where no WFE connection is wanted at
+   * all, call `setup()` directly instead of `start()`.
    */
   async start(): Promise<void> {
     this.registerBuilderHandlers();
@@ -245,30 +259,19 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     this.runtime.setProviderCapabilities({
       hasSetupHooks: this.hasAnySetupHook(),
     });
+    this.runtime.registerSetupTriggerHandler((authRef) => this.runSetupOnTrigger(authRef));
     await this.connect();
-    if (this.wfeConfig.setupLifecycle === 'deferred') {
-      // Trigger handler is registered ONLY in deferred mode. In boot mode, any stray
-      // SETUP_TRIGGER_REQUEST (e.g. a misconfigured platform sending one despite the
-      // operator not emitting `deferred`) falls through to the runtime's default
-      // ack-with-success-no-op path — service-manager isn't blocked, and setup hooks
-      // are not run twice.
-      this.registerSetupTriggerHandler();
-      log.info(`setupLifecycle=deferred: skipping boot-time setup hooks (waiting for SETUP_TRIGGER_REQUEST)`);
+    if (this.hasAnyHostedBinding()) {
+      log.info('Hosted service bindings present: deferring setup hooks until SETUP_TRIGGER_REQUEST');
       return;
     }
+    log.info('No hosted service bindings: running setup hooks at boot');
     const controller = new AbortController();
     await this.runSetupHooks(controller.signal);
   }
 
-  /**
-   * Registers a SETUP_TRIGGER_REQUEST handler on the runtime that runs all setup
-   * hooks with the trigger's authRef in scope and returns the aggregated outcome.
-   * Always registered (both lifecycles) so service-manager's dispatch sees a
-   * response — in `boot` mode, this re-runs the hooks with admin auth, which
-   * customer code should treat as idempotent.
-   */
-  private registerSetupTriggerHandler(): void {
-    this.runtime.registerSetupTriggerHandler((authRef) => this.runSetupOnTrigger(authRef));
+  private hasAnyHostedBinding(): boolean {
+    return Object.values(this.bindings).some((b) => b.bindingType === 'hosted');
   }
 
   /** @internal — invoked by the runtime when SETUP_TRIGGER_REQUEST arrives. */
@@ -360,7 +363,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
         return {
           transport: 'ws-proxy',
           wsProxy: this.getWSProxyAdapter(),
-          serviceType: binding.type,
+          serviceType: binding.serviceType,
           id: binding.id,
           authRef,
         };
@@ -395,13 +398,13 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     );
   }
 
-  private async runSetupHooks(signal: AbortSignal): Promise<void> {
+  private async runSetupHooks(signal: AbortSignal, authRef?: string): Promise<void> {
     for (const registered of this.registeredHandlers) {
       if (registered.type === 'eventSource') continue;
       const { name, def } = registered;
       if (def.setup) {
         log.info(`Running setup hook for handler '${name}'`);
-        const ctx = this.buildSetupContext(name, signal);
+        const ctx = this.buildSetupContext(name, signal, authRef);
         await def.setup(ctx as SetupContext<unknown>);
       }
     }
