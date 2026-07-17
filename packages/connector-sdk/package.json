@@ -1,6 +1,6 @@
 {
   "name": "@kaleido-io/connector-sdk",
-  "version": "1.0.0-rc1",
+  "version": "1.0.0-rc2",
   "description": "TypeScript types and utilities for Kaleido connector event data",
   "type": "module",
   "main": "dist/src/index.js",
@@ -38,7 +38,7 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "@kaleido-io/core-sdk": "^1.0.0-rc1"
+    "@kaleido-io/core-sdk": "^1.0.0-rc2"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.0",
