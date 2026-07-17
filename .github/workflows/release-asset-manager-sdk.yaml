@@ -126,6 +126,12 @@ jobs:
           set -e
           npm install
           npm run build
+          echo "=== package.json before publish ==="
+          cat package.json
+          echo "=== tarball package.json ==="
+          TARBALL=$(npm pack 2>/dev/null)
+          tar xzf "$TARBALL" --to-stdout package/package.json 2>/dev/null || echo "(could not extract)"
+          rm -f "$TARBALL"
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
             npm publish --dry-run --access public --tag ${{ steps.parse_tags.outputs.primary_tag }}
           else
