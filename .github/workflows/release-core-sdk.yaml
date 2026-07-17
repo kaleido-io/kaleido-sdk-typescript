@@ -118,7 +118,7 @@ jobs:
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
             npm publish --dry-run --access public --tag ${{ steps.parse_tags.outputs.primary_tag }}
           else
-            npm publish --provenance --access public --tag ${{ steps.parse_tags.outputs.primary_tag }}
+            npm publish --access public --tag ${{ steps.parse_tags.outputs.primary_tag }}
           fi
 
       - name: Add additional dist-tags
