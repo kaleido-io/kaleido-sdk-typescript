@@ -131,16 +131,17 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     // Resolve the provider-specific ("custom") config file.
     //
     // Newer platforms set CONFIG_FILE to the exact mount path of the fileSet
-    // config (typically /etc/provider/config.{yaml,json}); older platforms
+    // config (typically /etc/provider/config.{yaml,yml,json}); older platforms
     // don't set it at all, so we also probe both the historical dev-loop
     // default (./config/provider-config.yaml, matching sample templates) and
-    // the operator's DefaultConfigFileMountDir (/etc/provider/config.{yaml,json})
+    // the operator's DefaultConfigFileMountDir (/etc/provider/config.{yaml,yml,json})
     // to cope with a platform that mounts the file but hasn't yet been
     // upgraded to emit CONFIG_FILE.
     const providerConfigCandidates = [
       process.env[CONFIG_FILE],
       './config/provider-config.yaml',
       '/etc/provider/config.yaml',
+      '/etc/provider/config.yml',
       '/etc/provider/config.json',
     ].filter((p): p is string => typeof p === 'string' && p.trim() !== '').map((p) => p.trim());
 
