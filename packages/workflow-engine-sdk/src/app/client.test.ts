@@ -23,10 +23,10 @@ import type { ServiceBindingsMap } from '../service/types.js';
 // Helpers
 // ---------------------------------------------------------------------------
 
-type BindingMap = Record<string, { type: string; bindingType: 'non-hosted'; url: string; auth: Record<string, unknown> }>;
+type BindingMap = Record<string, { bindingType: 'non-hosted'; url: string; auth: Record<string, unknown> }>;
 
 const singleAMBindings: BindingMap = {
-  'asset-manager': { type: 'asset-manager', bindingType: 'non-hosted', url: 'http://am', auth: {} },
+  'asset-manager': { bindingType: 'non-hosted', url: 'http://am', auth: {} },
 };
 
 function makeTestClient<C>(config: C = {} as C, bindings: BindingMap = singleAMBindings) {
@@ -103,7 +103,7 @@ describe('WorkflowEngineClient builder', () => {
     // and non-hosted deployments.
     const client = WorkflowEngineClient._createForTest({}, {
       providerName: 'test-provider',
-      serviceBindings: { 'am': { type: 'asset-manager', bindingType: 'non-hosted', url: 'http://am', auth: { type: 'basic', username: 'u', password: 'p' } } },
+      serviceBindings: { 'am': { bindingType: 'non-hosted', url: 'http://am', auth: { type: 'basic', username: 'u', password: 'p' } } },
     });
     jest.spyOn(client, 'connect').mockResolvedValue(undefined);
     jest.spyOn(client, 'registerEventProcessor').mockImplementation(() => {});
@@ -125,7 +125,7 @@ describe('WorkflowEngineClient builder', () => {
     // to dispatch SETUP_TRIGGER_REQUEST with a valid authRef.
     const client = WorkflowEngineClient._createForTest({}, {
       providerName: 'test-provider',
-      serviceBindings: { 'am': { type: 'asset-manager', bindingType: 'hosted', id: 's:am' } },
+      serviceBindings: { 'am': { serviceType: 'AssetManagerService', bindingType: 'hosted', id: 's:am' } },
     });
     jest.spyOn(client, 'connect').mockResolvedValue(undefined);
     jest.spyOn(client, 'registerEventProcessor').mockImplementation(() => {});
@@ -153,7 +153,7 @@ describe('WorkflowEngineClient builder', () => {
 
   it('runSetupOnTrigger runs setup hooks and exposes authRef via SetupContext', async () => {
     const client = makeTestClient({}, {
-      'asset-manager': { type: 'asset-manager', bindingType: 'non-hosted', url: 'http://am', auth: {} },
+      'asset-manager': { bindingType: 'non-hosted', url: 'http://am', auth: {} },
     });
     let capturedAuthRef: string | undefined;
     const setupFn = jest.fn(async (ctx: any) => {

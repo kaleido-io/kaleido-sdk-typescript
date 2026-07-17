@@ -57,8 +57,6 @@ export type ServiceBindingConfig =
   | HostedServiceBindingConfig;
 
 export interface NonHostedServiceBindingConfig {
-  /** Routing key identifying the target service type (e.g. 'asset-manager', 'key-manager', 'apigw') */
-  type: string;
   bindingType: 'non-hosted';
   /** Base URL for direct HTTP. */
   url: string;
@@ -71,8 +69,8 @@ export interface NonHostedServiceBindingConfig {
 }
 
 export interface HostedServiceBindingConfig {
-  /** Routing key identifying the target service type (e.g. 'asset-manager', 'key-manager', 'apigw') */
-  type: string;
+  /** SM-resolved platform service type (e.g. 'AssetManagerService'). Written by the operator. */
+  serviceType: string;
   bindingType: 'hosted';
   /** Service instance identifier. Sent to the proxy to resolve the actual service URL. */
   id: string;
@@ -104,14 +102,14 @@ export function resolveServiceBindingFromMap(
     case 'hosted':
       if (!wsProxy) {
         throw new Error(
-          `Service binding of type '${binding.type}' is a hosted binding and requires a ` +
+          `Service binding of type '${binding.serviceType}' is a hosted binding and requires a ` +
             `live workflow-engine connection to resolve — supply a wsProxy adapter`,
         );
       }
       return {
         transport: 'ws-proxy',
         wsProxy,
-        serviceType: binding.type,
+        serviceType: binding.serviceType,
         id: binding.id,
       };
 
@@ -250,7 +248,7 @@ export function parseServiceBindingsSection(
       continue;
     }
     const entry = value as Record<string, unknown>;
-    const serviceType = cfgStr(entry, 'type') || name;
+    const serviceType = cfgStr(entry, 'serviceType') || name;
     const bindingType = cfgStr(entry, 'bindingType');
     const maxRetries = cfgNum(entry, 'maxRetries');
     const timeout = cfgNum(entry, 'timeout');
@@ -258,14 +256,13 @@ export function parseServiceBindingsSection(
     if (bindingType === 'hosted') {
       const id = cfgStr(entry, 'id');
       if (!id) { log.warn(`Skipping hosted binding '${name}': missing required 'id' field`); continue; }
-      bindings[name] = { type: serviceType, bindingType, id, maxRetries, timeout };
+      bindings[name] = { serviceType, bindingType, id, maxRetries, timeout };
     } else {
       const url = cfgStr(entry, 'url');
       if (!url) { log.warn(`Skipping non-hosted binding '${name}': missing required 'url' field`); continue; }
       const authObj = cfgObj(entry, 'auth');
       if (!authObj) { log.warn(`Skipping non-hosted binding '${name}': missing required 'auth' field`); continue; }
       bindings[name] = {
-        type: serviceType,
         bindingType: 'non-hosted',
         url,
         auth: parseServiceBindingAuth(authObj),
