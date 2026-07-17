@@ -122,6 +122,8 @@ jobs:
 
       - name: Publish to npm with primary tag
         working-directory: packages/connector-sdk
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         shell: bash
         run: |
           set -e
