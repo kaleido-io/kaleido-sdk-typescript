@@ -108,8 +108,6 @@ jobs:
 
       - name: Publish to npm with primary tag
         working-directory: packages/core-sdk
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         shell: bash
         run: |
           set -e
@@ -118,7 +116,7 @@ jobs:
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
             npm publish --dry-run --access public --tag ${{ steps.parse_tags.outputs.primary_tag }}
           else
-            npm publish --access public --tag ${{ steps.parse_tags.outputs.primary_tag }}
+            npm publish --provenance --access public --tag ${{ steps.parse_tags.outputs.primary_tag }}
           fi
 
       - name: Add additional dist-tags
