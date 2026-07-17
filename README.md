@@ -2,19 +2,23 @@
 
 # Kaleido TypeScript SDKs
 
-This repository contains Kaleido's TypeScript SDK packages for interacting with Kaleido platform services. Using these SDK packages you can write standalone applications that connect to thr Kaleido platform or hosted applications which run inside the KAleido platform. Each SDK package corresponds to a single Kaleido service with an additional optional entry point package for applications which need to use many of the sdk pacakges
+This repository contains Kaleido's TypeScript SDK packages for interacting with Kaleido platform
+services. Using these SDK packages you can write standalone applications that connect to the
+Kaleido platform, or hosted applications which run inside the Kaleido platform. Each SDK package
+corresponds to a single Kaleido service, with an additional optional entry-point package for
+applications which need to use many of the SDK packages.
 
 ## Packages
 
-- [`@kaleido-io/core-sdk`](./packages/core-sdk/README.md) — Core utilities shared across all SDK packages: HTTP transport, logging, and service-binding resolution. Import logging and setup context from here.
-- [`@kaleido-io/workflow-engine-sdk`](./packages/workflow-engine-sdk/README.md) — Workflow engine SDK, allows you to build workflow engine hosted applications such as event sources, transaction handlers, event processors and indexers
-- [`@kaleido-io/asset-manager-sdk`](./packages/asset-manager-sdk/README.md) — Asset manager SDK allows you to interact with Kaleido's asset manager tokenization service to bulk query and upsert data into the asset model
-- [`@kaleido-io/connector-sdk`](./packages/connector-sdk/README.md) — Connector sdk provides connector helpers and chain-specific types (EVM, BTC, Canton)
-- [`@kaleido-io/kaleido-sdk`](./packages/kaleido-sdk/README.md) — optional umbrella package that serves as a single entry point for applications using multiple SDK pacakges (`KaleidoClient`) and provides ability to scaffold projects based on templates `npx ... init`
+- [`@kaleido-io/core-sdk`](./packages/core-sdk/README.md) — Core utilities shared across all SDK packages: HTTP transport, logging, and service-binding resolution. Import logging from `@kaleido-io/core-sdk/log` and setup context from the package root.
+- [`@kaleido-io/workflow-engine-sdk`](./packages/workflow-engine-sdk/README.md) — Workflow Engine SDK; allows you to build workflow engine hosted applications such as event sources, transaction handlers, event processors, and indexers
+- [`@kaleido-io/asset-manager-sdk`](./packages/asset-manager-sdk/README.md) — Asset Manager SDK; allows you to interact with Kaleido's asset manager tokenization service to bulk query and upsert data into the asset model
+- [`@kaleido-io/connector-sdk`](./packages/connector-sdk/README.md) — Connector SDK; provides connector helpers and chain-specific types (EVM, BTC, Canton)
+- [`@kaleido-io/kaleido-sdk`](./packages/kaleido-sdk/README.md) — Optional umbrella package that serves as a single entry point for applications using multiple SDK packages (`KaleidoClient`) and provides the ability to scaffold projects based on templates via `npx @kaleido-io/kaleido-sdk init`
 
 ## Using a single service SDK
 
-You are able to use a single service SDK directly in order to avoid pulling in unnecesary dependencies.
+You are able to use a single service SDK directly in order to avoid pulling in unnecessary dependencies.
 
 For example, if your app is primarily a Workflow Engine provider, start with `@kaleido-io/workflow-engine-sdk`:
 
@@ -38,7 +42,7 @@ const am = client.assetManagerClient();
 const evm = client.evmConnectorClient();
 ```
 
-Note that adding `@kaleido-io/kaleido-sdk` as a dependncy pulls in all SDK packages as transitive dependencies.
+Note that adding `@kaleido-io/kaleido-sdk` as a dependency pulls in all SDK packages as transitive dependencies.
 
 ## Quick Start: Scaffold a Project
 
@@ -53,6 +57,12 @@ npx @kaleido-io/kaleido-sdk init my-erc20-indexer --template erc20-indexer
 
 # BTC indexer template
 npx @kaleido-io/kaleido-sdk init my-btc-indexer --template btc-indexer
+
+# Native ETH indexer template
+npx @kaleido-io/kaleido-sdk init my-eth-indexer --template native-eth-indexer
+
+# Canton CIP-56 indexer template
+npx @kaleido-io/kaleido-sdk init my-canton-indexer --template canton-cip56-indexer
 ```
 
 You can also add a template into an existing project (omit project name):
@@ -161,9 +171,9 @@ service-bindings:
 
 ### Service bindings
 
-A service binding provides a mapping between the name of a service and it's conenction information. Because this is held in config this means that you can swap between hosted bindings where the connectivity information is autoamtically provided by the platform and non-hosted bindings where you provide the connection information. 
+A service binding provides a mapping between the name of a service and its connection information. Because this is held in config, you can swap between hosted bindings (where connectivity information is automatically provided by the platform) and non-hosted bindings (where you provide the connection information).
 
-This means that you can seaamlessly transition between running an application locally on your development workstation in order to iterate quickly and running hosted within the Kaleido platform.
+This means that you can seamlessly transition between running an application locally on your development workstation in order to iterate quickly and running hosted within the Kaleido platform.
 
 When constructing a client you can specify the name of a service binding in order to have the client configured with the appropriate connection for that service. For example:
 
@@ -192,7 +202,7 @@ service-bindings:
       scheme: Bearer
 ```
 
-The exception to this pattern with the Workflow engine SDK. Since the workflow engine is a singletone you can not specify a binding name when obtaining a workflow engine client. For more details see [Workflow Engine SDK docs](./packages/workflow-engine-sdk/README.md)
+The exception to this pattern is the Workflow Engine SDK. Since the workflow engine is a singleton, you cannot specify a binding name when obtaining a workflow engine client. For more details see [Workflow Engine SDK docs](./packages/workflow-engine-sdk/README.md).
 
 ### Provider config (`provider-config.yaml`)
 
@@ -200,19 +210,19 @@ This file is for your own application settings (batch size, allowlists, polling 
 
 ### Environment Variables
 
-By default configuration is sourced from the folloging environment variables:
+By default configuration is sourced from the following environment variables:
 
-- `KALEIDO_CONFIG_FILE` - path to `config.yaml` (preferred)
-- `CONFIG_FILE` - path to `provider-config.yaml`
+- `KALEIDO_CONFIG_FILE` — path to `config.yaml` (preferred). Used by `fromConfigFile()` when no path argument is provided.
+- `CONFIG_FILE` — path to `provider-config.yaml` (app-specific settings loaded by the Workflow Engine client)
 
-These paths are used to locate configuration when isntantiating new clients using the `fromConfigFile()` methods with no path argument. Using these environment variables means that you can inject configuration into a docker container at development time. When running hosted within the Kaleido platform the platform will write configuration information for service bindings in KALEIDO_CONFIG_FILE and will write the provided config file into CONFIG_FILE. 
+Using these environment variables means that you can inject configuration into a Docker container at development time. When running hosted within the Kaleido platform, the platform writes service-binding configuration to `KALEIDO_CONFIG_FILE` and writes the provided config file into `CONFIG_FILE`.
 
 ## Logging
 
-All SDK packages share the same structured logger from `@kaleido-io/core-sdk`. Import logging from there regardless of which service SDKs your application uses:
+All SDK packages share the same structured logger from `@kaleido-io/core-sdk`. Import logging from `@kaleido-io/core-sdk/log` regardless of which service SDKs your application uses:
 
 ```ts
-import { newLogger, setLoggerFactory } from '@kaleido-io/core-sdk';
+import { newLogger, setLoggerFactory } from '@kaleido-io/core-sdk/log';
 
 const log = newLogger('my-app');
 
@@ -225,7 +235,7 @@ log.error('Batch failed', { error: err.message });
 To plug in your own backend (pino, winston, NestJS logger, etc.):
 
 ```ts
-import { setLoggerFactory } from '@kaleido-io/core-sdk';
+import { setLoggerFactory } from '@kaleido-io/core-sdk/log';
 
 setLoggerFactory((context) => ({
   debug: (msg, ...args) => myLogger.debug(`[${context}] ${msg}`, ...args),
@@ -236,7 +246,7 @@ setLoggerFactory((context) => ({
 ```
 
 
-## Example usage by Package
+## Example usage by package
 
 ### 1) Workflow Engine SDK (provider/runtime entry)
 
@@ -274,7 +284,7 @@ const amFromExplicitServiceBinding = new AssetManagerClient({
       password: 'my-api-key',
     },
   });
-const status3 = await amFromExplicitServiceBinding.getStatus()
+const status3 = await amFromExplicitServiceBinding.getStatus();
 ```
 
 ### 3) Connector SDK
@@ -328,7 +338,7 @@ const client = KaleidoClient.fromConfigFile();
 const am = client.assetManagerClient('asset-manager');
 ```
 
-It is also possible to explicitly provide either hosted or non-hosted service bindings explicitly:
+It is also possible to explicitly provide either hosted or non-hosted service bindings:
 
 ```ts
 import { KaleidoClient } from '@kaleido-io/kaleido-sdk';
