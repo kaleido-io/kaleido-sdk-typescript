@@ -121,6 +121,8 @@ jobs:
 
       - name: Add additional dist-tags
         if: steps.parse_tags.outputs.additional_tags != '' && !inputs.dry_run
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         shell: bash
         run: |
           # The version for `dist-tag add` must not have the 'v' prefix
