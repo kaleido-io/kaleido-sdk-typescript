@@ -67,7 +67,7 @@ describe('resolveServiceBindingFromMap (core helper)', () => {
     const opts = resolveServiceBindingFromMap(hostedBindings['hosted-am'], fakeProxy);
     expect(opts).toMatchObject({
       transport: 'ws-proxy',
-      serviceType: 'asset-manager',
+      serviceType: 'AssetManagerService',
       id: 'svc-123',
     });
   });
