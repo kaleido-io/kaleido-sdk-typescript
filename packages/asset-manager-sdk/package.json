@@ -2,6 +2,10 @@
   "name": "@kaleido-io/asset-manager-sdk",
   "version": "1.0.0-rc2",
   "description": "TypeScript SDK client for the Kaleido Asset Manager service",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaleido-io/kaleido-sdk-typescript.git"
+  },
   "type": "module",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
