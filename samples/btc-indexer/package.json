@@ -21,10 +21,10 @@
     "patch-provider-runtime": "curl -s -f -X PUT \"${PLATFORM_URL}/api/v1/environments/${ENV_ID}/runtimes/${RUNTIME_NAME}\" -u \"${API_KEY}:${API_SECRET}\" -H 'Content-Type: application/json' -d '{\"name\":\"'\"${RUNTIME_NAME}\"'\",\"type\":\"ProviderRuntime\",\"image\":{\"repository\":\"'\"${IMAGE_REPOSITORY}\"'\",\"tag\":\"'\"${IMAGE_TAG:-latest}\"'\"}}'"
   },
   "dependencies": {
-    "@kaleido-io/core-sdk": "*",
-    "@kaleido-io/workflow-engine-sdk": "*",
-    "@kaleido-io/connector-sdk": "*",
-    "@kaleido-io/asset-manager-sdk": "*",
+    "@kaleido-io/core-sdk": "^1.0.0",
+    "@kaleido-io/workflow-engine-sdk": "^1.0.0",
+    "@kaleido-io/connector-sdk": "^1.0.0",
+    "@kaleido-io/asset-manager-sdk": "^1.0.0",
     "dotenv": "^17.0.0",
     "js-yaml": "^4.1.1"
   },
