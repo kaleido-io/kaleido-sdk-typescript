@@ -1,41 +1,63 @@
 # Kaleido Workflow Engine TypeScript SDK
 
-A TypeScript SDK for building handlers that integrate with the Kaleido workflow engine. This is one of several SDK pacakges provided to interact with the Kaleido platform. For details of other SDK packages or general information about Kaleido SDKs see the [Kaleido Typsescript SDK Readme](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/README.md) 
+A TypeScript SDK for building handlers that integrate with the Kaleido workflow engine.
+This is one of several SDK packages provided to interact with the Kaleido platform. For
+details of other SDK packages or general information about Kaleido SDKs see the
+[Kaleido TypeScript SDK README](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/README.md).
 
-Using the Workflow engine SDK you can build applications called `providers` that interact with the workflow engine. The different types of providers supported are:
+Using the Workflow Engine SDK you can build applications called **providers** that
+interact with the workflow engine. The provider types supported are:
 
-transaction handlers - Providers that execute workflow stage actions when the engine sends transaction batches (e.g. business logic, external API calls, stage transitions).
-event sources - Providers that poll or subscribe to external systems and emit events (with checkpoints) into the workflow engine.
-event processors - Providers that receive event batches from the engine and run your processing logic against them. Includes optional setup hooks, typed config, and service-binding helpers — suited for anything from simple event logging to ingesting events into a datastore.
+- **Transaction handlers** — execute workflow stage actions when the engine sends
+  transaction batches (business logic, external API calls, stage transitions).
+- **Event sources** — poll or subscribe to external systems and emit events (with
+  checkpoints) into the workflow engine.
+- **Event processors** — receive event batches from the engine and run your processing
+  logic against them, with optional setup hooks, typed config, and service-binding
+  helpers — suited for anything from simple event logging to ingesting events into a
+  datastore.
 
-More information on the workflow engine programming model is avalable from the [Kaleido platform docsite](https://docs.kaleido.io/platform/web3-middleware/workflowengine/)
+More information on the workflow engine programming model is available from the
+[Kaleido platform docsite](https://docs.kaleido.io/platform/web3-middleware/workflowengine/).
 
 ## Running hosted or non-hosted
 
-Providers built with the Workflow engine SDK can run in one of 2 modes. Hosted or non-hosted.
+Providers built with the Workflow Engine SDK can run in one of two modes: hosted or
+non-hosted.
 
 Step-by-step instructions: **[Running locally](#running-locally)** (development) · **[Hosting on the Kaleido platform](#hosting-on-the-kaleido-platform)** (production).
 
 ### Hosted
 
-The provider is built as a docker images which is uploaded to the Kaleido Artifact Registry. A provider service is created inside the Kaleido platform to instantiate an instance of the provider which runs as a Kaleido managed service.
+The provider is built as a Docker image which is uploaded to the Kaleido Artifact Registry.
+A Provider service is created inside the Kaleido platform to instantiate an instance of
+the provider which runs as a Kaleido managed service.
 
-In hosted mode the providers has conenction and auth context information automatically provided to it by service-bindings.
+In hosted mode the provider has connection and auth context information automatically
+provided to it by service bindings.
 
-This is the intended usage mode for running a provider in production. See [Hosting on the Kaleido platform](#hosting-on-the-kaleido-platform) for build, push, and deploy steps.
+This is the intended usage mode for running a provider in production. See
+[Hosting on the Kaleido platform](#hosting-on-the-kaleido-platform) for build, push, and
+deploy steps.
 
 ### Non-hosted
 
-The provider runs locally on your development workstation, either as a typescript application or as a dockerfile. Connection information is provided as configuration via non-hosted service bindings which contain connection information required to connect to Kaleido platform services.
+The provider runs locally on your development workstation, either as a TypeScript
+application or as a Docker container. Connection information is provided as configuration
+via non-hosted service bindings which contain the connection details required to connect
+to Kaleido platform services.
 
-Running in this mode is intended to allow you to iterate quickly during development of a provider. It is not reccomended to run in non-hosted mode for production use-cases. See [Running locally](#running-locally) for setup and verification steps.
+Running in this mode is intended to allow you to iterate quickly during development of a
+provider. It is not recommended to run in non-hosted mode for production use-cases. See
+[Running locally](#running-locally) for setup and verification steps.
 
 
 ## Quick start
 
 ### Scaffolding from a template
 
-The `kaleido-sdk` pacakage allows you to scaffold a new or existing project from and example to get started quickly:
+The `kaleido-sdk` package allows you to scaffold a new or existing project from an
+example to get started quickly.
 
 Scaffold a new provider project from a template:
 
@@ -48,11 +70,17 @@ npx @kaleido-io/kaleido-sdk init <project-name> --template erc20-indexer
 
 # Start from the Bitcoin indexer template
 npx @kaleido-io/kaleido-sdk init <project-name> --template btc-indexer
+
+# Start from the Native ETH indexer template
+npx @kaleido-io/kaleido-sdk init <project-name> --template native-eth-indexer
+
+# Start from the Canton CIP-56 indexer template
+npx @kaleido-io/kaleido-sdk init <project-name> --template canton-cip56-indexer
 ```
 
 Omit `--template` in an interactive terminal and you'll be prompted to choose one.
 
-Scaffold a new provider project into an existing project:
+Scaffold into an existing project:
 
 Omit the project name to copy template source files into the current directory
 instead of creating a new one. Only the `src/` and `config/` directories are
@@ -112,19 +140,19 @@ In add-to-existing mode, your root project files are not overwritten (for exampl
 
 ### Installation
 
-If you do not wish to start from a template you can simply import the SDK directly
+If you do not wish to start from a template you can simply import the SDK directly:
 
 ```bash
 npm install @kaleido-io/workflow-engine-sdk
 ```
 
-If you are using multiple SDK packaages you may wish to use the multi-service client:
+If you are using multiple SDK packages you may wish to use the multi-service client:
 
 ```bash
 npm install @kaleido-io/kaleido-sdk
 ```
 
-Note that this will pull in all SDK pacakges as transitive dependncies.
+Note that this will pull in all SDK packages as transitive dependencies.
 
 
 
@@ -172,11 +200,17 @@ service-bindings:
 
 ### Service bindings
 
-A service binding provides a mapping between the name of a service and it's conenction information. Because this is held in config this means that you can swap between hosted bindings where the connectivity information is autoamtically provided by the platform and non-hosted bindings where you provide the connection information. 
+A service binding provides a mapping between the name of a service and its connection
+information. Because this is held in config, you can swap between hosted bindings (where
+connectivity information is automatically provided by the platform) and non-hosted
+bindings (where you provide the connection information).
 
-This means that you can seaamlessly transition between running an application locally on your development workstation in order to iterate quickly and running hosted within the Kaleido platform.
+This means that you can seamlessly transition between running an application locally on
+your development workstation in order to iterate quickly and running hosted within the
+Kaleido platform.
 
-When constructing a client you can specify the name of a service binding in order to have the client configured with the appropriate connection for that service. For example:
+When constructing a client you can specify the name of a service binding in order to have
+the client configured with the appropriate connection for that service. For example:
 
 ```typescript
 const amClient1 = AssetManagerClient.fromConfigFile('assetManager1');
@@ -203,7 +237,11 @@ service-bindings:
       scheme: Bearer
 ```
 
-The exception to this pattern is in the connection to the Workflow engine itself. The workflow engine is a singleton and this connection is also managed through the Provider Proxy running on the Kaleido platform, therefore this has it's own first-class stanza in the configuration file. The workflow engine connection is defined using the top level `workflow-engine` root-key in the config yaml file.
+The exception to this pattern is the connection to the workflow engine itself. The
+workflow engine is a singleton and this connection is also managed through the Provider
+Proxy running on the Kaleido platform, therefore it has its own first-class stanza in the
+configuration file. The workflow engine connection is defined using the top-level
+`workflow-engine` root key in the config YAML file.
 
 **Example - with basic auth:**
 ```yaml
@@ -233,12 +271,16 @@ workflow-engine:
   retryDelay: 2s
 ```
 
-When you are running in `hosted` mode the platform instead uses a websocket connection to communicate with the workflow engine. The configuration for this web socket connection is automatically generated by a platform when you create a provider service.
+When you are running in `hosted` mode the platform instead uses a WebSocket connection to
+communicate with the workflow engine. The configuration for this WebSocket connection is
+automatically generated by the platform when you create a Provider service.
 
 
 ### Provider config (`provider-config.yaml`)
 
-This file is for your own application settings (batch size, allowlists, polling windows, etc.), not platform connection details. When you are implementing a provider the configuration is automatically made available for you as ctx.config. For example:
+This file is for your own application settings (batch size, allowlists, polling windows,
+etc.), not platform connection details. When you are implementing a provider the
+configuration is automatically made available to you as `ctx.config`. For example:
 
 ```yaml
 batchSize: 50
@@ -249,28 +291,33 @@ allowlist:
 
 ```ts
 import { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
-  interface MyConfig {
-    batchSize: number;
-    allowlist: string[];
-  }
-  WorkflowEngineClient.fromConfigFile<MyConfig>()
-    .eventProcessor('my-processor', {
-      async processBatch(ctx, events) {
-        const { batchSize, allowlist } = ctx.config;
-        // use batchSize, allowlist...
-      },
-    })
-    .start();
+
+interface MyConfig {
+  batchSize: number;
+  allowlist: string[];
+}
+
+WorkflowEngineClient.fromConfigFile<MyConfig>()
+  .eventProcessor('my-processor', {
+    async processBatch(ctx, events) {
+      const { batchSize, allowlist } = ctx.config;
+      // use batchSize, allowlist...
+    },
+  })
+  .start();
 ```
 
 ### Environment Variables
 
 By default configuration is sourced from the following environment variables:
 
-- `KALEIDO_CONFIG_FILE` - path to `config.yaml` (preferred)
-- `CONFIG_FILE` - path to `provider-config.yaml`
+- `KALEIDO_CONFIG_FILE` — path to `config.yaml` (preferred). Used by `fromConfigFile()` when no path argument is provided.
+- `CONFIG_FILE` — path to `provider-config.yaml` (app-specific settings loaded by the Workflow Engine client)
 
-These paths are used to locate configuration when isntantiating new clients using the `fromConfigFile()` methods with no path argument. Using these environment variables means that you can inject configuration into a docker container at development time. When running hosted within the Kaleido platform the platform will write configuration information for service bindings in KALEIDO_CONFIG_FILE and will write the provided config file into CONFIG_FILE.
+Using these environment variables means that you can inject configuration into a Docker
+container at development time. When running hosted within the Kaleido platform, the
+platform writes service-binding configuration to `KALEIDO_CONFIG_FILE` and writes the
+provided config file into `CONFIG_FILE`.
 
 ## Core concepts
 
@@ -278,37 +325,37 @@ These paths are used to locate configuration when isntantiating new clients usin
 
 The main entry point that manages:
 
-- Handler registration (transaction handlers and event sources)
+- Handler registration (transaction handlers, event sources, and event processors)
 - Connection lifecycle
 - Automatic reconnection and re-registration
 - Message routing between engine and handlers
 
 
-Obtaining a client: 
+Obtaining a client:
 
-Service bindings (reccomended)
+From config file (recommended):
 ```typescript
 const client = WorkflowEngineClient.fromConfigFile();
 ```
 
-Service bindings, non-default config file
+From a non-default config file:
 ```ts
 const client = WorkflowEngineClient.fromConfigFile('/path/to/file.yaml');
 ```
 
-Explicit service bindings
+Explicit config:
 ```typescript
 const client = new WorkflowEngineClient({
   url: "ws://localhost:5503/ws",
   providerName: "my-service",
   authToken: "your-token",
-  authHeaderName: "X-Kld-Authz", // Optional, defaults to X-Kld-Authz
+  authHeaderName: "X-Kld-Authz", // Optional, defaults to Authorization
   reconnectDelay: 2000, // Optional, ms between reconnect attempts
   maxAttempts: undefined, // Optional, undefined = infinite retries (recommended)
 });
 ```
 
-Usage
+Usage:
 ```ts
 // Register handlers
 client.registerTransactionHandler("handler-name", transactionHandler);
@@ -579,10 +626,10 @@ For larger indexers, the class form is often cleaner — see the full working ex
 
 ## Logging
 
-The SDK uses a structured logger:
+The SDK uses the structured logger from `@kaleido-io/core-sdk`:
 
 ```typescript
-import { newLogger } from '@kaleido-io/workflow-engine-sdk';
+import { newLogger } from '@kaleido-io/core-sdk/log';
 
 const log = newLogger('my-component');
 
@@ -633,7 +680,7 @@ import {
   createTransactionHandler,
   InvocationMode,
   EvalResult,
-  Patch,
+  addOp,
   ConfigLoader,
 } from "@kaleido-io/workflow-engine-sdk";
 import * as fs from "fs";
@@ -679,7 +726,7 @@ async function main() {
             result: EvalResult.COMPLETE,
             output: { validated: true },
             extraUpdates: [
-              Patch.add("/validation", { valid: true, timestamp: new Date() }),
+              addOp("/validation", { valid: true, timestamp: new Date() }),
             ],
           };
         },
@@ -727,7 +774,7 @@ main().catch(console.error);
 
 ## Multiple handlers
 
-A single application using the workflow engine SDK can register multiple handlers:
+A single application using the Workflow Engine SDK can register multiple handlers:
 
 ```typescript
 // Register multiple handlers
