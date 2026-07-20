@@ -1,6 +1,6 @@
 {
   "name": "@kaleido-io/kaleido-sdk",
-  "version": "1.0.0-rc2",
+  "version": "1.0.0",
   "description": "Kaleido SDK umbrella: KaleidoClient convenience facade and project scaffolding CLI",
   "type": "module",
   "main": "dist/src/index.js",
@@ -47,10 +47,10 @@
     "test": "jest --coverage"
   },
   "dependencies": {
-    "@kaleido-io/core-sdk": "^1.0.0-rc2",
-    "@kaleido-io/workflow-engine-sdk": "^1.0.0-rc2",
-    "@kaleido-io/asset-manager-sdk": "^1.0.0-rc2",
-    "@kaleido-io/connector-sdk": "^1.0.0-rc2"
+    "@kaleido-io/core-sdk": "^1.0.0",
+    "@kaleido-io/workflow-engine-sdk": "^1.0.0",
+    "@kaleido-io/asset-manager-sdk": "^1.0.0",
+    "@kaleido-io/connector-sdk": "^1.0.0"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.0",

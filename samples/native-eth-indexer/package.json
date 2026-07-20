@@ -20,10 +20,10 @@
     "promote:crane": "crane copy ${SOURCE_REGISTRY}/native-eth-indexer:${IMAGE_TAG} ${ARTIFACT_REGISTRY}/native-eth-indexer:${IMAGE_TAG}"
   },
   "dependencies": {
-    "@kaleido-io/core-sdk": "*",
-    "@kaleido-io/workflow-engine-sdk": "*",
-    "@kaleido-io/connector-sdk": "*",
-    "@kaleido-io/asset-manager-sdk": "*",
+    "@kaleido-io/core-sdk": "^1.0.0",
+    "@kaleido-io/workflow-engine-sdk": "^1.0.0",
+    "@kaleido-io/connector-sdk": "^1.0.0",
+    "@kaleido-io/asset-manager-sdk": "^1.0.0",
     "js-yaml": "^4.1.1"
   },
   "devDependencies": {
