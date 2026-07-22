@@ -156,6 +156,7 @@ export class BTCIndexer {
     );
 
     // Pass 3: build and upsert fragments + wallet-scoped transfers per event
+    const btcAddresses = new Set<string>();
     let txCount = 0;
     for (const event of events) {
       const { tx, block, network } = event.data;
@@ -205,6 +206,7 @@ export class BTCIndexer {
         });
 
         const detail = inputDetail[name];
+        if (detail?.scriptPubKey?.address) btcAddresses.add(detail.scriptPubKey.address);
         if (detail) {
           const xfer = xferForAddr(detail.scriptPubKey?.address);
           if (xfer) {
@@ -222,6 +224,8 @@ export class BTCIndexer {
       }
 
       for (const vout of tx.vout) {
+        if (vout.scriptPubKey?.address) btcAddresses.add(vout.scriptPubKey.address);
+
         const labels: Record<string, string> = { mint_tx: tx.txid };
         if (vout.scriptPubKey?.address) labels.ownerAddress = vout.scriptPubKey.address;
 
@@ -256,6 +260,8 @@ export class BTCIndexer {
       for (const fragment of fragments) await builder.upsertFragment(fragment);
       for (const xfer of xferOrdered) await builder.upsertTransfer(xfer);
     }
+
+    for (const address of btcAddresses) await builder.upsertAddress({ address, updateType: 'create_or_ignore' });
 
     // Flush the remainder
     await builder.execute();

@@ -164,7 +164,10 @@ describe('BTCIndexer.process()', () => {
     expect(mockClient.bulkQuery).toHaveBeenCalledTimes(2);
 
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
-    const { fragments, transfers } = mockClient.bulkUpsert.mock.calls[0][0];
+    const { addresses, fragments, transfers } = mockClient.bulkUpsert.mock.calls[0][0];
+
+    // Output address indexed even without a wallet label
+    expect(addresses).toContainEqual(expect.objectContaining({ address: 'addr1', updateType: 'create_or_ignore' }));
 
     // One fragment marking the input as spent, one for the new output UTXO
     expect(fragments).toHaveLength(2);
@@ -250,7 +253,11 @@ describe('BTCIndexer.process()', () => {
     await indexer.processBatch(ctx, [event]);
 
     expect(mockClient.bulkUpsert).toHaveBeenCalledTimes(1);
-    const { transfers } = mockClient.bulkUpsert.mock.calls[0][0];
+    const { addresses, transfers } = mockClient.bulkUpsert.mock.calls[0][0];
+
+    // Both the input and output addresses are indexed
+    expect(addresses).toContainEqual(expect.objectContaining({ address: 'addr1', updateType: 'create_or_ignore' }));
+    expect(addresses).toContainEqual(expect.objectContaining({ address: 'addr2', updateType: 'create_or_ignore' }));
 
     // One transfer for wallet2 (the sender)
     expect(transfers).toHaveLength(1);
