@@ -1,0 +1,20 @@
+{
+  "transactionHandlers": [
+    {
+      "name": "hello",
+      "file": "handlers/hello.ts"
+    }
+  ],
+  "eventSources": [
+    {
+      "name": "tick-source",
+      "file": "handlers/tick-source.ts"
+    }
+  ],
+  "eventProcessors": [
+    {
+      "name": "echo",
+      "file": "handlers/echo-processor.ts"
+    }
+  ]
+}
