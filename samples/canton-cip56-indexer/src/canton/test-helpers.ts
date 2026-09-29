@@ -15,7 +15,14 @@
 // limitations under the License.
 
 import { vi } from 'vitest';
-import type { CantonContractEvent, BatchContext, TransferContext, ContractInfo } from './types.js';
+import type {
+  CantonContractEvent,
+  CantonCompletionFailedEvent,
+  CantonStreamEvent,
+  BatchContext,
+  TransferContext,
+  ContractInfo,
+} from './types.js';
 import type {
   EventProcessorEvent,
   EventProcessorContext,
@@ -72,17 +79,44 @@ export function makeEvent(
     transactionId: 'tx-1',
     workflowId: 'wf-1',
     updateId: 'upd-1',
-    completionOffset: '100',
     ...overrides,
   };
 }
 
-export function wrapEvents(
-  events: CantonContractEvent[],
-): EventProcessorEvent<CantonContractEvent>[] {
+export function makeCompletionFailed(
+  overrides?: Partial<CantonCompletionFailedEvent>,
+): CantonCompletionFailedEvent {
+  return {
+    eventType: 'completion_failed',
+    transactionId: 'tx-failed',
+    offset: 101,
+    synchronizerId: 'global-domain::1220',
+    recordTime: '2026-09-29T10:00:00.123456Z',
+    completion: {
+      commandId: 'tx-failed',
+      submissionId: 'sub-1',
+      userId: 'participant_admin',
+      actAs: ['alice::fp'],
+      offset: 101,
+      synchronizerId: 'global-domain::1220',
+      recordTime: '2026-09-29T10:00:00.123456Z',
+      status: {
+        code: 10,
+        errorId: 'LOCAL_VERDICT_LOCKED_CONTRACTS',
+        message: 'LOCAL_VERDICT_LOCKED_CONTRACTS(2,0): Rejected transaction is referring to locked contracts',
+        metadata: { reported_by_participant_id: 'PAR::participant1::1220' },
+      },
+    },
+    ...overrides,
+  };
+}
+
+export function wrapEvents<T extends CantonStreamEvent>(
+  events: T[],
+): EventProcessorEvent<T>[] {
   return events.map((e, i) => ({
     idempotencyKey: `key-${i}`,
-    topic: `canton.txcomplete.${e.workflowId}`,
+    topic: `canton.txcomplete.${e.transactionId}`,
     data: e,
   }));
 }

@@ -18,7 +18,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { EventProcessorContext } from '@kaleido-io/workflow-engine-sdk';
 import type { CantonConfig } from '../config.js';
 import { CantonCIP56Indexer } from './indexer.js';
-import { makeEvent, wrapEvents, mockAmClient, mockEventProcessorContext, holdingInterfaceView } from './test-helpers.js';
+import {
+  makeEvent,
+  makeCompletionFailed,
+  wrapEvents,
+  mockAmClient,
+  mockEventProcessorContext,
+  holdingInterfaceView,
+} from './test-helpers.js';
 
 vi.mock('@kaleido-io/asset-manager-sdk', async (importOriginal) => {
   const real = await importOriginal();
@@ -59,6 +66,24 @@ describe('CantonCIP56Indexer (integration)', () => {
     const event = makeEvent({ arguments: { owner: 'alice::fp', amount: '500' } });
     await indexer.processBatch(ctx, wrapEvents([event]));
     expect(am.bulkUpsert).not.toHaveBeenCalled();
+  });
+
+  describe('failed commands', () => {
+    it('prints completion_failed and indexes nothing for it', async () => {
+      await indexer.processBatch(ctx, wrapEvents([makeCompletionFailed()]));
+      expect(am.bulkUpsert).not.toHaveBeenCalled();
+      expect(am.bulkQuery).not.toHaveBeenCalled();
+    });
+
+    it('still indexes the contract events of a mixed batch', async () => {
+      const holding = makeEvent({
+        interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '1', instrumentId: { id: 'TOK', admin: 'b::fp' } })],
+      });
+      await indexer.processBatch(ctx, wrapEvents([makeCompletionFailed(), holding]));
+      expect(am.bulkUpsert).toHaveBeenCalledTimes(1);
+      const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(call.fragments).toHaveLength(1);
+    });
   });
 
   describe('end-to-end Holding flow', () => {

@@ -24,6 +24,8 @@ import type {
 
 import type {
   CantonContractEvent,
+  CantonCompletionFailedEvent,
+  CantonStreamEvent,
   ContractInterfaceView,
   CantonContractEventsConfig,
   HoldingView,
@@ -32,6 +34,8 @@ import type {
 
 export type {
   CantonContractEvent,
+  CantonCompletionFailedEvent,
+  CantonStreamEvent,
   ContractInterfaceView,
   CantonContractEventsConfig,
   HoldingView,

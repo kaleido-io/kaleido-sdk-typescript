@@ -18,6 +18,10 @@ stream:
       interfaceIds:
         - '#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding'
         - '#splice-api-token-transfer-instruction-v1:Splice.Api.Token.TransferInstructionV1:TransferInstruction'
+    # Commands Canton rejected are delivered as completion_failed events and printed
+    # by the indexer (Canton 3.5.7+). Set enabled: false to leave them out.
+    completions:
+      enabled: true
     stream:
       pollTimeout: 5s
       batchSize: 100

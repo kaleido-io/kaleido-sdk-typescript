@@ -16,29 +16,65 @@
 
 // ── Contract event types ─────────────────────────────────────────────────────
 
+/**
+ * A contract lifecycle event of the `contractEvents` stream (UpdateService.GetUpdates).
+ * The stream can also deliver {@link CantonCompletionFailedEvent}; use
+ * {@link CantonStreamEvent} and {@link isCompletionFailed} to handle both.
+ */
 export type CantonContractEvent = {
   eventType: 'created' | 'archived' | 'exercised';
   contractId: string;
+  /** `PackageId:Module:Entity`; stream filters use `#PackageName:Module:Entity`. */
   templateId: string;
   packageId: string;
   packageName?: string;
   moduleName: string;
   entityName: string;
+  /**
+   * Create arguments (`created`) or choice argument (`exercised`), in the same JSON
+   * shapes the generated APIs accept: Date `YYYY-MM-DD`, Time RFC 3339, RelTime
+   * microseconds, Numeric as a string, GenMap with non-Text keys as `[{key, value}]`.
+   */
   arguments?: Record<string, unknown> | null;
   choice?: string;
+  /** Set (true or false) only for `exercised` events. */
   consuming?: boolean;
+  /** Participant offset; ledger events and failures share the sequence. */
   offset: number;
+  /** Command id: the workflow transaction ID for commands submitted by the connector; empty when submitted elsewhere. */
   transactionId: string;
+  /** Set by direct submissions to the workflow transaction ID; visible to every participant of the transaction. */
   workflowId: string;
+  /** Ledger effective time. */
   effectiveAt?: string | null;
   updateId: string;
-  completionOffset: string;
+  /** Synchronizer record time of the transaction. */
+  recordTime?: string | null;
   createdEventBlob?: string;
   synchronizerId?: string;
   signatories?: string[];
   observers?: string[];
   interfaceViews?: ContractInterfaceView[];
 };
+
+/**
+ * A command submitted on this participant that Canton rejected after accepting the
+ * submission (CommandCompletionService.GetCompletions). It has no ledger events, so
+ * this is its only event on the `contractEvents` stream.
+ */
+export type CantonCompletionFailedEvent = {
+  eventType: typeof COMPLETION_FAILED;
+  /** Command id: the workflow transaction ID for commands submitted by the connector. */
+  transactionId: string;
+  offset: number;
+  synchronizerId?: string;
+  /** Synchronizer record time of the rejection. */
+  recordTime?: string | null;
+  completion: CantonCompletion;
+};
+
+/** Any event of the `contractEvents` stream. */
+export type CantonStreamEvent = CantonContractEvent | CantonCompletionFailedEvent;
 
 export type ContractInterfaceView = {
   interfaceId: string;
@@ -69,6 +105,13 @@ export type CantonContractEventsStream = {
   channelBufferSize?: number | null;
 };
 
+export type CantonContractEventsCompletions = {
+  /** Emit `completion_failed` for rejected commands (default: true). Requires Canton 3.5.7+. */
+  enabled?: boolean;
+  /** Only failures of commands submitted by these Ledger API users (default: all). */
+  userIds?: string[];
+};
+
 export type CantonContractEventsConfig = {
   fromOffset?: number | null;
   fromCurrentOffset?: boolean;
@@ -76,7 +119,41 @@ export type CantonContractEventsConfig = {
   userId?: string;
   filters?: CantonContractEventsFilters;
   stream?: CantonContractEventsStream;
+  completions?: CantonContractEventsCompletions;
 };
+
+// ── Failed commands (completion_failed) ─────────────────────────────────────
+
+/** Event type of a command Canton rejected after accepting the submission. */
+export const COMPLETION_FAILED = 'completion_failed';
+
+/** Decoded google.rpc.Status of a command completion. */
+export type CantonCompletionStatus = {
+  /** gRPC status code; 0 means success. */
+  code: number;
+  /** Canton error id, e.g. `LOCAL_VERDICT_LOCKED_CONTRACTS`. */
+  errorId?: string;
+  message?: string;
+  /** Canton error metadata, e.g. `reported_by_participant_id`. */
+  metadata?: Record<string, string>;
+};
+
+/** A command Canton rejected, reported on the submitting participant. */
+export type CantonCompletion = {
+  commandId: string;
+  submissionId?: string;
+  userId?: string;
+  actAs?: string[];
+  offset: number;
+  synchronizerId?: string;
+  recordTime?: string | null;
+  status: CantonCompletionStatus;
+};
+
+/** True for a `completion_failed` event; narrows to {@link CantonCompletionFailedEvent}. */
+export function isCompletionFailed(ev: CantonStreamEvent): ev is CantonCompletionFailedEvent {
+  return ev.eventType === COMPLETION_FAILED;
+}
 
 // ── CIP-56 well-known interface IDs ─────────────────────────────────────────
 
