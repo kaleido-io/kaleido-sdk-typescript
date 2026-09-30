@@ -19,6 +19,7 @@ import type {
   CantonContractEvent,
   CantonCompletionFailedEvent,
   CantonStreamEvent,
+  CantonUpdateEvent,
   BatchContext,
   TransferContext,
   ContractInfo,
@@ -111,14 +112,36 @@ export function makeCompletionFailed(
   };
 }
 
-export function wrapEvents<T extends CantonStreamEvent>(
-  events: T[],
-): EventProcessorEvent<T>[] {
-  return events.map((e, i) => ({
-    idempotencyKey: `key-${i}`,
-    topic: `canton.txcomplete.${e.transactionId}`,
-    data: e,
-  }));
+/**
+ * Wraps events as the stream delivers them: consecutive contract events of the same
+ * transaction become one ledger update, failures stay single events.
+ */
+export function wrapEvents(
+  events: (CantonContractEvent | CantonCompletionFailedEvent)[],
+): EventProcessorEvent<CantonStreamEvent>[] {
+  const out: EventProcessorEvent<CantonStreamEvent>[] = [];
+  let update: CantonUpdateEvent | undefined;
+  for (const e of events) {
+    if (e.eventType === 'completion_failed') {
+      update = undefined;
+      out.push({ idempotencyKey: `completion-${out.length}`, topic: `canton.txcomplete.${e.transactionId}`, data: e });
+      continue;
+    }
+    if (!update || update.transactionId !== e.transactionId) {
+      update = {
+        eventType: 'update',
+        offset: e.offset,
+        updateId: e.updateId,
+        transactionId: e.transactionId,
+        workflowId: e.workflowId,
+        effectiveAt: e.effectiveAt,
+        events: [],
+      };
+      out.push({ idempotencyKey: `update-${out.length}`, topic: `canton.txcomplete.${e.transactionId}`, data: update });
+    }
+    update.events.push(e);
+  }
+  return out;
 }
 
 export function mockAmClient(): IDataModelClient {

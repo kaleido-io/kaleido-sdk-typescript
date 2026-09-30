@@ -17,9 +17,9 @@
 // ── Contract event types ─────────────────────────────────────────────────────
 
 /**
- * A contract lifecycle event of the `contractEvents` stream (UpdateService.GetUpdates).
- * The stream can also deliver {@link CantonCompletionFailedEvent}; use
- * {@link CantonStreamEvent} and {@link isCompletionFailed} to handle both.
+ * A contract lifecycle event of a ledger update (UpdateService.GetUpdates). The
+ * `contractEvents` stream delivers these inside a {@link CantonUpdateEvent}, all of an
+ * update's contract events together.
  */
 export type CantonContractEvent = {
   eventType: 'created' | 'archived' | 'exercised';
@@ -57,6 +57,31 @@ export type CantonContractEvent = {
   interfaceViews?: ContractInterfaceView[];
 };
 
+/** Event type of a ledger update on the `contractEvents` stream. */
+export const UPDATE = 'update';
+
+/**
+ * A ledger update: one stream event per update, carrying all of its contract events
+ * (matching the stream filters) in ledger order. An update is never split across
+ * batches. Idempotency key `update-<updateId>`.
+ */
+export type CantonUpdateEvent = {
+  eventType: typeof UPDATE;
+  /** Participant offset of the update. */
+  offset: number;
+  updateId: string;
+  /** Command id: the workflow transaction ID for commands submitted by the connector; empty when submitted elsewhere. */
+  transactionId: string;
+  workflowId?: string;
+  /** Ledger effective time. */
+  effectiveAt?: string | null;
+  /** Synchronizer record time of the transaction. */
+  recordTime?: string | null;
+  synchronizerId?: string;
+  /** The update's contract events, in ledger order. */
+  events: CantonContractEvent[];
+};
+
 /**
  * A command submitted on this participant that Canton rejected after accepting the
  * submission (CommandCompletionService.GetCompletions). It has no ledger events, so
@@ -73,8 +98,8 @@ export type CantonCompletionFailedEvent = {
   completion: CantonCompletion;
 };
 
-/** Any event of the `contractEvents` stream. */
-export type CantonStreamEvent = CantonContractEvent | CantonCompletionFailedEvent;
+/** Any event of the `contractEvents` stream: a ledger update or a failed command. */
+export type CantonStreamEvent = CantonUpdateEvent | CantonCompletionFailedEvent;
 
 export type ContractInterfaceView = {
   interfaceId: string;
@@ -99,9 +124,9 @@ export type CantonContractEventsFilters = {
 export type CantonContractEventsStream = {
   /** Maximum time to wait for events before returning to update the checkpoint (e.g. '5s'). */
   pollTimeout?: string | null;
-  /** Maximum events per batch dispatched to the event processor. */
+  /** Target contract events per batch; an update is never split, so a batch can hold more. */
   batchSize?: number | null;
-  /** Internal channel buffer size for the background stream listener. */
+  /** Internal channel buffer size for the background stream listener, in ledger updates. */
   channelBufferSize?: number | null;
 };
 
@@ -149,6 +174,11 @@ export type CantonCompletion = {
   recordTime?: string | null;
   status: CantonCompletionStatus;
 };
+
+/** True for a ledger update; narrows to {@link CantonUpdateEvent}. */
+export function isUpdate(ev: CantonStreamEvent): ev is CantonUpdateEvent {
+  return ev.eventType === UPDATE;
+}
 
 /** True for a `completion_failed` event; narrows to {@link CantonCompletionFailedEvent}. */
 export function isCompletionFailed(ev: CantonStreamEvent): ev is CantonCompletionFailedEvent {

@@ -53,8 +53,9 @@ const log = newLogger('canton-cip56-indexer');
  * Batch pipeline (executed for each WFE batch):
  *
  *   0. Split — print `completion_failed` events (commands Canton rejected;
- *      they have no ledger events, so there is nothing to index) and keep
- *      the contract events for the steps below.
+ *      they have no ledger events, so there is nothing to index) and take
+ *      the contract events out of each ledger update (a stream event carries
+ *      a whole update, never split across batches) for the steps below.
  *   1. Scan 1 (scanCreates) — build batch-local maps from created events.
  *   2. Scan 2 (scanContextAndMisses) — restore cross-batch transfer context,
  *      collect contractIds that need AM lookup.
@@ -92,14 +93,15 @@ export class CantonCIP56Indexer {
   ): Promise<void> {
     log.debug(`Batch received: ${batch.length} events`);
 
-    // ── Split: print failed commands, index contract events ───────
+    // ── Split: print failed commands, index the updates' contract events ──
     const events: EventProcessorEvent<CantonContractEvent>[] = [];
     for (const event of batch) {
-      if (isCompletionFailed(event.data)) {
-        log.warn(formatCompletionFailure(event.data));
-      } else {
-        events.push(event as EventProcessorEvent<CantonContractEvent>);
+      const data = event.data;
+      if (isCompletionFailed(data)) {
+        log.warn(formatCompletionFailure(data));
+        continue;
       }
+      for (const ce of data.events) events.push({ ...event, data: ce });
     }
     if (events.length === 0) return;
 
