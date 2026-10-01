@@ -15,7 +15,15 @@
 // limitations under the License.
 
 import { vi } from 'vitest';
-import type { CantonContractEvent, BatchContext, TransferContext, ContractInfo } from './types.js';
+import type {
+  CantonContractEvent,
+  CantonCompletionFailedEvent,
+  CantonStreamEvent,
+  CantonUpdateEvent,
+  BatchContext,
+  TransferContext,
+  ContractInfo,
+} from './types.js';
 import type {
   EventProcessorEvent,
   EventProcessorContext,
@@ -72,19 +80,68 @@ export function makeEvent(
     transactionId: 'tx-1',
     workflowId: 'wf-1',
     updateId: 'upd-1',
-    completionOffset: '100',
     ...overrides,
   };
 }
 
+export function makeCompletionFailed(
+  overrides?: Partial<CantonCompletionFailedEvent>,
+): CantonCompletionFailedEvent {
+  return {
+    eventType: 'completion_failed',
+    transactionId: 'tx-failed',
+    offset: 101,
+    synchronizerId: 'global-domain::1220',
+    recordTime: '2026-09-29T10:00:00.123456Z',
+    completion: {
+      commandId: 'tx-failed',
+      submissionId: 'sub-1',
+      userId: 'participant_admin',
+      actAs: ['alice::fp'],
+      offset: 101,
+      synchronizerId: 'global-domain::1220',
+      recordTime: '2026-09-29T10:00:00.123456Z',
+      status: {
+        code: 10,
+        errorId: 'LOCAL_VERDICT_LOCKED_CONTRACTS',
+        message: 'LOCAL_VERDICT_LOCKED_CONTRACTS(2,0): Rejected transaction is referring to locked contracts',
+        metadata: { reported_by_participant_id: 'PAR::participant1::1220' },
+      },
+    },
+    ...overrides,
+  };
+}
+
+/**
+ * Wraps events as the stream delivers them: consecutive contract events of the same
+ * transaction become one ledger update, failures stay single events.
+ */
 export function wrapEvents(
-  events: CantonContractEvent[],
-): EventProcessorEvent<CantonContractEvent>[] {
-  return events.map((e, i) => ({
-    idempotencyKey: `key-${i}`,
-    topic: `canton.txcomplete.${e.workflowId}`,
-    data: e,
-  }));
+  events: (CantonContractEvent | CantonCompletionFailedEvent)[],
+): EventProcessorEvent<CantonStreamEvent>[] {
+  const out: EventProcessorEvent<CantonStreamEvent>[] = [];
+  let update: CantonUpdateEvent | undefined;
+  for (const e of events) {
+    if (e.eventType === 'completion_failed') {
+      update = undefined;
+      out.push({ idempotencyKey: `completion-${out.length}`, topic: `canton.txcomplete.${e.transactionId}`, data: e });
+      continue;
+    }
+    if (!update || update.transactionId !== e.transactionId) {
+      update = {
+        eventType: 'update',
+        offset: e.offset,
+        updateId: e.updateId,
+        transactionId: e.transactionId,
+        workflowId: e.workflowId,
+        effectiveAt: e.effectiveAt,
+        events: [],
+      };
+      out.push({ idempotencyKey: `update-${out.length}`, topic: `canton.txcomplete.${e.transactionId}`, data: update });
+    }
+    update.events.push(e);
+  }
+  return out;
 }
 
 export function mockAmClient(): IDataModelClient {

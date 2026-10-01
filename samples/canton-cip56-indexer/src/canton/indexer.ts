@@ -17,7 +17,7 @@
 import { newLogger } from '@kaleido-io/core-sdk/log';
 import type { EventProcessorEvent, EventProcessorContext } from '@kaleido-io/workflow-engine-sdk';
 import type { SetupContext } from '@kaleido-io/core-sdk/context';
-import { CantonConnectorClient } from '@kaleido-io/connector-sdk/canton';
+import { CantonConnectorClient, isCompletionFailed } from '@kaleido-io/connector-sdk/canton';
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
 import type {
   AddressBulkInput as Address,
@@ -26,8 +26,15 @@ import type {
   PoolBulkInput as Pool,
   TransferBulkInput as Transfer,
 } from '@kaleido-io/asset-manager-sdk';
-import type { CantonContractEvent, TransferContext, BatchContext, HoldingView } from './types.js';
-import { shortPartyName, findHoldingView, extractTransferData, isCreate, isArchive } from './helpers.js';
+import type { CantonContractEvent, CantonStreamEvent, TransferContext, BatchContext, HoldingView } from './types.js';
+import {
+  shortPartyName,
+  findHoldingView,
+  extractTransferData,
+  isCreate,
+  isArchive,
+  formatCompletionFailure,
+} from './helpers.js';
 import { scanCreates, scanContextAndMisses, resolveAMMisses } from './processors/batch-scanner.js';
 import { handleArchived, resolveFromEvent } from './processors/archive-processor.js';
 import { handleHoldingCreated } from './processors/holding-processor.js';
@@ -45,6 +52,10 @@ const log = newLogger('canton-cip56-indexer');
  *
  * Batch pipeline (executed for each WFE batch):
  *
+ *   0. Split — print `completion_failed` events (commands Canton rejected;
+ *      they have no ledger events, so there is nothing to index) and take
+ *      the contract events out of each ledger update (a stream event carries
+ *      a whole update, never split across batches) for the steps below.
  *   1. Scan 1 (scanCreates) — build batch-local maps from created events.
  *   2. Scan 2 (scanContextAndMisses) — restore cross-batch transfer context,
  *      collect contractIds that need AM lookup.
@@ -78,9 +89,21 @@ export class CantonCIP56Indexer {
 
   async processBatch(
     ctx: EventProcessorContext<CantonConfig>,
-    events: EventProcessorEvent<CantonContractEvent>[],
+    batch: EventProcessorEvent<CantonStreamEvent>[],
   ): Promise<void> {
-    log.debug(`Batch received: ${events.length} events`);
+    log.debug(`Batch received: ${batch.length} events`);
+
+    // ── Split: print failed commands, index the updates' contract events ──
+    const events: EventProcessorEvent<CantonContractEvent>[] = [];
+    for (const event of batch) {
+      const data = event.data;
+      if (isCompletionFailed(data)) {
+        log.warn(formatCompletionFailure(data));
+        continue;
+      }
+      for (const ce of data.events) events.push({ ...event, data: ce });
+    }
+    if (events.length === 0) return;
 
     const am = new AssetManagerClient(ctx);
 

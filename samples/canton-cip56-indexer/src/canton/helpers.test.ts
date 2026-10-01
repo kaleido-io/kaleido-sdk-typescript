@@ -26,8 +26,9 @@ import {
   extractInstrumentId,
   extractIssuer,
   baseLabels,
+  formatCompletionFailure,
 } from './helpers.js';
-import { makeEvent, holdingInterfaceView } from './test-helpers.js';
+import { makeEvent, holdingInterfaceView, makeCompletionFailed } from './test-helpers.js';
 import type { HoldingView } from './types.js';
 
 describe('helpers', () => {
@@ -168,6 +169,22 @@ describe('helpers', () => {
 
     it('merges extra labels', () => {
       expect(baseLabels('CIP-56', 'holding', { owner: 'x' })).toMatchObject({ owner: 'x' });
+    });
+  });
+
+  describe('formatCompletionFailure', () => {
+    it('prints the error id, command, offset, parties and rejecting participant', () => {
+      expect(formatCompletionFailure(makeCompletionFailed())).toBe(
+        'COMMAND FAILED LOCAL_VERDICT_LOCKED_CONTRACTS txId=tx-failed offset=101 actAs=alice user=participant_admin ' +
+          'recordTime=2026-09-29T10:00:00.123456Z reportedBy=PAR::participant1::1220: ' +
+          'LOCAL_VERDICT_LOCKED_CONTRACTS(2,0): Rejected transaction is referring to locked contracts',
+      );
+    });
+
+    it('falls back to the status code when there is no error id', () => {
+      const ev = makeCompletionFailed({ recordTime: null });
+      ev.completion = { commandId: 'c', offset: 7, status: { code: 4 } };
+      expect(formatCompletionFailure(ev)).toBe('COMMAND FAILED code=4 txId=tx-failed offset=101');
     });
   });
 });

@@ -7,9 +7,11 @@ holding and transfer events into the
 ## What it does
 
 1. Connects to your Workflow Engine as a provider named `canton-cip56-indexer`.
-2. Registers an **event processor** that receives Canton contract events from a
+2. Registers an **event processor** that receives Canton ledger updates (one
+   stream event per update, carrying its contract events) from a
    `contractEvents`-compatible stream filtered on the CIP-56
-   `HoldingV1` and `TransferInstructionV1` interface IDs.
+   `HoldingV1` and `TransferInstructionV1` interface IDs. Failed commands
+   (`completion_failed`) are logged and not indexed.
 3. Maps **Holding** creates/archives to Asset Manager fragments, transfers,
    balance changes, and the pool/asset definitions they belong to; and maps
    **TransferInstruction** creates to pending-transfer fragments.

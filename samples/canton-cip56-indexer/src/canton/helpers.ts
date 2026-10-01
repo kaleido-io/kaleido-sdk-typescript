@@ -14,7 +14,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { CantonContractEvent, ContractInterfaceView, HoldingView, TransferData } from './types.js';
+import type {
+  CantonCompletionFailedEvent,
+  CantonContractEvent,
+  ContractInterfaceView,
+  HoldingView,
+  TransferData,
+} from './types.js';
 import { HOLDING_INTERFACE, TRANSFER_INSTRUCTION_INTERFACE } from './types.js';
 
 // ── General helpers ─────────────────────────────────────────────────
@@ -172,4 +178,27 @@ export function isArchive(ce: CantonContractEvent): boolean {
     ce.eventType === 'archived' ||
     (ce.eventType === 'exercised' && ce.consuming === true)
   );
+}
+
+// ── Failed commands ─────────────────────────────────────────────────
+
+/**
+ * One-line summary of a `completion_failed` event: a command submitted on this
+ * participant that Canton rejected. It has no ledger events, so nothing is indexed
+ * for it; the indexer only prints it.
+ */
+export function formatCompletionFailure(ev: CantonCompletionFailedEvent): string {
+  const c = ev.completion;
+  const parts = [
+    `COMMAND FAILED ${c.status.errorId || `code=${c.status.code}`}`,
+    `txId=${ev.transactionId}`,
+    `offset=${ev.offset}`,
+    ...(c.actAs?.length ? [`actAs=${c.actAs.map(shortPartyName).join(',')}`] : []),
+    ...(c.userId ? [`user=${c.userId}`] : []),
+    ...(ev.recordTime ? [`recordTime=${ev.recordTime}`] : []),
+    ...(c.status.metadata?.reported_by_participant_id
+      ? [`reportedBy=${c.status.metadata.reported_by_participant_id}`]
+      : []),
+  ];
+  return c.status.message ? `${parts.join(' ')}: ${c.status.message}` : parts.join(' ');
 }
