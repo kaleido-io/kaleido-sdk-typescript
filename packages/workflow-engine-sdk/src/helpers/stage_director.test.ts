@@ -165,6 +165,24 @@ describe('BasicStageDirector', () => {
         expect(reply.results[0].stateUpdates?.[0]?.path).toBe('/output');
     })
 
+    it('should route plain object input with nextSubflow to the subflow', async () => {
+        const plainActionMap: Map<string, ActionConfig<any>> = new Map([
+            ['route', { invocationMode: InvocationMode.PARALLEL, handler: async () => ({ result: EvalResult.COMPLETE, output: { routed: true } }) }],
+        ]);
+        const reply: WSHandleTransactionsResult = { results: [], messageType: WSMessageType.EVALUATE, id: 'test-id' };
+        const batch: WSHandleTransactions = {
+            transactions: [{
+                handler: 'test-handler', sequence: 'test-seq', transactionId: 'tx-1', workflowId: 'test-flow', stage: 'hop',
+                input: { action: 'route', outputPath: '/routed', nextSubflow: 'parse', failureStage: 'failed' },
+            }],
+            handler: 'test-handler', messageType: WSMessageType.EVALUATE_RESULT, id: 'test-id',
+        };
+        await evalDirected(reply, batch, plainActionMap);
+        expect(reply.results[0].subflow).toBe('parse');
+        expect(reply.results[0].stage).toBeUndefined();
+        expect(reply.results[0].stateUpdates?.[0]).toEqual({ op: PatchOpType.ADD, path: '/routed', value: { routed: true } });
+    })
+
     it('should handle invalid action', async () => {
         const transactions: WSEvaluateTransaction[] = [{
             handler: 'test-handler',
@@ -924,6 +942,22 @@ describe('StageDirectorHelper', () => {
             { data: 'test' }
         );
         expect(result.error).toBeDefined();
+    })
+
+    it('should map COMPLETE result with nextSubflow', () => {
+        const stageDirector = new BasicStageDirector('test-action', '/output', '', 'failure-stage', 'next-subflow');
+        const result = StageDirectorHelper.mapOutput(stageDirector, mockRequest, EvalResult.COMPLETE, { data: 'test' });
+        expect(result.subflow).toBe('next-subflow');
+        expect(result.stage).toBeUndefined();
+        expect(result.error).toBeUndefined();
+    })
+
+    it('should map COMPLETE result with both nextStage and nextSubflow as an error', () => {
+        const stageDirector = new BasicStageDirector('test-action', '/output', 'next-stage', 'failure-stage', 'next-subflow');
+        const result = StageDirectorHelper.mapOutput(stageDirector, mockRequest, EvalResult.COMPLETE);
+        expect(result.error).toMatch(/KA140641/);
+        expect(result.stage).toBeUndefined();
+        expect(result.subflow).toBeUndefined();
     })
 
     it('should map HARD_FAILURE result', () => {

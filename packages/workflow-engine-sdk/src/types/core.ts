@@ -103,7 +103,8 @@ export enum PatchOpType {
 export interface StageDirector {
   action: string;       // The action to perform within the handler (required)
   outputPath: string;   // JSON Patch path for writing the output (required)
-  nextStage: string;    // the stage to move to on success (required)
+  nextStage: string;    // the stage to move to on success (required, unless nextSubflow is set)
+  nextSubflow?: string; // the subflow to invoke on success, as an alternative to nextStage
   failureStage: string; // the stage to divert to on failure (required)
 }
 
