@@ -183,6 +183,24 @@ describe('BasicStageDirector', () => {
         expect(reply.results[0].stateUpdates?.[0]).toEqual({ op: PatchOpType.ADD, path: '/routed', value: { routed: true } });
     })
 
+    it('should route plain object input with nextSubflow to a customStage returned by the handler', async () => {
+        const plainActionMap: Map<string, ActionConfig<any>> = new Map([
+            ['route', { invocationMode: InvocationMode.PARALLEL, handler: async () => ({ result: EvalResult.COMPLETE, output: { routed: true }, customStage: 'retry' }) }],
+        ]);
+        const reply: WSHandleTransactionsResult = { results: [], messageType: WSMessageType.EVALUATE, id: 'test-id' };
+        const batch: WSHandleTransactions = {
+            transactions: [{
+                handler: 'test-handler', sequence: 'test-seq', transactionId: 'tx-1', workflowId: 'test-flow', stage: 'hop',
+                input: { action: 'route', outputPath: '/routed', nextSubflow: 'parse', failureStage: 'failed' },
+            }],
+            handler: 'test-handler', messageType: WSMessageType.EVALUATE_RESULT, id: 'test-id',
+        };
+        await evalDirected(reply, batch, plainActionMap);
+        expect(reply.results[0].stage).toBe('retry');
+        expect(reply.results[0].subflow).toBeUndefined();
+        expect(reply.results[0].error).toBeUndefined();
+    })
+
     it('should handle invalid action', async () => {
         const transactions: WSEvaluateTransaction[] = [{
             handler: 'test-handler',
@@ -958,6 +976,24 @@ describe('StageDirectorHelper', () => {
         expect(result.error).toMatch(/KA140641/);
         expect(result.stage).toBeUndefined();
         expect(result.subflow).toBeUndefined();
+    })
+
+    it('should map COMPLETE result with customStage over nextSubflow', () => {
+        const stageDirector = new BasicStageDirector('test-action', '/output', '', 'failure-stage', 'next-subflow');
+        const result = StageDirectorHelper.mapOutput(stageDirector, mockRequest, EvalResult.COMPLETE, { data: 'test' },
+            undefined, undefined, undefined, undefined, 'custom-stage');
+        expect(result.stage).toBe('custom-stage');
+        expect(result.subflow).toBeUndefined();
+        expect(result.error).toBeUndefined();
+    })
+
+    it('should map COMPLETE result with customStage even when both nextStage and nextSubflow are set', () => {
+        const stageDirector = new BasicStageDirector('test-action', '/output', 'next-stage', 'failure-stage', 'next-subflow');
+        const result = StageDirectorHelper.mapOutput(stageDirector, mockRequest, EvalResult.COMPLETE, undefined,
+            undefined, undefined, undefined, undefined, 'custom-stage');
+        expect(result.stage).toBe('custom-stage');
+        expect(result.subflow).toBeUndefined();
+        expect(result.error).toBeUndefined();
     })
 
     it('should map HARD_FAILURE result', () => {
