@@ -15,37 +15,18 @@
 // limitations under the License.
 
 
-import { BasicStageDirector, ActionConfig, EvalResult, InvocationMode, WithStageDirector, WSEvaluateTransaction } from '@kaleido-io/workflow-engine-sdk';
+import { ActionConfig, EvalResult, InvocationMode, WithStageDirector, WSEvaluateTransaction } from '@kaleido-io/workflow-engine-sdk';
 
-class MyHandlerInput implements WithStageDirector {
-    public stageDirector: BasicStageDirector;
-    public action1?: { inputA: string };
-    public action2?: { inputB: string };
-    public customData?: any;
-
-    constructor(data: any) {
-        this.stageDirector = new BasicStageDirector(
-            data.action || 'hello',
-            data.outputPath || '/output',
-            data.nextStage || 'end',
-            data.failureStage || 'failed'
-        );
-        this.customData = data.customData;
-    }
-
-    getStageDirector(): BasicStageDirector {
-        return this.stageDirector;
-    }
-
-    name(): string {
-        return 'hello';
-    }
+// The stage's mapped input: the result of the stage's inputMap in flow.ts.
+// This is not transaction.state.input, which is the operation's input.
+interface HelloInput extends WithStageDirector {
+    name?: string;
 }
 
-const map: Map<string, ActionConfig<MyHandlerInput>> = new Map([
+const map: Map<string, ActionConfig<HelloInput>> = new Map([
     ['hello', {
-        invocationMode: InvocationMode.PARALLEL, handler: async (transaction: WSEvaluateTransaction) => {
-            if (transaction.state?.input?.name === undefined) {
+        invocationMode: InvocationMode.PARALLEL, handler: async (transaction: WSEvaluateTransaction, input: HelloInput) => {
+            if (input?.name === undefined) {
                 return {
                     result: EvalResult.HARD_FAILURE,
                     error: new Error('Name is required')
@@ -54,13 +35,13 @@ const map: Map<string, ActionConfig<MyHandlerInput>> = new Map([
                 return {
                     result: EvalResult.COMPLETE,
                     output: {
-                        greeting: `Hello ${transaction.state.input.name}!`,
+                        greeting: `Hello ${input.name}!`,
                     },
                     events: [
                         {
                             idempotencyKey: transaction.idempotencyKey,
                             topic: 'greeting',
-                            data: `Hello ${transaction.state.input.name}!`
+                            data: `Hello ${input.name}!`
                         }
                     ]
                 }

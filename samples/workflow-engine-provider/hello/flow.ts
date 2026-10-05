@@ -56,7 +56,7 @@ export const flow = {
       'type': 'pending',
       'handler': 'hello',
       'inputMap': {
-        'jsonata': '{\n    "action": "hello",\n    "invoke": {\n      "input": state.input\n    },\n    "nextStage": "end",\n    "failureStage": "failure",\n    "outputPath": "/output"\n}\n'
+        'jsonata': '{\n    "action": "hello",\n    "name": state.input.name,\n    "nextStage": "end",\n    "failureStage": "failure",\n    "outputPath": "/output"\n}\n'
       },
       'fullState': true
     },
