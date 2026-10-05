@@ -479,6 +479,9 @@ class MyInputImpl implements MyInput {
   }
 }
 
+// A stage whose next step is a subflow sets `nextSubflow` instead of
+// `nextStage` (never both); the reply then names the subflow to invoke.
+//
 // The SDK automatically wraps plain JSON objects from the engine
 // with a `stageDirector` property, so you can also use plain objects:
 const actionMap = new Map([

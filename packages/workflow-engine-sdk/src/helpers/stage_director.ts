@@ -56,7 +56,8 @@ export class BasicStageDirector implements StageDirector, WithStageDirector {
     public action: string,
     public outputPath: string,
     public nextStage: string,
-    public failureStage: string
+    public failureStage: string,
+    public nextSubflow?: string,
   ) { }
 
   get stageDirector(): StageDirector {
@@ -167,13 +168,20 @@ export class StageDirectorHelper {
         break;
       }
       case EvalResult.COMPLETE: {
-        const next = customStage || stageDirector.nextStage;
-        if (!next) {
-          error = newError(SDKErrors.MsgSDKDirectorNextStageMissing);
-          return { error: error.message };
+        // stage and subflow are mutually exclusive in the reply; customStage wins over both
+        const { nextStage, nextSubflow } = stageDirector;
+        if (customStage) {
+          replyResult.stage = customStage;
+        } else if (nextStage && nextSubflow) {
+          return { error: newError(SDKErrors.MsgSDKDirectorNextStageAndSubflow).message };
+        } else if (nextStage) {
+          replyResult.stage = nextStage;
+        } else if (nextSubflow) {
+          replyResult.subflow = nextSubflow;
+        } else {
+          return { error: newError(SDKErrors.MsgSDKDirectorNextStageMissing).message };
         }
-        replyResult.stage = next;
-        log.debug(`Transaction ${transaction.transactionId} evaluated successfully and will transition to nextStage '${next}'`);
+        log.debug(`Transaction ${transaction.transactionId} evaluated successfully and will ${replyResult.subflow ? `invoke nextSubflow '${replyResult.subflow}'` : `transition to stage '${replyResult.stage}'`}`);
         break;
       }
       case EvalResult.WAITING:
@@ -240,7 +248,7 @@ export async function evalDirected<T extends WithStageDirector>(
       }
 
       // If input is a plain object from JSON (no stageDirector property),
-      // synthesize one from the action/outputPath/nextStage/failureStage fields
+      // synthesize one from the action/outputPath/nextStage/nextSubflow/failureStage fields
       if (!execReq.input.stageDirector) {
         const plainInput = execReq.input as any;
 
@@ -259,6 +267,7 @@ export async function evalDirected<T extends WithStageDirector>(
             action: plainInput.action,
             outputPath: plainInput.outputPath,
             nextStage: plainInput.nextStage,
+            nextSubflow: plainInput.nextSubflow,
             failureStage: plainInput.failureStage,
           },
         } as T;

@@ -46,7 +46,7 @@ export const SDKErrors = {
   MsgSDKUnknownHandler: fe('KA140601', "Unknown handler '%s'"),
   MsgSDKUnknownNoListenerConfig: fe('KA140602', "Listener config for stream '%s' not supplied by workflow engine"),
   MsgSDKOutputSerializationError: fe('KA140603', 'Unable to serialize output to %s'),
-  MsgSDKDirectorNextStageMissing: fe('KA140604', "Handler called with 'nextStage' missing from input"),
+  MsgSDKDirectorNextStageMissing: fe('KA140604', "Handler called with neither 'nextStage' nor 'nextSubflow' in input"),
   MsgSDKDirectorOutputPathMissing: fe('KA140605', "Handler called with 'outputPath' missing from input"),
   MsgSDKDirectorFailureStageMissing: fe('KA140606', "Handler resulted in a failure, but 'failureStage' missing from input"),
   MsgSDKInputParsingError: fe('KA140607', 'Unable to parse input'),
@@ -88,6 +88,7 @@ export const SDKErrors = {
   MsgSDKConfigUrlAuthMissing: fe('KA140638', 'Missing url or auth in workflow-engine section in %s'),
   MsgSDKHandlerInvalidType: fe('KA140639', 'Handler "%s" does not implement TransactionHandler, EventSource, or EventProcessor'),
   MsgSDKDeadlineNotWaiting: fe('KA140640', "Deadline can only be used with WAITING result type (action='%s' result='%s')"),
+  MsgSDKDirectorNextStageAndSubflow: fe('KA140641', "Handler input cannot specify both 'nextStage' and 'nextSubflow'"),
 
   // Engine connection errors
   MsgSDKEngineNotConnected: fe('KA140627', 'WebSocket is not connected. Cannot submit async transactions'),
