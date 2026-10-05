@@ -19,35 +19,34 @@ import { describe, it, expect } from 'vitest';
 import { EvalResult, WSEvaluateTransaction } from '@kaleido-io/workflow-engine-sdk';
 import { actionMap } from './handlers';
 
+// Mirrors what the SDK stage director passes as the handler's second argument:
+// the stage's mapped input, with the stageDirector it synthesizes from the directing fields.
+const stageInput = (fields: Record<string, unknown>) => ({
+    action: 'hello',
+    outputPath: '/output',
+    nextStage: 'end',
+    failureStage: 'failure',
+    ...fields,
+    stageDirector: {
+        action: 'hello',
+        outputPath: '/output',
+        nextStage: 'end',
+        failureStage: 'failure'
+    }
+});
+
+const getHandler = () => {
+    const handler = actionMap.get('hello');
+    expect(handler).toBeDefined();
+    if (!handler || !handler.handler) {
+        throw new Error('Handler not found');
+    }
+    return handler.handler;
+};
+
 describe('Hello handlers', () => {
     it('should return a greeting when name is provided', async () => {
-        const handler = actionMap.get('hello');
-        expect(handler).toBeDefined();
-
-        if (!handler || !handler.handler) {
-            throw new Error('Handler not found');
-        }
-
-        const mockRequest: Partial<WSEvaluateTransaction> = {
-            state: {
-                input: {
-                    name: 'World'
-                }
-            }
-        };
-
-        const mockInput = {
-            stageDirector: {
-                action: 'hello',
-                outputPath: '/output',
-                nextStage: 'end',
-                failureStage: 'failed'
-            },
-            getStageDirector: () => mockInput.stageDirector,
-            name: () => 'hello'
-        };
-
-        const result = await handler.handler(mockRequest as WSEvaluateTransaction, mockInput as any);
+        const result = await getHandler()({} as WSEvaluateTransaction, stageInput({ name: 'World' }));
 
         expect(result.result).toBe(EvalResult.COMPLETE);
         expect(result.output).toEqual({
@@ -55,90 +54,41 @@ describe('Hello handlers', () => {
         });
     });
 
-    it('should return HARD_FAILURE when name is missing', async () => {
-        const handler = actionMap.get('hello');
-        expect(handler).toBeDefined();
-
-        if (!handler || !handler.handler) {
-            throw new Error('Handler not found');
-        }
-
+    it('should read the name from the stage input, not the operation input in state', async () => {
         const mockRequest: Partial<WSEvaluateTransaction> = {
             state: {
-                input: {}
+                input: {
+                    name: 'Operation'
+                }
             }
         };
 
-        const mockInput = {
-            stageDirector: {
-                action: 'hello',
-                outputPath: '/output',
-                nextStage: 'end',
-                failureStage: 'failed'
-            },
-            getStageDirector: () => mockInput.stageDirector,
-            name: () => 'hello'
-        };
+        const result = await getHandler()(mockRequest as WSEvaluateTransaction, stageInput({ name: 'Stage' }));
 
-        const result = await handler.handler(mockRequest as WSEvaluateTransaction, mockInput as any);
-
-        expect(result.result).toBe(EvalResult.HARD_FAILURE);
-        expect(result.error).toBeInstanceOf(Error);
-        expect(result.error?.message).toBe('Name is required');
+        expect(result.result).toBe(EvalResult.COMPLETE);
+        expect(result.output).toEqual({
+            greeting: 'Hello Stage!'
+        });
     });
 
-    it('should return HARD_FAILURE when state.input is undefined', async () => {
-        const handler = actionMap.get('hello');
-        expect(handler).toBeDefined();
-
-        if (!handler || !handler.handler) {
-            throw new Error('Handler not found');
-        }
-
+    it('should return HARD_FAILURE when name is missing from the stage input', async () => {
         const mockRequest: Partial<WSEvaluateTransaction> = {
-            state: {}
+            state: {
+                input: {
+                    name: 'Operation'
+                }
+            }
         };
 
-        const mockInput = {
-            stageDirector: {
-                action: 'hello',
-                outputPath: '/output',
-                nextStage: 'end',
-                failureStage: 'failed'
-            },
-            getStageDirector: () => mockInput.stageDirector,
-            name: () => 'hello'
-        };
-
-        const result = await handler.handler(mockRequest as WSEvaluateTransaction, mockInput as any);
+        const result = await getHandler()(mockRequest as WSEvaluateTransaction, stageInput({}));
 
         expect(result.result).toBe(EvalResult.HARD_FAILURE);
         expect(result.error).toBeInstanceOf(Error);
         expect(result.error?.message).toBe('Name is required');
     });
 
-    it('should return HARD_FAILURE when state is undefined', async () => {
-        const handler = actionMap.get('hello');
-        expect(handler).toBeDefined();
-
-        if (!handler || !handler.handler) {
-            throw new Error('Handler not found');
-        }
-
-        const mockRequest: Partial<WSEvaluateTransaction> = {};
-
-        const mockInput = {
-            stageDirector: {
-                action: 'hello',
-                outputPath: '/output',
-                nextStage: 'end',
-                failureStage: 'failed'
-            },
-            getStageDirector: () => mockInput.stageDirector,
-            name: () => 'hello'
-        };
-
-        const result = await handler.handler(mockRequest as WSEvaluateTransaction, mockInput as any);
+    it('should return HARD_FAILURE when the stage input is undefined', async () => {
+        const result = await getHandler()({} as WSEvaluateTransaction, undefined as any);
 
         expect(result.result).toBe(EvalResult.HARD_FAILURE);
         expect(result.error).toBeInstanceOf(Error);

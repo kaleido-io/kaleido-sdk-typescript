@@ -13,7 +13,7 @@ The hello sample consists of two main components:
 
 ### Handler
 
-The hello handler (`handlers.ts`) accepts a transaction with a `name` field in the input. It:
+The hello handler (`handlers.ts`) reads a `name` field from its stage input, which is the result of the stage's `inputMap` in `flow.ts` (passed to the handler as its second argument). It does not read the operation input in `transaction.state.input`, so the `inputMap` forwards the field explicitly with `"name": state.input.name`. The handler:
 
 - Validates that the `name` field is provided
 - Returns a personalized greeting message in the output
