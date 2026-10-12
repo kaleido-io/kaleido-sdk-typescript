@@ -24,6 +24,7 @@ import {
 } from '@kaleido-io/core-sdk';
 import { WorkflowEngineClient } from '@kaleido-io/workflow-engine-sdk';
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+import { SubledgerClient } from '@kaleido-io/subledger-sdk';
 import {
   EVMConnectorClient,
   BTCConnectorClient,
@@ -41,6 +42,11 @@ const nonHostedBindings: ServiceBindingsMap = {
     bindingType: 'non-hosted',
     url: 'https://am2.example/api/v1',
     auth: { type: 'token', token: 'secret2' },
+  },
+  subledger: {
+    bindingType: 'non-hosted',
+    url: 'https://sl.example/api/v1',
+    auth: { type: 'token', token: 'secret3' },
   },
 };
 
@@ -84,6 +90,12 @@ describe('KaleidoClient — non-hosted only (no workflow-engine)', () => {
     const client = new KaleidoClient({ serviceBindings: nonHostedBindings });
     const am = client.assetManagerClient('asset-manager');
     expect(am).toBeInstanceOf(AssetManagerClient);
+  });
+
+  it('builds a SubledgerClient from the subledger binding, memoized', () => {
+    const client = new KaleidoClient({ serviceBindings: nonHostedBindings });
+    expect(client.subledgerClient()).toBeInstanceOf(SubledgerClient);
+    expect(client.subledgerClient()).toBe(client.subledgerClient('subledger'));
   });
 
   it('memoizes per binding name', () => {

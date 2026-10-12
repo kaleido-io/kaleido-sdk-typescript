@@ -1,0 +1,4 @@
+dist/
+coverage/
+swagger/
+src/schema.ts

@@ -21,7 +21,8 @@
     "typescript",
     "blockchain",
     "workflow-engine",
-    "asset-manager"
+    "asset-manager",
+    "subledger"
   ],
   "author": "Kaleido",
   "license": "Apache-2.0",
@@ -50,6 +51,7 @@
     "@kaleido-io/core-sdk": "^1.0.0",
     "@kaleido-io/workflow-engine-sdk": "^1.0.0",
     "@kaleido-io/asset-manager-sdk": "^1.0.0",
+    "@kaleido-io/subledger-sdk": "^1.0.0",
     "@kaleido-io/connector-sdk": "^1.0.0"
   },
   "devDependencies": {
@@ -82,6 +84,7 @@
     "moduleNameMapper": {
       "^@kaleido-io/workflow-engine-sdk$": "<rootDir>/../workflow-engine-sdk/src/index.ts",
       "^@kaleido-io/asset-manager-sdk$": "<rootDir>/../asset-manager-sdk/src/index.ts",
+      "^@kaleido-io/subledger-sdk$": "<rootDir>/../subledger-sdk/src/index.ts",
       "^@kaleido-io/connector-sdk$": "<rootDir>/../connector-sdk/src/index.ts",
       "^@kaleido-io/connector-sdk/(.+)$": "<rootDir>/../connector-sdk/src/$1/index.ts",
       "^@kaleido-io/core-sdk$": "<rootDir>/../core-sdk/src/index.ts",
