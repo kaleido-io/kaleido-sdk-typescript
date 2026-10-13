@@ -91,13 +91,13 @@ describe("SubledgerClient", () => {
     expect(mockGet).toHaveBeenCalledWith("/api/v1/status", undefined, undefined);
   });
 
-  it("omits the version prefix when the URL carries it or the transport is hosted", () => {
+  it("omits the version prefix only when the URL carries it", () => {
     new SubledgerClient({
       transport: "http",
       url: "http://svc:5000/api/v1/namespaces/sl",
     }).getStatus();
     new SubledgerClient({ transport: "ws-proxy" } as any).getStatus();
-    expect(mockGet.mock.calls.map((c) => c[0])).toEqual(["/status", "/status"]);
+    expect(mockGet.mock.calls.map((c) => c[0])).toEqual(["/status", "/api/v1/status"]);
   });
 
   it("resolves the subledger binding from a setup context by default", () => {

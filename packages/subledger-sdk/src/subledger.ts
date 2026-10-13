@@ -32,12 +32,9 @@ import type {
 
 const DEFAULT_BINDING = "subledger";
 
-// The hosted (ws-proxy) base URL already ends at the service namespace; a
-// non-hosted URL needs /api/v1 unless it already carries it.
+// Add /api/v1 to the URL if it doesn't already have it. This is needed for both
+// the hosted and direct transport.
 function apiVersion(opts: ServiceClientOptions): string {
-  if (opts.transport === "ws-proxy") {
-    return "";
-  }
   if (opts.transport === "http" && opts.url?.includes("/api/v1")) {
     return "";
   }
