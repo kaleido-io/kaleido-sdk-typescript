@@ -1,4 +1,4 @@
-# Vendored from kaleido-io/firefly-enterprise subledger/swagger.yaml at cb95916a92 (PR #7070, subledger-required).
+# Vendored from kaleido-io/firefly-enterprise subledger/swagger.yaml at c957d089dd (PR #7070, subledger-required).
 components:
   schemas:
     Account:
@@ -54,6 +54,11 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - bookUrn
       - name
       - ownerUrn
       - class
@@ -954,6 +959,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - name
       - decimals
       type: object
@@ -997,6 +1006,9 @@ components:
             (required, immutable)'
           type: string
       required:
+      - id
+      - created
+      - updated
       - assetUrn
       - scheme
       - value
@@ -1070,7 +1082,6 @@ components:
           $ref: '#/components/schemas/FFTime'
         holder:
           description: The holder value the balance accumulates for, verbatim
-          nullable: true
           type: string
         id:
           description: Immutable integer primary key assigned by the database, providing
@@ -1086,6 +1097,13 @@ components:
           description: The wallet the holder's wallet identifier names, at the time
             of the read; absent for an unregistered holder (read-only)
           type: string
+      required:
+      - id
+      - created
+      - updated
+      - tokenUrn
+      - holder
+      - balance
       type: object
     BalanceChange:
       description: Items returned by the query
@@ -1098,7 +1116,6 @@ components:
           description: 'The chain''s own value for whoever holds the balance, verbatim:
             an address, a party id, a token account. A raw value, not a reference
             — no registered account or identifier need exist'
-          nullable: true
           type: string
         id:
           description: Immutable integer primary key assigned by the database, providing
@@ -1124,6 +1141,16 @@ components:
           description: The wallet the holder's wallet identifier names, at the time
             of the read; absent for an unregistered holder (read-only)
           type: string
+      required:
+      - id
+      - urn
+      - created
+      - updated
+      - tokenUrn
+      - transferUrn
+      - holder
+      - amount
+      - timestamp
       type: object
     BalanceChangeInput:
       description: The per-holder effects of this transfer, at least one. Written
@@ -1153,7 +1180,6 @@ components:
           description: 'The chain''s own value for whoever holds the balance, verbatim:
             an address, a party id, a token account. A raw value, not a reference
             — no registered account or identifier need exist'
-          nullable: true
           type: string
         id:
           description: Immutable integer primary key assigned by the database, providing
@@ -1179,12 +1205,25 @@ components:
           description: The wallet the holder's wallet identifier names, at the time
             of the read; absent for an unregistered holder (read-only)
           type: string
+      required:
+      - id
+      - urn
+      - created
+      - updated
+      - tokenUrn
+      - transferUrn
+      - holder
+      - amount
+      - timestamp
+      - after
       type: object
     BalanceTotals:
       description: The holder's balance just after this change, along the chosen axis
       properties:
         balance:
           $ref: '#/components/schemas/Integer'
+      required:
+      - balance
       type: object
     Block:
       description: Items returned by the query
@@ -1229,6 +1268,11 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - chainUrn
       - name
       - number
       type: object
@@ -2052,6 +2096,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - name
       type: object
     BookInput:
@@ -2375,6 +2423,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - name
       type: object
     ChainAccount:
@@ -2417,6 +2469,11 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - chainUrn
       - name
       - locator
       type: object
@@ -2500,6 +2557,11 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - chainUrn
       - name
       - transactionUrn
       type: object
@@ -2777,6 +2839,11 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - chainUrn
       - name
       type: object
     ChainTransactionInput:
@@ -2872,7 +2939,6 @@ components:
           enum:
           - active
           - spent
-          nullable: true
           type: string
         tokenUrn:
           description: URN-scoping parent token — accepts full URN or name (required,
@@ -2888,8 +2954,14 @@ components:
             of the read; absent for an unregistered holder (read-only)
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - tokenUrn
       - name
       - locator
+      - status
       type: object
     CoinInput:
       description: The items of this entity type to upsert
@@ -2972,6 +3044,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - coinUrn
       type: object
     CoinSpendInput:
@@ -3113,6 +3189,11 @@ components:
             event is written for every signal reporting it
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - transactionUrn
       - name
       - waitKey
       type: object
@@ -3178,6 +3259,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - name
       type: object
     ContractIdentifier:
@@ -3220,6 +3305,9 @@ components:
             (required, immutable)'
           type: string
       required:
+      - id
+      - created
+      - updated
       - contractUrn
       - scheme
       - value
@@ -3327,6 +3415,11 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - chainUrn
       - name
       - locator
       - contractUrn
@@ -3411,7 +3504,6 @@ components:
           - leg-added
           - condition-added
           - condition-signaled
-          nullable: true
           type: string
         id:
           description: Immutable integer primary key assigned by the database, providing
@@ -3420,7 +3512,6 @@ components:
           type: integer
         name:
           description: 'Event name: the event type, then the member names it concerns'
-          nullable: true
           type: string
         subjectUrn:
           description: 'The subject the event is about: the transaction for a transaction
@@ -3434,6 +3525,15 @@ components:
         urn:
           description: Canonical URN of the resource
           type: string
+      required:
+      - id
+      - urn
+      - created
+      - updated
+      - name
+      - transactionUrn
+      - subjectUrn
+      - eventType
       type: object
     Export:
       properties:
@@ -3516,10 +3616,15 @@ components:
             — accepts full URN or viewGroup:view name path (required, immutable)
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - name
       - viewGroupUrn
       - viewUrn
       - format
+      - status
       type: object
     ExportInput:
       properties:
@@ -3957,7 +4062,6 @@ components:
           enum:
           - active
           - released
-          nullable: true
           type: string
         updated:
           $ref: '#/components/schemas/FFTime'
@@ -3965,10 +4069,16 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - bookUrn
       - name
       - accountUrn
       - assetUrn
       - amount
+      - status
       type: object
     HoldInput:
       description: The items of this entity type to upsert
@@ -4053,6 +4163,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - holdUrn
       type: object
     HoldReleaseInput:
@@ -4178,7 +4292,6 @@ components:
         name:
           description: Unique name of the entry within its book (URN segment); the
             idempotency key. Caller-chosen
-          nullable: true
           type: string
         postings:
           description: The balanced set of postings (must net to zero per asset)
@@ -4189,13 +4302,20 @@ components:
           description: 'Business classification of the entry (open set, recommended
             not enforced): opening-balance, deposit, withdrawal, transfer, mint, burn,
             redemption, fee, interest, reversal, reconciliation-correction'
-          nullable: true
           type: string
         updated:
           $ref: '#/components/schemas/FFTime'
         urn:
           description: Canonical URN of the resource
           type: string
+      required:
+      - id
+      - urn
+      - created
+      - updated
+      - bookUrn
+      - name
+      - type
       type: object
     JournalEntryInput:
       description: The items of this entity type to upsert
@@ -4294,6 +4414,11 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - transactionUrn
       - name
       - fromUrn
       - toUrn
@@ -5230,7 +5355,6 @@ components:
           enum:
           - active
           - released
-          nullable: true
           type: string
         tokenUrn:
           description: URN-scoping parent token — accepts full URN or name (required,
@@ -5246,9 +5370,15 @@ components:
             of the read; absent for an unregistered holder (read-only)
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - tokenUrn
       - name
       - holder
       - amount
+      - status
       type: object
     LockInput:
       description: The items of this entity type to upsert
@@ -5330,6 +5460,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - lockUrn
       type: object
     LockReleaseInput:
@@ -5777,6 +5911,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - name
       - type
       type: object
@@ -5820,6 +5958,9 @@ components:
             (required, immutable)'
           type: string
       required:
+      - id
+      - created
+      - updated
       - partyUrn
       - scheme
       - value
@@ -5896,7 +6037,6 @@ components:
           type: string
         assetUrn:
           description: Name/URN of the asset
-          nullable: true
           type: string
         balance:
           $ref: '#/components/schemas/Integer'
@@ -5912,7 +6052,6 @@ components:
           - equity
           - income
           - expense
-          nullable: true
           type: string
         created:
           $ref: '#/components/schemas/FFTime'
@@ -5929,6 +6068,18 @@ components:
           $ref: '#/components/schemas/Integer'
         updated:
           $ref: '#/components/schemas/FFTime'
+      required:
+      - id
+      - created
+      - updated
+      - bookUrn
+      - accountUrn
+      - assetUrn
+      - class
+      - debits
+      - credits
+      - balance
+      - normalBalance
       type: object
     PositionHistoryItem:
       description: Items returned by the query
@@ -5945,7 +6096,6 @@ components:
         assetUrn:
           description: The asset the posting is denominated in, named by URN or name
             path on write; the resolved asset URN on read
-          nullable: true
           type: string
         bookUrn:
           description: The book the posting is in, read-only and denormalised from
@@ -5958,7 +6108,6 @@ components:
           enum:
           - debit
           - credit
-          nullable: true
           type: string
         effectiveTime:
           $ref: '#/components/schemas/FFTime'
@@ -5978,6 +6127,20 @@ components:
         urn:
           description: Canonical URN of the resource
           type: string
+      required:
+      - id
+      - urn
+      - created
+      - updated
+      - bookUrn
+      - journalEntryUrn
+      - accountUrn
+      - assetUrn
+      - direction
+      - amount
+      - signedAmount
+      - effectiveTime
+      - after
       type: object
     PositionTotals:
       description: The position's totals just after this posting, along the chosen
@@ -5991,6 +6154,11 @@ components:
           $ref: '#/components/schemas/Integer'
         normalBalance:
           $ref: '#/components/schemas/Integer'
+      required:
+      - debits
+      - credits
+      - balance
+      - normalBalance
       type: object
     Posting:
       description: The balanced set of postings (must net to zero per asset)
@@ -6005,7 +6173,6 @@ components:
         assetUrn:
           description: The asset the posting is denominated in, named by URN or name
             path on write; the resolved asset URN on read
-          nullable: true
           type: string
         bookUrn:
           description: The book the posting is in, read-only and denormalised from
@@ -6018,7 +6185,6 @@ components:
           enum:
           - debit
           - credit
-          nullable: true
           type: string
         effectiveTime:
           $ref: '#/components/schemas/FFTime'
@@ -6038,6 +6204,19 @@ components:
         urn:
           description: Canonical URN of the resource
           type: string
+      required:
+      - id
+      - urn
+      - created
+      - updated
+      - bookUrn
+      - journalEntryUrn
+      - accountUrn
+      - assetUrn
+      - direction
+      - amount
+      - signedAmount
+      - effectiveTime
       type: object
     PostingInput:
       description: The balanced set of postings (must net to zero per asset)
@@ -6893,6 +7072,12 @@ components:
         waitKey:
           description: The key the signal reports (required)
           type: string
+      required:
+      - id
+      - waitKey
+      - idempotencyKey
+      - source
+      - created
       type: object
     SignalInput:
       description: The items of this entity type to upsert
@@ -6982,7 +7167,6 @@ components:
           enum:
           - active
           - archived
-          nullable: true
           type: string
         updated:
           $ref: '#/components/schemas/FFTime'
@@ -6990,8 +7174,14 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - chainUrn
       - name
       - locator
+      - status
       type: object
     StateArchival:
       description: Items returned by the query
@@ -7030,6 +7220,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - stateUrn
       type: object
     StateArchivalInput:
@@ -7131,7 +7325,6 @@ components:
           - started
           - completed
           - failed
-          nullable: true
           type: string
         transactionUrn:
           description: The transaction the step belongs to - a reference or full URN
@@ -7143,7 +7336,13 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - transactionUrn
       - name
+      - status
       type: object
     StepInput:
       description: The items of this entity type to upsert
@@ -7217,6 +7416,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - stepUrn
       - status
       type: object
@@ -7295,6 +7498,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - stepUrn
       type: object
     StepStartInput:
@@ -7387,6 +7594,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - name
       - chainUrn
       - standard
@@ -8247,7 +8458,6 @@ components:
         name:
           description: Unique name of the transaction within its type (URN segment),
             by convention the end-to-end reference
-          nullable: true
           type: string
         outcome:
           $ref: '#/components/schemas/TransactionOutcome'
@@ -8258,7 +8468,6 @@ components:
           - active
           - completed
           - failed
-          nullable: true
           type: string
         steps:
           description: Every step, when the read asks for children
@@ -8274,6 +8483,14 @@ components:
         urn:
           description: Canonical URN of the resource
           type: string
+      required:
+      - id
+      - urn
+      - created
+      - updated
+      - transactionTypeUrn
+      - name
+      - status
       type: object
     TransactionInput:
       description: The items of this entity type to upsert
@@ -8353,6 +8570,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - transactionUrn
       - status
       type: object
@@ -8425,6 +8646,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - name
       type: object
     TransactionTypeInput:
@@ -8625,7 +8850,6 @@ components:
         name:
           description: Name of the transfer within its token (URN segment). Caller-chosen;
             block/txIndex/logIndex is the convention that makes a replay idempotent
-          nullable: true
           type: string
         originUrn:
           description: URN of the chain transaction or event this transfer was written
@@ -8643,6 +8867,14 @@ components:
         urn:
           description: Canonical URN of the resource
           type: string
+      required:
+      - id
+      - urn
+      - created
+      - updated
+      - tokenUrn
+      - name
+      - timestamp
       type: object
     TransferInput:
       description: The items of this entity type to upsert
@@ -8747,7 +8979,6 @@ components:
             balanceChanges, a journal entry's postings), so a computed column can
             read them. Only valid on a collection whose rows have children; aggregations
             and reference lookups are unaffected
-          nullable: true
           type: boolean
         itemDisplayName:
           description: Human-readable singular noun for one row of this view (e.g.
@@ -8800,9 +9031,14 @@ components:
             (required, immutable)
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - name
       - viewGroupUrn
       - type
+      - includeChildren
       type: object
     ViewAggregateInput:
       properties:
@@ -8901,6 +9137,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - name
       type: object
     ViewGroupInput:
@@ -9082,6 +9322,10 @@ components:
           description: Canonical URN of the resource
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - name
       type: object
     WalletAssignment:
@@ -9123,7 +9367,6 @@ components:
           enum:
           - active
           - inactive
-          nullable: true
           type: string
         updated:
           $ref: '#/components/schemas/FFTime'
@@ -9135,9 +9378,15 @@ components:
             immutable)
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
+      - bookUrn
       - name
       - walletUrn
       - accountUrn
+      - status
       type: object
     WalletAssignmentInput:
       description: The items of this entity type to upsert
@@ -9214,6 +9463,9 @@ components:
             immutable)
           type: string
       required:
+      - id
+      - created
+      - updated
       - walletUrn
       - scheme
       - value
@@ -9313,6 +9565,10 @@ components:
             path (required, immutable). An assignment has at most one unassignment
           type: string
       required:
+      - id
+      - urn
+      - created
+      - updated
       - walletAssignmentUrn
       type: object
     WalletUnassignmentInput:

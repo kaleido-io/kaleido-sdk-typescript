@@ -3545,18 +3545,18 @@ export interface components {
         /** @description Items returned by the query */
         Account: {
             /** @description Owning book reference — accepts full URN or name (required, immutable) */
-            bookUrn?: string;
+            bookUrn: string;
             /**
              * @description Accounting classification: asset, liability, equity, income, expense
              * @enum {string}
              */
             class: "asset" | "liability" | "equity" | "income" | "expense";
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -3569,9 +3569,9 @@ export interface components {
             ownerUrn: string;
             /** @description URN of the parent account, for account hierarchies (e.g. sub under omnibus); omitted for an account directly under its book */
             parentAccountUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         AccountInput: {
@@ -3986,14 +3986,14 @@ export interface components {
         };
         /** @description The asset this value names. Present only when the read sets includeSubject */
         Asset: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description Required scale of the asset: an amount is an integer count of 10^-decimals units. Use 0 for an asset with no fractional part. Immutable, so a re-scale is a new asset */
             decimals: number;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -4002,21 +4002,21 @@ export interface components {
             };
             /** @description Unique name/symbol of the asset (URN segment; e.g. USD, AUSD) */
             name: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description Items returned by the query */
         AssetIdentifier: {
             asset?: components["schemas"]["Asset"];
             /** @description The asset this value names - a name or full URN (required, immutable) */
             assetUrn: string;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -4025,7 +4025,7 @@ export interface components {
             };
             /** @description The identification scheme the value belongs to, lowercase: eip155, bip122, lei, bic, iso4217, isin (required, immutable) */
             scheme: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description The external value, verbatim and case-sensitive: an address, an LEI, a currency code. Unique among the identifiers of one subject type (required, immutable) */
             value: string;
         };
@@ -4059,40 +4059,40 @@ export interface components {
         };
         /** @description Items returned by the query */
         Balance: {
-            balance?: components["schemas"]["Integer"];
-            created?: components["schemas"]["FFTime"];
+            balance: components["schemas"]["Integer"];
+            created: components["schemas"]["FFTime"];
             /** @description The holder value the balance accumulates for, verbatim */
-            holder?: string | null;
+            holder: string;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description URN of the token (read-only) */
-            tokenUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            tokenUrn: string;
+            updated: components["schemas"]["FFTime"];
             /** @description The wallet the holder's wallet identifier names, at the time of the read; absent for an unregistered holder (read-only) */
             walletUrn?: string;
         };
         /** @description Items returned by the query */
         BalanceChange: {
-            amount?: components["schemas"]["Integer"];
-            created?: components["schemas"]["FFTime"];
+            amount: components["schemas"]["Integer"];
+            created: components["schemas"]["FFTime"];
             /** @description The chain's own value for whoever holds the balance, verbatim: an address, a party id, a token account. A raw value, not a reference — no registered account or identifier need exist */
-            holder?: string | null;
+            holder: string;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
-            timestamp?: components["schemas"]["FFTime"];
+            id: number;
+            timestamp: components["schemas"]["FFTime"];
             /** @description The token whose balance the change moves, taken from the parent transfer (populated on read) */
-            tokenUrn?: string;
+            tokenUrn: string;
             /** @description URN-scoping parent transfer, immutable after create (populated on read) */
-            transferUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            transferUrn: string;
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
             /** @description The wallet the holder's wallet identifier names, at the time of the read; absent for an unregistered holder (read-only) */
             walletUrn?: string;
         };
@@ -4104,41 +4104,41 @@ export interface components {
         };
         /** @description Items returned by the query */
         BalanceHistoryItem: {
-            after?: components["schemas"]["BalanceTotals"];
-            amount?: components["schemas"]["Integer"];
-            created?: components["schemas"]["FFTime"];
+            after: components["schemas"]["BalanceTotals"];
+            amount: components["schemas"]["Integer"];
+            created: components["schemas"]["FFTime"];
             /** @description The chain's own value for whoever holds the balance, verbatim: an address, a party id, a token account. A raw value, not a reference — no registered account or identifier need exist */
-            holder?: string | null;
+            holder: string;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
-            timestamp?: components["schemas"]["FFTime"];
+            id: number;
+            timestamp: components["schemas"]["FFTime"];
             /** @description The token whose balance the change moves, taken from the parent transfer (populated on read) */
-            tokenUrn?: string;
+            tokenUrn: string;
             /** @description URN-scoping parent transfer, immutable after create (populated on read) */
-            transferUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            transferUrn: string;
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
             /** @description The wallet the holder's wallet identifier names, at the time of the read; absent for an unregistered holder (read-only) */
             walletUrn?: string;
         };
         /** @description The holder's balance just after this change, along the chosen axis */
         BalanceTotals: {
-            balance?: components["schemas"]["Integer"];
+            balance: components["schemas"]["Integer"];
         };
         /** @description Items returned by the query */
         Block: {
             /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
-            chainUrn?: string;
-            created?: components["schemas"]["FFTime"];
+            chainUrn: string;
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -4153,9 +4153,9 @@ export interface components {
              */
             number: number;
             timestamp?: components["schemas"]["FFTime"];
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         BlockInput: {
@@ -4535,12 +4535,12 @@ export interface components {
         };
         /** @description Items returned by the query */
         Book: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -4549,9 +4549,9 @@ export interface components {
             };
             /** @description Unique name of the book (URN segment) */
             name: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         BookInput: {
@@ -4675,14 +4675,14 @@ export interface components {
         };
         /** @description Items returned by the query */
         Chain: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description How many '/'-separated levels every event ledgerSequence on this chain has, 1 to 16. Set means every event on this chain must carry a ledgerSequence, absent means none may (immutable) */
             eventSequenceLevels?: number | null;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -4695,20 +4695,20 @@ export interface components {
             name: string;
             /** @description How many '/'-separated levels every transaction ledgerSequence on this chain has, 1 to 16. Set means every transaction on this chain must carry a ledgerSequence, absent means none may (immutable) */
             transactionSequenceLevels?: number | null;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description Items returned by the query */
         ChainAccount: {
             /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
-            chainUrn?: string;
-            created?: components["schemas"]["FFTime"];
+            chainUrn: string;
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -4719,9 +4719,9 @@ export interface components {
             locator: string;
             /** @description Name of the account within its chain (URN segment) */
             name: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         ChainAccountInput: {
@@ -4741,13 +4741,13 @@ export interface components {
         /** @description Items returned by the query */
         ChainEvent: {
             /** @description URN of the chain the event was reported on, read-only and denormalised from the parent transaction. The shard key, so it is filterable and a change stream scopes by it */
-            chainUrn?: string;
-            created?: components["schemas"]["FFTime"];
+            chainUrn: string;
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -4763,9 +4763,9 @@ export interface components {
             name: string;
             /** @description URN-scoping parent transaction — accepts full URN or name path (required, immutable). An event-shaped indexer create_or_ignores a skeleton transaction in the same bulk body */
             transactionUrn: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         ChainEventInput: {
@@ -4860,13 +4860,13 @@ export interface components {
             /** @description URN of the block that carries this transaction. Recorded, never resolved. Mutable, because re-mining moves a transaction to another block */
             blockUrn?: string | null;
             /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
-            chainUrn?: string;
-            created?: components["schemas"]["FFTime"];
+            chainUrn: string;
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -4882,9 +4882,9 @@ export interface components {
             name: string;
             /** @description Which indexer wrote this row */
             source?: string | null;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         ChainTransactionInput: {
@@ -4911,14 +4911,14 @@ export interface components {
         /** @description Items returned by the query */
         Coin: {
             amount?: components["schemas"]["Integer"];
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description The chain's own value for whoever holds the unit, verbatim, as on a balance change. Optional: present where the unit's spending condition names a party */
             holder?: string | null;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -4933,14 +4933,14 @@ export interface components {
             originUrn?: string | null;
             /**
              * @description Lifecycle state: active while spendable, spent once a coin spend is written for it (read-only)
-             * @enum {string|null}
+             * @enum {string}
              */
-            status?: "active" | "spent" | null;
+            status: "active" | "spent";
             /** @description URN-scoping parent token — accepts full URN or name (required, immutable) */
-            tokenUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            tokenUrn: string;
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
             /** @description The wallet the holder's wallet identifier names, at the time of the read; absent for an unregistered holder (read-only) */
             walletUrn?: string;
         };
@@ -4968,12 +4968,12 @@ export interface components {
         CoinSpend: {
             /** @description The coin this spends — accepts full URN or name path (required, immutable). A coin has at most one spend */
             coinUrn: string;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -4982,9 +4982,9 @@ export interface components {
             };
             /** @description URN of the chain transaction or event this coin spend was written from (immutable). Recorded, never resolved */
             originUrn?: string | null;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         CoinSpendInput: {
@@ -5043,12 +5043,12 @@ export interface components {
         };
         /** @description Items returned by the query */
         Condition: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -5058,10 +5058,10 @@ export interface components {
             /** @description Unique name of the condition within its transaction (URN segment) */
             name: string;
             /** @description The transaction the condition belongs to - a reference or full URN (immutable) */
-            transactionUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            transactionUrn: string;
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
             /** @description The key the transaction waits on (required, immutable). A condition-signaled event is written for every signal reporting it */
             waitKey: string;
         };
@@ -5082,12 +5082,12 @@ export interface components {
         };
         /** @description The contract this value names. Present only when the read sets includeSubject */
         Contract: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -5096,21 +5096,21 @@ export interface components {
             };
             /** @description Unique name of the contract (URN segment) */
             name: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description Items returned by the query */
         ContractIdentifier: {
             contract?: components["schemas"]["Contract"];
             /** @description The contract this value names - a name or full URN (required, immutable) */
             contractUrn: string;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -5119,7 +5119,7 @@ export interface components {
             };
             /** @description The identification scheme the value belongs to, lowercase: eip155, bip122, lei, bic, iso4217, isin (required, immutable) */
             scheme: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description The external value, verbatim and case-sensitive: an address, an LEI, a currency code. Unique among the identifiers of one subject type (required, immutable) */
             value: string;
         };
@@ -5157,15 +5157,15 @@ export interface components {
         /** @description Items returned by the query */
         Deployment: {
             /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
-            chainUrn?: string;
+            chainUrn: string;
             /** @description The contract this is an instance of — accepts full URN or name (required). Mutable: a PATCH re-points a proxy */
             contractUrn: string;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -5176,9 +5176,9 @@ export interface components {
             locator: string;
             /** @description Name of the deployment within its chain (URN segment) */
             name: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         DeploymentInput: {
@@ -5211,33 +5211,33 @@ export interface components {
         };
         /** @description Items returned by the query */
         Event: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description References and statuses the event carries, never payloads */
             detail?: any;
             /**
              * @description The write that produced the event: transaction-accepted, transaction-outcome, step-added, step-started, step-outcome, leg-added, condition-added or condition-signaled
-             * @enum {string|null}
+             * @enum {string}
              */
-            eventType?: "transaction-accepted" | "transaction-outcome" | "step-added" | "step-started" | "step-outcome" | "leg-added" | "condition-added" | "condition-signaled" | null;
+            eventType: "transaction-accepted" | "transaction-outcome" | "step-added" | "step-started" | "step-outcome" | "leg-added" | "condition-added" | "condition-signaled";
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Event name: the event type, then the member names it concerns */
-            name?: string | null;
+            name: string;
             /** @description The subject the event is about: the transaction for a transaction event, or the step, leg or condition it names */
-            subjectUrn?: string;
+            subjectUrn: string;
             /** @description The transaction the event belongs to */
-            transactionUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            transactionUrn: string;
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         Export: {
             /** @description Rows fetched and encoded per page while the export executes (default 100) */
             batchSize?: number | null;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description Failure detail, set only when status is failed */
             error?: string | null;
             /**
@@ -5249,7 +5249,7 @@ export interface components {
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
             labels?: {
                 [key: string]: string;
@@ -5274,12 +5274,12 @@ export interface components {
              * @description Lifecycle status: running, complete, failed or cancelled. System-written; there is no PUT/PATCH on this resource
              * @enum {string}
              */
-            status?: "running" | "complete" | "failed" | "cancelled";
+            status: "running" | "complete" | "failed" | "cancelled";
             /** @description Milliseconds to wait between pages while the export executes (default 50) */
             throttleMs?: number | null;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
             /** @description The ViewGroup this export belongs to — accepts full URN or name (required, immutable) */
             viewGroupUrn: string;
             /** @description The View this export runs, which must be in the same view group — accepts full URN or viewGroup:view name path (required, immutable) */
@@ -5479,17 +5479,17 @@ export interface components {
             /** @description Asset the reserved amount is denominated in */
             assetUrn: string;
             /** @description Book the hold is in - a reference or full URN */
-            bookUrn?: string;
+            bookUrn: string;
             /** @description URN of the reason the hold exists — a settlement leg, or an operator's reference (immutable). Recorded, never resolved */
             causationUrn?: string | null;
             /** @description External id of what the hold tracks, such as an unspent output or an instruction id (immutable) */
             correlationId?: string | null;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -5500,12 +5500,12 @@ export interface components {
             name: string;
             /**
              * @description Lifecycle state: active while it reserves, released once a hold release is written for it (read-only)
-             * @enum {string|null}
+             * @enum {string}
              */
-            status?: "active" | "released" | null;
-            updated?: components["schemas"]["FFTime"];
+            status: "active" | "released";
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         HoldInput: {
@@ -5533,23 +5533,23 @@ export interface components {
         HoldRelease: {
             /** @description URN of the reason for the release, such as the settling journal entry (immutable). Recorded, never resolved */
             causationUrn?: string | null;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description The hold this releases — accepts full URN or name path (required, immutable). A hold has at most one release */
             holdUrn: string;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
             labels?: {
                 [key: string]: string;
             };
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         HoldReleaseInput: {
@@ -5599,17 +5599,17 @@ export interface components {
         /** @description Items returned by the query */
         JournalEntry: {
             /** @description URN-scoping parent book — accepts full URN or name path */
-            bookUrn?: string;
+            bookUrn: string;
             /** @description URN of the occurrence that directly caused this entry — the entry it reverses or corrects, say (immutable). Recorded, never resolved, so it may name an occurrence in another instance */
             causationUrn?: string | null;
             /** @description Economic-event id shared by every entry arising from one operation (e.g. an on-ramp); enables per-event reconciliation */
             correlationId?: string | null;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -5617,14 +5617,14 @@ export interface components {
                 [key: string]: string;
             };
             /** @description Unique name of the entry within its book (URN segment); the idempotency key. Caller-chosen */
-            name?: string | null;
+            name: string;
             /** @description The balanced set of postings (must net to zero per asset) */
             postings?: components["schemas"]["Posting"][];
             /** @description Business classification of the entry (open set, recommended not enforced): opening-balance, deposit, withdrawal, transfer, mint, burn, redemption, fee, interest, reversal, reconciliation-correction */
-            type?: string | null;
-            updated?: components["schemas"]["FFTime"];
+            type: string;
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         JournalEntryInput: {
@@ -5652,14 +5652,14 @@ export interface components {
             amount: components["schemas"]["Integer"];
             /** @description Asset the amount is denominated in - a reference or full URN, resolved against the registry (required, immutable) */
             assetUrn: string;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description Canonical URN of where the amount moves from (required, immutable). Recorded, never resolved */
             fromUrn: string;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -5671,10 +5671,10 @@ export interface components {
             /** @description Canonical URN of where the amount moves to (required, immutable). Recorded, never resolved */
             toUrn: string;
             /** @description The transaction the leg belongs to - a reference or full URN (immutable) */
-            transactionUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            transactionUrn: string;
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         LegInput: {
@@ -6096,14 +6096,14 @@ export interface components {
         /** @description Items returned by the query */
         Lock: {
             amount: components["schemas"]["Integer"];
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description The chain's own value for whoever holds the encumbered value, verbatim, as on a balance change (required, immutable) */
             holder: string;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -6118,14 +6118,14 @@ export interface components {
             originUrn?: string | null;
             /**
              * @description Lifecycle state: active while it encumbers, released once a lock release is written for it (read-only)
-             * @enum {string|null}
+             * @enum {string}
              */
-            status?: "active" | "released" | null;
+            status: "active" | "released";
             /** @description URN-scoping parent token — accepts full URN or name (required, immutable) */
-            tokenUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            tokenUrn: string;
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
             /** @description The wallet the holder's wallet identifier names, at the time of the read; absent for an unregistered holder (read-only) */
             walletUrn?: string;
         };
@@ -6151,12 +6151,12 @@ export interface components {
         };
         /** @description Items returned by the query */
         LockRelease: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -6167,9 +6167,9 @@ export interface components {
             lockUrn: string;
             /** @description URN of the chain transaction or event this lock release was written from (immutable). Recorded, never resolved */
             originUrn?: string | null;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         LockReleaseInput: {
@@ -6344,12 +6344,12 @@ export interface components {
         };
         /** @description Items returned by the query */
         Party: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -6362,18 +6362,18 @@ export interface components {
             parentPartyUrn?: string;
             /** @description Party type (open set, recommended not enforced): natural-person (retail customer), legal-entity (corporate customer or counterparty), financial-institution (bank, PSP, central bank), group (structural grouping node), internal (a desk, branch or business unit of the operating institution) */
             type: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description Items returned by the query */
         PartyIdentifier: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -6385,7 +6385,7 @@ export interface components {
             partyUrn: string;
             /** @description The identification scheme the value belongs to, lowercase: eip155, bip122, lei, bic, iso4217, isin (required, immutable) */
             scheme: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description The external value, verbatim and case-sensitive: an address, an LEI, a currency code. Unique among the identifiers of one subject type (required, immutable) */
             value: string;
         };
@@ -6422,91 +6422,91 @@ export interface components {
         /** @description Items returned by the query */
         Position: {
             /** @description URN of the account */
-            accountUrn?: string;
+            accountUrn: string;
             /** @description Name/URN of the asset */
-            assetUrn?: string | null;
-            balance?: components["schemas"]["Integer"];
+            assetUrn: string;
+            balance: components["schemas"]["Integer"];
             /** @description URN of the book the account belongs to (read-only) */
-            bookUrn?: string;
+            bookUrn: string;
             /**
              * @description Accounting classification of the account, copied when the position is first written (read-only)
-             * @enum {string|null}
+             * @enum {string}
              */
-            class?: "asset" | "liability" | "equity" | "income" | "expense" | null;
-            created?: components["schemas"]["FFTime"];
-            credits?: components["schemas"]["Integer"];
-            debits?: components["schemas"]["Integer"];
+            class: "asset" | "liability" | "equity" | "income" | "expense";
+            created: components["schemas"]["FFTime"];
+            credits: components["schemas"]["Integer"];
+            debits: components["schemas"]["Integer"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
-            normalBalance?: components["schemas"]["Integer"];
-            updated?: components["schemas"]["FFTime"];
+            id: number;
+            normalBalance: components["schemas"]["Integer"];
+            updated: components["schemas"]["FFTime"];
         };
         /** @description Items returned by the query */
         PositionHistoryItem: {
             /** @description The account the posting is attributed to, named by URN or name path on write; the resolved account URN on read. Must be in the entry's book */
-            accountUrn?: string;
-            after?: components["schemas"]["PositionTotals"];
-            amount?: components["schemas"]["Integer"];
+            accountUrn: string;
+            after: components["schemas"]["PositionTotals"];
+            amount: components["schemas"]["Integer"];
             /** @description The asset the posting is denominated in, named by URN or name path on write; the resolved asset URN on read */
-            assetUrn?: string | null;
+            assetUrn: string;
             /** @description The book the posting is in, read-only and denormalised from its entry */
-            bookUrn?: string;
-            created?: components["schemas"]["FFTime"];
+            bookUrn: string;
+            created: components["schemas"]["FFTime"];
             /**
              * @description debit or credit
-             * @enum {string|null}
+             * @enum {string}
              */
-            direction?: "debit" | "credit" | null;
-            effectiveTime?: components["schemas"]["FFTime"];
+            direction: "debit" | "credit";
+            effectiveTime: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description URN-scoping parent journal entry, immutable after create (populated on read) */
-            journalEntryUrn?: string;
-            signedAmount?: components["schemas"]["Integer"];
-            updated?: components["schemas"]["FFTime"];
+            journalEntryUrn: string;
+            signedAmount: components["schemas"]["Integer"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The position's totals just after this posting, along the chosen axis */
         PositionTotals: {
-            balance?: components["schemas"]["Integer"];
-            credits?: components["schemas"]["Integer"];
-            debits?: components["schemas"]["Integer"];
-            normalBalance?: components["schemas"]["Integer"];
+            balance: components["schemas"]["Integer"];
+            credits: components["schemas"]["Integer"];
+            debits: components["schemas"]["Integer"];
+            normalBalance: components["schemas"]["Integer"];
         };
         /** @description The balanced set of postings (must net to zero per asset) */
         Posting: {
             /** @description The account the posting is attributed to, named by URN or name path on write; the resolved account URN on read. Must be in the entry's book */
-            accountUrn?: string;
-            amount?: components["schemas"]["Integer"];
+            accountUrn: string;
+            amount: components["schemas"]["Integer"];
             /** @description The asset the posting is denominated in, named by URN or name path on write; the resolved asset URN on read */
-            assetUrn?: string | null;
+            assetUrn: string;
             /** @description The book the posting is in, read-only and denormalised from its entry */
-            bookUrn?: string;
-            created?: components["schemas"]["FFTime"];
+            bookUrn: string;
+            created: components["schemas"]["FFTime"];
             /**
              * @description debit or credit
-             * @enum {string|null}
+             * @enum {string}
              */
-            direction?: "debit" | "credit" | null;
-            effectiveTime?: components["schemas"]["FFTime"];
+            direction: "debit" | "credit";
+            effectiveTime: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description URN-scoping parent journal entry, immutable after create (populated on read) */
-            journalEntryUrn?: string;
-            signedAmount?: components["schemas"]["Integer"];
-            updated?: components["schemas"]["FFTime"];
+            journalEntryUrn: string;
+            signedAmount: components["schemas"]["Integer"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The balanced set of postings (must net to zero per asset) */
         PostingInput: {
@@ -6902,20 +6902,20 @@ export interface components {
         };
         /** @description Items returned by the query */
         Signal: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Sequence of the signal in the log, ordering the signals on a key
              */
-            id?: number;
+            id: number;
             /** @description Identity of this submission (required): repeating it inserts nothing */
-            idempotencyKey?: string;
+            idempotencyKey: string;
             /** @description What the signal reports, stored verbatim for the workflows judging conditions on its key */
             info?: any;
             /** @description Where the signal came from: api, bulk, or the stream that carried it */
-            source?: string;
+            source: string;
             /** @description The key the signal reports (required) */
-            waitKey?: string;
+            waitKey: string;
         };
         /** @description The items of this entity type to upsert */
         SignalInput: {
@@ -6938,13 +6938,13 @@ export interface components {
         /** @description Items returned by the query */
         State: {
             /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
-            chainUrn?: string;
-            created?: components["schemas"]["FFTime"];
+            chainUrn: string;
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -6959,21 +6959,21 @@ export interface components {
             originUrn?: string | null;
             /**
              * @description Lifecycle state: active while live on its chain, archived once a state archival is written for it (read-only)
-             * @enum {string|null}
+             * @enum {string}
              */
-            status?: "active" | "archived" | null;
-            updated?: components["schemas"]["FFTime"];
+            status: "active" | "archived";
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description Items returned by the query */
         StateArchival: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -6984,9 +6984,9 @@ export interface components {
             originUrn?: string | null;
             /** @description The state this archives — accepts full URN or name path (required, immutable). A state has at most one archival */
             stateUrn: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         StateArchivalInput: {
@@ -7020,12 +7020,12 @@ export interface components {
         };
         /** @description Items returned by the query */
         Step: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -7038,14 +7038,14 @@ export interface components {
             start?: components["schemas"]["StepStart"];
             /**
              * @description Lifecycle status: pending until a step start is written, started until a step outcome is written, then completed or failed (read-only)
-             * @enum {string|null}
+             * @enum {string}
              */
-            status?: "pending" | "started" | "completed" | "failed" | null;
+            status: "pending" | "started" | "completed" | "failed";
             /** @description The transaction the step belongs to - a reference or full URN (immutable) */
-            transactionUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            transactionUrn: string;
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         StepInput: {
@@ -7064,14 +7064,14 @@ export interface components {
         StepOutcome: {
             /** @description URN of the reason for the outcome (immutable). Recorded, never resolved */
             causationUrn?: string | null;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description Why the step failed (immutable) */
             error?: string | null;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -7085,9 +7085,9 @@ export interface components {
             status: "completed" | "failed";
             /** @description The step this concludes - a reference or full URN (required, immutable). A step has at most one outcome */
             stepUrn: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         StepOutcomeInput: {
@@ -7113,12 +7113,12 @@ export interface components {
         StepStart: {
             /** @description URN of the reason the step began (immutable). Recorded, never resolved */
             causationUrn?: string | null;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -7127,9 +7127,9 @@ export interface components {
             };
             /** @description The step that began - a reference or full URN (required, immutable). A step has at most one start */
             stepUrn: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         StepStartInput: {
@@ -7154,14 +7154,14 @@ export interface components {
             assetUrn?: string;
             /** @description URN of the chain this token lives on (required, immutable). Recorded, never resolved */
             chainUrn: string;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description The rail's scale, so a quantity is an integer count of 10^-decimals units (required, immutable). Distinct from the asset's decimals, which is the book scale */
             decimals: number;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -7176,9 +7176,9 @@ export interface components {
             standard: string;
             /** @description The symbol the rail reports, for display */
             symbol?: string | null;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         TokenInput: {
@@ -7557,12 +7557,12 @@ export interface components {
             causationUrn?: string | null;
             /** @description Every condition, when the read asks for children */
             conditions?: components["schemas"]["Condition"][];
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -7572,20 +7572,20 @@ export interface components {
             /** @description Every leg, when the read asks for children */
             legs?: components["schemas"]["Leg"][];
             /** @description Unique name of the transaction within its type (URN segment), by convention the end-to-end reference */
-            name?: string | null;
+            name: string;
             outcome?: components["schemas"]["TransactionOutcome"];
             /**
              * @description Lifecycle status: active until a transaction outcome is written for it, then completed or failed (read-only)
-             * @enum {string|null}
+             * @enum {string}
              */
-            status?: "active" | "completed" | "failed" | null;
+            status: "active" | "completed" | "failed";
             /** @description Every step, when the read asks for children */
             steps?: components["schemas"]["Step"][];
             /** @description Transaction type the transaction belongs to - a reference or full URN, filled from the path when omitted */
-            transactionTypeUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            transactionTypeUrn: string;
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         TransactionInput: {
@@ -7606,14 +7606,14 @@ export interface components {
         TransactionOutcome: {
             /** @description URN of the reason for the outcome (immutable). Recorded, never resolved */
             causationUrn?: string | null;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description Why the transaction failed (immutable) */
             error?: string | null;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -7627,9 +7627,9 @@ export interface components {
             status: "completed" | "failed";
             /** @description The transaction this concludes - a reference or full URN (required, immutable). A transaction has at most one outcome */
             transactionUrn: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         TransactionOutcomeInput: {
@@ -7653,12 +7653,12 @@ export interface components {
         };
         /** @description Items returned by the query */
         TransactionType: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -7667,9 +7667,9 @@ export interface components {
             };
             /** @description Unique name of the transaction type (URN segment) */
             name: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         TransactionTypeInput: {
@@ -7739,12 +7739,12 @@ export interface components {
         Transfer: {
             /** @description The per-holder effects of this transfer, at least one. Written only through the transfer and never revised */
             balanceChanges?: components["schemas"]["BalanceChange"][];
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -7752,15 +7752,15 @@ export interface components {
                 [key: string]: string;
             };
             /** @description Name of the transfer within its token (URN segment). Caller-chosen; block/txIndex/logIndex is the convention that makes a replay idempotent */
-            name?: string | null;
+            name: string;
             /** @description URN of the chain transaction or event this transfer was written from (immutable). Recorded, never resolved */
             originUrn?: string | null;
-            timestamp?: components["schemas"]["FFTime"];
+            timestamp: components["schemas"]["FFTime"];
             /** @description URN-scoping parent token — accepts full URN or name (required, immutable) */
-            tokenUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            tokenUrn: string;
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description The items of this entity type to upsert */
         TransferInput: {
@@ -7806,7 +7806,7 @@ export interface components {
             path?: string;
         };
         View: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description Free-text description of what this view is for */
             description?: string | null;
             /** @description Ordered column definitions describing how to reshape the collection's rows: which fields to include/rename, and any JSONata-computed columns */
@@ -7815,9 +7815,9 @@ export interface components {
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Load each row's child records alongside the row (e.g. a transfer's balanceChanges, a journal entry's postings), so a computed column can read them. Only valid on a collection whose rows have children; aggregations and reference lookups are unaffected */
-            includeChildren?: boolean | null;
+            includeChildren: boolean;
             /** @description Human-readable singular noun for one row of this view (e.g. "Position") */
             itemDisplayName?: string | null;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -7837,9 +7837,9 @@ export interface components {
             scopeUrn?: string | null;
             /** @description The collection this view queries, as "<module>.<collection>" (e.g. accounting.holds). Required */
             type: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
             /** @description The ViewGroup this view belongs to — accepts full URN or name (required, immutable) */
             viewGroupUrn: string;
         };
@@ -7874,14 +7874,14 @@ export interface components {
             splitBy?: string;
         };
         ViewGroup: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /** @description Free-text description of what this view group is for, and who it is for */
             description?: string | null;
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -7890,9 +7890,9 @@ export interface components {
             };
             /** @description Unique name of the view group (URN segment) */
             name: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         ViewGroupInput: {
             /** @description Free-text description of what this view group is for, and who it is for */
@@ -7964,12 +7964,12 @@ export interface components {
         };
         /** @description The wallet this value names. Present only when the read sets includeSubject */
         Wallet: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -7980,22 +7980,22 @@ export interface components {
             name: string;
             /** @description URN of the parent wallet, expressing a derivation subrange of its key material */
             parentWalletUrn?: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
         };
         /** @description Items returned by the query */
         WalletAssignment: {
             /** @description Account the holdings belong to, in this wallet assignment's own book — accepts full URN or name path (required, immutable) */
             accountUrn: string;
             /** @description URN-scoping parent book — accepts full URN or name (required, immutable) */
-            bookUrn?: string;
-            created?: components["schemas"]["FFTime"];
+            bookUrn: string;
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -8006,12 +8006,12 @@ export interface components {
             name: string;
             /**
              * @description Lifecycle status: active, or inactive once a wallet unassignment is written for it (read-only)
-             * @enum {string|null}
+             * @enum {string}
              */
-            status?: "active" | "inactive" | null;
-            updated?: components["schemas"]["FFTime"];
+            status: "active" | "inactive";
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
             /** @description Wallet being assigned — accepts full URN or name path (required, immutable) */
             walletUrn: string;
         };
@@ -8034,12 +8034,12 @@ export interface components {
         };
         /** @description Items returned by the query */
         WalletIdentifier: {
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
@@ -8048,7 +8048,7 @@ export interface components {
             };
             /** @description The identification scheme the value belongs to, lowercase: eip155, bip122, lei, bic, iso4217, isin (required, immutable) */
             scheme: string;
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description The external value, verbatim and case-sensitive: an address, an LEI, a currency code. Unique among the identifiers of one subject type (required, immutable) */
             value: string;
             wallet?: components["schemas"]["Wallet"];
@@ -8087,21 +8087,21 @@ export interface components {
         WalletUnassignment: {
             /** @description URN of the reason the assignment ended (immutable). Recorded, never resolved */
             causationUrn?: string | null;
-            created?: components["schemas"]["FFTime"];
+            created: components["schemas"]["FFTime"];
             /**
              * Format: int64
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
-            id?: number;
+            id: number;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
             /** @description Key-value labels attached to the resource. Indexed and filterable */
             labels?: {
                 [key: string]: string;
             };
-            updated?: components["schemas"]["FFTime"];
+            updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
-            urn?: string;
+            urn: string;
             /** @description The wallet assignment this ends — accepts full URN or name path (required, immutable). An assignment has at most one unassignment */
             walletAssignmentUrn: string;
         };
