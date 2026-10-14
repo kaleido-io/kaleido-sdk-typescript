@@ -226,10 +226,10 @@ export class StateMachine<Config = unknown> {
    * redelivered event writes the same rows again, and the defaults ignore them.
    */
   eventProcessor(): EventProcessorDef<unknown, LifecycleEvent> {
-    let client: SubledgerClient | undefined;
     return {
       processBatch: async (engineCtx, events) => {
-        client ??= new SubledgerClient(engineCtx, this.def.subledger ?? "subledger");
+        // Per batch: the context carries the batch's authRef and deadline signal.
+        const client = new SubledgerClient(engineCtx, this.def.subledger ?? "subledger");
         const ctx = { config: engineCtx.config as Config, subledger: client };
         for (const { data: event } of events) {
           if (event.name && event.transactionUrn && this.handles(event.name)) {

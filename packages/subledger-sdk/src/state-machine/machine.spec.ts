@@ -270,6 +270,23 @@ describe("eventProcessor", () => {
     expect(upsert.mock.calls[0][0].lifecycle?.transactions).toEqual([label("settling")]);
   });
 
+  it("builds the client from each batch's context", async () => {
+    jest.spyOn(SubledgerClient.prototype, "bulkQuery").mockResolvedValue(read(record()));
+    jest.spyOn(SubledgerClient.prototype, "bulkUpsert").mockResolvedValue({});
+    const batchCtx = () =>
+      ({
+        config: {},
+        getServiceClientOptions: jest.fn(() => ({ baseURL: "http://subledger" })),
+      }) as unknown as EventProcessorContext;
+    const first = batchCtx();
+    const second = batchCtx();
+    const processor = machine.eventProcessor();
+    await processor.processBatch(first, batch("transaction-accepted"));
+    await processor.processBatch(second, batch("transaction-accepted"));
+    expect(first.getServiceClientOptions).toHaveBeenCalledTimes(1);
+    expect(second.getServiceClientOptions).toHaveBeenCalledTimes(1);
+  });
+
   it("propagates a failed write so the stream retries", async () => {
     jest.spyOn(SubledgerClient.prototype, "bulkQuery").mockResolvedValue(read(record()));
     const upsert = jest.spyOn(SubledgerClient.prototype, "bulkUpsert");
