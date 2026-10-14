@@ -9,6 +9,10 @@
     ".": {
       "import": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
+    },
+    "./state-machine": {
+      "import": "./dist/src/state-machine/index.js",
+      "types": "./dist/src/state-machine/index.d.ts"
     }
   },
   "scripts": {
@@ -38,6 +42,7 @@
     "@eslint/compat": "^2.0.0",
     "@eslint/js": "^10.0.0",
     "@jest/globals": "^30.0.0",
+    "@kaleido-io/workflow-engine-sdk": "^1.0.0",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.0.0",
