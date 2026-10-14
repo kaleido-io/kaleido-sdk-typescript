@@ -1,6 +1,6 @@
 {
   "name": "@kaleido-io/subledger-sdk",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "TypeScript SDK client for the Kaleido Subledger service",
   "type": "module",
   "main": "dist/src/index.js",
