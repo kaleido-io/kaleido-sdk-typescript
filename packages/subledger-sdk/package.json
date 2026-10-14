@@ -38,6 +38,14 @@
     "@kaleido-io/core-sdk": "^1.0.0",
     "deepmerge": "^4.3.1"
   },
+  "peerDependencies": {
+    "@kaleido-io/workflow-engine-sdk": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@kaleido-io/workflow-engine-sdk": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@eslint/compat": "^2.0.0",
     "@eslint/js": "^10.0.0",
