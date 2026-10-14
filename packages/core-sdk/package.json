@@ -19,6 +19,9 @@
       ],
       "context": [
         "./dist/src/context/index.d.ts"
+      ],
+      "kurn": [
+        "./dist/src/kurn/index.d.ts"
       ]
     }
   },
@@ -38,6 +41,10 @@
     "./context": {
       "import": "./dist/src/context/index.js",
       "types": "./dist/src/context/index.d.ts"
+    },
+    "./kurn": {
+      "import": "./dist/src/kurn/index.js",
+      "types": "./dist/src/kurn/index.d.ts"
     }
   },
   "scripts": {

@@ -10,7 +10,7 @@ npm install @kaleido-io/core-sdk
 
 ## Entry points
 
-The package exposes four entry points:
+The package exposes five entry points:
 
 | Entry point | Contents |
 |---|---|
@@ -18,6 +18,7 @@ The package exposes four entry points:
 | `@kaleido-io/core-sdk/http` | `HTTPTransport`, `WSProxyTransport`, `ServiceClient`, `createServiceTransport`, and related types |
 | `@kaleido-io/core-sdk/log` | `Logger`, `LoggerFactory`, `newLogger`, `setLoggerFactory`, `defaultLoggerFactory` |
 | `@kaleido-io/core-sdk/context` | `SetupContext`, `createSetupContext` |
+| `@kaleido-io/core-sdk/kurn` | `urn`, `child`, `parse`, `parent`, `leaf`, `root`, `Component` |
 
 ## Logging
 
@@ -55,6 +56,23 @@ import { configureHttpClient } from '@kaleido-io/core-sdk/http';
 
 configureHttpClient({ timeout: 10_000 });
 ```
+
+## URNs
+
+`@kaleido-io/core-sdk/kurn` builds and takes apart Kaleido URNs (`urn:kld:<type>=<name>:…`). URNs are plain strings.
+
+```ts
+import { child, leaf, parent, parse, root, urn } from "@kaleido-io/core-sdk/kurn";
+
+const account = urn({ type: "book", name: "main" }, { type: "account", name: "cash" }); // urn:kld:book=main:account=cash
+child(account, "account", "sub"); // urn:kld:book=main:account=cash:account=sub
+root(account); // urn:kld:book=main
+parent(account); // urn:kld:book=main
+leaf(account); // { type: "account", name: "cash" }
+parse(account); // [{ type: "book", name: "main" }, { type: "account", name: "cash" }]
+```
+
+Type tags are 2–16 lowercase alphanumerics; names are up to 128 characters of alphanumerics, `.`, `_` and `-`, starting and ending with an alphanumeric. A malformed URN or component throws, with the platform's `KA2403xx` code.
 
 ## License
 
