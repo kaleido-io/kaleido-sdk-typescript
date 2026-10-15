@@ -1,6 +1,6 @@
 {
   "name": "@kaleido-io/subledger-sdk",
-  "version": "0.0.1",
+  "version": "1.0.0-rc.1",
   "description": "TypeScript SDK client for the Kaleido Subledger service",
   "type": "module",
   "main": "dist/src/index.js",
@@ -35,7 +35,7 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "@kaleido-io/core-sdk": "^1.0.0",
+    "@kaleido-io/core-sdk": "^1.0.1",
     "deepmerge": "^4.3.1"
   },
   "peerDependencies": {
