@@ -111,6 +111,13 @@ jobs:
         shell: bash
         run: npm install && npm run build
 
+      # subledger-sdk's state machine imports workflow-engine-sdk types; its dist/
+      # must exist before building. Build it first, mirroring root `build:packages`.
+      - name: Build workflow-engine-sdk dependency
+        working-directory: packages/workflow-engine-sdk
+        shell: bash
+        run: npm install && npm run build
+
       - name: Publish to npm with primary tag
         working-directory: packages/subledger-sdk
         shell: bash
