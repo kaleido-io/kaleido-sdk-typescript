@@ -51,7 +51,7 @@
     "@kaleido-io/core-sdk": "^1.0.0",
     "@kaleido-io/workflow-engine-sdk": "^1.0.0",
     "@kaleido-io/asset-manager-sdk": "^1.0.0",
-    "@kaleido-io/subledger-sdk": "^0.0.1",
+    "@kaleido-io/subledger-sdk": "^1.0.0-rc.1",
     "@kaleido-io/connector-sdk": "^1.0.0"
   },
   "devDependencies": {
