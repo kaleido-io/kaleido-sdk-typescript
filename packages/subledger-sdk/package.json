@@ -1,0 +1,94 @@
+{
+  "name": "@kaleido-io/subledger-sdk",
+  "version": "0.0.1",
+  "description": "TypeScript SDK client for the Kaleido Subledger service",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    },
+    "./state-machine": {
+      "import": "./dist/src/state-machine/index.js",
+      "types": "./dist/src/state-machine/index.d.ts"
+    }
+  },
+  "scripts": {
+    "prebuild": "npm run clean",
+    "build": "tsc -p tsconfig.build.json",
+    "postbuild": "tsc-esm-fix --target='dist'",
+    "clean": "rm -rf dist",
+    "dev": "tsc --watch",
+    "lint": "eslint . --config eslint.config.mjs && npm run schema:check",
+    "schema": "tsx scripts/schema.ts",
+    "schema:check": "tsx scripts/schema.ts --check",
+    "typecheck": "tsc -p tsconfig.typecheck.json",
+    "test": "jest --coverage && npm run typecheck",
+    "format": "prettier --write ."
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@kaleido-io/core-sdk": "^1.0.0",
+    "deepmerge": "^4.3.1"
+  },
+  "peerDependencies": {
+    "@kaleido-io/workflow-engine-sdk": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@kaleido-io/workflow-engine-sdk": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/compat": "^2.0.0",
+    "@eslint/js": "^10.0.0",
+    "@jest/globals": "^30.0.0",
+    "@kaleido-io/workflow-engine-sdk": "^1.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "eslint": "^10.0.0",
+    "eslint-plugin-notice": "^1.0.0",
+    "globals": "^17.3.0",
+    "jest": "^30.0.0",
+    "js-yaml": "^4.3.2",
+    "openapi-typescript": "^7.13.0",
+    "prettier": "^3.9.10",
+    "ts-jest": "^29.1.0",
+    "tsc-esm-fix": "^3.1.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.2.0",
+    "typescript-eslint": "^8.56.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src"
+    ],
+    "testMatch": [
+      "**/?(*.)+(spec|test).ts"
+    ],
+    "transform": {
+      "^.+\\.ts$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^@kaleido-io/core-sdk$": "<rootDir>/../core-sdk/src/index.ts",
+      "^@kaleido-io/core-sdk/(.+)$": "<rootDir>/../core-sdk/src/$1/index.ts",
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "maxWorkers": 1,
+    "coverageProvider": "v8"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "sideEffects": false
+}

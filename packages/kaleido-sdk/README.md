@@ -2,7 +2,7 @@
 
 The `@kaleido-io/kaleido-sdk` package is Kaleido's optional single entry point for TypeScript applications that use multiple platform services. It provides:
 
-- **`KaleidoClient`** — a single facade over the workflow engine, asset manager, and connector SDKs
+- **`KaleidoClient`** — a single facade over the workflow engine, asset manager, subledger, and connector SDKs
 - **Project scaffolding** — `npx @kaleido-io/kaleido-sdk init` to bootstrap provider and indexer projects from templates
 - **Shared exports** — logging helpers and `SetupContext` re-exports for multi-service apps
 
@@ -14,6 +14,7 @@ For the full monorepo overview and links to every package, see the [Kaleido Type
 
 - [`@kaleido-io/workflow-engine-sdk`](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/packages/workflow-engine-sdk/README.md) — Workflow engine SDK; build hosted applications such as event sources, transaction handlers, event processors, and indexers
 - [`@kaleido-io/asset-manager-sdk`](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/packages/asset-manager-sdk/README.md) — Asset manager SDK; bulk query and upsert into the asset model
+- [`@kaleido-io/subledger-sdk`](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/packages/subledger-sdk/README.md) — Subledger SDK; client for the subledger service
 - [`@kaleido-io/connector-sdk`](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/packages/connector-sdk/README.md) — Connector helpers and chain-specific types (EVM, BTC, Canton)
 - [`@kaleido-io/kaleido-sdk`](./README.md) — This package (`KaleidoClient`) and the `init` scaffolding CLI
 
@@ -59,6 +60,7 @@ Note that adding `@kaleido-io/kaleido-sdk` as a dependncy pulls in all SDK packa
 | `new KaleidoClient({ workflowEngine?, serviceBindings? })` | Construct from explicit config |
 | `workflowEngineClient()` | Primary workflow engine connection (provider runtime) |
 | `assetManagerClient(bindingName?)` | Asset Manager client (default binding: `asset-manager`) |
+| `subledgerClient(bindingName?)` | Subledger client (default binding: `subledger`) |
 | `evmConnectorClient(bindingName?)` | EVM connector helper (default: `evm-connector`) |
 | `btcConnectorClient(bindingName?)` | BTC connector helper (default: `btc-connector`) |
 | `cantonConnectorClient(bindingName?)` | Canton connector helper (default: `canton-connector`) |
@@ -333,6 +335,7 @@ If you depend on a single service SDK only, import `newLogger` and `setLoggerFac
 - [Kaleido TypeScript SDKs (monorepo)](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/README.md)
 - [Workflow Engine SDK docs](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/packages/workflow-engine-sdk/README.md)
 - [Asset Manager SDK docs](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/packages/asset-manager-sdk/README.md)
+- [Subledger SDK docs](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/packages/subledger-sdk/README.md)
 - [Connector SDK docs](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/packages/connector-sdk/README.md)
 
 ## Deploying and running providers

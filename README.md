@@ -13,6 +13,7 @@ applications which need to use many of the SDK packages.
 - [`@kaleido-io/core-sdk`](./packages/core-sdk/README.md) — Core utilities shared across all SDK packages: HTTP transport, logging, and service-binding resolution. Import logging from `@kaleido-io/core-sdk/log` and setup context from the package root.
 - [`@kaleido-io/workflow-engine-sdk`](./packages/workflow-engine-sdk/README.md) — Workflow Engine SDK; allows you to build workflow engine hosted applications such as event sources, transaction handlers, event processors, and indexers
 - [`@kaleido-io/asset-manager-sdk`](./packages/asset-manager-sdk/README.md) — Asset Manager SDK; allows you to interact with Kaleido's asset manager tokenization service to bulk query and upsert data into the asset model
+- [`@kaleido-io/subledger-sdk`](./packages/subledger-sdk/README.md) — Subledger SDK; client for the Kaleido subledger service
 - [`@kaleido-io/connector-sdk`](./packages/connector-sdk/README.md) — Connector SDK; provides connector helpers and chain-specific types (EVM, BTC, Canton)
 - [`@kaleido-io/kaleido-sdk`](./packages/kaleido-sdk/README.md) — Optional umbrella package that serves as a single entry point for applications using multiple SDK packages (`KaleidoClient`) and provides the ability to scaffold projects based on templates via `npx @kaleido-io/kaleido-sdk init`
 
@@ -362,6 +363,7 @@ const am = client.assetManagerClient();
 - [Core SDK docs](./packages/core-sdk/README.md)
 - [Workflow Engine SDK docs](./packages/workflow-engine-sdk/README.md)
 - [Asset Manager SDK docs](./packages/asset-manager-sdk/README.md)
+- [Subledger SDK docs](./packages/subledger-sdk/README.md)
 - [Connector SDK docs](./packages/connector-sdk/README.md)
 - [Kaleido SDK docs](./packages/kaleido-sdk/README.md)
 

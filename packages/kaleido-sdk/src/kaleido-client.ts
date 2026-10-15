@@ -25,6 +25,7 @@ import {
   type WorkflowEngineClientConfig,
 } from '@kaleido-io/workflow-engine-sdk';
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+import { SubledgerClient } from '@kaleido-io/subledger-sdk';
 import {
   EVMConnectorClient,
   BTCConnectorClient,
@@ -67,6 +68,7 @@ export class KaleidoClient {
   private readonly bindings: ServiceBindingsMap;
   private wfe?: WorkflowEngineClient;
   private readonly assetManagers = new Map<string, AssetManagerClient>();
+  private readonly subledgers = new Map<string, SubledgerClient>();
 
   constructor(config: KaleidoClientConfig = {}) {
     this.wfeConfig = config.workflowEngine;
@@ -134,6 +136,20 @@ export class KaleidoClient {
     if (!client) {
       client = new AssetManagerClient(this.resolveBinding(bindingName));
       this.assetManagers.set(bindingName, client);
+    }
+    return client;
+  }
+
+  /**
+   * Typed Subledger client for the given binding (default `subledger`),
+   * memoized per binding name. Non-hosted bindings work without connecting;
+   * hosted bindings require a connected primary Workflow Engine connection.
+   */
+  subledgerClient(bindingName = 'subledger'): SubledgerClient {
+    let client = this.subledgers.get(bindingName);
+    if (!client) {
+      client = new SubledgerClient(this.resolveBinding(bindingName));
+      this.subledgers.set(bindingName, client);
     }
     return client;
   }
