@@ -22,6 +22,14 @@ export interface ActionConfig<T extends WithStageDirector> {
 }
 
 // @public
+export type ActionMap<A extends Record<string, TransactionAction> = Record<string, TransactionAction>> = Map<string, ActionConfig<WithStageDirector>> & {
+    readonly [ACTIONS]?: A;
+};
+
+// @public (undocumented)
+export type ActionOutcome = CompleteOutcome | WaitingOutcome;
+
+// @public
 export interface ActionResult {
     // (undocumented)
     customStage?: string;
@@ -95,6 +103,27 @@ export class BasicStageDirector implements StageDirector, WithStageDirector {
     outputPath: string;
     // (undocumented)
     get stageDirector(): StageDirector;
+}
+
+// @public
+export function complete(output?: unknown, options?: CompleteOptions): CompleteOutcome;
+
+// @public (undocumented)
+export interface CompleteOptions {
+    events?: HandlerEvent[];
+    stage?: string;
+}
+
+// @public
+export interface CompleteOutcome {
+    // (undocumented)
+    readonly [KIND]: 'complete';
+    // (undocumented)
+    readonly events?: HandlerEvent[];
+    // (undocumented)
+    readonly output?: unknown;
+    // (undocumented)
+    readonly stage?: string;
 }
 
 // @public
@@ -282,6 +311,15 @@ export interface CreateWorkflowResponse {
     // (undocumented)
     updated?: string;
 }
+
+// @public
+export type DefinedProcessor<CustomConfig = unknown, EventData = unknown> = EventProcessorDef<CustomConfig, EventData>['processBatch'] & EventProcessorDef<CustomConfig, EventData>;
+
+// @public
+export function defineProcessor<EventData = unknown, CustomConfig = unknown>(fn: (events: EventProcessorEvent<EventData>[], ctx: EventProcessorContext<CustomConfig>) => Promise<void> | void): DefinedProcessor<CustomConfig, EventData>;
+
+// @public
+export function defineTransactionHandler<A extends Record<string, TransactionAction>>(actions: A): ActionMap<A>;
 
 // @public
 export interface EngineAPI {
@@ -643,6 +681,15 @@ export interface RequestContext {
 }
 
 // @public
+export class RetryableError extends Error {
+    // (undocumented)
+    readonly [KIND]: "retryable-error";
+    constructor(message: string, options?: {
+        cause?: unknown;
+    });
+}
+
+// @public
 export const SDKErrors: {
     readonly MsgSDKObservedPanic: ErrorMessage;
     readonly MsgSDKUnknownHandler: ErrorMessage;
@@ -785,6 +832,25 @@ export class StageDirectorHelper {
     static mapOutput(stageDirector: StageDirector, transaction: WSEvaluateTransaction, result: EvalResult, output?: any, error?: Error, errorData?: any, triggers?: Trigger[], extraStateUpdates?: Patch, customStage?: string, events?: HandlerEvent[], deadline?: string): WSEvaluateReplyResult;
 }
 
+// @public
+export class StageError extends Error {
+    // (undocumented)
+    readonly [KIND]: "stage-error";
+    constructor(message: string, options?: StageErrorOptions);
+    // (undocumented)
+    readonly data?: unknown;
+    // (undocumented)
+    readonly stage?: string;
+}
+
+// @public (undocumented)
+export interface StageErrorOptions {
+    // (undocumented)
+    cause?: unknown;
+    data?: unknown;
+    stage?: string;
+}
+
 // @public (undocumented)
 export const testOp: (path: string, value: unknown) => PatchOp;
 
@@ -804,6 +870,9 @@ export interface TokenAuth {
     // (undocumented)
     type: AuthType.TOKEN;
 }
+
+// @public
+export type TransactionAction<I = any> = (input: I, ctx: TransactionContext<any>) => unknown;
 
 // @public
 export interface TransactionContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
@@ -867,6 +936,7 @@ ctx?: TransactionContext) => Promise<{
     result: EvalResult;
     output?: any;
     error?: Error;
+    errorData?: any;
     triggers?: Trigger[];
     events?: HandlerEvent[];
     extraUpdates?: Patch;
@@ -897,6 +967,11 @@ export interface Trigger {
 }
 
 // @public
+export type UntypedActionMap = Map<string, ActionConfig<any>> & {
+    readonly [ACTIONS]?: undefined;
+};
+
+// @public
 export interface UpdateStreamRequest {
     // (undocumented)
     description?: string;
@@ -906,6 +981,25 @@ export interface UpdateStreamRequest {
     started?: boolean;
     // (undocumented)
     uniquenessPrefix?: string;
+}
+
+// @public
+export function waiting(options?: WaitingOptions): WaitingOutcome;
+
+// @public (undocumented)
+export interface WaitingOptions {
+    deadline?: Date | string;
+    output?: unknown;
+}
+
+// @public
+export interface WaitingOutcome {
+    // (undocumented)
+    readonly [KIND]: 'waiting';
+    // (undocumented)
+    readonly deadline?: string;
+    // (undocumented)
+    readonly output?: unknown;
 }
 
 // @public @deprecated (undocumented)

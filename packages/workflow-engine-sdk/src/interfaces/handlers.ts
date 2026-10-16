@@ -104,7 +104,7 @@ export type TransactionHandlerFn<T extends WithStageDirector> = (
   input: T,
   /** Always passed by the SDK. Optional so that code calling a handler directly, such as a unit test, can leave it out. */
   ctx?: TransactionContext,
-) => Promise<{ result: EvalResult; output?: any; error?: Error; triggers?: Trigger[]; events?: HandlerEvent[]; extraUpdates?: Patch; customStage?: string; deadline?: string }>;
+) => Promise<{ result: EvalResult; output?: any; error?: Error; errorData?: any; triggers?: Trigger[]; events?: HandlerEvent[]; extraUpdates?: Patch; customStage?: string; deadline?: string }>;
 
 /**
  * Input for batch directed transaction handling

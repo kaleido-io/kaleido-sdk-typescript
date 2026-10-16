@@ -101,6 +101,28 @@ export {
   EventProcessorEvent,
 } from './factories/event_processor';
 
+// Handler API: actions as functions of their input
+export {
+  defineTransactionHandler,
+  defineProcessor,
+  complete,
+  waiting,
+  StageError,
+  RetryableError,
+} from './handlers/define';
+export type {
+  TransactionAction,
+  ActionMap,
+  UntypedActionMap,
+  ActionOutcome,
+  CompleteOutcome,
+  CompleteOptions,
+  WaitingOutcome,
+  WaitingOptions,
+  StageErrorOptions,
+  DefinedProcessor,
+} from './handlers/define';
+
 // Stage director helpers
 export {
   BasicStageDirector,

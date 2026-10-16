@@ -5,6 +5,13 @@
   "type": "module",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "testing": [
+        "./dist/src/testing/index.d.ts"
+      ]
+    }
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kaleido-io/kaleido-sdk-typescript.git"
@@ -20,8 +27,8 @@
     "test:component": "jest tests/componenttest",
     "test:all": "jest --coverage",
     "lint": "eslint . --config eslint.config.mjs",
-    "api:check": "api-extractor run",
-    "api:update": "api-extractor run --local",
+    "api:check": "for c in api-extractor*.json; do api-extractor run -c $c || exit 1; done",
+    "api:update": "for c in api-extractor*.json; do api-extractor run --local -c $c || exit 1; done",
     "lint:fix": "eslint . --fix --config eslint.config.mjs"
   },
   "keywords": [
@@ -77,6 +84,10 @@
     ".": {
       "import": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
+    },
+    "./testing": {
+      "import": "./dist/src/testing/index.js",
+      "types": "./dist/src/testing/index.d.ts"
     }
   },
   "sideEffects": false
