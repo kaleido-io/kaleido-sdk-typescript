@@ -20,6 +20,8 @@
     "test:component": "jest tests/componenttest",
     "test:all": "jest --coverage",
     "lint": "eslint . --config eslint.config.mjs",
+    "api:check": "api-extractor run",
+    "api:update": "api-extractor run --local",
     "lint:fix": "eslint . --fix --config eslint.config.mjs"
   },
   "keywords": [
@@ -45,6 +47,7 @@
     "@eslint/compat": "^2.0.0",
     "@eslint/js": "^10.0.0",
     "@jest/globals": "^30.2.0",
+    "@microsoft/api-extractor": "^7.59.2",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.2.1",
