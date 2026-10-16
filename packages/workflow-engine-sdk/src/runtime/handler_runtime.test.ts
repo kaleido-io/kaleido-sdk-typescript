@@ -1192,3 +1192,32 @@ describe('HandlerRuntime', () => {
         });
     })
 })
+describe('HandlerRuntime request context deadlines', () => {
+    const envelope = (deadline?: string) => ({ messageType: WSMessageType.HANDLE_TRANSACTIONS, id: 'req-1', deadline });
+    const tick = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    it('aborts the signal when the deadline passes', async () => {
+        const reqContext = new HandlerRuntime(handlerRuntimeConfig).newRequestContext(envelope(new Date(Date.now() + 20).toISOString()));
+        expect(reqContext.signal.aborted).toBe(false);
+        await tick(60);
+        expect(reqContext.signal.aborted).toBe(true);
+        reqContext.cancel();
+    });
+
+    it('does not abort early when the deadline is beyond the timer range', async () => {
+        const fortyDays = 40 * 24 * 60 * 60 * 1000;
+        const reqContext = new HandlerRuntime(handlerRuntimeConfig).newRequestContext(envelope(new Date(Date.now() + fortyDays).toISOString()));
+        await tick(30);
+        expect(reqContext.signal.aborted).toBe(false);
+        reqContext.cancel();
+        expect(reqContext.signal.aborted).toBe(true);
+    });
+
+    it('never aborts without a deadline until cancelled', async () => {
+        const reqContext = new HandlerRuntime(handlerRuntimeConfig).newRequestContext(envelope());
+        await tick(30);
+        expect(reqContext.signal.aborted).toBe(false);
+        reqContext.cancel();
+        expect(reqContext.signal.aborted).toBe(true);
+    });
+});

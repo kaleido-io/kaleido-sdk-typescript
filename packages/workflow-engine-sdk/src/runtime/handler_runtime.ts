@@ -59,6 +59,9 @@ export enum HandlerRuntimeMode {
 /** Default listen port for inbound WebSocket server when `server.port` is omitted. */
 export const DEFAULT_INBOUND_WS_PORT = 6000;
 
+/** The longest delay setTimeout supports (about 24.8 days). */
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
+
 export function resolveInboundListenPort(port?: number): number {
   return port ?? DEFAULT_INBOUND_WS_PORT;
 }
@@ -694,9 +697,14 @@ export class HandlerRuntime {
     if (typeof envelope?.deadline == 'string' && envelope.deadline.length > 0) {
       const startTime = new Date().getTime();
       const deadlineTimeout = new Date(envelope.deadline).getTime() - startTime;
-      timeoutId = setTimeout(() => {
-        controller.abort(`deadline exceeded after ${new Date().getTime() - startTime}ms`);
-      }, deadlineTimeout);
+      // setTimeout fires straight away for delays it can't represent, so a
+      // deadline that far out would abort the request at once. No request runs
+      // that long, so such a deadline is left unenforced.
+      if (deadlineTimeout <= MAX_TIMER_DELAY_MS) {
+        timeoutId = setTimeout(() => {
+          controller.abort(`deadline exceeded after ${new Date().getTime() - startTime}ms`);
+        }, deadlineTimeout);
+      }
     }
     return {
       requestId: envelope.id,
