@@ -13,13 +13,15 @@ The hello sample consists of two main components:
 
 ### Handler
 
-The hello handler (`handlers.ts`) reads a `name` field from its stage input, which is the result of the stage's `inputMap` in `flow.ts` (passed to the handler as its second argument). It does not read the operation input in `transaction.state.input`, so the `inputMap` forwards the field explicitly with `"name": state.input.name`. The handler:
+The hello handler (`handlers.ts`) is written with `defineTransactionHandler`: each action is a function of its stage input, which is the result of the stage's `inputMap` in `flow.ts`. It does not read the operation input in `transaction.state.input`, so the `inputMap` forwards the field explicitly with `"name": state.input.name`. The handler:
 
 - Validates that the `name` field is provided
 - Returns a personalized greeting message in the output
-- Emits an event with the greeting message to demonstrate event emission from handlers
+- Emits an event with the greeting message, using `complete(output, { events })`, to demonstrate event emission from handlers
 
-If the `name` field is missing, the handler returns a hard failure with an error message.
+If the `name` field is missing, the handler throws. A throw fails the stage, with the error message stored in the transaction state, and the transaction moves to the stage's `failureStage`.
+
+`handlers.test.ts` runs the action with `invokeAction` from `@kaleido-io/workflow-engine-sdk/testing`, passing only the action's own input.
 
 ### Workflow
 

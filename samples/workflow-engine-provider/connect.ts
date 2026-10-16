@@ -18,46 +18,25 @@ import {
   WorkflowEngineClient,
   createTransactionHandler,
 } from "@kaleido-io/workflow-engine-sdk";
-import type { ServiceClientOptions } from "@kaleido-io/core-sdk/http";
-import { AssetManagerClient } from "@kaleido-io/asset-manager-sdk";
 import dotenv from "dotenv";
 
 import { actionMap as helloActionMap } from "./hello/handlers.js";
 import { actionMap as httpInvokeActionMap } from "./http-invoke/handlers.js";
-import { eventSource } from "./event-source/event-source.js";
-import { echoHandlerDef } from "./event-source/event-processor.js";
+import { eventSource as scheduledSource } from "./scheduled-workflow/scheduled-source.js";
+import { processBatch as echoProcessor } from "./scheduled-workflow/echo-processor.js";
 import { eventSource as dealerEventSource } from "./snap/event-source.js";
 import { actionMap as snapActionMap } from "./snap/snap-handler.js";
-import { createActionMap as createListPoolsActionMap } from "./list-pools/handlers.js";
+import { actionMap as listPoolsActionMap } from "./list-pools/handlers.js";
 
 dotenv.config();
-
-// The list-pools handler creates a per-invocation AM client so that each
-// transaction's authRef is forwarded to the proxy for bearer-token injection.
-// The base options are captured during setup (after the WFE client is built
-// but before the WebSocket connects) and shared via closure.
-const listPoolsRegistration = (() => {
-  let amOptions!: ServiceClientOptions;
-  return {
-    setup: async (ctx: { getServiceClientOptions(name: string): ServiceClientOptions }) => {
-      amOptions = ctx.getServiceClientOptions('asset-manager');
-    },
-    handler: createTransactionHandler(
-      'list-pools',
-      createListPoolsActionMap(
-        (authRef?) => new AssetManagerClient({ ...amOptions, authRef } as ServiceClientOptions),
-      ),
-    ),
-  };
-})();
 
 const app = WorkflowEngineClient.fromConfigFile()
   .transactionHandler('hello', { handler: createTransactionHandler('hello', helloActionMap) })
   .transactionHandler('http-invoke', { handler: createTransactionHandler('http-invoke', httpInvokeActionMap) })
   .transactionHandler('snap-watcher', { handler: createTransactionHandler('snap-watcher', snapActionMap) })
-  .transactionHandler('list-pools', listPoolsRegistration)
-  .eventProcessor('echo', echoHandlerDef)
-  .eventSource(eventSource)
+  .transactionHandler('list-pools', { handler: createTransactionHandler('list-pools', listPoolsActionMap) })
+  .eventProcessor('echo', echoProcessor)
+  .eventSource(scheduledSource)
   .eventSource(dealerEventSource);
 
 process.on('SIGINT', () => app.stop());

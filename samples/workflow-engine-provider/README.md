@@ -60,6 +60,6 @@ Set `CONFIG_FILE` env var to point to this file (default: `./config/provider-con
 
 - **[hello](./hello/README.md)** — A simple transaction handler that processes input and returns a greeting message
 - **[http-invoke](./http-invoke/README.md)** — Demonstrates making HTTP requests to external APIs from within a transaction handler
-- **[event-source](./event-source/README.md)** — Shows how to set up a custom event source that generates events and streams them to an event processor
+- **[scheduled-workflow](./scheduled-workflow/README.md)** — An event source that emits on a schedule, with a stream that starts a workflow for each event and another that sends the events to an event processor
 - **[snap](./snap/README.md)** — By playing the card game "snap", this sample demonstrates a correlation stream that matches events from any event source with inflight transactions
-- **list-pools** — Demonstrates calling the Asset Manager from a transaction handler, forwarding the caller's auth token via the provider proxy
+- **list-pools** — Demonstrates calling the Asset Manager from a transaction handler through the handler's context, which forwards the caller's auth token via the provider proxy

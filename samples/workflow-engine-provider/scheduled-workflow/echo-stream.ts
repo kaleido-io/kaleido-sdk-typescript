@@ -14,15 +14,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { EventProcessorDef } from '@kaleido-io/workflow-engine-sdk';
-import { newLogger } from '@kaleido-io/core-sdk/log';
+import provider from '../provider.js';
 
-const log = newLogger('echo-event-processor');
-
-export const echoHandlerDef: EventProcessorDef = {
-  processBatch: async (_ctx, events) => {
-    for (const event of events) {
-      log.info(`Event received: ${event.topic} - ${JSON.stringify(event.data, null, '\t')}`);
-    }
+/** Sends each scheduled event to the echo processor, which logs it. */
+export const stream = {
+  name: 'scheduled-echo',
+  description: 'Pass each scheduled event to the echo event processor',
+  started: true,
+  eventSource: {
+    type: 'handler',
+    handler: {
+      name: 'scheduled-source',
+      provider: provider.name,
+      config: { intervalMs: 10_000 },
+    },
+  },
+  eventProcessor: {
+    type: 'handler',
+    handler: {
+      name: 'echo',
+      provider: provider.name,
+    },
   },
 };
