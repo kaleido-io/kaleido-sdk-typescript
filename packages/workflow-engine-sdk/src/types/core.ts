@@ -15,6 +15,8 @@
 // limitations under the License.
 
 
+import type { ServiceClientOptions } from '@kaleido-io/core-sdk/http';
+
 /**
  * Core types and enums for the Workflow Engine TypeScript SDK.
  */
@@ -199,6 +201,25 @@ export interface RequestContext {
   authRef?: string;
   signal: AbortSignal;
   cancel(): void;
+  /**
+   * The provider the request is running in. WorkflowEngineClient attaches it to
+   * every request; it is absent when a handler is driven without a client.
+   */
+  provider?: ProviderServices;
+}
+
+/**
+ * What a handler can reach through the provider it runs in.
+ */
+export interface ProviderServices {
+  readonly providerName: string;
+  /** The provider's own config, from its config file. */
+  readonly config: unknown;
+  /**
+   * Resolve a named service binding. Pass the authRef of the transaction or
+   * poll being handled, so a hosted binding calls the service as the caller.
+   */
+  getServiceClientOptions(bindingName: string, authRef?: string): ServiceClientOptions;
 }
 
 /**

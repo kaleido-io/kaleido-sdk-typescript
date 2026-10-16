@@ -144,5 +144,5 @@ export { HandlerRuntimeMode } from "./runtime/handler_runtime";
 
 // ── Builder API ───────────────────────────────────────────────────────────────
 
-export type { EventProcessorContext } from './app/context';
+export type { EventProcessorContext, TransactionContext, EventSourceContext } from './app/context';
 export type { EventProcessorDef, TransactionHandlerRegistration } from './app/types';

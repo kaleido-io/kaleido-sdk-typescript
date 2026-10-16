@@ -9,7 +9,7 @@ import { HttpClientOptions } from '@kaleido-io/core-sdk/http';
 import { ServiceBindingConfig } from '@kaleido-io/core-sdk';
 import { ServiceBindingsMap } from '@kaleido-io/core-sdk';
 import { ServiceClientOptions } from '@kaleido-io/core-sdk/http';
-import type { SetupContext } from '@kaleido-io/core-sdk/context';
+import { SetupContext } from '@kaleido-io/core-sdk/context';
 
 // @public
 export interface ActionConfig<T extends WithStageDirector> {
@@ -298,7 +298,7 @@ export interface ErrorMessage {
 }
 
 // @public
-export function evalDirected<T extends WithStageDirector>(reply: WSHandleTransactionsResult, batch: WSHandleTransactions, actionMap: Map<string, ActionConfig<T>>): Promise<void>;
+export function evalDirected<T extends WithStageDirector>(reply: WSHandleTransactionsResult, batch: WSHandleTransactions, actionMap: Map<string, ActionConfig<T>>, reqContext?: RequestContext): Promise<void>;
 
 // @public
 export enum EvalResult {
@@ -379,6 +379,14 @@ export interface EventSourceConf<CF> extends WSEventStreamInfo {
 export type EventSourceConfigParserFn<CF> = (info: WSEventStreamInfo, config: any) => Promise<CF>;
 
 // @public
+export interface EventSourceContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
+    // (undocumented)
+    readonly requestId: string;
+    // (undocumented)
+    readonly stream: WSEventStreamInfo;
+}
+
+// @public
 export type EventSourceDeleteFn = (info: WSEventStreamInfo) => Promise<void>;
 
 // @public
@@ -392,7 +400,7 @@ export interface EventSourceEvent<DT> {
 }
 
 // @public
-export type EventSourcePollFn<CP, CF, DT> = (config: EventSourceConf<CF>, checkpointIn: CP | null, authRef?: string) => Promise<{
+export type EventSourcePollFn<CP, CF, DT> = (config: EventSourceConf<CF>, checkpointIn: CP | null, authRef?: string, ctx?: EventSourceContext) => Promise<{
     checkpointOut: CP;
     events: EventSourceEvent<DT>[];
 }>;
@@ -599,6 +607,14 @@ export interface ProviderConfig<CustomConfig> {
 }
 
 // @public
+export interface ProviderServices {
+    readonly config: unknown;
+    getServiceClientOptions(bindingName: string, authRef?: string): ServiceClientOptions;
+    // (undocumented)
+    readonly providerName: string;
+}
+
+// @public
 export interface ProxyAdapterRuntime {
     // (undocumented)
     isWebSocketConnected: boolean;
@@ -619,6 +635,7 @@ export interface RequestContext {
     authTokens?: Record<string, string>;
     // (undocumented)
     cancel(): void;
+    provider?: ProviderServices;
     // (undocumented)
     requestId: string;
     // (undocumented)
@@ -664,6 +681,7 @@ export const SDKErrors: {
     readonly MsgSDKHandlerInvalidType: ErrorMessage;
     readonly MsgSDKDeadlineNotWaiting: ErrorMessage;
     readonly MsgSDKDirectorNextStageAndSubflow: ErrorMessage;
+    readonly MsgSDKServiceBindingsNeedClient: ErrorMessage;
     readonly MsgSDKEngineNotConnected: ErrorMessage;
 };
 
@@ -788,6 +806,14 @@ export interface TokenAuth {
 }
 
 // @public
+export interface TransactionContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
+    // (undocumented)
+    readonly requestId: string;
+    // (undocumented)
+    readonly transaction: WSEvaluateTransaction;
+}
+
+// @public
 export interface TransactionHandler extends Handler {
     // (undocumented)
     transactionHandlerBatch(reqContext: RequestContext, result: WSHandleTransactionsResult, batch: WSHandleTransactions): Promise<void>;
@@ -798,6 +824,7 @@ export type TransactionHandlerBatchFn<T extends WithStageDirector> = (transactio
 
 // @public
 export interface TransactionHandlerBatchIn<T extends WithStageDirector> {
+    ctx?: TransactionContext;
     // (undocumented)
     transaction: WSEvaluateTransaction;
     // (undocumented)
@@ -835,7 +862,8 @@ export interface TransactionHandlerBuilder extends TransactionHandler {
 }
 
 // @public
-export type TransactionHandlerFn<T extends WithStageDirector> = (transaction: WSEvaluateTransaction, input: T) => Promise<{
+export type TransactionHandlerFn<T extends WithStageDirector> = (transaction: WSEvaluateTransaction, input: T,
+ctx?: TransactionContext) => Promise<{
     result: EvalResult;
     output?: any;
     error?: Error;

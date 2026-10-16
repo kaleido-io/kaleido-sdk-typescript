@@ -32,6 +32,7 @@ import {
   WSEventProcessorBatchRequest,
   ServiceProxyResponse,
   RequestContext,
+  ProviderServices,
 } from '../types/core';
 import {
   Handler,
@@ -166,6 +167,12 @@ export class HandlerRuntime {
    */
   private providerCapabilities: import('../types/core').ProviderCapabilities = {};
 
+  /**
+   * Attached to every request context, so handlers can resolve service bindings
+   * per request. Set by WorkflowEngineClient; absent for direct-runtime use.
+   */
+  private providerServices?: ProviderServices;
+
   constructor(config: HandlerRuntimeConfig) {
     if (config.server) {
       this.mode = HandlerRuntimeMode.INBOUND;
@@ -230,6 +237,14 @@ export class HandlerRuntime {
    */
   setProviderCapabilities(caps: import('../types/core').ProviderCapabilities): void {
     this.providerCapabilities = { ...caps };
+  }
+
+  /**
+   * Set what handlers can reach through the provider, attached to every request
+   * context from then on.
+   */
+  setProviderServices(services: ProviderServices): void {
+    this.providerServices = services;
   }
 
   /**
@@ -715,6 +730,7 @@ export class HandlerRuntime {
         if (timeoutId !== undefined) clearTimeout(timeoutId);
         controller.abort();
       },
+      ...(this.providerServices ? { provider: this.providerServices } : {}),
     }
   }
 

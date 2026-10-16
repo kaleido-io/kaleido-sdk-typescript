@@ -109,6 +109,13 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     this.bindings = config.serviceBindings ?? {};
     this.wfeConfig = config;
     this.customConfig = (customConfig ?? {}) as CustomConfig;
+    // Every request carries these, so a handler resolves bindings as the
+    // caller of the transaction or poll it is handling.
+    this.runtime.setProviderServices({
+      providerName: config.providerName,
+      config: this.customConfig,
+      getServiceClientOptions: (name, authRef) => this.getServiceClientOptions(name, authRef),
+    });
   }
 
   // ── Builder API ─────────────────────────────────────────────────────────────

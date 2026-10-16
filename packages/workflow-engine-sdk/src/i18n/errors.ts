@@ -89,6 +89,7 @@ export const SDKErrors = {
   MsgSDKHandlerInvalidType: fe('KA140639', 'Handler "%s" does not implement TransactionHandler, EventSource, or EventProcessor'),
   MsgSDKDeadlineNotWaiting: fe('KA140640', "Deadline can only be used with WAITING result type (action='%s' result='%s')"),
   MsgSDKDirectorNextStageAndSubflow: fe('KA140641', "Handler input cannot specify both 'nextStage' and 'nextSubflow'"),
+  MsgSDKServiceBindingsNeedClient: fe('KA140642', "Service binding '%s' can't be resolved: the handler isn't running in a WorkflowEngineClient"),
 
   // Engine connection errors
   MsgSDKEngineNotConnected: fe('KA140627', 'WebSocket is not connected. Cannot submit async transactions'),
