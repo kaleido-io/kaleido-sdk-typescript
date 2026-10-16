@@ -1,0 +1,114 @@
+{
+  "registrations": [
+    {
+      "messageType": "register_provider",
+      "id": "<generated-id>",
+      "providerName": "compat-provider",
+      "capabilities": {
+        "hasSetupHooks": true
+      }
+    },
+    {
+      "messageType": "register_handler",
+      "id": "<generated-id>",
+      "handlerType": "transaction_handler",
+      "handler": "captured"
+    },
+    {
+      "messageType": "register_handler",
+      "id": "<generated-id>",
+      "handlerType": "event_source",
+      "handler": "source"
+    },
+    {
+      "messageType": "register_handler",
+      "id": "<generated-id>",
+      "handlerType": "event_processor",
+      "handler": "indexer"
+    }
+  ],
+  "runsAtBoot": [],
+  "triggerOk": {
+    "messageType": "setup-trigger-response",
+    "requestId": "setup-1",
+    "status": "success"
+  },
+  "runsAfterOk": [
+    {
+      "hook": "captured",
+      "handlerName": "captured",
+      "providerName": "compat-provider",
+      "transport": "ws-proxy",
+      "authRef": "auth-good",
+      "call": {
+        "echo": {
+          "method": "GET",
+          "path": "/api/v1/setup-check"
+        }
+      }
+    },
+    {
+      "hook": "indexer",
+      "handlerName": "indexer",
+      "config": {
+        "table": "balances"
+      },
+      "aborted": false
+    }
+  ],
+  "triggerBad": {
+    "messageType": "setup-trigger-response",
+    "requestId": "setup-2",
+    "status": "error",
+    "errors": [
+      "indexer: setup refused"
+    ]
+  },
+  "runsAfterBad": [
+    {
+      "hook": "captured",
+      "handlerName": "captured",
+      "providerName": "compat-provider",
+      "transport": "ws-proxy",
+      "authRef": "auth-bad",
+      "call": {
+        "echo": {
+          "method": "GET",
+          "path": "/api/v1/setup-check"
+        }
+      }
+    },
+    {
+      "hook": "indexer",
+      "handlerName": "indexer",
+      "config": {
+        "table": "balances"
+      },
+      "aborted": false
+    }
+  ],
+  "serviceProxyRequests": [
+    {
+      "messageType": "service-proxy-request",
+      "requestId": "<generated-id>",
+      "serviceType": "AssetManagerService",
+      "id": "s-am",
+      "authRef": "auth-good",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/setup-check"
+      }
+    },
+    {
+      "messageType": "service-proxy-request",
+      "requestId": "<generated-id>",
+      "serviceType": "AssetManagerService",
+      "id": "s-am",
+      "authRef": "auth-bad",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/setup-check"
+      }
+    }
+  ]
+}
