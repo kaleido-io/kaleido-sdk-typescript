@@ -5,6 +5,7 @@ on:
     paths:
       - 'packages/**'
       - 'samples/**'
+      - 'compat/**'
       - '.github/workflows/ci-workflow-engine-sdk.yaml'
       - '.github/workflows/ci-docker-samples.yaml'
       - '.github/workflows/ci-ksdk-init.yaml'
@@ -34,6 +35,9 @@ jobs:
 
       - name: Check public API reports
         run: npm run api:check
+
+      - name: Type-check consumer compatibility fixtures
+        run: npm run compat:types
 
       - name: Test packages
         run: npm run test:packages
