@@ -27,7 +27,7 @@ import { ServiceClient, createServiceTransport, type ServiceClientOptions } from
  *
  * ```typescript
  * const registry = new GenericServiceClient(ctx, 'registry');
- * const namespaces = await registry.get<{ items: { name: string }[] }>('/api/v1/namespaces');
+ * const namespaces = await registry.get<{ name: string }[]>('/api/v1/namespaces');
  * ```
  */
 export class GenericServiceClient extends ServiceClient {
