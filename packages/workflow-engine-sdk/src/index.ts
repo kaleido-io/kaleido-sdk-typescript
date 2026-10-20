@@ -104,7 +104,10 @@ export {
 // Handler API: actions as functions of their input
 export {
   defineTransactionHandler,
+  DefinedTransactionHandler,
+  isDefinedTransactionHandler,
   defineProcessor,
+  isDefinedProcessor,
   complete,
   waiting,
   StageError,

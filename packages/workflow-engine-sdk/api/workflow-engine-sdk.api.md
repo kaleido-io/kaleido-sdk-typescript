@@ -316,10 +316,20 @@ export interface CreateWorkflowResponse {
 export type DefinedProcessor<CustomConfig = unknown, EventData = unknown> = EventProcessorDef<CustomConfig, EventData>['processBatch'] & EventProcessorDef<CustomConfig, EventData>;
 
 // @public
+export class DefinedTransactionHandler<A extends Record<string, TransactionAction> = Record<string, TransactionAction>> extends Map<string, ActionConfig<WithStageDirector>> {
+    // (undocumented)
+    readonly [ACTIONS]?: A;
+    // (undocumented)
+    readonly [DEFINED_TRANSACTION_HANDLER] = true;
+    constructor(actions: A);
+    readonly handler: TransactionHandler;
+}
+
+// @public
 export function defineProcessor<EventData = unknown, CustomConfig = unknown>(fn: (events: EventProcessorEvent<EventData>[], ctx: EventProcessorContext<CustomConfig>) => Promise<void> | void): DefinedProcessor<CustomConfig, EventData>;
 
 // @public
-export function defineTransactionHandler<A extends Record<string, TransactionAction>>(actions: A): ActionMap<A>;
+export function defineTransactionHandler<A extends Record<string, TransactionAction>>(actions: A): DefinedTransactionHandler<A>;
 
 // @public
 export interface EngineAPI {
@@ -550,6 +560,12 @@ export enum InvocationMode {
     // (undocumented)
     PARALLEL = 0
 }
+
+// @public
+export function isDefinedProcessor(value: unknown): value is DefinedProcessor;
+
+// @public
+export function isDefinedTransactionHandler(value: unknown): value is DefinedTransactionHandler;
 
 // @public
 export const KALEIDO_CONFIG_FILE = "KALEIDO_CONFIG_FILE";

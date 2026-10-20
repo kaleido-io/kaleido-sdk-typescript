@@ -32,12 +32,15 @@
 import { createTransactionContext, type EventProcessorContext, type TransactionContext } from '../app/context';
 import type { EventProcessorDef } from '../app/types';
 import type { EventProcessorEvent } from '../factories/event_processor';
-import type { ActionConfig, TransactionHandlerFn } from '../interfaces/handlers';
+import { createTransactionHandler } from '../factories/transaction_handler';
+import type { ActionConfig, TransactionHandler, TransactionHandlerFn } from '../interfaces/handlers';
 import { EvalResult, HandlerEvent, InvocationMode, WithStageDirector } from '../types/core';
 
 // Symbol.for, not Symbol: an outcome or error must be recognised even when it
 // comes from another copy of the SDK, for example one bundled into a snippet.
 const KIND = Symbol.for('@kaleido-io/workflow-engine-sdk/handler-result');
+const DEFINED_TRANSACTION_HANDLER = Symbol.for('@kaleido-io/workflow-engine-sdk/defined-transaction-handler');
+const DEFINED_PROCESSOR = Symbol.for('@kaleido-io/workflow-engine-sdk/defined-processor');
 
 /** Returned by `complete()`. */
 export interface CompleteOutcome {
@@ -176,40 +179,67 @@ function fromError(error: unknown): HandlerResult {
 }
 
 /**
+ * A transaction handler from `defineTransactionHandler`. It is the map of the
+ * handler's actions, so it works wherever an action map does, and it carries a
+ * `handler`, so it can be registered as it is with `.transactionHandler(name, …)`.
+ * A TypeScript provider snippet can export it under any name.
+ */
+export class DefinedTransactionHandler<A extends Record<string, TransactionAction> = Record<string, TransactionAction>>
+  extends Map<string, ActionConfig<WithStageDirector>> {
+  declare readonly [ACTIONS]?: A;
+  readonly [DEFINED_TRANSACTION_HANDLER] = true;
+  /** The handler that runs these actions, for `.transactionHandler(name, …)`. */
+  readonly handler: TransactionHandler;
+
+  constructor(actions: A) {
+    super();
+    for (const [action, run] of Object.entries(actions)) {
+      this.set(action, {
+        invocationMode: InvocationMode.PARALLEL,
+        handler: async (transaction, input, ctx) => {
+          try {
+            const returned = await run(input ?? {}, ctx ?? createTransactionContext(undefined, '', transaction));
+            return toResult(returned);
+          } catch (error) {
+            return fromError(error);
+          }
+        },
+      });
+    }
+    // The name a handler registers under comes from .transactionHandler(name, …).
+    this.handler = createTransactionHandler('', this);
+  }
+}
+
+/**
  * Define a transaction handler's actions.
  *
  * @example
- * export const actionMap = defineTransactionHandler({
+ * export const helloHandler = defineTransactionHandler({
  *   hello: async (input: { name: string }) => ({ greeting: `Hello ${input.name}!` }),
  *   'list-pools': async (_input, ctx) => {
- *     const am = new AssetManagerClient(ctx.getServiceClientOptions('asset-manager'));
- *     return { pools: (await am.getPools())?.items ?? [] };
+ *     const assets = new AssetManagerClient(ctx, 'asset-manager');
+ *     return { pools: (await assets.getPools())?.items ?? [] };
  *   },
  * });
+ *
+ * // In a custom provider:
+ * client.transactionHandler('hello', helloHandler);
  */
-export function defineTransactionHandler<A extends Record<string, TransactionAction>>(actions: A): ActionMap<A> {
-  const map: ActionMap<A> = new Map();
-  for (const [action, run] of Object.entries(actions)) {
-    map.set(action, {
-      invocationMode: InvocationMode.PARALLEL,
-      handler: async (transaction, input, ctx) => {
-        try {
-          const returned = await run(input ?? {}, ctx ?? createTransactionContext(undefined, '', transaction));
-          return toResult(returned);
-        } catch (error) {
-          return fromError(error);
-        }
-      },
-    });
-  }
-  return map;
+export function defineTransactionHandler<A extends Record<string, TransactionAction>>(actions: A): DefinedTransactionHandler<A> {
+  return new DefinedTransactionHandler(actions);
+}
+
+/** True for a value returned by `defineTransactionHandler`, from any copy of the SDK. */
+export function isDefinedTransactionHandler(value: unknown): value is DefinedTransactionHandler {
+  return value instanceof Map && (value as unknown as Record<symbol, unknown>)[DEFINED_TRANSACTION_HANDLER] === true;
 }
 
 /**
  * An event processor from `defineProcessor`. It is both the batch function and
- * a definition with a `processBatch` property, so it can be exported as
- * `processBatch` from a TypeScript provider snippet or registered with
- * `.eventProcessor(name, …)` in a custom provider.
+ * a definition with a `processBatch` property, so it can be registered with
+ * `.eventProcessor(name, …)` in a custom provider, and a TypeScript provider
+ * snippet can export it under any name.
  */
 export type DefinedProcessor<CustomConfig = unknown, EventData = unknown> =
   EventProcessorDef<CustomConfig, EventData>['processBatch'] & EventProcessorDef<CustomConfig, EventData>;
@@ -218,7 +248,7 @@ export type DefinedProcessor<CustomConfig = unknown, EventData = unknown> =
  * Define an event processor from a function that handles each batch.
  *
  * @example
- * export const processBatch = defineProcessor(async (events: EventProcessorEvent<Transfer>[], ctx) => {
+ * export const transferProcessor = defineProcessor(async (events: EventProcessorEvent<Transfer>[], ctx) => {
  *   for (const event of events) { ... }
  * });
  */
@@ -228,5 +258,10 @@ export function defineProcessor<EventData = unknown, CustomConfig = unknown>(
   const processBatch = async (ctx: EventProcessorContext<CustomConfig>, events: EventProcessorEvent<EventData>[]) => {
     await fn(events, ctx);
   };
-  return Object.assign(processBatch, { processBatch });
+  return Object.assign(processBatch, { processBatch, [DEFINED_PROCESSOR]: true });
+}
+
+/** True for a value returned by `defineProcessor`, from any copy of the SDK. */
+export function isDefinedProcessor(value: unknown): value is DefinedProcessor {
+  return typeof value === 'function' && (value as unknown as Record<symbol, unknown>)[DEFINED_PROCESSOR] === true;
 }

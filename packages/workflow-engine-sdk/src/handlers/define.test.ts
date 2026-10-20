@@ -22,7 +22,12 @@ import { EvalResult, InvocationMode, WSEvaluateReplyResult, WSHandleTransactions
 import type { ActionConfig } from '../interfaces/handlers';
 import type { EventProcessorContext, TransactionContext } from '../app/context';
 import { invokeAction } from '../testing';
-import { RetryableError, StageError, complete, defineProcessor, defineTransactionHandler, waiting } from './define';
+import { RetryableError, StageError, complete, defineProcessor, defineTransactionHandler, isDefinedProcessor, isDefinedTransactionHandler, waiting } from './define';
+import { WorkflowEngineClient } from '../client/client';
+import { createTransactionHandler } from '../factories/transaction_handler';
+import type { TransactionHandlerRegistration } from '../app/types';
+import type { EventProcessorDef } from '../app/types';
+import { FakeEngine } from '../../tests/compat/fake-engine';
 
 void mockLogger;
 
@@ -225,5 +230,61 @@ describe('invokeAction', () => {
     await expect(invokeAction(actions, 'gret', { name: 'x' })).rejects.toThrow();
     // @ts-expect-error the wrong input type
     await invokeAction(actions, 'greet', { name: 42 });
+  });
+});
+
+describe('a defined transaction handler', () => {
+  const helloHandler = defineTransactionHandler({
+    hello: async (input: { name: string }) => ({ greeting: `Hello ${input.name}` }),
+  });
+
+  it('is still a map of its actions, for code that uses one', async () => {
+    expect(helloHandler).toBeInstanceOf(Map);
+    expect([...helloHandler.keys()]).toEqual(['hello']);
+    expect(await reply(helloHandler, 'hello', { name: 'Ada' }))
+      .toEqual({ stage: 'next', stateUpdates: [{ op: 'add', path: '/output', value: { greeting: 'Hello Ada' } }] });
+    expect(createTransactionHandler('hello', helloHandler).name).toBe('hello');
+    const asMap: Map<string, ActionConfig<any>> = helloHandler;
+    void asMap;
+  });
+
+  it('can be registered as it is, with the name it is registered under', async () => {
+    const registration: TransactionHandlerRegistration = helloHandler;
+    void registration;
+    const engine = new FakeEngine();
+    await engine.start();
+    const client = new WorkflowEngineClient({ providerName: 'p', url: engine.url, maxAttempts: 1 }).transactionHandler('greeter', helloHandler);
+    try {
+      await client.start();
+      const registrations = await engine.waitForRegistration(1);
+      expect(registrations[1]).toMatchObject({ handlerType: 'transaction_handler', handler: 'greeter' });
+      const result = await engine.request({
+        messageType: 'handle_transactions', id: 'b1', handler: 'greeter',
+        transactions: [{ handler: 'greeter', workflowId: 'w', transactionId: 't1', sequence: '1', stage: 's', input: { action: 'hello', outputPath: '/o', nextStage: 'n', failureStage: 'f', name: 'Grace' } }],
+      });
+      expect(result.results).toEqual([{ stage: 'n', stateUpdates: [{ op: 'add', path: '/o', value: { greeting: 'Hello Grace' } }] }]);
+    } finally {
+      client.stop();
+      await engine.close();
+    }
+  });
+
+  it('is recognised, including from another copy of the SDK', () => {
+    expect(isDefinedTransactionHandler(helloHandler)).toBe(true);
+    expect(isDefinedTransactionHandler(new Map())).toBe(false);
+    expect(isDefinedTransactionHandler({ handler: {} })).toBe(false);
+    const fromAnotherCopy = Object.assign(new Map(), { [Symbol.for('@kaleido-io/workflow-engine-sdk/defined-transaction-handler')]: true });
+    expect(isDefinedTransactionHandler(fromAnotherCopy)).toBe(true);
+  });
+});
+
+describe('a defined processor', () => {
+  it('is recognised, and is a definition the builder accepts', () => {
+    const processor = defineProcessor(async () => {});
+    const def: EventProcessorDef = processor;
+    void def;
+    expect(isDefinedProcessor(processor)).toBe(true);
+    expect(isDefinedProcessor(async () => {})).toBe(false);
+    expect(isDefinedProcessor({ processBatch: async () => {} })).toBe(false);
   });
 });
