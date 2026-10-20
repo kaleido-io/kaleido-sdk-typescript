@@ -203,7 +203,7 @@ describe('extractSnippetPackage', () => {
 });
 
 describe('packSnippetPackage', () => {
-  it('zips the project, leaving out node_modules, build output, ignored files and earlier zips', () => {
+  it('zips the project, leaving out node_modules, build output, lockfiles, ignored files and earlier zips', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pack-'));
     for (const [p, c] of Object.entries({
       ...validFiles,
@@ -213,6 +213,7 @@ describe('packSnippetPackage', () => {
       'coverage/lcov.info': 'x',
       'logs/run.log': 'x',
       'acme-handlers-1.0.0.zip': 'old',
+      'package-lock.json': '{}',
       '.gitignore': 'logs/\n*.log\n',
     })) {
       mkdirSync(join(dir, p, '..'), { recursive: true });

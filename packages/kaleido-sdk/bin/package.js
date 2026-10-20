@@ -29,7 +29,7 @@ if (args.includes('--help') || args.includes('-h')) {
 Usage: npx ksdk package [--out <file>] [--dir <project>]
 
 Zips a TypeScript provider snippet package, leaving out node_modules, build
-output and anything .gitignore names, then checks it: a package.json at the
+output, lockfiles and anything .gitignore names, then checks it: a package.json at the
 root, dependencies only on @kaleido-io/* packages, and every handler in the
 package.json "kaleido" section present.
 

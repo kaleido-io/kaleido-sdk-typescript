@@ -49,4 +49,4 @@ Shared code goes in the package itself, under `src/`.
 npm run package
 ```
 
-This writes `<name>-<version>.zip`, leaving out `node_modules`, build output and anything `.gitignore` names, and checks the result against the same rules the platform applies. Upload the zip to the artifact registry namespace your TypeScript provider service uses, and add it to the service as a handler package.
+This writes `<name>-<version>.zip`, leaving out `node_modules`, build output, lockfiles and anything `.gitignore` names, and checks the result against the same rules the platform applies. Upload the zip to the artifact registry namespace your TypeScript provider service uses, and add it to the service as a handler package.

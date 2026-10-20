@@ -42,8 +42,20 @@ export const SUPPORTED_DEPENDENCY_SCOPE = '@kaleido-io/';
 const EXCLUDED_SEGMENTS = new Set(['node_modules', '.git', '__MACOSX']);
 /** File names left out of a package wherever they appear. */
 const EXCLUDED_FILES = new Set(['.DS_Store']);
-/** Further top-level entries `packSnippetPackage` leaves out of a project. */
-const EXCLUDED_PROJECT_ROOTS = new Set(['dist', 'coverage', '.vscode', '.idea']);
+/**
+ * Further top-level entries `packSnippetPackage` leaves out of a project. Lockfiles go too: the
+ * provider supplies the dependencies, so nothing is ever installed from them.
+ */
+const EXCLUDED_PROJECT_ROOTS = new Set([
+  'dist',
+  'coverage',
+  '.vscode',
+  '.idea',
+  'package-lock.json',
+  'npm-shrinkwrap.json',
+  'yarn.lock',
+  'pnpm-lock.yaml',
+]);
 
 export type HandlerKind = 'transactionHandlers' | 'eventSources' | 'eventProcessors';
 export const HANDLER_KINDS: HandlerKind[] = ['transactionHandlers', 'eventSources', 'eventProcessors'];
