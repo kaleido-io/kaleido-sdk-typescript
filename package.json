@@ -39,6 +39,6 @@
     "lint:packages": "npm run lint -w packages/core-sdk -w packages/workflow-engine-sdk -w packages/connector-sdk -w packages/asset-manager-sdk -w packages/subledger-sdk -w packages/kaleido-sdk --if-present",
     "api:check": "npm run api:check -w packages/core-sdk -w packages/workflow-engine-sdk",
     "api:update": "npm run api:update -w packages/core-sdk -w packages/workflow-engine-sdk",
-    "compat:types": "tsc -p compat/consumer-fixtures/tsconfig.json"
+    "backwards-compatibility:types": "tsc -p backwards-compatibility-tests/tsconfig.json"
   }
 }

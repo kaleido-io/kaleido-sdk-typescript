@@ -27,7 +27,7 @@ import { WorkflowEngineClient } from '../client/client';
 import { createTransactionHandler } from '../factories/transaction_handler';
 import type { TransactionHandlerRegistration } from '../app/types';
 import type { EventProcessorDef } from '../app/types';
-import { FakeEngine } from '../../tests/compat/fake-engine';
+import { FakeEngine } from '../../tests/backwards-compatibility/fixtures/fake-engine';
 
 void mockLogger;
 

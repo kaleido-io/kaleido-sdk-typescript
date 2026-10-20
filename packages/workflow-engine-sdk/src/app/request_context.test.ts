@@ -25,7 +25,7 @@ import { evalDirected } from '../helpers/stage_director';
 import { ActionConfig } from '../interfaces/handlers';
 import { EvalResult, InvocationMode, WSHandleTransactionsResult, WSMessageType } from '../types/core';
 import type { EventSourceContext, TransactionContext } from './context';
-import { FakeEngine, WireMessage } from '../../tests/compat/fake-engine';
+import { FakeEngine, WireMessage } from '../../tests/backwards-compatibility/fixtures/fake-engine';
 
 void mockLogger;
 

@@ -18,12 +18,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { expect } from '@jest/globals';
 
-const GOLDEN_DIR = path.join(__dirname, 'golden');
+const DATA_DIR = path.join(__dirname, '..', 'data');
 
-// IDs the SDK generates itself, for example `1760620000000-k3j2h1g0f`.
 const GENERATED_ID = /^\d{13}-[a-z0-9]+$/;
 
-/** Replace values that differ on every run, so recordings can be compared. */
+/** Replace values that differ on every run, so recorded messages can be compared. */
 export function normalise(value: unknown): unknown {
   if (typeof value === 'string') {
     return GENERATED_ID.test(value) ? '<generated-id>' : value;
@@ -38,19 +37,20 @@ export function normalise(value: unknown): unknown {
 }
 
 /**
- * Compare a recording with its golden file. Set UPDATE_GOLDEN=1 to write the
- * golden file instead, for an intended and reviewed behaviour change.
+ * Compare the messages a test recorded with `data/expected-messages-<type>.json`.
+ * Set UPDATE_EXPECTED_DATA=1 to write that file instead, for an intended and
+ * reviewed behaviour change.
  */
-export function expectGolden(name: string, recording: unknown): void {
-  const file = path.join(GOLDEN_DIR, `${name}.json`);
-  const actual = JSON.parse(JSON.stringify(normalise(recording)));
-  if (process.env.UPDATE_GOLDEN === '1') {
-    fs.mkdirSync(GOLDEN_DIR, { recursive: true });
+export function expectToMatchExpectedMessages(type: string, recorded: unknown): void {
+  const file = path.join(DATA_DIR, `expected-messages-${type}.json`);
+  const actual = JSON.parse(JSON.stringify(normalise(recorded)));
+  if (process.env.UPDATE_EXPECTED_DATA === '1') {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(file, JSON.stringify(actual, null, 2) + '\n');
     return;
   }
   if (!fs.existsSync(file)) {
-    throw new Error(`Golden file ${file} is missing. Run with UPDATE_GOLDEN=1 to record it.`);
+    throw new Error(`Expected data ${file} is missing. Run with UPDATE_EXPECTED_DATA=1 to record it.`);
   }
   expect(actual).toEqual(JSON.parse(fs.readFileSync(file, 'utf8')));
 }

@@ -15,7 +15,7 @@
 // limitations under the License.
 
 // Records the replies a real WorkflowEngineClient sends for transaction
-// batches, and compares them with the golden files recorded on 1.0.1.
+// batches, and compares them with the expected messages recorded on 1.0.1.
 
 import { mockLogger } from '../mock-logger';
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
@@ -33,8 +33,8 @@ import {
   WSHandleTransactionsResult,
   createTransactionHandler,
 } from '../../src/index';
-import { FakeEngine, WireMessage } from './fake-engine';
-import { expectGolden } from './golden';
+import { FakeEngine, WireMessage } from './fixtures/fake-engine';
+import { expectToMatchExpectedMessages } from './helpers/expected-data-helper';
 
 void mockLogger;
 
@@ -199,7 +199,7 @@ async function connect(client: WorkflowEngineClient, engine: FakeEngine, handler
   await engine.waitForRegistration(handlers);
 }
 
-describe('compat: transaction handler wire replies', () => {
+describe('backwards compatibility: transaction handler wire replies', () => {
   const engine = new FakeEngine();
   let client: WorkflowEngineClient;
   const submitter = new SubmittingHandler();
@@ -228,7 +228,7 @@ describe('compat: transaction handler wire replies', () => {
         reply,
       });
     }
-    expectGolden('transactions', recording);
+    expectToMatchExpectedMessages('transactions', recording);
   });
 
   it('matches the recorded engine API round trip from a raw handler', async () => {
@@ -236,7 +236,7 @@ describe('compat: transaction handler wire replies', () => {
       authTokens: { 'workflow-engine': 'token-1' },
     });
     const reply = await engine.request(batch);
-    expectGolden('transactions-engine-api', {
+    expectToMatchExpectedMessages('transactions-engine-api', {
       requestContextSeen: submitter.seen,
       engineApiRequests: engine.ofType('engineapi_submit_transactions'),
       reply,

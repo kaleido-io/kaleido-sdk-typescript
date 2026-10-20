@@ -15,7 +15,7 @@
 // limitations under the License.
 
 // Records the replies a real WorkflowEngineClient sends for event-source and
-// event-processor requests, and compares them with the golden files recorded
+// event-processor requests, and compares them with the expected messages recorded
 // on 1.0.1.
 
 import { mockLogger } from '../mock-logger';
@@ -30,8 +30,8 @@ import {
   WSEventProcessorBatchResult,
   createEventSource,
 } from '../../src/index';
-import { FakeEngine, WireMessage } from './fake-engine';
-import { expectGolden } from './golden';
+import { FakeEngine, WireMessage } from './fixtures/fake-engine';
+import { expectToMatchExpectedMessages } from './helpers/expected-data-helper';
 
 void mockLogger;
 
@@ -89,7 +89,7 @@ const configFor = (streamId: string, config: unknown, streamName = `name-${strea
   messageType: 'event_source_config', id: `cfg-${streamId}`, handler: 'ticker', streamId, streamName, config,
 });
 
-describe('compat: event source wire replies', () => {
+describe('backwards compatibility: event source wire replies', () => {
   const engine = new FakeEngine();
   let client: WorkflowEngineClient;
 
@@ -138,11 +138,11 @@ describe('compat: event source wire replies', () => {
         recording.push({ step, sent: send });
       }
     }
-    expectGolden('event-sources', recording);
+    expectToMatchExpectedMessages('event-sources', recording);
   });
 });
 
-describe('compat: event processor wire replies', () => {
+describe('backwards compatibility: event processor wire replies', () => {
   const engine = new FakeEngine({
     onServiceProxyRequest: (msg) => msg.request.path.includes('/unavailable')
       ? { status: 503, error: 'service unavailable' }
@@ -214,7 +214,7 @@ describe('compat: event processor wire replies', () => {
     for (const { step, send } of steps) {
       recording.push({ step, sent: send, reply: await engine.request(send) });
     }
-    expectGolden('event-processors', {
+    expectToMatchExpectedMessages('event-processors', {
       replies: recording,
       builderContextSeen: observed,
       rawRequestContextSeen: raw.seen,

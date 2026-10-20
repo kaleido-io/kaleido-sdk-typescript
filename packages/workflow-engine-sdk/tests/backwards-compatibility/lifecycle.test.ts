@@ -15,7 +15,7 @@
 // limitations under the License.
 
 // Records registration messages and the setup lifecycle of a real
-// WorkflowEngineClient, and compares them with the golden files recorded on
+// WorkflowEngineClient, and compares them with the expected messages recorded on
 // 1.0.1.
 
 import { mockLogger } from '../mock-logger';
@@ -30,8 +30,8 @@ import {
   createTransactionHandler,
   createEventSource,
 } from '../../src/index';
-import { FakeEngine } from './fake-engine';
-import { expectGolden } from './golden';
+import { FakeEngine } from './fixtures/fake-engine';
+import { expectToMatchExpectedMessages } from './helpers/expected-data-helper';
 
 void mockLogger;
 
@@ -76,7 +76,7 @@ function builderClient(engine: FakeEngine, serviceBindings: WorkflowEngineClient
   return client;
 }
 
-describe('compat: registration and setup lifecycle', () => {
+describe('backwards compatibility: registration and setup lifecycle', () => {
   it('matches the recording with hosted bindings, where setup waits for a trigger', async () => {
     const engine = new FakeEngine();
     await engine.start();
@@ -89,7 +89,7 @@ describe('compat: registration and setup lifecycle', () => {
       const triggerOk = await engine.triggerSetup('setup-1', 'auth-good');
       const runsAfterOk = runs.splice(0);
       const triggerBad = await engine.triggerSetup('setup-2', 'auth-bad');
-      expectGolden('lifecycle-hosted', {
+      expectToMatchExpectedMessages('lifecycle-hosted', {
         registrations,
         runsAtBoot,
         triggerOk,
@@ -114,7 +114,7 @@ describe('compat: registration and setup lifecycle', () => {
       const registrations = await engine.waitForRegistration(3);
       const runsAtBoot = runs.splice(0);
       const trigger = await engine.triggerSetup('setup-3', 'auth-later');
-      expectGolden('lifecycle-non-hosted', { registrations, runsAtBoot, trigger, runsAfterTrigger: runs });
+      expectToMatchExpectedMessages('lifecycle-non-hosted', { registrations, runsAtBoot, trigger, runsAfterTrigger: runs });
     } finally {
       client.stop();
       await engine.close();
@@ -131,7 +131,7 @@ describe('compat: registration and setup lifecycle', () => {
       await client.connect();
       const registrations = await engine.waitForRegistration(2);
       const trigger = await engine.triggerSetup('setup-4', 'auth-any');
-      expectGolden('lifecycle-low-level', {
+      expectToMatchExpectedMessages('lifecycle-low-level', {
         registrations,
         trigger,
         hostedOptions: { ...client.getServiceClientOptions('asset-manager', 'auth-x'), wsProxy: '<adapter>' },
