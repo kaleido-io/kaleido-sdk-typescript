@@ -22,7 +22,7 @@ interface HelloInput {
     name?: string;
 }
 
-export const actionMap = defineTransactionHandler({
+export const helloHandler = defineTransactionHandler({
     hello: async (input: HelloInput, ctx) => {
         if (input.name === undefined) {
             // A throw fails the stage: the transaction moves to the stage's failureStage.

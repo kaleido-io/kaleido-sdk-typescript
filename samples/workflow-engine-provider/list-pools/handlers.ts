@@ -17,7 +17,7 @@
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
 import { defineTransactionHandler } from '@kaleido-io/workflow-engine-sdk';
 
-export const actionMap = defineTransactionHandler({
+export const listPoolsHandler = defineTransactionHandler({
   // The context resolves the 'asset-manager' binding as the transaction's caller,
   // so with a hosted binding the provider proxy calls the Asset Manager with
   // their credentials. No setup hook is needed.

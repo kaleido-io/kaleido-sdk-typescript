@@ -20,21 +20,21 @@ import {
 } from "@kaleido-io/workflow-engine-sdk";
 import dotenv from "dotenv";
 
-import { actionMap as helloActionMap } from "./hello/handlers.js";
+import { helloHandler } from "./hello/handlers.js";
 import { actionMap as httpInvokeActionMap } from "./http-invoke/handlers.js";
 import { eventSource as scheduledSource } from "./scheduled-workflow/scheduled-source.js";
-import { processBatch as echoProcessor } from "./scheduled-workflow/echo-processor.js";
+import { echoProcessor } from "./scheduled-workflow/echo-processor.js";
 import { eventSource as dealerEventSource } from "./snap/event-source.js";
 import { actionMap as snapActionMap } from "./snap/snap-handler.js";
-import { actionMap as listPoolsActionMap } from "./list-pools/handlers.js";
+import { listPoolsHandler } from "./list-pools/handlers.js";
 
 dotenv.config();
 
 const app = WorkflowEngineClient.fromConfigFile()
-  .transactionHandler('hello', { handler: createTransactionHandler('hello', helloActionMap) })
+  .transactionHandler('hello', helloHandler)
   .transactionHandler('http-invoke', { handler: createTransactionHandler('http-invoke', httpInvokeActionMap) })
   .transactionHandler('snap-watcher', { handler: createTransactionHandler('snap-watcher', snapActionMap) })
-  .transactionHandler('list-pools', { handler: createTransactionHandler('list-pools', listPoolsActionMap) })
+  .transactionHandler('list-pools', listPoolsHandler)
   .eventProcessor('echo', echoProcessor)
   .eventSource(scheduledSource)
   .eventSource(dealerEventSource);

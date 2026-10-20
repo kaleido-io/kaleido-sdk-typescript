@@ -17,11 +17,11 @@
 import { describe, it, expect } from 'vitest';
 import { EvalResult } from '@kaleido-io/workflow-engine-sdk';
 import { invokeAction } from '@kaleido-io/workflow-engine-sdk/testing';
-import { actionMap } from './handlers.js';
+import { helloHandler } from './handlers.js';
 
 describe('Hello handlers', () => {
     it('should return a greeting when name is provided', async () => {
-        const result = await invokeAction(actionMap, 'hello', { name: 'World' });
+        const result = await invokeAction(helloHandler, 'hello', { name: 'World' });
 
         expect(result.result).toBe(EvalResult.COMPLETE);
         expect(result.output).toEqual({
@@ -30,13 +30,13 @@ describe('Hello handlers', () => {
     });
 
     it('should emit a greeting event keyed by the transaction', async () => {
-        const result = await invokeAction(actionMap, 'hello', { name: 'World' }, { transaction: { idempotencyKey: 'txn-key' } });
+        const result = await invokeAction(helloHandler, 'hello', { name: 'World' }, { transaction: { idempotencyKey: 'txn-key' } });
 
         expect(result.events).toEqual([{ idempotencyKey: 'txn-key', topic: 'greeting', data: 'Hello World!' }]);
     });
 
     it('should read the name from the stage input, not the operation input in state', async () => {
-        const result = await invokeAction(actionMap, 'hello', { name: 'Stage' }, { transaction: { state: { input: { name: 'Operation' } } } });
+        const result = await invokeAction(helloHandler, 'hello', { name: 'Stage' }, { transaction: { state: { input: { name: 'Operation' } } } });
 
         expect(result.result).toBe(EvalResult.COMPLETE);
         expect(result.output).toEqual({
@@ -45,7 +45,7 @@ describe('Hello handlers', () => {
     });
 
     it('should return HARD_FAILURE when name is missing from the stage input', async () => {
-        const result = await invokeAction(actionMap, 'hello', {}, { transaction: { state: { input: { name: 'Operation' } } } });
+        const result = await invokeAction(helloHandler, 'hello', {}, { transaction: { state: { input: { name: 'Operation' } } } });
 
         expect(result.result).toBe(EvalResult.HARD_FAILURE);
         expect(result.error).toBeInstanceOf(Error);

@@ -36,7 +36,7 @@ The `hello-flow` workflow (`flow.ts`) defines a simple asynchronous operation th
 1. Register the hello handler on your client (see `connect.ts`):
    ```typescript
    const app = WorkflowEngineClient.fromConfigFile()
-     .transactionHandler('hello', { handler: createTransactionHandler('hello', helloActionMap) });
+     .transactionHandler('hello', helloHandler);
 
    await app.start(); // registers the provider and handlers with the workflow engine
    ```
