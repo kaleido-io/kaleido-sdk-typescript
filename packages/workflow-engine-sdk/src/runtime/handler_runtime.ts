@@ -709,17 +709,23 @@ export class HandlerRuntime {
   newRequestContext(envelope: WSHandlerEnvelope): RequestContext {
     const controller = new AbortController();
     let timeoutId: NodeJS.Timeout | undefined;
-    if (typeof envelope?.deadline == 'string' && envelope.deadline.length > 0) {
-      const startTime = new Date().getTime();
-      const deadlineTimeout = new Date(envelope.deadline).getTime() - startTime;
-      // setTimeout fires straight away for delays it can't represent, so a
-      // deadline that far out would abort the request at once. No request runs
-      // that long, so such a deadline is left unenforced.
-      if (deadlineTimeout <= MAX_TIMER_DELAY_MS) {
+    const deadline = typeof envelope?.deadline == 'string' && envelope.deadline.length > 0
+      ? new Date(envelope.deadline).getTime()
+      : NaN;
+    if (!Number.isNaN(deadline)) {
+      const startTime = Date.now();
+      // setTimeout fires straight away for a delay it can't represent, so a far
+      // deadline is reached in steps no longer than it allows.
+      const arm = () => {
         timeoutId = setTimeout(() => {
-          controller.abort(`deadline exceeded after ${new Date().getTime() - startTime}ms`);
-        }, deadlineTimeout);
-      }
+          if (Date.now() < deadline) {
+            arm();
+            return;
+          }
+          controller.abort(`deadline exceeded after ${Date.now() - startTime}ms`);
+        }, Math.min(Math.max(deadline - Date.now(), 0), MAX_TIMER_DELAY_MS));
+      };
+      arm();
     }
     return {
       requestId: envelope.id,

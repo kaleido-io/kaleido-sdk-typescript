@@ -1204,13 +1204,32 @@ describe('HandlerRuntime request context deadlines', () => {
         reqContext.cancel();
     });
 
-    it('does not abort early when the deadline is beyond the timer range', async () => {
-        const fortyDays = 40 * 24 * 60 * 60 * 1000;
-        const reqContext = new HandlerRuntime(handlerRuntimeConfig).newRequestContext(envelope(new Date(Date.now() + fortyDays).toISOString()));
-        await tick(30);
-        expect(reqContext.signal.aborted).toBe(false);
-        reqContext.cancel();
-        expect(reqContext.signal.aborted).toBe(true);
+    it('aborts at a deadline beyond the timer range, and not before', () => {
+        jest.useFakeTimers();
+        try {
+            const day = 24 * 60 * 60 * 1000;
+            const reqContext = new HandlerRuntime(handlerRuntimeConfig).newRequestContext(envelope(new Date(Date.now() + 40 * day).toISOString()));
+            expect(reqContext.signal.aborted).toBe(false);
+            jest.advanceTimersByTime(40 * day - 1);
+            expect(reqContext.signal.aborted).toBe(false);
+            jest.advanceTimersByTime(1);
+            expect(reqContext.signal.aborted).toBe(true);
+            reqContext.cancel();
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('stops waiting for a far deadline when cancelled', () => {
+        jest.useFakeTimers();
+        try {
+            const reqContext = new HandlerRuntime(handlerRuntimeConfig).newRequestContext(envelope(new Date(Date.now() + 40 * 24 * 60 * 60 * 1000).toISOString()));
+            reqContext.cancel();
+            expect(reqContext.signal.aborted).toBe(true);
+            expect(jest.getTimerCount()).toBe(0);
+        } finally {
+            jest.useRealTimers();
+        }
     });
 
     it('never aborts without a deadline until cancelled', async () => {
