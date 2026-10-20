@@ -361,6 +361,12 @@ if (addToExisting) {
   console.log('Next steps:');
   console.log(`\tcd ${projectDirName}`);
   console.log('\tnpm install');
-  console.log('\t# Edit config files with your configuration');
-  console.log('\tnpm run start:dev\n');
+  if (templateName === 'typescript-provider-package') {
+    console.log('\tnpm test');
+    console.log('\tnpx ksdk add transaction-handler <name>   # add more handlers');
+    console.log('\tnpm run package                            # zip it for upload to a TypeScript provider\n');
+  } else {
+    console.log('\t# Edit config files with your configuration');
+    console.log('\tnpm run start:dev\n');
+  }
 }
