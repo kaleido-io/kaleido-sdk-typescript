@@ -26,9 +26,11 @@ const __dirname = dirname(__filename);
 const args = process.argv.slice(2);
 const command = args[0];
 
-if (command === 'init') {
-  const initScript = join(__dirname, 'init.js');
-  const child = spawn('node', [initScript, ...args.slice(1)], {
+const SCRIPTS = { init: 'init.js', add: 'add.js', package: 'package.js' };
+
+if (SCRIPTS[command]) {
+  const script = join(__dirname, SCRIPTS[command]);
+  const child = spawn('node', [script, ...args.slice(1)], {
     stdio: 'inherit',
     shell: false,
   });
@@ -48,6 +50,8 @@ Usage:
 
 Commands:
   init <project-name>    Create a new provider project from template
+  add <kind> <name>      Add a handler to a TypeScript provider snippet package
+  package                Zip a TypeScript provider snippet package and check it
 
 Examples:
   npx @kaleido-io/kaleido-sdk init my-provider
