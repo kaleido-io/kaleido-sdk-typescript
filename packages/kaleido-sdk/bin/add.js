@@ -103,17 +103,30 @@ describe('${name}', () => {
 `],
   'event-source': [`import { defineEventSource } from '@kaleido-io/workflow-engine-sdk';
 
+interface ${Camel}Record {
+  position: number;
+}
+
 interface ${Camel}Checkpoint {
   position: number;
 }
 
+// Replace this with a call to the system the source watches: return the records after \`position\`, oldest first.
+// Return none when nothing is new, so the engine waits before polling again.
+async function fetchRecordsAfter(position: number): Promise<${Camel}Record[]> {
+  void position;
+  return [];
+}
+
 // Polled repeatedly for each stream that uses this source, with the checkpoint the last poll returned.
-export const ${exportName} = defineEventSource<${Camel}Checkpoint, Record<string, unknown>, { position: number }>('${name}', {
+export const ${exportName} = defineEventSource<${Camel}Checkpoint, Record<string, unknown>, ${Camel}Record>('${name}', {
   poll: async ({ checkpoint, stream }) => {
-    const position = (checkpoint?.position ?? 0) + 1;
+    const after = checkpoint?.position ?? 0;
+    const records = await fetchRecordsAfter(after);
     return {
-      checkpoint: { position },
-      events: [{ idempotencyKey: \`\${stream.streamId}-\${position}\`, topic: '${name}', data: { position } }],
+      checkpoint: { position: records.at(-1)?.position ?? after },
+      // The stream ID keeps events from two streams on this source apart.
+      events: records.map((record) => ({ idempotencyKey: \`\${stream.streamId}-\${record.position}\`, topic: '${name}', data: record })),
     };
   },
 });
@@ -122,15 +135,16 @@ import { WSMessageType, type WSListenerPollResult } from '@kaleido-io/workflow-e
 import { ${exportName} } from '${fromTest}';
 
 describe('${name}', () => {
-  it('emits the next position', async () => {
+  it('emits nothing and keeps its place when there is nothing new', async () => {
     const result: WSListenerPollResult = { messageType: WSMessageType.EVENT_SOURCE_POLL_RESULT, id: 'p', events: [] };
     await ${exportName}.eventSourcePoll(
       { requestId: 'p', signal: new AbortController().signal, cancel: () => {} },
       { messageType: WSMessageType.EVENT_SOURCE_CONFIG, id: 'c', streamId: 's1', streamName: 'stream', config: {} },
       result,
-      { messageType: WSMessageType.EVENT_SOURCE_POLL, id: 'p', streamId: 's1', streamName: 'stream', checkpoint: { position: 1 } },
+      { messageType: WSMessageType.EVENT_SOURCE_POLL, id: 'p', streamId: 's1', streamName: 'stream', checkpoint: { position: 4 } },
     );
-    expect(result.events).toEqual([{ idempotencyKey: 's1-2', topic: '${name}', data: { position: 2 } }]);
+    expect(result.events).toEqual([]);
+    expect(result.checkpoint).toEqual({ position: 4 });
   });
 });
 `],
