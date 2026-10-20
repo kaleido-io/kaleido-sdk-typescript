@@ -15,7 +15,7 @@
 // limitations under the License.
 
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
-import { defineTransactionHandler } from '@kaleido-io/workflow-engine-sdk';
+import { complete, defineTransactionHandler } from '@kaleido-io/workflow-engine-sdk';
 
 export const listPoolsHandler = defineTransactionHandler({
   // The context resolves the 'asset-manager' binding as the transaction's caller,
@@ -23,7 +23,11 @@ export const listPoolsHandler = defineTransactionHandler({
   // their credentials. No setup hook is needed.
   'list-pools': async (_input, ctx) => {
     const assetManager = new AssetManagerClient(ctx, 'asset-manager');
-    const result = await assetManager.getPools();
-    return { pools: result?.items ?? [] };
+    const pools = (await assetManager.getPools())?.items ?? [];
+    // With no pools, finish in the flow's 'no-pools' stage instead of nextStage.
+    if (pools.length === 0) {
+      return complete({ pools }, { stage: 'no-pools' });
+    }
+    return { pools };
   },
 });
