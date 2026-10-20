@@ -33,7 +33,10 @@ jobs:
       - name: Build packages (dependency order)
         run: npm run build:packages
 
-      - name: Check public API reports
+      # API Extractor writes each package's exported API to api/*.api.md. This
+      # regenerates them and fails if they differ from the committed copies, so
+      # every public API change shows up in review as a diff of those files.
+      - name: Check the public API matches the committed API reports (npm run api:update to accept changes)
         run: npm run api:check
 
       - name: Type-check consumer compatibility fixtures
