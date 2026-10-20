@@ -36,8 +36,8 @@
         "README.md"
     ],
     "dependencies": {
-        "@kaleido-io/core-sdk": "^1.0.0",
-        "@kaleido-io/workflow-engine-sdk": "^1.1.0",
+        "@kaleido-io/core-sdk": "^1.1.0-rc.1",
+        "@kaleido-io/workflow-engine-sdk": "^1.1.0-rc.1",
         "@kaleido-io/asset-manager-sdk": "^1.0.0",
         "dotenv": "^17.2.3",
         "js-yaml": "^4.1.1",

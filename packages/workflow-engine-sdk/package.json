@@ -1,6 +1,6 @@
 {
   "name": "@kaleido-io/workflow-engine-sdk",
-  "version": "1.1.0",
+  "version": "1.1.0-rc.1",
   "description": "TypeScript SDK for Kaleido Workflow Engine",
   "type": "module",
   "main": "dist/src/index.js",
@@ -43,7 +43,7 @@
   "author": "Kaleido",
   "license": "Apache-2.0",
   "dependencies": {
-    "@kaleido-io/core-sdk": "^1.0.0",
+    "@kaleido-io/core-sdk": "^1.1.0-rc.1",
     "axios": "^1.13.0",
     "exponential-backoff": "^3.1.1",
     "fast-json-patch": "^3.1.1",
