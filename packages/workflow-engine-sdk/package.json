@@ -9,6 +9,9 @@
     "*": {
       "testing": [
         "./dist/src/testing/index.d.ts"
+      ],
+      "snippet-package": [
+        "./dist/src/snippet-package/index.d.ts"
       ]
     }
   },
@@ -88,6 +91,10 @@
     "./testing": {
       "import": "./dist/src/testing/index.js",
       "types": "./dist/src/testing/index.d.ts"
+    },
+    "./snippet-package": {
+      "import": "./dist/src/snippet-package/index.js",
+      "types": "./dist/src/snippet-package/index.d.ts"
     }
   },
   "sideEffects": false
