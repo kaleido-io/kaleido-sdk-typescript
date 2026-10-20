@@ -184,7 +184,7 @@ A file written this way also runs unchanged in a Kaleido TypeScript provider, wh
 - calls other services through the handler's context (`ctx`), not through a `setup` hook, which a TypeScript provider doesn't run;
 - doesn't rely on `ctx.config`, which comes from your own provider's config file.
 
-This needs a TypeScript provider that provides `@kaleido-io/workflow-engine-sdk` 1.1.0 or later. In a TypeScript provider, the handler name comes from the service config instead of the `.transactionHandler(name, …)` call. Keeping each handler in a file of its own, with the registration in a separate entry point like the one above, lets you develop and test it locally and then upload it as it is.
+This needs a TypeScript provider that provides `@kaleido-io/workflow-engine-sdk` 1.1.0-rc.1 or later. In a TypeScript provider, the handler name comes from the service config instead of the `.transactionHandler(name, …)` call. Keeping each handler in a file of its own, with the registration in a separate entry point like the one above, lets you develop and test it locally and then upload it as it is.
 
 ### Transaction handlers
 
