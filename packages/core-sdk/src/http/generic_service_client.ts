@@ -26,8 +26,8 @@ import { ServiceClient, createServiceTransport, type ServiceClientOptions } from
  * and throws on an error status.
  *
  * ```typescript
- * const registry = new GenericServiceClient(ctx, 'registry');
- * const namespaces = await registry.get<{ name: string }[]>('/api/v1/namespaces');
+ * const keyManager = new GenericServiceClient(ctx, 'key-manager');
+ * const keys = await keyManager.get<{ items: { name: string }[] }>('/api/v2/keys');
  * ```
  */
 export class GenericServiceClient extends ServiceClient {
