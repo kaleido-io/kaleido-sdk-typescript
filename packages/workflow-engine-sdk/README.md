@@ -183,7 +183,6 @@ workflow-engine:
 
 service-bindings:
   asset-manager:
-    type: asset-manager
     bindingType: non-hosted
     url: https://am.example.com/api/v1
     auth:
@@ -193,7 +192,7 @@ service-bindings:
 
   # Hosted binding example (resolved via ws-proxy)
   evm-connector:
-    type: connector
+    serviceType: EVMConnectorService
     bindingType: hosted
     id: svc-connector-001
 ```
@@ -220,7 +219,6 @@ const amClient2 = AssetManagerClient.fromConfigFile('assetManager2');
 ```yaml
 service-bindings:
   assetManager1:
-    type: asset-manager
     bindingType: non-hosted
     url: https://am.example.kaleido.cloud/api/v1
     auth:
@@ -228,7 +226,6 @@ service-bindings:
       token: ${AM_TOKEN}
       scheme: Bearer
   assetManager2:
-    type: asset-manager
     bindingType: non-hosted
     url: https://am2.example.kaleido.cloud/api/v1
     auth:
@@ -891,7 +888,6 @@ workflow-engine:
 
 service-bindings:
   asset-manager:
-    type: asset-manager
     bindingType: non-hosted
     url: https://am.example.com/api/v1
     auth:
@@ -900,7 +896,6 @@ service-bindings:
       scheme: Bearer
 
   evm-connector:
-    type: connector
     bindingType: non-hosted
     url: https://evm-connector.example.com
     auth:

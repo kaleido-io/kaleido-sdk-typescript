@@ -169,7 +169,6 @@ workflow-engine:
 
 service-bindings:
   evm-connector:
-    type: connector
     bindingType: non-hosted
     url: https://evm-connector.example.com
     auth:
@@ -179,12 +178,11 @@ service-bindings:
 
   # Hosted binding example (resolved via ws-proxy)
   evm-connector-hosted:
-    type: connector
+    serviceType: EVMConnectorService
     bindingType: hosted
     id: svc-connector-001
 
   btc-connector:
-    type: connector
     bindingType: non-hosted
     url: https://btc-connector.example.com
     auth:
@@ -193,7 +191,7 @@ service-bindings:
       password: my-api-key
 
   canton-connector:
-    type: connector
+    serviceType: CantonConnectorService
     bindingType: hosted
     id: svc-canton-001
 ```
@@ -219,7 +217,6 @@ const canton = CantonConnectorClient.fromConfigFile('canton-connector');
 ```yaml
 service-bindings:
   evmMainnet:
-    type: connector
     bindingType: non-hosted
     url: https://evm-mainnet.example.kaleido.cloud
     auth:
@@ -227,7 +224,6 @@ service-bindings:
       token: ${CONNECTOR_TOKEN}
       scheme: Bearer
   evmTestnet:
-    type: connector
     bindingType: non-hosted
     url: https://evm-testnet.example.kaleido.cloud
     auth:
@@ -241,7 +237,6 @@ service-bindings:
 ```yaml
 service-bindings:
   evm-connector:
-    type: connector
     bindingType: non-hosted
     url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-env/s:my-evm-connector/rest
     auth:
@@ -656,7 +651,6 @@ workflow-engine:
 
 service-bindings:
   asset-manager:
-    type: asset-manager
     bindingType: non-hosted
     url: https://am.example.com/api/v1
     auth:
@@ -665,7 +659,6 @@ service-bindings:
       scheme: Bearer
 
   evm-connector:
-    type: connector
     bindingType: non-hosted
     url: https://evm-connector.example.com
     auth:
