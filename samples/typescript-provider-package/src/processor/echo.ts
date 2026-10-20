@@ -20,7 +20,7 @@ import { newLogger } from '@kaleido-io/core-sdk/log';
 const log = newLogger('echo');
 
 /** Logs every event it receives. */
-export const processBatch = defineProcessor(async (events) => {
+export const echoProcessor = defineProcessor(async (events) => {
   for (const event of events) {
     log.info(`${event.topic}: ${JSON.stringify(event.data)}`);
   }

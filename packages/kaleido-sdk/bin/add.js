@@ -72,11 +72,15 @@ for (const file of [entry, testFile]) {
 const camel = name.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
 const fromTest = `../${entry.replace(/\.ts$/, '.js')}`;
 
+const Camel = camel[0].toUpperCase() + camel.slice(1);
+// Any export name works: the provider loads the one define* export a file has
+const exportName = { 'transaction-handler': `${camel}Handler`, 'event-source': `${camel}Source`, 'event-processor': `${camel}Processor` }[kind];
+
 const sources = {
   'transaction-handler': [`import { defineTransactionHandler } from '@kaleido-io/workflow-engine-sdk';
 
 // Each key is an action: the stage selects it with "action" in its inputMap.
-export const actionMap = defineTransactionHandler({
+export const ${exportName} = defineTransactionHandler({
   '${name}': async (input: { value?: string }) => {
     if (!input.value) {
       throw new Error('value is required');
@@ -87,41 +91,40 @@ export const actionMap = defineTransactionHandler({
 `, `import { describe, expect, it } from 'vitest';
 import { EvalResult } from '@kaleido-io/workflow-engine-sdk';
 import { invokeAction } from '@kaleido-io/workflow-engine-sdk/testing';
-import { actionMap } from '${fromTest}';
+import { ${exportName} } from '${fromTest}';
 
 describe('${name}', () => {
   it('returns the value', async () => {
-    const result = await invokeAction(actionMap, '${name}', { value: 'x' });
+    const result = await invokeAction(${exportName}, '${name}', { value: 'x' });
     expect(result.result).toBe(EvalResult.COMPLETE);
     expect(result.output).toEqual({ value: 'x' });
   });
 });
 `],
-  'event-source': [`import { createEventSource } from '@kaleido-io/workflow-engine-sdk';
+  'event-source': [`import { defineEventSource } from '@kaleido-io/workflow-engine-sdk';
 
-interface ${camel[0].toUpperCase() + camel.slice(1)}Checkpoint {
+interface ${Camel}Checkpoint {
   position: number;
 }
 
-// Called on every poll with the stream's config and the checkpoint from the last poll.
-export const eventSource = createEventSource<${camel[0].toUpperCase() + camel.slice(1)}Checkpoint, Record<string, unknown>, { position: number }>(
-  '${name}',
-  async (conf, checkpoint) => {
+// Polled repeatedly for each stream that uses this source, with the checkpoint the last poll returned.
+export const ${exportName} = defineEventSource<${Camel}Checkpoint, Record<string, unknown>, { position: number }>('${name}', {
+  poll: async ({ checkpoint, stream }) => {
     const position = (checkpoint?.position ?? 0) + 1;
     return {
-      checkpointOut: { position },
-      events: [{ idempotencyKey: \`\${conf.streamId}-\${position}\`, topic: '${name}', data: { position } }],
+      checkpoint: { position },
+      events: [{ idempotencyKey: \`\${stream.streamId}-\${position}\`, topic: '${name}', data: { position } }],
     };
   },
-);
+});
 `, `import { describe, expect, it } from 'vitest';
 import { WSMessageType, type WSListenerPollResult } from '@kaleido-io/workflow-engine-sdk';
-import { eventSource } from '${fromTest}';
+import { ${exportName} } from '${fromTest}';
 
 describe('${name}', () => {
   it('emits the next position', async () => {
     const result: WSListenerPollResult = { messageType: WSMessageType.EVENT_SOURCE_POLL_RESULT, id: 'p', events: [] };
-    await eventSource.eventSourcePoll(
+    await ${exportName}.eventSourcePoll(
       { requestId: 'p', signal: new AbortController().signal, cancel: () => {} },
       { messageType: WSMessageType.EVENT_SOURCE_CONFIG, id: 'c', streamId: 's1', streamName: 'stream', config: {} },
       result,
@@ -134,17 +137,17 @@ describe('${name}', () => {
   'event-processor': [`import { defineProcessor } from '@kaleido-io/workflow-engine-sdk';
 
 // Called with each batch of events the stream delivers. Throwing fails the batch, and the engine redelivers it.
-export const processBatch = defineProcessor(async (events) => {
+export const ${exportName} = defineProcessor(async (events) => {
   for (const event of events) {
     void event;
   }
 });
 `, `import { describe, expect, it } from 'vitest';
-import { processBatch } from '${fromTest}';
+import { ${exportName} } from '${fromTest}';
 
 describe('${name}', () => {
   it('handles a batch', async () => {
-    await expect(processBatch({} as never, [{ idempotencyKey: 'k1', topic: 't', data: {} }])).resolves.toBeUndefined();
+    await expect(${exportName}({} as never, [{ idempotencyKey: 'k1', topic: 't', data: {} }])).resolves.toBeUndefined();
   });
 });
 `],

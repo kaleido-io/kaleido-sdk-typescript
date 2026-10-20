@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { createEventSource } from '@kaleido-io/workflow-engine-sdk';
+import { defineEventSource } from '@kaleido-io/workflow-engine-sdk';
 
 interface ScheduleConfig {
   intervalMs: number;
@@ -25,20 +25,19 @@ interface ScheduleCheckpoint {
 }
 
 /** Emits one event per interval. The stream's config sets intervalMs (default one minute). */
-export const eventSource = createEventSource<ScheduleCheckpoint, ScheduleConfig, { scheduledAt: string }>(
-  'schedule',
-  async (conf, checkpoint) => {
+export const scheduleSource = defineEventSource<ScheduleCheckpoint, ScheduleConfig, { scheduledAt: string }>('schedule', {
+  poll: async ({ config, checkpoint, stream }) => {
     const now = Date.now();
     const lastEmitTime = checkpoint?.lastEmitTime ?? now;
-    if (now - lastEmitTime < conf.config.intervalMs) {
-      return { checkpointOut: { lastEmitTime }, events: [] };
+    if (now - lastEmitTime < config.intervalMs) {
+      return { checkpoint: { lastEmitTime } };
     }
     return {
-      checkpointOut: { lastEmitTime: now },
+      checkpoint: { lastEmitTime: now },
       // The stream ID keeps events from two streams on this source apart.
-      events: [{ idempotencyKey: `${conf.streamId}-${now}`, topic: 'schedule', data: { scheduledAt: new Date(now).toISOString() } }],
+      events: [{ idempotencyKey: `${stream.streamId}-${now}`, topic: 'schedule', data: { scheduledAt: new Date(now).toISOString() } }],
     };
   },
-)
-  .withInitialCheckpoint(async () => ({ lastEmitTime: Date.now() }))
-  .withConfigParser(async (_info, config: Partial<ScheduleConfig> | undefined) => ({ intervalMs: config?.intervalMs ?? 60_000 }));
+  initialCheckpoint: () => ({ lastEmitTime: Date.now() }),
+  parseConfig: (_stream, config: Partial<ScheduleConfig> | undefined) => ({ intervalMs: config?.intervalMs ?? 60_000 }),
+});

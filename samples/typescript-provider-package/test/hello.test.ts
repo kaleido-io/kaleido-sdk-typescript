@@ -17,18 +17,18 @@
 import { describe, expect, it } from 'vitest';
 import { EvalResult } from '@kaleido-io/workflow-engine-sdk';
 import { invokeAction } from '@kaleido-io/workflow-engine-sdk/testing';
-import { actionMap } from '../src/transaction/hello.js';
+import { helloHandler } from '../src/transaction/hello.js';
 
 describe('hello', () => {
   it('greets by name and emits a greeting event', async () => {
-    const result = await invokeAction(actionMap, 'hello', { name: 'Ada' }, { transaction: { idempotencyKey: 'txn-1' } });
+    const result = await invokeAction(helloHandler, 'hello', { name: 'Ada' }, { transaction: { idempotencyKey: 'txn-1' } });
     expect(result.result).toBe(EvalResult.COMPLETE);
     expect(result.output).toEqual({ greeting: 'Hello Ada!' });
     expect(result.events).toEqual([{ idempotencyKey: 'txn-1', topic: 'greeting', data: 'Hello Ada!' }]);
   });
 
   it('fails the stage without a name', async () => {
-    const result = await invokeAction(actionMap, 'hello', {});
+    const result = await invokeAction(helloHandler, 'hello', {});
     expect(result.result).toBe(EvalResult.HARD_FAILURE);
     expect(result.error?.message).toBe('name is required');
   });
