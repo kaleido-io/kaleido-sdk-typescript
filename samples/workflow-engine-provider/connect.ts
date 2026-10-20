@@ -22,7 +22,7 @@ import dotenv from "dotenv";
 
 import { helloHandler } from "./hello/handlers.js";
 import { actionMap as httpInvokeActionMap } from "./http-invoke/handlers.js";
-import { eventSource as scheduledSource } from "./scheduled-workflow/scheduled-source.js";
+import { scheduledSource } from "./scheduled-workflow/scheduled-source.js";
 import { echoProcessor } from "./scheduled-workflow/echo-processor.js";
 import { eventSource as dealerEventSource } from "./snap/event-source.js";
 import { actionMap as snapActionMap } from "./snap/snap-handler.js";

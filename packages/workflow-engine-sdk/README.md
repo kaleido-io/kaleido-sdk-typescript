@@ -499,19 +499,40 @@ const actionMap = new Map([
 
 Providers that poll or subscribe to external systems and emit events (with checkpoints) into the workflow engine.
 
-Build the source with `createEventSource`, then register it on the client. Closures in the poll function are supported:
+Define the source with `defineEventSource`, then register it on the client. Each poll gets the stream's config, the checkpoint to resume from and the stream itself, and returns the next checkpoint and any events:
 
 ```typescript
-import { WorkflowEngineClient, createEventSource } from '@kaleido-io/workflow-engine-sdk';
+import { WorkflowEngineClient, defineEventSource } from '@kaleido-io/workflow-engine-sdk';
 
-const myEventSource = createEventSource('my-event-source', async (config, checkpointIn) => ({
-  checkpointOut: { lastId: (checkpointIn?.lastId ?? 0) + 1 },
-  events: [{ idempotencyKey: 'evt-1', topic: 'my-topic', data: { value: 1 } }],
-}));
+const myEventSource = defineEventSource<{ lastId: number }>('my-event-source', {
+  poll: async ({ checkpoint }) => {
+    const lastId = (checkpoint?.lastId ?? 0) + 1;
+    return {
+      checkpoint: { lastId },
+      events: [{ idempotencyKey: `evt-${lastId}`, topic: 'my-topic', data: { value: lastId } }],
+    };
+  },
+});
 
 WorkflowEngineClient.fromConfigFile()
   .eventSource(myEventSource)
   .start();
+```
+
+`initialCheckpoint`, `parseConfig` and `onDelete` are optional alongside `poll`. The poll's second argument is a context that resolves service bindings as the stream's owner, so a poll can call another service:
+
+```typescript
+import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
+
+const poolWatcher = defineEventSource<{ seen: number }>('pool-watcher', {
+  poll: async ({ checkpoint }, ctx) => {
+    const pools = (await new AssetManagerClient(ctx, 'asset-manager').getPools())?.items ?? [];
+    return {
+      checkpoint: { seen: pools.length },
+      events: pools.slice(checkpoint?.seen ?? 0).map((pool) => ({ idempotencyKey: pool.id, topic: 'pool-created', data: pool })),
+    };
+  },
+});
 ```
 
 You can also pass a pre-built `EventSource` instance from a factory:

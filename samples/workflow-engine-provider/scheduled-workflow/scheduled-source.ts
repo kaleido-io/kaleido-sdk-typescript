@@ -19,11 +19,11 @@
  * (see stream.ts) it runs a workflow on a schedule.
  *
  * The file depends only on @kaleido-io/workflow-engine-sdk and @kaleido-io/core-sdk, so it can be registered
- * in your own provider with `client.eventSource(eventSource)`, or uploaded unchanged as a TypeScript provider
+ * in your own provider with `client.eventSource(scheduledSource)`, or uploaded unchanged as a TypeScript provider
  * snippet and listed under `eventSources` in the service config.
  */
 import { newLogger } from '@kaleido-io/core-sdk/log';
-import { createEventSource } from '@kaleido-io/workflow-engine-sdk';
+import { defineEventSource } from '@kaleido-io/workflow-engine-sdk';
 
 const log = newLogger('scheduled-source');
 
@@ -46,32 +46,30 @@ async function buildEvent(now: number): Promise<ScheduleEvent> {
   return { scheduledAt: new Date(now).toISOString() };
 }
 
-export const eventSource = createEventSource<ScheduleCheckpoint, ScheduleConfig, ScheduleEvent>(
-  'scheduled-source',
-  async (conf, checkpoint) => {
+export const scheduledSource = defineEventSource<ScheduleCheckpoint, ScheduleConfig, ScheduleEvent>('scheduled-source', {
+  poll: async ({ config, checkpoint, stream }) => {
     const now = Date.now();
     const lastEmitTime = checkpoint?.lastEmitTime ?? now;
-    if (now - lastEmitTime < conf.config.intervalMs) {
-      return { checkpointOut: { lastEmitTime }, events: [] };
+    if (now - lastEmitTime < config.intervalMs) {
+      return { checkpoint: { lastEmitTime } };
     }
 
-    log.info(`Emitting scheduled event for stream ${conf.streamName}`);
+    log.info(`Emitting scheduled event for stream ${stream.streamName}`);
     return {
-      checkpointOut: { lastEmitTime: now },
+      checkpoint: { lastEmitTime: now },
       events: [
         {
           // Scoped to the stream so two streams sharing this source never collide.
-          idempotencyKey: `${conf.streamId}-${now}`,
+          idempotencyKey: `${stream.streamId}-${now}`,
           topic: 'schedule',
           data: await buildEvent(now),
         },
       ],
     };
   },
-)
   // The first event fires one interval after the stream starts.
-  .withInitialCheckpoint(async () => ({ lastEmitTime: Date.now() }))
-  .withConfigParser(async (_info, config: Partial<ScheduleConfig> | undefined) => {
+  initialCheckpoint: () => ({ lastEmitTime: Date.now() }),
+  parseConfig: (_stream, config: Partial<ScheduleConfig> | undefined) => {
     const intervalMs = config?.intervalMs;
     if (intervalMs === undefined) {
       return { intervalMs: DEFAULT_INTERVAL_MS };
@@ -80,7 +78,8 @@ export const eventSource = createEventSource<ScheduleCheckpoint, ScheduleConfig,
       throw new Error(`intervalMs must be a positive integer number of milliseconds (got ${JSON.stringify(intervalMs)})`);
     }
     return { intervalMs };
-  })
-  .withDeleteFn(async (info) => {
-    log.info(`Scheduled source removed from stream ${info.streamName}`);
-  });
+  },
+  onDelete: (stream) => {
+    log.info(`Scheduled source removed from stream ${stream.streamName}`);
+  },
+});

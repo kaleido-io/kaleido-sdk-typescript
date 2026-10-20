@@ -16,13 +16,13 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { WSMessageType, type WSListenerPollResult } from '@kaleido-io/workflow-engine-sdk';
-import { eventSource } from './scheduled-source.js';
+import { scheduledSource } from './scheduled-source.js';
 
 // Drives the source through the same poll entry point the engine uses.
 async function poll(streamId: string, config: unknown, checkpoint: unknown): Promise<WSListenerPollResult> {
   const controller = new AbortController();
   const result: WSListenerPollResult = { messageType: WSMessageType.EVENT_SOURCE_POLL_RESULT, id: 'poll', events: [] };
-  await eventSource.eventSourcePoll(
+  await scheduledSource.eventSourcePoll(
     { requestId: 'poll', signal: controller.signal, cancel: () => controller.abort() },
     { messageType: WSMessageType.EVENT_SOURCE_CONFIG, id: 'config', streamId, streamName: 'scheduled-hello', config },
     result,
@@ -66,7 +66,7 @@ describe('scheduled-source', () => {
   it('starts the first interval when the stream is created', async () => {
     vi.useFakeTimers({ now: 2_000_000 });
     const validated: Record<string, unknown> = {};
-    await eventSource.eventSourceValidateConfig({} as never, validated, { streamId: 's6', streamName: 'scheduled-hello', config: {} });
+    await scheduledSource.eventSourceValidateConfig({} as never, validated, { streamId: 's6', streamName: 'scheduled-hello', config: {} });
     expect(validated.initialCheckpoint).toEqual({ lastEmitTime: 2_000_000 });
   });
 });

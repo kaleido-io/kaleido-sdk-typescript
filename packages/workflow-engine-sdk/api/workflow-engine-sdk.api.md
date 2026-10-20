@@ -326,6 +326,9 @@ export class DefinedTransactionHandler<A extends Record<string, TransactionActio
 }
 
 // @public
+export function defineEventSource<CP, CF = unknown, DT = unknown>(name: string, definition: EventSourceDefinition<CP, CF, DT>): EventSourceBuilder<CP, CF, DT>;
+
+// @public
 export function defineProcessor<EventData = unknown, CustomConfig = unknown>(fn: (events: EventProcessorEvent<EventData>[], ctx: EventProcessorContext<CustomConfig>) => Promise<void> | void): DefinedProcessor<CustomConfig, EventData>;
 
 // @public
@@ -435,6 +438,14 @@ export interface EventSourceContext<CustomConfig = unknown> extends SetupContext
 }
 
 // @public
+export interface EventSourceDefinition<CP, CF = unknown, DT = unknown> {
+    initialCheckpoint?: (config: CF) => Promise<CP> | CP;
+    onDelete?: (stream: WSEventStreamInfo) => Promise<void> | void;
+    parseConfig?: (stream: WSEventStreamInfo, config: any) => Promise<CF> | CF;
+    poll: (input: EventSourcePollInput<CP, CF>, ctx: EventSourceContext<any>) => Promise<EventSourcePollOutput<CP, DT>> | EventSourcePollOutput<CP, DT>;
+}
+
+// @public
 export type EventSourceDeleteFn = (info: WSEventStreamInfo) => Promise<void>;
 
 // @public
@@ -452,6 +463,19 @@ export type EventSourcePollFn<CP, CF, DT> = (config: EventSourceConf<CF>, checkp
     checkpointOut: CP;
     events: EventSourceEvent<DT>[];
 }>;
+
+// @public
+export interface EventSourcePollInput<CP, CF> {
+    checkpoint: CP | null;
+    config: CF;
+    stream: WSEventStreamInfo;
+}
+
+// @public
+export interface EventSourcePollOutput<CP, DT> {
+    checkpoint: CP;
+    events?: EventSourceEvent<DT>[];
+}
 
 // @public
 export interface ExecutableTransaction<T = any> {

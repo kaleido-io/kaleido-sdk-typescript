@@ -108,6 +108,7 @@ export {
   isDefinedTransactionHandler,
   defineProcessor,
   isDefinedProcessor,
+  defineEventSource,
   complete,
   waiting,
   StageError,
@@ -124,6 +125,9 @@ export type {
   WaitingOptions,
   StageErrorOptions,
   DefinedProcessor,
+  EventSourceDefinition,
+  EventSourcePollInput,
+  EventSourcePollOutput,
 } from './handlers/define';
 
 // Stage director helpers

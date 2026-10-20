@@ -18,11 +18,11 @@ import { mockLogger } from '../../tests/mock-logger';
 import { describe, expect, it } from '@jest/globals';
 
 import { evalDirected } from '../helpers/stage_director';
-import { EvalResult, InvocationMode, WSEvaluateReplyResult, WSHandleTransactionsResult, WSMessageType } from '../types/core';
+import { EvalResult, InvocationMode, RequestContext, WSEvaluateReplyResult, WSHandleTransactionsResult, WSListenerPollResult, WSMessageType } from '../types/core';
 import type { ActionConfig } from '../interfaces/handlers';
-import type { EventProcessorContext, TransactionContext } from '../app/context';
+import type { EventProcessorContext, EventSourceContext, TransactionContext } from '../app/context';
 import { invokeAction } from '../testing';
-import { RetryableError, StageError, complete, defineProcessor, defineTransactionHandler, isDefinedProcessor, isDefinedTransactionHandler, waiting } from './define';
+import { RetryableError, StageError, complete, defineEventSource, defineProcessor, defineTransactionHandler, isDefinedProcessor, isDefinedTransactionHandler, waiting } from './define';
 import { WorkflowEngineClient } from '../client/client';
 import { createTransactionHandler } from '../factories/transaction_handler';
 import type { TransactionHandlerRegistration } from '../app/types';
@@ -286,5 +286,98 @@ describe('a defined processor', () => {
     expect(isDefinedProcessor(processor)).toBe(true);
     expect(isDefinedProcessor(async () => {})).toBe(false);
     expect(isDefinedProcessor({ processBatch: async () => {} })).toBe(false);
+  });
+});
+
+describe('defineEventSource', () => {
+  const requestContext = (authRef?: string): RequestContext => ({
+    requestId: 'poll-1',
+    authRef,
+    signal: new AbortController().signal,
+    cancel: () => {},
+    provider: {
+      providerName: 'p',
+      config: { app: 'config' },
+      getServiceClientOptions: (name, ref) => ({ transport: 'http', url: `http://${name}`, authRef: ref } as any),
+    },
+  });
+
+  async function poll(source: ReturnType<typeof defineEventSource<any, any, any>>, checkpoint?: unknown, config: unknown = { every: 2 }): Promise<WSListenerPollResult> {
+    const result = {} as WSListenerPollResult;
+    await source.eventSourcePoll(
+      requestContext('owner-auth'),
+      { config } as any,
+      result,
+      { handler: 'counter', streamId: 's1', streamName: 'stream-one', checkpoint, authRef: 'owner-auth' } as any,
+    );
+    return result;
+  }
+
+  it('polls with the stream, config, checkpoint and a context, and maps the result', async () => {
+    const seen: { input: unknown; ctx: EventSourceContext }[] = [];
+    const source = defineEventSource<{ n: number }, { every: number }, { n: number }>('counter', {
+      poll: async (input, ctx) => {
+        seen.push({ input, ctx });
+        const n = (input.checkpoint?.n ?? 0) + input.config.every;
+        return { checkpoint: { n }, events: [{ idempotencyKey: `${input.stream.streamId}-${n}`, topic: 'count', data: { n } }] };
+      },
+    });
+
+    const result = await poll(source, { n: 1 });
+
+    expect(result).toEqual({ checkpoint: { n: 3 }, events: [{ idempotencyKey: 's1-3', topic: 'count', data: { n: 3 } }] });
+    expect(seen[0].input).toEqual({ config: { every: 2 }, checkpoint: { n: 1 }, stream: { streamId: 's1', streamName: 'stream-one' } });
+    expect(seen[0].ctx).toMatchObject({ requestId: 'poll-1', handlerName: 'counter', config: { app: 'config' }, stream: { streamId: 's1', streamName: 'stream-one' } });
+    expect(seen[0].ctx.getServiceClientOptions('assets')).toMatchObject({ authRef: 'owner-auth' });
+  });
+
+  it('gives the first poll a null checkpoint and allows a result with no events', async () => {
+    const checkpoints: unknown[] = [];
+    const source = defineEventSource<{ n: number }>('counter', {
+      poll: ({ checkpoint }) => {
+        checkpoints.push(checkpoint);
+        return { checkpoint: { n: 1 } };
+      },
+    });
+
+    expect(await poll(source)).toEqual({ checkpoint: { n: 1 }, events: [] });
+    expect(checkpoints).toEqual([null]);
+  });
+
+  it('uses initialCheckpoint, parseConfig and onDelete', async () => {
+    const deleted: unknown[] = [];
+    const source = defineEventSource<{ start: number }, { every: number }>('counter', {
+      poll: ({ checkpoint }) => ({ checkpoint: checkpoint ?? { start: -1 } }),
+      initialCheckpoint: (config) => ({ start: config.every * 10 }),
+      parseConfig: (_stream, raw: { every?: unknown }) => {
+        if (typeof raw?.every !== 'number') throw new Error('every must be a number');
+        return { every: raw.every };
+      },
+      onDelete: (stream) => { deleted.push(stream); },
+    });
+
+    const valid: Record<string, unknown> = {};
+    await source.eventSourceValidateConfig(requestContext(), valid, { streamId: 's1', streamName: 'stream-one', config: { every: 3 } });
+    expect(valid).toEqual({ initialCheckpoint: { start: 30 } });
+
+    const invalid: Record<string, unknown> = {};
+    await source.eventSourceValidateConfig(requestContext(), invalid, { streamId: 's1', streamName: 'stream-one', config: {} });
+    expect(invalid.error).toBe('every must be a number');
+
+    await source.eventSourceDelete(requestContext(), {} as any, { streamId: 's1', streamName: 'stream-one' });
+    expect(deleted).toEqual([{ streamId: 's1', streamName: 'stream-one' }]);
+  });
+
+  it('reports a poll that throws as the poll\'s error', async () => {
+    const source = defineEventSource('counter', { poll: async () => { throw new Error('source unavailable'); } });
+
+    expect((await poll(source)).error).toBe('source unavailable');
+  });
+
+  it('registers with the builder like any event source', () => {
+    const source = defineEventSource('counter', { poll: () => ({ checkpoint: null }) });
+    const client = new WorkflowEngineClient({ providerName: 'p', url: 'ws://unused' }).eventSource(source);
+    expect(client).toBeInstanceOf(WorkflowEngineClient);
+    expect(source.name).toBe('counter');
   });
 });

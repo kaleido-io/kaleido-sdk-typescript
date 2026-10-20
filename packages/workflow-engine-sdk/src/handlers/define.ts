@@ -29,12 +29,13 @@
  * The same definitions run in a custom provider and in the TypeScript provider.
  */
 
-import { createTransactionContext, type EventProcessorContext, type TransactionContext } from '../app/context';
+import { createTransactionContext, type EventProcessorContext, type EventSourceContext, type TransactionContext } from '../app/context';
 import type { EventProcessorDef } from '../app/types';
 import type { EventProcessorEvent } from '../factories/event_processor';
+import { createEventSource, type EventSourceBuilder, type EventSourceEvent } from '../factories/event_source';
 import { createTransactionHandler } from '../factories/transaction_handler';
 import type { ActionConfig, TransactionHandler, TransactionHandlerFn } from '../interfaces/handlers';
-import { EvalResult, HandlerEvent, InvocationMode, WithStageDirector } from '../types/core';
+import { EvalResult, HandlerEvent, InvocationMode, WithStageDirector, type WSEventStreamInfo } from '../types/core';
 
 // Symbol.for, not Symbol: an outcome or error must be recognised even when it
 // comes from another copy of the SDK, for example one bundled into a snippet.
@@ -264,4 +265,76 @@ export function defineProcessor<EventData = unknown, CustomConfig = unknown>(
 /** True for a value returned by `defineProcessor`, from any copy of the SDK. */
 export function isDefinedProcessor(value: unknown): value is DefinedProcessor {
   return typeof value === 'function' && (value as unknown as Record<symbol, unknown>)[DEFINED_PROCESSOR] === true;
+}
+
+/** What each poll of an event source from `defineEventSource` receives. */
+export interface EventSourcePollInput<CP, CF> {
+  /** The stream's config, as `parseConfig` returned it. */
+  config: CF;
+  /** The checkpoint the previous poll returned, or `initialCheckpoint`'s. Null when there is neither. */
+  checkpoint: CP | null;
+  /** The stream being polled. */
+  stream: WSEventStreamInfo;
+}
+
+/** What a poll returns: the checkpoint to resume from, and any events found. */
+export interface EventSourcePollOutput<CP, DT> {
+  /** Where the next poll resumes from. */
+  checkpoint: CP;
+  /** The events found, if any. */
+  events?: EventSourceEvent<DT>[];
+}
+
+/** The functions of an event source. Only `poll` is required. */
+export interface EventSourceDefinition<CP, CF = unknown, DT = unknown> {
+  /** Look for new events since the checkpoint. Called repeatedly for each stream that uses the source. */
+  poll: (input: EventSourcePollInput<CP, CF>, ctx: EventSourceContext<any>) => Promise<EventSourcePollOutput<CP, DT>> | EventSourcePollOutput<CP, DT>;
+  /** The checkpoint a new stream starts from. Without it, the first poll gets null. */
+  initialCheckpoint?: (config: CF) => Promise<CP> | CP;
+  /** Check and convert a stream's raw config. Throw to reject it. Without it, the raw config is used as it is. */
+  parseConfig?: (stream: WSEventStreamInfo, config: any) => Promise<CF> | CF;
+  /** Clean up when a stream that uses the source is deleted. */
+  onDelete?: (stream: WSEventStreamInfo) => Promise<void> | void;
+}
+
+/**
+ * Define an event source. Each poll gets its input and a context that resolves
+ * service bindings as the stream's owner.
+ *
+ * @example
+ * export const poolWatcher = defineEventSource<{ seen: number }, unknown, Pool>('pool-watcher', {
+ *   poll: async ({ checkpoint }, ctx) => {
+ *     const pools = (await new AssetManagerClient(ctx, 'asset-manager').getPools())?.items ?? [];
+ *     const fresh = pools.slice(checkpoint?.seen ?? 0);
+ *     return {
+ *       checkpoint: { seen: pools.length },
+ *       events: fresh.map((pool) => ({ idempotencyKey: pool.id, topic: 'pool-created', data: pool })),
+ *     };
+ *   },
+ * });
+ *
+ * // In a custom provider:
+ * client.eventSource(poolWatcher);
+ */
+export function defineEventSource<CP, CF = unknown, DT = unknown>(
+  name: string,
+  definition: EventSourceDefinition<CP, CF, DT>,
+): EventSourceBuilder<CP, CF, DT> {
+  const source = createEventSource<CP, CF, DT>(name, async (conf, checkpoint, _authRef, ctx) => {
+    const { config, ...stream } = conf;
+    // The SDK always passes a poll its context; only a direct call of the poll function could leave it out.
+    const output = await definition.poll({ config, checkpoint, stream }, ctx!);
+    return { checkpointOut: output.checkpoint, events: output.events ?? [] };
+  });
+  const { initialCheckpoint, parseConfig, onDelete } = definition;
+  if (initialCheckpoint) {
+    source.withInitialCheckpoint(async (config) => initialCheckpoint(config));
+  }
+  if (parseConfig) {
+    source.withConfigParser(async (stream, config) => parseConfig(stream, config));
+  }
+  if (onDelete) {
+    source.withDeleteFn(async (stream) => onDelete(stream));
+  }
+  return source;
 }
