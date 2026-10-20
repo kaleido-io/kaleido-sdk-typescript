@@ -28,11 +28,13 @@ import {
   ActionConfig,
   TransactionHandlerBatchIn
 } from '../interfaces/handlers';
+import { createTransactionContext, type TransactionContext } from '../app/context';
 import { newLogger } from '@kaleido-io/core-sdk/log';
 import {
   EvalResult,
   ExecutableTransaction,
   HandlerEvent,
+  RequestContext,
   InvocationMode,
   Patch,
   PatchOpType,
@@ -215,7 +217,8 @@ export class StageDirectorHelper {
  * @param reply The reply object to populate with results
  * @param batch The batch of transactions to process
  * @param actionMap Map of action names to their configurations
- * @param parseInput Function to parse transaction input
+ * @param reqContext The request the batch arrived in. Each transaction's handler
+ *   gets a context built from it; without it, binding lookups fail with a clear error.
  * 
  * @example
  * ```typescript
@@ -225,9 +228,11 @@ export class StageDirectorHelper {
 export async function evalDirected<T extends WithStageDirector>(
   reply: WSHandleTransactionsResult,
   batch: WSHandleTransactions,
-  actionMap: Map<string, ActionConfig<T>>
+  actionMap: Map<string, ActionConfig<T>>,
+  reqContext?: RequestContext,
 ): Promise<void> {
   reply.results = new Array(batch.transactions.length);
+  const ctxFor = (transaction: WSEvaluateTransaction) => createTransactionContext(reqContext, batch.handler ?? '', transaction);
 
   const byAction = new Map<string, ExecutableTransaction<T>[]>();
 
@@ -308,7 +313,7 @@ export async function evalDirected<T extends WithStageDirector>(
         for (const req of transactions) {
           completions.push(
             (async () => {
-              req.result = await execMapped(actionConf, req.transaction, req.input);
+              req.result = await execMapped(actionConf, req.transaction, req.input, ctxFor(req.transaction));
               return req;
             })()
           );
@@ -322,7 +327,8 @@ export async function evalDirected<T extends WithStageDirector>(
         const batchPromise = (async () => {
           const batchIn: TransactionHandlerBatchIn<T>[] = transactions.map(r => ({
             transaction: r.transaction,
-            value: r.input
+            value: r.input,
+            ctx: ctxFor(r.transaction),
           }));
 
           const batchOut = await execBatchMapped(actionConf, batchIn);
@@ -360,13 +366,14 @@ export async function evalDirected<T extends WithStageDirector>(
 async function execMapped<T extends WithStageDirector>(
   config: ActionConfig<T>,
   transaction: WSEvaluateTransaction,
-  input: T
+  input: T,
+  ctx: TransactionContext,
 ): Promise<WSEvaluateReplyResult> {
   try {
     if (!config.handler) {
       throw newError(SDKErrors.MsgSDKHandlerNotConfigured);
     }
-    const handlerResult = await config.handler(transaction, input);
+    const handlerResult = await config.handler(transaction, input, ctx);
     const { result, output, error, errorData, triggers, extraUpdates, customStage, events, deadline } = handlerResult as {
       result: EvalResult;
       output?: any;

@@ -75,7 +75,6 @@ Type definitions for service binding configuration. `ServiceBindingConfig` now h
 ```typescript
 // Non-hosted (direct HTTP) binding
 const config: ServiceBindingConfig = {
-  type: 'asset-manager',
   bindingType: 'non-hosted',   // default
   url: 'https://my-service/api',
   auth: { type: 'basic', username: 'my-key', password: 'my-secret' },
@@ -83,7 +82,7 @@ const config: ServiceBindingConfig = {
 
 // Hosted (proxied) binding
 const config: ServiceBindingConfig = {
-  type: 'asset-manager',
+  serviceType: 'AssetManagerService',
   bindingType: 'hosted',
   id: 'instance-uuid',   // resolved by the proxy to the actual service URL
 };

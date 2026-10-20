@@ -101,6 +101,35 @@ export {
   EventProcessorEvent,
 } from './factories/event_processor';
 
+// Handler API: actions as functions of their input
+export {
+  defineTransactionHandler,
+  DefinedTransactionHandler,
+  isDefinedTransactionHandler,
+  defineProcessor,
+  isDefinedProcessor,
+  defineEventSource,
+  complete,
+  waiting,
+  StageError,
+  RetryableError,
+} from './handlers/define';
+export type {
+  TransactionAction,
+  ActionMap,
+  UntypedActionMap,
+  ActionOutcome,
+  CompleteOutcome,
+  CompleteOptions,
+  WaitingOutcome,
+  WaitingOptions,
+  StageErrorOptions,
+  DefinedProcessor,
+  EventSourceDefinition,
+  EventSourcePollInput,
+  EventSourcePollOutput,
+} from './handlers/define';
+
 // Stage director helpers
 export {
   BasicStageDirector,
@@ -144,5 +173,5 @@ export { HandlerRuntimeMode } from "./runtime/handler_runtime";
 
 // ── Builder API ───────────────────────────────────────────────────────────────
 
-export type { EventProcessorContext } from './app/context';
+export type { EventProcessorContext, TransactionContext, EventSourceContext } from './app/context';
 export type { EventProcessorDef, TransactionHandlerRegistration } from './app/types';

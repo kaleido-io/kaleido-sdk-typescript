@@ -33,6 +33,9 @@ export {
   createServiceTransport,
 } from "./service_client";
 
+// A client for services with no typed client
+export { GenericServiceClient } from "./generic_service_client";
+
 // Auth types
 export { ServiceBindingAuth } from "./types";
 

@@ -1,0 +1,1551 @@
+[
+  {
+    "scenario": "complete",
+    "sent": [
+      {
+        "authRef": "auth-1",
+        "input": {
+          "action": "complete",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "complete"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-complete",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "echo": "complete"
+              }
+            }
+          ],
+          "stage": "next"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "complete-no-output",
+    "sent": [
+      {
+        "authRef": "auth-2",
+        "input": {
+          "action": "complete-no-output",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "complete-no-output"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-complete-no-output",
+      "results": [
+        {
+          "stage": "next"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "complete-custom-stage",
+    "sent": [
+      {
+        "authRef": "auth-3",
+        "input": {
+          "action": "complete-custom-stage",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "complete-custom-stage"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-complete-custom-stage",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "ok": true
+              }
+            }
+          ],
+          "stage": "custom"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "complete-with-extras",
+    "sent": [
+      {
+        "authRef": "auth-4",
+        "input": {
+          "action": "complete-with-extras",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "complete-with-extras"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-complete-with-extras",
+      "results": [
+        {
+          "triggers": [
+            {
+              "topic": "trigger-a"
+            },
+            {
+              "topic": "trigger-b",
+              "ephemeral": true
+            }
+          ],
+          "events": [
+            {
+              "idempotencyKey": "idem-4",
+              "topic": "done",
+              "data": {
+                "id": "txn-4"
+              }
+            }
+          ],
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "ok": true
+              }
+            },
+            {
+              "op": "add",
+              "path": "/extra",
+              "value": 1
+            }
+          ],
+          "stage": "next"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "complete-empty-lists",
+    "sent": [
+      {
+        "authRef": "auth-5",
+        "input": {
+          "action": "complete-empty-lists",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "complete-empty-lists"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-complete-empty-lists",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {}
+            }
+          ],
+          "stage": "next"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "complete-with-deadline",
+    "sent": [
+      {
+        "authRef": "auth-6",
+        "input": {
+          "action": "complete-with-deadline",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "complete-with-deadline"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-complete-with-deadline",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "ok": true
+              }
+            }
+          ],
+          "error": "KA140640: Deadline can only be used with WAITING result type (action='complete-with-deadline' result='COMPLETE')"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "waiting",
+    "sent": [
+      {
+        "authRef": "auth-7",
+        "input": {
+          "action": "waiting",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "waiting"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-waiting",
+      "results": [
+        {}
+      ]
+    }
+  },
+  {
+    "scenario": "waiting-with-output",
+    "sent": [
+      {
+        "authRef": "auth-8",
+        "input": {
+          "action": "waiting-with-output",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "waiting-with-output"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-waiting-with-output",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "progress": 50
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "waiting-deadline",
+    "sent": [
+      {
+        "authRef": "auth-9",
+        "input": {
+          "action": "waiting-deadline",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "waiting-deadline"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-waiting-deadline",
+      "results": [
+        {
+          "deadline": "2030-01-01T00:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "hard-failure",
+    "sent": [
+      {
+        "authRef": "auth-10",
+        "input": {
+          "action": "hard-failure",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "hard-failure"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-hard-failure",
+      "results": [
+        {
+          "stage": "failed",
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/error",
+              "value": "it broke"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "hard-failure-error-data",
+    "sent": [
+      {
+        "authRef": "auth-11",
+        "input": {
+          "action": "hard-failure-error-data",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "hard-failure-error-data"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-hard-failure-error-data",
+      "results": [
+        {
+          "stage": "failed",
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/error",
+              "value": "it broke"
+            },
+            {
+              "op": "add",
+              "path": "/errorData",
+              "value": {
+                "code": 42
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "hard-failure-custom-stage",
+    "sent": [
+      {
+        "authRef": "auth-12",
+        "input": {
+          "action": "hard-failure-custom-stage",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "hard-failure-custom-stage"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-hard-failure-custom-stage",
+      "results": [
+        {
+          "stage": "broken",
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/error",
+              "value": "it broke"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "hard-failure-no-error",
+    "sent": [
+      {
+        "authRef": "auth-13",
+        "input": {
+          "action": "hard-failure-no-error",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "hard-failure-no-error"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-hard-failure-no-error",
+      "results": [
+        {
+          "stage": "failed"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "hard-failure-with-output",
+    "sent": [
+      {
+        "authRef": "auth-14",
+        "input": {
+          "action": "hard-failure-with-output",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "hard-failure-with-output"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-hard-failure-with-output",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "partial": true
+              }
+            },
+            {
+              "op": "add",
+              "path": "/error",
+              "value": "it broke"
+            }
+          ],
+          "stage": "failed"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "fixable-error",
+    "sent": [
+      {
+        "authRef": "auth-15",
+        "input": {
+          "action": "fixable-error",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "fixable-error"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-fixable-error",
+      "results": [
+        {
+          "error": "fix me"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "fixable-error-no-error",
+    "sent": [
+      {
+        "authRef": "auth-16",
+        "input": {
+          "action": "fixable-error-no-error",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "fixable-error-no-error"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-fixable-error-no-error",
+      "results": [
+        {}
+      ]
+    }
+  },
+  {
+    "scenario": "transient-error",
+    "sent": [
+      {
+        "authRef": "auth-17",
+        "input": {
+          "action": "transient-error",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "transient-error"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-transient-error",
+      "results": [
+        {
+          "error": "try again"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "throws",
+    "sent": [
+      {
+        "authRef": "auth-18",
+        "input": {
+          "action": "throws",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "throws"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-throws",
+      "results": [
+        {
+          "error": "thrown"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "throws-string",
+    "sent": [
+      {
+        "authRef": "auth-19",
+        "input": {
+          "action": "throws-string",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "throws-string"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-throws-string",
+      "results": [
+        {
+          "error": "a string"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "echo-context",
+    "sent": [
+      {
+        "authRef": "auth-20",
+        "input": {
+          "action": "echo-context",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "echo-context"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-echo-context",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "authRef": "auth-20",
+                "transactionId": "txn-20",
+                "stage": "stage-1",
+                "configProfile": null,
+                "inputKeys": [
+                  "action",
+                  "failureStage",
+                  "nextStage",
+                  "outputPath",
+                  "stageDirector",
+                  "value"
+                ],
+                "stageDirector": {
+                  "action": "echo-context",
+                  "outputPath": "/output",
+                  "nextStage": "next",
+                  "failureStage": "failed"
+                }
+              }
+            }
+          ],
+          "stage": "next"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "parallel-no-handler",
+    "sent": [
+      {
+        "authRef": "auth-21",
+        "input": {
+          "action": "parallel-no-handler",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "parallel-no-handler"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "batch-parallel-no-handler",
+      "results": [
+        {
+          "error": "KA140621: Handler not configured for this action"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "complete-to-subflow",
+    "sent": [
+      {
+        "authRef": "auth-22",
+        "input": {
+          "action": "complete",
+          "outputPath": "/output",
+          "failureStage": "failed",
+          "nextSubflow": "sub-1"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-subflow",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "echo": null
+              }
+            }
+          ],
+          "subflow": "sub-1"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "complete-stage-and-subflow",
+    "sent": [
+      {
+        "authRef": "auth-23",
+        "input": {
+          "action": "complete",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "nextSubflow": "sub-1"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-both",
+      "results": [
+        {
+          "error": "KA140641: Handler input cannot specify both 'nextStage' and 'nextSubflow'"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "complete-custom-stage-over-subflow",
+    "sent": [
+      {
+        "authRef": "auth-24",
+        "input": {
+          "action": "complete-custom-stage",
+          "outputPath": "/output",
+          "failureStage": "failed",
+          "nextSubflow": "sub-1"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-custom-subflow",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "ok": true
+              }
+            }
+          ],
+          "stage": "custom"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "complete-no-next-stage",
+    "sent": [
+      {
+        "authRef": "auth-25",
+        "input": {
+          "action": "complete",
+          "outputPath": "/output",
+          "failureStage": "failed"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-no-next",
+      "results": [
+        {
+          "error": "KA140604: Handler called with neither 'nextStage' nor 'nextSubflow' in input"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "complete-no-output-path",
+    "sent": [
+      {
+        "authRef": "auth-26",
+        "input": {
+          "action": "complete",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-no-output-path",
+      "results": [
+        {
+          "error": "KA140605: Handler called with 'outputPath' missing from input"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "hard-failure-no-failure-stage",
+    "sent": [
+      {
+        "authRef": "auth-27",
+        "input": {
+          "action": "hard-failure",
+          "outputPath": "/output",
+          "nextStage": "next"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-no-failure-stage",
+      "results": [
+        {
+          "error": "it broke"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "hard-failure-no-failure-stage-custom-stage",
+    "sent": [
+      {
+        "authRef": "auth-28",
+        "input": {
+          "action": "hard-failure-custom-stage",
+          "outputPath": "/output",
+          "nextStage": "next"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-no-failure-custom",
+      "results": [
+        {
+          "stage": "broken",
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/error",
+              "value": "it broke"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "null-input",
+    "sent": [
+      {
+        "authRef": "auth-29",
+        "input": null
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-null-input",
+      "results": [
+        {
+          "error": "Input parsing error: KA140628: Input is null or undefined in stage stage-1"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "missing-action",
+    "sent": [
+      {
+        "authRef": "auth-30",
+        "input": {
+          "name": "x"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-missing-action",
+      "results": [
+        {
+          "error": "Input parsing error: KA140629: Input is missing required \"action\" field in stage stage-1. Available fields: name"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "unknown-action",
+    "sent": [
+      {
+        "authRef": "auth-31",
+        "input": {
+          "action": "nope",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-unknown-action",
+      "results": [
+        {
+          "error": "Invalid action 'nope' for handler 'outcomes'"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "prebuilt-stage-director",
+    "sent": [
+      {
+        "authRef": "auth-32",
+        "input": {
+          "value": 1,
+          "stageDirector": {
+            "action": "echo-context",
+            "outputPath": "/out",
+            "nextStage": "n2",
+            "failureStage": "f2"
+          }
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-prebuilt",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/out",
+              "value": {
+                "authRef": "auth-32",
+                "transactionId": "txn-32",
+                "stage": "stage-1",
+                "configProfile": null,
+                "inputKeys": [
+                  "stageDirector",
+                  "value"
+                ],
+                "stageDirector": {
+                  "action": "echo-context",
+                  "outputPath": "/out",
+                  "nextStage": "n2",
+                  "failureStage": "f2"
+                }
+              }
+            }
+          ],
+          "stage": "n2"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "config-profile",
+    "sent": [
+      {
+        "authRef": "auth-33",
+        "input": {
+          "action": "echo-context",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        },
+        "configProfile": {
+          "region": "eu"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-profile",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "authRef": "auth-33",
+                "transactionId": "txn-33",
+                "stage": "stage-1",
+                "configProfile": {
+                  "region": "eu"
+                },
+                "inputKeys": [
+                  "action",
+                  "failureStage",
+                  "nextStage",
+                  "outputPath",
+                  "stageDirector"
+                ],
+                "stageDirector": {
+                  "action": "echo-context",
+                  "outputPath": "/output",
+                  "nextStage": "next",
+                  "failureStage": "failed"
+                }
+              }
+            }
+          ],
+          "stage": "next"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "no-auth-ref",
+    "sent": [
+      {
+        "input": {
+          "action": "echo-context",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-no-auth",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "authRef": null,
+                "transactionId": "txn-34",
+                "stage": "stage-1",
+                "configProfile": null,
+                "inputKeys": [
+                  "action",
+                  "failureStage",
+                  "nextStage",
+                  "outputPath",
+                  "stageDirector"
+                ],
+                "stageDirector": {
+                  "action": "echo-context",
+                  "outputPath": "/output",
+                  "nextStage": "next",
+                  "failureStage": "failed"
+                }
+              }
+            }
+          ],
+          "stage": "next"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "batch-mode",
+    "sent": [
+      {
+        "authRef": "auth-35",
+        "input": {
+          "action": "batch",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      },
+      {
+        "authRef": "auth-36",
+        "input": {
+          "action": "batch",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "fail": true
+        }
+      },
+      {
+        "authRef": "auth-37",
+        "input": {
+          "action": "batch",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-batch",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "id": "txn-35",
+                "authRef": "auth-35",
+                "batchSize": 3
+              }
+            }
+          ],
+          "stage": "next"
+        },
+        {
+          "stage": "failed",
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/error",
+              "value": "failed txn-36"
+            },
+            {
+              "op": "add",
+              "path": "/errorData",
+              "value": {
+                "id": "txn-36"
+              }
+            }
+          ]
+        },
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "id": "txn-37",
+                "authRef": "auth-37",
+                "batchSize": 3
+              }
+            }
+          ],
+          "stage": "next"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "batch-count-mismatch",
+    "sent": [
+      {
+        "authRef": "auth-38",
+        "input": {
+          "action": "batch-count-mismatch",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      },
+      {
+        "authRef": "auth-39",
+        "input": {
+          "action": "batch-count-mismatch",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-batch-mismatch",
+      "results": [
+        {
+          "error": "KA140623: Batch handler returned 0 results but expected 2"
+        },
+        {
+          "error": "KA140623: Batch handler returned 0 results but expected 2"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "batch-throws",
+    "sent": [
+      {
+        "authRef": "auth-40",
+        "input": {
+          "action": "batch-throws",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      },
+      {
+        "authRef": "auth-41",
+        "input": {
+          "action": "batch-throws",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-batch-throws",
+      "results": [
+        {
+          "error": "batch thrown"
+        },
+        {
+          "error": "batch thrown"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "mixed-batch",
+    "sent": [
+      {
+        "authRef": "auth-42",
+        "input": {
+          "action": "complete",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "value": "a"
+        }
+      },
+      {
+        "authRef": "auth-43",
+        "input": {
+          "action": "hard-failure",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      },
+      {
+        "authRef": "auth-44",
+        "input": {
+          "action": "echo-context",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      },
+      {
+        "authRef": "auth-45",
+        "input": {
+          "action": "nope",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      },
+      {
+        "authRef": "auth-46",
+        "input": {
+          "action": "batch",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      },
+      {
+        "authRef": "auth-47",
+        "input": {
+          "action": "throws",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      },
+      {
+        "authRef": "auth-48",
+        "input": {
+          "action": "batch",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed",
+          "fail": true
+        }
+      },
+      {
+        "authRef": "shared-auth",
+        "input": {
+          "action": "echo-context",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      },
+      {
+        "authRef": "shared-auth",
+        "input": {
+          "action": "echo-context",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      },
+      {
+        "authRef": "auth-51",
+        "input": null
+      },
+      {
+        "authRef": "auth-52",
+        "input": {
+          "action": "waiting-deadline",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-mixed",
+      "results": [
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "echo": "a"
+              }
+            }
+          ],
+          "stage": "next"
+        },
+        {
+          "stage": "failed",
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/error",
+              "value": "it broke"
+            }
+          ]
+        },
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "authRef": "auth-44",
+                "transactionId": "txn-44",
+                "stage": "stage-1",
+                "configProfile": null,
+                "inputKeys": [
+                  "action",
+                  "failureStage",
+                  "nextStage",
+                  "outputPath",
+                  "stageDirector"
+                ],
+                "stageDirector": {
+                  "action": "echo-context",
+                  "outputPath": "/output",
+                  "nextStage": "next",
+                  "failureStage": "failed"
+                }
+              }
+            }
+          ],
+          "stage": "next"
+        },
+        {
+          "error": "Invalid action 'nope' for handler 'outcomes'"
+        },
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "id": "txn-46",
+                "authRef": "auth-46",
+                "batchSize": 2
+              }
+            }
+          ],
+          "stage": "next"
+        },
+        {
+          "error": "thrown"
+        },
+        {
+          "stage": "failed",
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/error",
+              "value": "failed txn-48"
+            },
+            {
+              "op": "add",
+              "path": "/errorData",
+              "value": {
+                "id": "txn-48"
+              }
+            }
+          ]
+        },
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "authRef": "shared-auth",
+                "transactionId": "txn-49",
+                "stage": "stage-1",
+                "configProfile": null,
+                "inputKeys": [
+                  "action",
+                  "failureStage",
+                  "nextStage",
+                  "outputPath",
+                  "stageDirector"
+                ],
+                "stageDirector": {
+                  "action": "echo-context",
+                  "outputPath": "/output",
+                  "nextStage": "next",
+                  "failureStage": "failed"
+                }
+              }
+            }
+          ],
+          "stage": "next"
+        },
+        {
+          "stateUpdates": [
+            {
+              "op": "add",
+              "path": "/output",
+              "value": {
+                "authRef": "shared-auth",
+                "transactionId": "txn-50",
+                "stage": "stage-1",
+                "configProfile": null,
+                "inputKeys": [
+                  "action",
+                  "failureStage",
+                  "nextStage",
+                  "outputPath",
+                  "stageDirector"
+                ],
+                "stageDirector": {
+                  "action": "echo-context",
+                  "outputPath": "/output",
+                  "nextStage": "next",
+                  "failureStage": "failed"
+                }
+              }
+            }
+          ],
+          "stage": "next"
+        },
+        {
+          "error": "Input parsing error: KA140628: Input is null or undefined in stage stage-1"
+        },
+        {
+          "deadline": "2030-01-01T00:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "empty-batch",
+    "sent": [],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "outcomes",
+      "id": "b-empty",
+      "results": []
+    }
+  },
+  {
+    "scenario": "unknown-handler",
+    "sent": [
+      {
+        "authRef": "auth-53",
+        "input": {
+          "action": "complete",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "not-registered",
+      "id": "b-unknown-handler",
+      "results": [],
+      "error": "No transaction handler registered: not-registered"
+    }
+  },
+  {
+    "scenario": "batch-handler-missing",
+    "sent": [
+      {
+        "authRef": "auth-54",
+        "input": {
+          "action": "x",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      },
+      {
+        "authRef": "auth-55",
+        "input": {
+          "action": "x",
+          "outputPath": "/output",
+          "nextStage": "next",
+          "failureStage": "failed"
+        }
+      }
+    ],
+    "reply": {
+      "messageType": "handle_transactions_result",
+      "handler": "no-batch-handler",
+      "id": "b-no-batch-handler",
+      "results": [
+        {
+          "error": "KA140622: Handler not configured for BATCH invocation mode"
+        },
+        {
+          "error": "KA140622: Handler not configured for BATCH invocation mode"
+        }
+      ]
+    }
+  }
+]

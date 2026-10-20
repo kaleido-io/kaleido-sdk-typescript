@@ -48,8 +48,8 @@
     "test": "jest --coverage"
   },
   "dependencies": {
-    "@kaleido-io/core-sdk": "^1.0.0",
-    "@kaleido-io/workflow-engine-sdk": "^1.0.0",
+    "@kaleido-io/core-sdk": "^1.1.0-rc.1",
+    "@kaleido-io/workflow-engine-sdk": "^1.1.0-rc.1",
     "@kaleido-io/asset-manager-sdk": "^1.0.0",
     "@kaleido-io/subledger-sdk": "^1.0.0-rc.1",
     "@kaleido-io/connector-sdk": "^1.0.0"

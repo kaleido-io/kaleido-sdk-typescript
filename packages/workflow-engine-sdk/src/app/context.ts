@@ -14,7 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { SetupContext } from '@kaleido-io/core-sdk/context';
+import { createSetupContext, type SetupContext } from '@kaleido-io/core-sdk/context';
+import type { ServiceClientOptions } from '@kaleido-io/core-sdk/http';
+import type { RequestContext, WSEvaluateTransaction, WSEventStreamInfo } from '../types/core';
+import { newError, SDKErrors } from '../i18n/errors';
 
 /**
  * Context injected into event processor `processBatch` callbacks.
@@ -29,4 +32,79 @@ export function createEventProcessorContext<C>(
   requestId: string,
 ): EventProcessorContext<C> {
   return { ...setupCtx, requestId };
+}
+
+/**
+ * Context passed to a transaction handler action, one per transaction.
+ *
+ * `getServiceClientOptions` resolves bindings as the transaction's caller
+ * (using its authRef), so hosted bindings work here without a setup hook.
+ * `signal` aborts when the engine's deadline for the request passes.
+ */
+export interface TransactionContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
+  readonly requestId: string;
+  readonly transaction: WSEvaluateTransaction;
+}
+
+/**
+ * Context passed to an event source poll function, one per poll.
+ *
+ * `config` is the provider's config; the stream's own config is on the poll
+ * function's first argument. Bindings resolve as the stream's owner (using the
+ * poll's authRef).
+ */
+export interface EventSourceContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
+  readonly requestId: string;
+  readonly stream: WSEventStreamInfo;
+}
+
+function bindingResolver(reqContext: RequestContext | undefined, authRef: string | undefined) {
+  return (bindingName: string): ServiceClientOptions => {
+    if (!reqContext?.provider) {
+      throw newError(SDKErrors.MsgSDKServiceBindingsNeedClient, bindingName);
+    }
+    return reqContext.provider.getServiceClientOptions(bindingName, authRef);
+  };
+}
+
+// A handler driven directly, without a request context, still gets a signal.
+const neverAborted = new AbortController().signal;
+
+/** @internal — used by evalDirected to build each transaction's context. */
+export function createTransactionContext(
+  reqContext: RequestContext | undefined,
+  handlerName: string,
+  transaction: WSEvaluateTransaction,
+): TransactionContext {
+  return {
+    ...createSetupContext(
+      bindingResolver(reqContext, transaction.authRef),
+      reqContext?.provider?.config ?? {},
+      reqContext?.provider?.providerName ?? '',
+      handlerName,
+      reqContext?.signal ?? neverAborted,
+    ),
+    requestId: reqContext?.requestId ?? '',
+    transaction,
+  };
+}
+
+/** @internal — used by event sources to build each poll's context. */
+export function createEventSourceContext(
+  reqContext: RequestContext,
+  handlerName: string,
+  stream: WSEventStreamInfo,
+  authRef: string | undefined,
+): EventSourceContext {
+  return {
+    ...createSetupContext(
+      bindingResolver(reqContext, authRef),
+      reqContext.provider?.config ?? {},
+      reqContext.provider?.providerName ?? '',
+      handlerName,
+      reqContext.signal,
+    ),
+    requestId: reqContext.requestId,
+    stream: { streamId: stream.streamId, streamName: stream.streamName },
+  };
 }

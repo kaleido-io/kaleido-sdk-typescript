@@ -1,0 +1,71 @@
+{
+  "registrations": [
+    {
+      "messageType": "register_provider",
+      "id": "<generated-id>",
+      "providerName": "compat-provider",
+      "capabilities": {
+        "hasSetupHooks": true
+      }
+    },
+    {
+      "messageType": "register_handler",
+      "id": "<generated-id>",
+      "handlerType": "transaction_handler",
+      "handler": "captured"
+    },
+    {
+      "messageType": "register_handler",
+      "id": "<generated-id>",
+      "handlerType": "event_source",
+      "handler": "source"
+    },
+    {
+      "messageType": "register_handler",
+      "id": "<generated-id>",
+      "handlerType": "event_processor",
+      "handler": "indexer"
+    }
+  ],
+  "runsAtBoot": [
+    {
+      "hook": "captured",
+      "handlerName": "captured",
+      "providerName": "compat-provider",
+      "transport": "http",
+      "authRef": null,
+      "call": null
+    },
+    {
+      "hook": "indexer",
+      "handlerName": "indexer",
+      "config": {
+        "table": "balances"
+      },
+      "aborted": false
+    }
+  ],
+  "trigger": {
+    "messageType": "setup-trigger-response",
+    "requestId": "setup-3",
+    "status": "success"
+  },
+  "runsAfterTrigger": [
+    {
+      "hook": "captured",
+      "handlerName": "captured",
+      "providerName": "compat-provider",
+      "transport": "http",
+      "authRef": null,
+      "call": null
+    },
+    {
+      "hook": "indexer",
+      "handlerName": "indexer",
+      "config": {
+        "table": "balances"
+      },
+      "aborted": false
+    }
+  ]
+}

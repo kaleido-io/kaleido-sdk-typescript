@@ -55,6 +55,11 @@ export const flow = {
       handler: '',
     },
     {
+      name: 'no-pools',
+      type: 'success',
+      handler: '',
+    },
+    {
       name: 'failure',
       type: 'failure',
       handler: '',

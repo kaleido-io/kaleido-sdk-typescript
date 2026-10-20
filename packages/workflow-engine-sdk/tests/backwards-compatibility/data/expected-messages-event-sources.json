@@ -1,0 +1,378 @@
+[
+  {
+    "step": "validate-with-initial-checkpoint",
+    "sent": {
+      "messageType": "event_source_validate_config",
+      "id": "v1",
+      "handler": "ticker",
+      "streamId": "s1",
+      "streamName": "name-s1",
+      "config": {
+        "interval": 3
+      }
+    },
+    "reply": {
+      "messageType": "event_source_validate_config_result",
+      "id": "v1",
+      "handler": "ticker",
+      "initialCheckpoint": {
+        "n": 300
+      }
+    }
+  },
+  {
+    "step": "validate-parser-throws",
+    "sent": {
+      "messageType": "event_source_validate_config",
+      "id": "v2",
+      "handler": "ticker",
+      "streamId": "s1",
+      "streamName": "name-s1",
+      "config": {
+        "invalid": true
+      }
+    },
+    "reply": {
+      "messageType": "event_source_validate_config_result",
+      "id": "v2",
+      "handler": "ticker",
+      "error": "invalid config for name-s1"
+    }
+  },
+  {
+    "step": "validate-no-initial-checkpoint",
+    "sent": {
+      "messageType": "event_source_validate_config",
+      "id": "v3",
+      "handler": "bare",
+      "streamId": "s9",
+      "streamName": "name-s9",
+      "config": {}
+    },
+    "reply": {
+      "messageType": "event_source_validate_config_result",
+      "id": "v3",
+      "handler": "bare"
+    }
+  },
+  {
+    "step": "validate-unknown-handler",
+    "sent": {
+      "messageType": "event_source_validate_config",
+      "id": "v4",
+      "handler": "nope",
+      "streamId": "s1",
+      "streamName": "name-s1",
+      "config": {}
+    },
+    "reply": {
+      "messageType": "event_source_validate_config_result",
+      "id": "v4",
+      "handler": "nope",
+      "error": "No event source registered: nope"
+    }
+  },
+  {
+    "step": "config-s1",
+    "sent": {
+      "messageType": "event_source_config",
+      "id": "cfg-s1",
+      "handler": "ticker",
+      "streamId": "s1",
+      "streamName": "name-s1",
+      "config": {
+        "interval": 5
+      }
+    }
+  },
+  {
+    "step": "poll-first",
+    "sent": {
+      "messageType": "event_source_poll",
+      "id": "p1",
+      "handler": "ticker",
+      "streamId": "s1",
+      "streamName": "name-s1",
+      "authRef": "auth-poll-1"
+    },
+    "reply": {
+      "messageType": "event_source_poll_result",
+      "id": "p1",
+      "handler": "ticker",
+      "events": [
+        {
+          "idempotencyKey": "s1-1",
+          "topic": "name-s1-tick",
+          "data": {
+            "streamId": "s1",
+            "streamName": "name-s1",
+            "config": {
+              "interval": 5
+            },
+            "checkpointIn": null,
+            "authRef": "auth-poll-1"
+          }
+        }
+      ],
+      "checkpoint": {
+        "n": 1
+      }
+    }
+  },
+  {
+    "step": "poll-with-checkpoint",
+    "sent": {
+      "messageType": "event_source_poll",
+      "id": "p2",
+      "handler": "ticker",
+      "streamId": "s1",
+      "streamName": "name-s1",
+      "checkpoint": {
+        "n": 1
+      },
+      "authRef": "auth-poll-2"
+    },
+    "reply": {
+      "messageType": "event_source_poll_result",
+      "id": "p2",
+      "handler": "ticker",
+      "events": [
+        {
+          "idempotencyKey": "s1-2",
+          "topic": "name-s1-tick",
+          "data": {
+            "streamId": "s1",
+            "streamName": "name-s1",
+            "config": {
+              "interval": 5
+            },
+            "checkpointIn": {
+              "n": 1
+            },
+            "authRef": "auth-poll-2"
+          }
+        }
+      ],
+      "checkpoint": {
+        "n": 2
+      }
+    }
+  },
+  {
+    "step": "poll-no-auth-ref",
+    "sent": {
+      "messageType": "event_source_poll",
+      "id": "p3",
+      "handler": "ticker",
+      "streamId": "s1",
+      "streamName": "name-s1",
+      "checkpoint": {
+        "n": 2
+      }
+    },
+    "reply": {
+      "messageType": "event_source_poll_result",
+      "id": "p3",
+      "handler": "ticker",
+      "events": [
+        {
+          "idempotencyKey": "s1-3",
+          "topic": "name-s1-tick",
+          "data": {
+            "streamId": "s1",
+            "streamName": "name-s1",
+            "config": {
+              "interval": 5
+            },
+            "checkpointIn": {
+              "n": 2
+            },
+            "authRef": null
+          }
+        }
+      ],
+      "checkpoint": {
+        "n": 3
+      }
+    }
+  },
+  {
+    "step": "poll-without-config",
+    "sent": {
+      "messageType": "event_source_poll",
+      "id": "p4",
+      "handler": "ticker",
+      "streamId": "s2",
+      "streamName": "name-s2"
+    },
+    "reply": {
+      "messageType": "event_source_poll_result",
+      "id": "p4",
+      "handler": "ticker",
+      "events": [],
+      "error": "No event source or config: ticker/s2"
+    }
+  },
+  {
+    "step": "poll-unknown-handler",
+    "sent": {
+      "messageType": "event_source_poll",
+      "id": "p5",
+      "handler": "nope",
+      "streamId": "s1",
+      "streamName": "name-s1"
+    },
+    "reply": {
+      "messageType": "event_source_poll_result",
+      "id": "p5",
+      "handler": "nope",
+      "events": [],
+      "error": "No event source or config: nope/s1"
+    }
+  },
+  {
+    "step": "config-s3-failing",
+    "sent": {
+      "messageType": "event_source_config",
+      "id": "cfg-s3",
+      "handler": "ticker",
+      "streamId": "s3",
+      "streamName": "name-s3",
+      "config": {
+        "fail": true
+      }
+    }
+  },
+  {
+    "step": "poll-throws",
+    "sent": {
+      "messageType": "event_source_poll",
+      "id": "p6",
+      "handler": "ticker",
+      "streamId": "s3",
+      "streamName": "name-s3"
+    },
+    "reply": {
+      "messageType": "event_source_poll_result",
+      "id": "p6",
+      "handler": "ticker",
+      "events": [],
+      "error": "poll failed for s3"
+    }
+  },
+  {
+    "step": "config-s1-updated",
+    "sent": {
+      "messageType": "event_source_config",
+      "id": "cfg-s1",
+      "handler": "ticker",
+      "streamId": "s1",
+      "streamName": "name-s1",
+      "config": {
+        "interval": 9
+      }
+    }
+  },
+  {
+    "step": "poll-after-config-update",
+    "sent": {
+      "messageType": "event_source_poll",
+      "id": "p7",
+      "handler": "ticker",
+      "streamId": "s1",
+      "streamName": "name-s1",
+      "checkpoint": {
+        "n": 3
+      }
+    },
+    "reply": {
+      "messageType": "event_source_poll_result",
+      "id": "p7",
+      "handler": "ticker",
+      "events": [
+        {
+          "idempotencyKey": "s1-4",
+          "topic": "name-s1-tick",
+          "data": {
+            "streamId": "s1",
+            "streamName": "name-s1",
+            "config": {
+              "interval": 5
+            },
+            "checkpointIn": {
+              "n": 3
+            },
+            "authRef": null
+          }
+        }
+      ],
+      "checkpoint": {
+        "n": 4
+      }
+    }
+  },
+  {
+    "step": "delete-s1",
+    "sent": {
+      "messageType": "event_source_delete",
+      "id": "d1",
+      "handler": "ticker",
+      "streamId": "s1",
+      "streamName": "name-s1"
+    },
+    "reply": {
+      "messageType": "event_source_delete_result",
+      "id": "d1",
+      "handler": "ticker"
+    }
+  },
+  {
+    "step": "poll-after-delete",
+    "sent": {
+      "messageType": "event_source_poll",
+      "id": "p8",
+      "handler": "ticker",
+      "streamId": "s1",
+      "streamName": "name-s1"
+    },
+    "reply": {
+      "messageType": "event_source_poll_result",
+      "id": "p8",
+      "handler": "ticker",
+      "events": [],
+      "error": "No event source or config: ticker/s1"
+    }
+  },
+  {
+    "step": "delete-throws",
+    "sent": {
+      "messageType": "event_source_delete",
+      "id": "d2",
+      "handler": "ticker",
+      "streamId": "s4",
+      "streamName": "undeletable"
+    },
+    "reply": {
+      "messageType": "event_source_delete_result",
+      "id": "d2",
+      "handler": "ticker",
+      "error": "cannot delete"
+    }
+  },
+  {
+    "step": "delete-unknown-handler",
+    "sent": {
+      "messageType": "event_source_delete",
+      "id": "d3",
+      "handler": "nope",
+      "streamId": "s1",
+      "streamName": "name-s1"
+    },
+    "reply": {
+      "messageType": "event_source_delete_result",
+      "id": "d3",
+      "handler": "nope",
+      "error": "No event source registered: nope"
+    }
+  }
+]
