@@ -18,6 +18,24 @@ export function createServiceTransport(options: ServiceClientOptions): ServiceTr
 // @internal
 export function createSetupContext<C>(getOptions: (name: string) => ServiceClientOptions, customConfig: C, providerName: string, handlerName: string, signal: AbortSignal): SetupContext<C>;
 
+// @public
+export class GenericServiceClient extends ServiceClient {
+    constructor(ctx: Pick<SetupContext, 'getServiceClientOptions'>, bindingName: string);
+    constructor(options: ServiceClientOptions);
+    constructor(bindingName: string);
+    // (undocumented)
+    delete(path: string, params?: unknown, config?: RequestConfigWithRetry): Promise<void>;
+    get<T>(path: string, params?: unknown, config?: RequestConfigWithRetry & {
+        ignore404?: boolean;
+    }): Promise<T | undefined>;
+    // (undocumented)
+    patch<T>(path: string, data?: unknown, config?: RequestConfigWithRetry): Promise<T>;
+    // (undocumented)
+    post<T>(path: string, data?: unknown, config?: RequestConfigWithRetry): Promise<T>;
+    // (undocumented)
+    put<T>(path: string, data?: unknown, config?: RequestConfigWithRetry): Promise<T>;
+}
+
 // @public (undocumented)
 export interface HostedServiceBindingConfig {
     // (undocumented)

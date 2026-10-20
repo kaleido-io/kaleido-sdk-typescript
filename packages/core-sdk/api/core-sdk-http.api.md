@@ -13,6 +13,25 @@ export function configureHttpClient(instance: AxiosInstance, options?: HttpClien
 // @public
 export function createServiceTransport(options: ServiceClientOptions): ServiceTransport;
 
+// @public
+export class GenericServiceClient extends ServiceClient {
+    // Warning: (ae-forgotten-export) The symbol "SetupContext" needs to be exported by the entry point index.d.ts
+    constructor(ctx: Pick<SetupContext, 'getServiceClientOptions'>, bindingName: string);
+    constructor(options: ServiceClientOptions);
+    constructor(bindingName: string);
+    // (undocumented)
+    delete(path: string, params?: unknown, config?: RequestConfigWithRetry): Promise<void>;
+    get<T>(path: string, params?: unknown, config?: RequestConfigWithRetry & {
+        ignore404?: boolean;
+    }): Promise<T | undefined>;
+    // (undocumented)
+    patch<T>(path: string, data?: unknown, config?: RequestConfigWithRetry): Promise<T>;
+    // (undocumented)
+    post<T>(path: string, data?: unknown, config?: RequestConfigWithRetry): Promise<T>;
+    // (undocumented)
+    put<T>(path: string, data?: unknown, config?: RequestConfigWithRetry): Promise<T>;
+}
+
 // @public (undocumented)
 export interface HttpClientOptions {
     // (undocumented)
