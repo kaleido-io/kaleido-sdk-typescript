@@ -22,7 +22,7 @@ To match the TypeScript provider you deploy to, add `--sdk-version` with the `@k
 | `src/lib/` | Code shared between handlers, reached with relative imports |
 | `test/` | Unit tests, which run each action the way the engine does with `invokeAction` |
 
-The `kaleido` section of `package.json` lists the handlers: the name each one registers under, and the file that exports it. Workflows and streams bind those names.
+Each handler file exports one handler, made with `defineTransactionHandler`, `defineEventSource` or `defineProcessor`, and the first argument is the name it registers under. Workflows and streams bind those names. `npm run package` finds the handlers in the code and lists them in the zip, so there is nothing else to keep up to date.
 
 To add a handler, run one of:
 
@@ -32,7 +32,7 @@ npx ksdk add event-source ledger-feed
 npx ksdk add event-processor ledger-writer
 ```
 
-Each writes a starter file and a test, and adds the handler to the `kaleido` section.
+Each writes a starter file, named in its code, and a test.
 
 ```bash
 npm test             # unit tests
@@ -52,3 +52,17 @@ npm run package
 ```
 
 This writes `<name>-<version>.zip`, leaving out `node_modules`, build output, lockfiles and anything `.gitignore` names, and checks the result against the same rules the platform applies. Upload the zip to the artifact registry namespace your TypeScript provider service uses, and add it to the service as a handler package.
+
+## Renaming or leaving out handlers
+
+To change what the package offers without changing the code, add a `kaleido` section to `package.json`. When it is there, it is used instead of the handlers found in the code, so list every handler the package should offer:
+
+```json
+"kaleido": {
+  "transactionHandlers": [{ "name": "hello", "entry": "src/transaction/hello.ts" }],
+  "eventSources": [{ "name": "schedule", "entry": "src/eventsource/schedule.ts" }],
+  "eventProcessors": [{ "name": "echo", "entry": "src/processor/echo.ts" }]
+}
+```
+
+`npm run package` warns about any handler in the code that the section leaves out.

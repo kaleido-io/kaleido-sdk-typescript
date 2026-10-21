@@ -17,8 +17,10 @@
 
 // ksdk add: add a handler to a TypeScript provider snippet package.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { dirname, join } from 'path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+import { createRequire } from 'module';
+import { dirname, join, relative, sep } from 'path';
+import { discoverHandlers, isHandlerSourceFile } from '@kaleido-io/workflow-engine-sdk/snippet-package';
 
 const KINDS = {
   'transaction-handler': { section: 'transactionHandlers', dir: 'src/transaction' },
@@ -36,8 +38,8 @@ Usage: npx ksdk add <kind> <name>
   kind    ${Object.keys(KINDS).join(' | ')}
   name    The handler name workflows and streams bind to (lowercase letters, numbers and hyphens)
 
-Writes a starter handler under src/ and a test under test/, and adds the
-handler to the "kaleido" section of package.json.
+Writes a starter handler under src/, named in its code, and a test under test/.
+If package.json has a "kaleido" section, the handler is added to it too.
 
 Examples:
   npx ksdk add transaction-handler payments
@@ -59,9 +61,27 @@ if (!name || !/^[a-z0-9][a-z0-9-]*$/.test(name)) fail('the name must be lowercas
 const pkgPath = join(process.cwd(), 'package.json');
 if (!existsSync(pkgPath)) fail('no package.json in the current directory. Run this in a snippet package project.');
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-pkg.kaleido ??= {};
-const taken = Object.values(KINDS).flatMap(({ section }) => (pkg.kaleido[section] ?? []).map((h) => h.name));
-if (taken.includes(name)) fail(`a handler named "${name}" is already in package.json`);
+// The names already taken: the handlers found in the code, and any listed in package.json.
+const projectSources = {};
+const walk = (dir) => {
+  for (const dirent of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, dirent.name);
+    const rel = relative(process.cwd(), full).split(sep).join('/');
+    if (dirent.isDirectory() && !['node_modules', '.git', 'dist', 'coverage'].includes(dirent.name)) walk(full);
+    else if (dirent.isFile() && isHandlerSourceFile(rel)) projectSources[rel] = readFileSync(full, 'utf8');
+  }
+};
+walk(process.cwd());
+let typescript;
+try {
+  typescript = createRequire(pkgPath)('typescript');
+} catch {
+  typescript = undefined;
+}
+const inCode = discoverHandlers(projectSources, { typescript }).handlers;
+const listed = pkg.kaleido ? Object.values(KINDS).flatMap(({ section }) => (pkg.kaleido[section] ?? []).map((h) => ({ name: h.name, entry: h.entry }))) : [];
+const clash = [...inCode, ...listed].find((h) => h.name === name);
+if (clash) fail(`a handler named "${name}" is already defined, in ${clash.entry}`);
 
 const entry = `${spec.dir}/${name}.ts`;
 const testFile = `test/${name}.test.ts`;
@@ -80,7 +100,7 @@ const sources = {
   'transaction-handler': [`import { defineTransactionHandler } from '@kaleido-io/workflow-engine-sdk';
 
 // Each key is an action: the stage selects it with "action" in its inputMap.
-export const ${exportName} = defineTransactionHandler({
+export const ${exportName} = defineTransactionHandler('${name}', {
   '${name}': async (input: { value?: string }) => {
     if (!input.value) {
       throw new Error('value is required');
@@ -151,7 +171,7 @@ describe('${name}', () => {
   'event-processor': [`import { defineProcessor } from '@kaleido-io/workflow-engine-sdk';
 
 // Called with each batch of events the stream delivers. Throwing fails the batch, and the engine redelivers it.
-export const ${exportName} = defineProcessor(async (events) => {
+export const ${exportName} = defineProcessor('${name}', async (events) => {
   for (const event of events) {
     void event;
   }
@@ -172,10 +192,13 @@ for (const [file, content] of [[entry, source], [testFile, test]]) {
   mkdirSync(dirname(join(process.cwd(), file)), { recursive: true });
   writeFileSync(join(process.cwd(), file), content);
 }
-(pkg.kaleido[spec.section] ??= []).push({ name, entry });
-writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+// A "kaleido" section replaces the handlers found in the code, so it must list the new one too.
+if (pkg.kaleido) {
+  (pkg.kaleido[spec.section] ??= []).push({ name, entry });
+  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+}
 
 console.log(`Added ${kind} "${name}":`);
 console.log(`  ${entry}`);
 console.log(`  ${testFile}`);
-console.log(`  package.json kaleido.${spec.section}`);
+if (pkg.kaleido) console.log(`  package.json kaleido.${spec.section}`);

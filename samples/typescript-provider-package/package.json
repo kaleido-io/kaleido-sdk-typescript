@@ -18,25 +18,5 @@
     "@types/node": "^22.15.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
-  },
-  "kaleido": {
-    "transactionHandlers": [
-      {
-        "name": "hello",
-        "entry": "src/transaction/hello.ts"
-      }
-    ],
-    "eventSources": [
-      {
-        "name": "schedule",
-        "entry": "src/eventsource/schedule.ts"
-      }
-    ],
-    "eventProcessors": [
-      {
-        "name": "echo",
-        "entry": "src/processor/echo.ts"
-      }
-    ]
   }
 }
