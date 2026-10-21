@@ -33,6 +33,8 @@ import { newError, SDKErrors } from '../i18n/errors';
 export interface HandlerResources {
   /** The handler's secrets, by name. */
   readonly secrets?: Readonly<Record<string, string>>;
+  /** The value of the handler's secret with this name. Throws for a name the handler has no secret for. */
+  secret?(name: string): string;
   /** The handler's resources: files from the service's file sets, mounted into the pod, by name, as paths. */
   readonly resources?: Readonly<Record<string, string>>;
   /** The path of the handler's resource with this name. Throws for a name the handler has no resource for. */
@@ -54,6 +56,14 @@ export function createHandlerResources(
   return {
     secrets,
     resources,
+    secret(name: string): string {
+      const value = Object.prototype.hasOwnProperty.call(secrets, name) ? secrets[name] : undefined;
+      if (value === undefined) {
+        // Names only: a secret's value never goes into an error.
+        throw newError(SDKErrors.MsgSDKHandlerSecretUnknown, handlerName, name, Object.keys(secrets).join(', ') || '(none)');
+      }
+      return value;
+    },
     resource(name: string): string {
       const path = Object.prototype.hasOwnProperty.call(resources, name) ? resources[name] : undefined;
       if (path === undefined) {

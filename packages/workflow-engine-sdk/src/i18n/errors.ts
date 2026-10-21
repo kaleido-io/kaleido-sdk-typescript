@@ -92,6 +92,7 @@ export const SDKErrors = {
   MsgSDKServiceBindingsNeedClient: fe('KA140642', "Service binding '%s' can't be resolved: the handler isn't running in a WorkflowEngineClient"),
   MsgSDKHandlerResourceUnknown: fe('KA140643', "Handler '%s' has no resource named '%s'. Its resources are: %s"),
   MsgSDKSecretsDirUnreadable: fe('KA140644', "Can't read the secrets directory '%s': %s"),
+  MsgSDKHandlerSecretUnknown: fe('KA140645', "Handler '%s' has no secret named '%s'. Its secrets are: %s"),
 
   // Engine connection errors
   MsgSDKEngineNotConnected: fe('KA140627', 'WebSocket is not connected. Cannot submit async transactions'),

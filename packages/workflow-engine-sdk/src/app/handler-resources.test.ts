@@ -142,6 +142,24 @@ describe('handler config, secrets and resources', () => {
     expect(() => ctx.resource!('c')).toThrow("Handler 'h' has no resource named 'c'. Its resources are: a, b");
   });
 
+  it('returns a secret by name, and names the secrets but never their values when asked for one it lacks', async () => {
+    const client = startedClient({});
+    client.transactionHandler('h', { handler: createTransactionHandler('h', new Map()) }, { secrets: { apiKey: 'k-123', token: 't-456' } });
+    await client.start();
+    const { runtime } = client as unknown as Internals;
+    const ctx = createTransactionContext(runtime.newRequestContext(envelope('h')), 'h', transaction);
+    expect(ctx.secret!('apiKey')).toBe('k-123');
+    let message = '';
+    try {
+      ctx.secret!('password');
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain("Handler 'h' has no secret named 'password'. Its secrets are: apiKey, token");
+    expect(message).not.toContain('k-123');
+    expect(message).not.toContain('t-456');
+  });
+
   it('uses the registered config in setup hooks', async () => {
     const client = startedClient({ shared: true });
     let setupConfig: unknown;

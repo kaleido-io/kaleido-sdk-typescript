@@ -573,6 +573,7 @@ export interface HandlerRegistrationResources<CustomConfig = unknown> {
 export interface HandlerResources {
     resource?(name: string): string;
     readonly resources?: Readonly<Record<string, string>>;
+    secret?(name: string): string;
     readonly secrets?: Readonly<Record<string, string>>;
 }
 
@@ -803,6 +804,7 @@ export const SDKErrors: {
     readonly MsgSDKServiceBindingsNeedClient: ErrorMessage;
     readonly MsgSDKHandlerResourceUnknown: ErrorMessage;
     readonly MsgSDKSecretsDirUnreadable: ErrorMessage;
+    readonly MsgSDKHandlerSecretUnknown: ErrorMessage;
     readonly MsgSDKEngineNotConnected: ErrorMessage;
 };
 

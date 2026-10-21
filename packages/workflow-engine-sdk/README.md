@@ -255,7 +255,7 @@ Each action gets a context as its second argument, one per transaction:
 | `ctx.requestId` | The ID of the request the transaction arrived in, for correlating logs |
 | `ctx.providerName`, `ctx.handlerName` | Where the action is running |
 | `ctx.config` | The handler's config. See [Config, secrets and resources](#config-secrets-and-resources). |
-| `ctx.secrets` | The handler's secrets, by name |
+| `ctx.secrets`, `ctx.secret(name)` | The handler's secrets, by name. `ctx.secret(name)` throws for a name the handler has no secret for, naming the secrets it has but never their values. |
 | `ctx.resources`, `ctx.resource(name)` | The handler's resources: files from where it's deployed, by name, as paths. `ctx.resource(name)` throws for a name the handler has no resource for. |
 
 With a hosted binding, calls go through the platform as the user or application that submitted the transaction, so each call carries the caller's identity and needs no setup. `AssetManagerClient` and `SubledgerClient` accept the context and a binding name directly. For a service without a typed client, `GenericServiceClient` from `@kaleido-io/core-sdk` sends requests to paths relative to the service's base URL:
@@ -400,7 +400,7 @@ The result is what the engine receives: `result` (an `EvalResult`), `output`, `e
 | `transaction` | Fields of `ctx.transaction`, such as `authRef` or `state` |
 | `bindings` | The client options `ctx.getServiceClientOptions(name)` returns, by binding name |
 | `config` | `ctx.config` |
-| `secrets` | `ctx.secrets` |
+| `secrets` | `ctx.secrets` and `ctx.secret(name)` |
 | `resources` | `ctx.resources` and `ctx.resource(name)` |
 | `stageDirector` | The stage's directing fields. They default to `outputPath: '/output'`, `nextStage: 'next'` and `failureStage: 'failed'`. |
 | `ctx` | Any other part of the context, such as `signal` |
