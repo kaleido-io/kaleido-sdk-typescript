@@ -16,9 +16,9 @@
 
 /**
  * Snippet packages: a zip of an npm project whose handlers run in the
- * TypeScript provider. The provider supplies the Kaleido SDKs, so a package
- * carries only its own source: no node_modules, and no dependencies outside
- * the @kaleido-io scope.
+ * TypeScript provider. The provider supplies the Kaleido SDKs and zod, so a
+ * package carries only its own source: no node_modules, and no dependencies
+ * other than those.
  *
  * The same rules run in `ksdk package`, in the artifact registry (which has its
  * own Go implementation of them) and in the TypeScript provider.
@@ -36,8 +36,16 @@ export const MAX_PACKAGE_UNCOMPRESSED_BYTES = 50 * 1024 * 1024;
 /** The largest package.json read when checking a package. */
 export const MAX_PACKAGE_JSON_BYTES = 1024 * 1024;
 
-/** Dependencies must be in this scope: the TypeScript provider supplies them. */
+/** Dependencies in this scope are allowed: the TypeScript provider supplies the Kaleido SDKs. */
 export const SUPPORTED_DEPENDENCY_SCOPE = '@kaleido-io/';
+
+/** Libraries outside that scope that the TypeScript provider also supplies, so a package may depend on them. */
+export const SUPPLIED_LIBRARIES: readonly string[] = ['zod'];
+
+/** Whether a package may depend on this package name, because the TypeScript provider supplies it. */
+export function isSuppliedDependency(name: string): boolean {
+  return name.startsWith(SUPPORTED_DEPENDENCY_SCOPE) || SUPPLIED_LIBRARIES.includes(name);
+}
 
 /** Path segments left out of a package wherever they appear. */
 const EXCLUDED_SEGMENTS = new Set(['node_modules', '.git', '__MACOSX']);
@@ -158,10 +166,10 @@ function unsafePath(path: string): string | undefined {
 function checkDependencies(pkg: SnippetPackageJson, problems: string[]): void {
   for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies'] as const) {
     for (const name of Object.keys(pkg[section] ?? {})) {
-      if (!name.startsWith(SUPPORTED_DEPENDENCY_SCOPE)) {
+      if (!isSuppliedDependency(name)) {
         problems.push(
-          `package.json ${section} names "${name}". A snippet package may depend only on ${SUPPORTED_DEPENDENCY_SCOPE}* packages, ` +
-            `which the TypeScript provider supplies. Move build and test tools to devDependencies.`,
+          `package.json ${section} names "${name}". A snippet package may depend only on ${SUPPORTED_DEPENDENCY_SCOPE}* packages ` +
+            `and ${SUPPLIED_LIBRARIES.join(', ')}, which the TypeScript provider supplies. Move build and test tools to devDependencies.`,
         );
       }
     }

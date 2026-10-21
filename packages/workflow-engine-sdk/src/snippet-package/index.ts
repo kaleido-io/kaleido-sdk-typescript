@@ -24,6 +24,8 @@ export {
   MAX_PACKAGE_UNCOMPRESSED_BYTES,
   MAX_PACKAGE_JSON_BYTES,
   SUPPORTED_DEPENDENCY_SCOPE,
+  SUPPLIED_LIBRARIES,
+  isSuppliedDependency,
   HANDLER_KINDS,
   SnippetPackageError,
   normalizeSnippetPackage,

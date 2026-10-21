@@ -26,6 +26,7 @@ import { readZip, writeZip, ZipFormatError } from './zip';
 import {
   MAX_PACKAGE_ENTRIES,
   SnippetPackageError,
+  isSuppliedDependency,
   checkSnippetPackage,
   extractSnippetPackage,
   inspectSnippetPackage,
@@ -137,11 +138,18 @@ describe('checkSnippetPackage', () => {
     expect(result.packageJson?.kaleido?.transactionHandlers).toEqual([{ name: 'payments', entry: 'src/transaction/payments.ts' }]);
   });
 
-  it('rejects dependencies outside the @kaleido-io scope', () => {
-    expect(check({ ...validFiles, 'package.json': pkgJson({ dependencies: { zod: '^3.25.0' }, peerDependencies: { axios: '*' } }) })).toEqual([
-      expect.stringContaining('package.json dependencies names "zod"'),
+  it('rejects dependencies the TypeScript provider does not supply', () => {
+    expect(check({ ...validFiles, 'package.json': pkgJson({ dependencies: { lodash: '^4.17.21' }, peerDependencies: { axios: '*' } }) })).toEqual([
+      expect.stringContaining('package.json dependencies names "lodash"'),
       expect.stringContaining('package.json peerDependencies names "axios"'),
     ]);
+  });
+
+  it('accepts zod, which the TypeScript provider supplies alongside the Kaleido SDKs', () => {
+    expect(check({ ...validFiles, 'package.json': pkgJson({ dependencies: { '@kaleido-io/workflow-engine-sdk': '^1.1.0', zod: '^4.6.0' } }) })).toEqual([]);
+    expect(isSuppliedDependency('zod')).toBe(true);
+    expect(isSuppliedDependency('@kaleido-io/core-sdk')).toBe(true);
+    expect(isSuppliedDependency('zod-extra')).toBe(false);
   });
 
   it('needs a package.json at the root, and a valid one', () => {
@@ -193,7 +201,7 @@ describe('extractSnippetPackage', () => {
 
   it('refuses an invalid package, listing every problem, and writes nothing', () => {
     const dir = mkdtempSync(join(tmpdir(), 'extract-bad-'));
-    const zip = zipOf({ ...validFiles, '../escape.ts': 'x', 'package.json': pkgJson({ dependencies: { zod: '1' } }) });
+    const zip = zipOf({ ...validFiles, '../escape.ts': 'x', 'package.json': pkgJson({ dependencies: { lodash: '1' } }) });
     expect(() => extractSnippetPackage(zip, dir)).toThrow(SnippetPackageError);
     try {
       extractSnippetPackage(zip, dir);

@@ -45,6 +45,9 @@ export function inspectSnippetPackage(zip: Buffer): NormalizedSnippetPackage & S
 export function isHandlerSourceFile(path: string): boolean;
 
 // @public
+export function isSuppliedDependency(name: string): boolean;
+
+// @public
 export function manifestFromHandlers(handlers: DiscoveredHandler[]): SnippetPackageManifest;
 
 // @public
@@ -132,6 +135,9 @@ export interface SnippetPackageJson {
 
 // @public
 export type SnippetPackageManifest = Partial<Record<HandlerKind, SnippetPackageHandler[]>>;
+
+// @public
+export const SUPPLIED_LIBRARIES: readonly string[];
 
 // @public
 export const SUPPORTED_DEPENDENCY_SCOPE = "@kaleido-io/";
