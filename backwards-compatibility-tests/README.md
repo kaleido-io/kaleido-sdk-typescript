@@ -10,7 +10,7 @@ These tests protect existing consumers of the SDK. They were recorded against th
 
 ## Layout
 
-- `fixtures/` in this directory holds code written against `1.0.1`, which is type-checked only.
+- `fixtures/` in this directory holds code written against `1.0.1`, which is type-checked only. `fixtures/handler-api/` also holds code written with the handler API (`define*`), with and without handler names, so both forms keep compiling.
 - `packages/workflow-engine-sdk/tests/backwards-compatibility/` holds the message tests:
   - `fixtures/fake-engine.ts` is the fake workflow engine. It depends only on `ws` and Node built-ins, so other test suites can copy it unchanged; keep it that way.
   - `data/` holds the messages the tests expect, one `expected-messages-<type>.json` file per kind of message.

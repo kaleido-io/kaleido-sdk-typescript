@@ -184,16 +184,16 @@ A file written this way also runs unchanged in a Kaleido TypeScript provider, wh
 - calls other services through the handler's context (`ctx`), not through a `setup` hook, which a TypeScript provider doesn't run;
 - doesn't rely on `ctx.config`, which comes from your own provider's config file.
 
-This needs a TypeScript provider that provides `@kaleido-io/workflow-engine-sdk` 1.1.0-rc.1 or later. In a TypeScript provider, the handler name comes from the service config instead of the `.transactionHandler(name, …)` call. Keeping each handler in a file of its own, with the registration in a separate entry point like the one above, lets you develop and test it locally and then upload it as it is.
+This needs a TypeScript provider that provides `@kaleido-io/workflow-engine-sdk` 1.1.0-rc.1 or later. In a TypeScript provider, a handler registers under the name in the service config instead of the `.transactionHandler(name, …)` call. The console and `ksdk package` fill that in from the name the handler is defined with, or from the file's name when it has none. Keeping each handler in a file of its own, with the registration in a separate entry point like the one above, lets you develop and test it locally and then upload it as it is.
 
 ### Transaction handlers
 
-`defineTransactionHandler` takes the handler's actions, keyed by action name. Each action is a function of the stage's input:
+`defineTransactionHandler` takes the handler's name and its actions, keyed by action name. Each action is a function of the stage's input:
 
 ```typescript
 import { defineTransactionHandler } from '@kaleido-io/workflow-engine-sdk';
 
-export const helloHandler = defineTransactionHandler({
+export const helloHandler = defineTransactionHandler('hello', {
   hello: async (input: { name?: string }) => {
     if (!input.name) {
       throw new Error('name is required');
@@ -219,7 +219,7 @@ What the action returns or throws decides what happens to the transaction:
 ```typescript
 import { complete, defineTransactionHandler, RetryableError, StageError, waiting } from '@kaleido-io/workflow-engine-sdk';
 
-export const paymentHandler = defineTransactionHandler({
+export const paymentHandler = defineTransactionHandler('payments', {
   'check-payment': async (input: { amount: number }) => {
     if (input.amount <= 0) {
       throw new StageError('amount must be positive', { stage: 'rejected', data: { amount: input.amount } });
@@ -262,14 +262,14 @@ import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
 import { GenericServiceClient } from '@kaleido-io/core-sdk';
 import { defineTransactionHandler } from '@kaleido-io/workflow-engine-sdk';
 
-export const listPoolsHandler = defineTransactionHandler({
+export const listPoolsHandler = defineTransactionHandler('list-pools', {
   'list-pools': async (_input, ctx) => {
     const pools = await new AssetManagerClient(ctx, 'asset-manager').getPools();
     return { pools: pools?.items ?? [] };
   },
 });
 
-export const listKeysHandler = defineTransactionHandler({
+export const listKeysHandler = defineTransactionHandler('list-keys', {
   'list-keys': async (_input, ctx) => {
     const keys = await new GenericServiceClient(ctx, 'key-manager').get<{ items: { name: string }[] }>('/api/v2/keys');
     return { keys: (keys?.items ?? []).map((key) => key.name) };
@@ -328,14 +328,14 @@ The [`scheduled-workflow` sample](https://github.com/kaleido-io/kaleido-sdk-type
 
 Providers that receive event batches from the engine and run processing logic against them.
 
-`defineProcessor` takes a function that handles each batch. Throw to fail the batch:
+`defineProcessor` takes the processor's name and a function that handles each batch. Throw to fail the batch:
 
 ```typescript
 import { defineProcessor, type EventProcessorEvent } from '@kaleido-io/workflow-engine-sdk';
 
 interface Transfer { from: string; to: string; amount: string }
 
-export const transferProcessor = defineProcessor(async (events: EventProcessorEvent<Transfer>[], ctx) => {
+export const transferProcessor = defineProcessor('transfers', async (events: EventProcessorEvent<Transfer>[], ctx) => {
   for (const event of events) {
     await record(event.data, { signal: ctx.signal });
   }

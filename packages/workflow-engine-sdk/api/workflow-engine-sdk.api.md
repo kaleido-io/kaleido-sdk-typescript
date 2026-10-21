@@ -313,6 +313,9 @@ export interface CreateWorkflowResponse {
 }
 
 // @public
+export function definedName(value: unknown): string | undefined;
+
+// @public
 export type DefinedProcessor<CustomConfig = unknown, EventData = unknown> = EventProcessorDef<CustomConfig, EventData>['processBatch'] & EventProcessorDef<CustomConfig, EventData>;
 
 // @public
@@ -321,7 +324,7 @@ export class DefinedTransactionHandler<A extends Record<string, TransactionActio
     readonly [ACTIONS]?: A;
     // (undocumented)
     readonly [DEFINED_TRANSACTION_HANDLER] = true;
-    constructor(actions: A);
+    constructor(actions: A, name?: string);
     readonly handler: TransactionHandler;
 }
 
@@ -329,7 +332,13 @@ export class DefinedTransactionHandler<A extends Record<string, TransactionActio
 export function defineEventSource<CP, CF = unknown, DT = unknown>(name: string, definition: EventSourceDefinition<CP, CF, DT>): EventSourceBuilder<CP, CF, DT>;
 
 // @public
+export function defineProcessor<EventData = unknown, CustomConfig = unknown>(name: string, fn: (events: EventProcessorEvent<EventData>[], ctx: EventProcessorContext<CustomConfig>) => Promise<void> | void): DefinedProcessor<CustomConfig, EventData>;
+
+// @public
 export function defineProcessor<EventData = unknown, CustomConfig = unknown>(fn: (events: EventProcessorEvent<EventData>[], ctx: EventProcessorContext<CustomConfig>) => Promise<void> | void): DefinedProcessor<CustomConfig, EventData>;
+
+// @public
+export function defineTransactionHandler<A extends Record<string, TransactionAction>>(name: string, actions: A): DefinedTransactionHandler<A>;
 
 // @public
 export function defineTransactionHandler<A extends Record<string, TransactionAction>>(actions: A): DefinedTransactionHandler<A>;

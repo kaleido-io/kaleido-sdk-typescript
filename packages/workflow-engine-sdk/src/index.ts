@@ -109,6 +109,7 @@ export {
   defineProcessor,
   isDefinedProcessor,
   defineEventSource,
+  definedName,
   complete,
   waiting,
   StageError,
