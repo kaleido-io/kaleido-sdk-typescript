@@ -565,14 +565,14 @@ export type HandlerRegistrationOptions<CustomConfig = unknown> = HandlerRegistra
 // @public
 export interface HandlerRegistrationResources<CustomConfig = unknown> {
     config?: CustomConfig;
-    files?: Record<string, string>;
+    resources?: Record<string, string>;
     secrets?: Record<string, string>;
 }
 
 // @public
 export interface HandlerResources {
-    file?(name: string): string;
-    readonly files?: Readonly<Record<string, string>>;
+    resource?(name: string): string;
+    readonly resources?: Readonly<Record<string, string>>;
     readonly secrets?: Readonly<Record<string, string>>;
 }
 
@@ -717,10 +717,10 @@ export interface ProviderConfig<CustomConfig> {
 // @public
 export interface ProviderServices {
     readonly config: unknown;
-    readonly files?: Readonly<Record<string, string>>;
     getServiceClientOptions(bindingName: string, authRef?: string): ServiceClientOptions;
     // (undocumented)
     readonly providerName: string;
+    readonly resources?: Readonly<Record<string, string>>;
     readonly secrets?: Readonly<Record<string, string>>;
 }
 
@@ -801,7 +801,7 @@ export const SDKErrors: {
     readonly MsgSDKDeadlineNotWaiting: ErrorMessage;
     readonly MsgSDKDirectorNextStageAndSubflow: ErrorMessage;
     readonly MsgSDKServiceBindingsNeedClient: ErrorMessage;
-    readonly MsgSDKHandlerFileUnknown: ErrorMessage;
+    readonly MsgSDKHandlerResourceUnknown: ErrorMessage;
     readonly MsgSDKSecretsDirUnreadable: ErrorMessage;
     readonly MsgSDKEngineNotConnected: ErrorMessage;
 };

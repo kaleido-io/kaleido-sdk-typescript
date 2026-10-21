@@ -220,8 +220,8 @@ export interface ProviderServices {
   readonly config: unknown;
   /** The handler's secrets, by name. */
   readonly secrets?: Readonly<Record<string, string>>;
-  /** The handler's files, by name, as paths. */
-  readonly files?: Readonly<Record<string, string>>;
+  /** The handler's resources: files from the service's file sets, mounted into the pod, by name, as paths. */
+  readonly resources?: Readonly<Record<string, string>>;
   /**
    * Resolve a named service binding. Pass the authRef of the transaction or
    * poll being handled, so a hosted binding calls the service as the caller.
@@ -231,15 +231,15 @@ export interface ProviderServices {
 
 /**
  * What a handler is registered with in place of the provider-wide config,
- * secrets and files. Each one left out falls back to the provider-wide value.
+ * secrets and resources. Each one left out falls back to the provider-wide value.
  */
 export interface HandlerRegistrationResources<CustomConfig = unknown> {
   /** The handler's config, seen as `ctx.config`. */
   config?: CustomConfig;
   /** The handler's secrets, by name, seen as `ctx.secrets`. */
   secrets?: Record<string, string>;
-  /** The handler's files, by name, as paths, seen as `ctx.files` and through `ctx.file(name)`. */
-  files?: Record<string, string>;
+  /** The handler's resources, by name, as paths, seen as `ctx.resources` and through `ctx.resource(name)`. */
+  resources?: Record<string, string>;
 }
 
 /**

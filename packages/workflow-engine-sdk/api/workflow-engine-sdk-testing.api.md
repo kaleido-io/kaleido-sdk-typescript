@@ -31,7 +31,7 @@ export interface InvokeActionOptions<CustomConfig = unknown> {
     config?: CustomConfig;
     // Warning: (ae-forgotten-export) The symbol "TransactionContext" needs to be exported by the entry point index.d.ts
     ctx?: Partial<TransactionContext<CustomConfig>>;
-    files?: Record<string, string>;
+    resources?: Record<string, string>;
     secrets?: Record<string, string>;
     stageDirector?: Partial<StageDirector>;
     // Warning: (ae-forgotten-export) The symbol "WSEvaluateTransaction" needs to be exported by the entry point index.d.ts

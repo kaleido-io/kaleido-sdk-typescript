@@ -34,8 +34,8 @@ export interface InvokeActionOptions<CustomConfig = unknown> {
   config?: CustomConfig;
   /** The secrets the action sees as `ctx.secrets`, by name. */
   secrets?: Record<string, string>;
-  /** The files the action sees as `ctx.files` and through `ctx.file(name)`: paths, by name. */
-  files?: Record<string, string>;
+  /** The resources the action sees as `ctx.resources` and through `ctx.resource(name)`: paths, by name. */
+  resources?: Record<string, string>;
   /** Options returned by `ctx.getServiceClientOptions(name)`, by binding name. */
   bindings?: Record<string, ServiceClientOptions>;
   /** The stage's directing fields. Defaults to `outputPath: '/output'`, `nextStage: 'next'`, `failureStage: 'failed'`. */
@@ -54,7 +54,7 @@ function contextFor(action: string, transaction: WSEvaluateTransaction, options:
     transaction,
     ...createHandlerResources('test-handler', {
       secrets: Object.freeze({ ...options.secrets }),
-      files: Object.freeze({ ...options.files }),
+      resources: Object.freeze({ ...options.resources }),
     }),
     getServiceClientOptions: (name: string) => {
       const binding = options.bindings?.[name];

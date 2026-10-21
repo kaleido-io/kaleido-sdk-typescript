@@ -251,7 +251,7 @@ export class HandlerRuntime {
   }
 
   /**
-   * Set the config, secrets and files a handler was registered with. A request
+   * Set the config, secrets and resources a handler was registered with. A request
    * for the handler sees them in place of the provider-wide ones; each that is
    * left out falls back to the provider-wide value.
    */
@@ -271,7 +271,7 @@ export class HandlerRuntime {
       getServiceClientOptions: base.getServiceClientOptions,
       config: own.config !== undefined ? own.config : base.config,
       secrets: own.secrets ?? base.secrets,
-      files: own.files ?? base.files,
+      resources: own.resources ?? base.resources,
     };
   }
 

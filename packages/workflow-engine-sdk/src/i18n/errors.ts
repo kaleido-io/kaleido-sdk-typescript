@@ -90,7 +90,7 @@ export const SDKErrors = {
   MsgSDKDeadlineNotWaiting: fe('KA140640', "Deadline can only be used with WAITING result type (action='%s' result='%s')"),
   MsgSDKDirectorNextStageAndSubflow: fe('KA140641', "Handler input cannot specify both 'nextStage' and 'nextSubflow'"),
   MsgSDKServiceBindingsNeedClient: fe('KA140642', "Service binding '%s' can't be resolved: the handler isn't running in a WorkflowEngineClient"),
-  MsgSDKHandlerFileUnknown: fe('KA140643', "Handler '%s' has no file named '%s'. Its files are: %s"),
+  MsgSDKHandlerResourceUnknown: fe('KA140643', "Handler '%s' has no resource named '%s'. Its resources are: %s"),
   MsgSDKSecretsDirUnreadable: fe('KA140644', "Can't read the secrets directory '%s': %s"),
 
   // Engine connection errors

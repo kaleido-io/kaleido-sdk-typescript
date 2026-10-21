@@ -20,22 +20,23 @@ import type { RequestContext, WSEvaluateTransaction, WSEventStreamInfo } from '.
 import { newError, SDKErrors } from '../i18n/errors';
 
 /**
- * The secrets and files a handler was given where it is deployed.
+ * The secrets and resources a handler was given where it is deployed.
  *
  * In a TypeScript provider they come from the handler's entry in the service
  * config. In your own provider they come from what you register the handler
  * with, and secrets default to the ones mounted under `KALEIDO_SECRETS_DIR`.
  *
  * A handler run by the SDK always has all three. They are optional in the type
- * so that a context built by hand, for example in a test, needn't list them.
+ * so that a context built by hand, for example in a test, needn't list them:
+ * the context types are public, and requiring them would break code that does.
  */
 export interface HandlerResources {
   /** The handler's secrets, by name. */
   readonly secrets?: Readonly<Record<string, string>>;
-  /** The handler's files, by name, as paths. */
-  readonly files?: Readonly<Record<string, string>>;
-  /** The path of the handler's file with this name. Throws for a name the handler has no file for. */
-  file?(name: string): string;
+  /** The handler's resources: files from the service's file sets, mounted into the pod, by name, as paths. */
+  readonly resources?: Readonly<Record<string, string>>;
+  /** The path of the handler's resource with this name. Throws for a name the handler has no resource for. */
+  resource?(name: string): string;
 }
 
 /** {@link HandlerResources} as the SDK fills them in, with every member present. */
@@ -43,20 +44,20 @@ type FilledHandlerResources = Required<HandlerResources>;
 
 const noEntries: Readonly<Record<string, string>> = Object.freeze({});
 
-/** @internal — the secrets and files of the handler handling a request. */
+/** @internal — the secrets and resources of the handler handling a request. */
 export function createHandlerResources(
   handlerName: string,
-  provider?: { secrets?: Readonly<Record<string, string>>; files?: Readonly<Record<string, string>> },
+  provider?: { secrets?: Readonly<Record<string, string>>; resources?: Readonly<Record<string, string>> },
 ): FilledHandlerResources {
   const secrets = provider?.secrets ?? noEntries;
-  const files = provider?.files ?? noEntries;
+  const resources = provider?.resources ?? noEntries;
   return {
     secrets,
-    files,
-    file(name: string): string {
-      const path = Object.prototype.hasOwnProperty.call(files, name) ? files[name] : undefined;
+    resources,
+    resource(name: string): string {
+      const path = Object.prototype.hasOwnProperty.call(resources, name) ? resources[name] : undefined;
       if (path === undefined) {
-        throw newError(SDKErrors.MsgSDKHandlerFileUnknown, handlerName, name, Object.keys(files).join(', ') || '(none)');
+        throw newError(SDKErrors.MsgSDKHandlerResourceUnknown, handlerName, name, Object.keys(resources).join(', ') || '(none)');
       }
       return path;
     },

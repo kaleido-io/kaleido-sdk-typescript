@@ -183,7 +183,7 @@ A file written this way also runs unchanged in a Kaleido TypeScript provider, wh
 - imports only `@kaleido-io` SDK packages the TypeScript provider supplies, and other files of your own;
 - calls other services through the handler's context (`ctx`), not through a `setup` hook, which a TypeScript provider doesn't run.
 
-A handler's settings travel with it too. It reads them from `ctx.config`, `ctx.secrets` and `ctx.files`, which your own provider fills from its config file and mounted secrets, and a TypeScript provider fills from the handler's entry in the service config. See [Config, secrets and files](#config-secrets-and-files).
+A handler's settings travel with it too. It reads them from `ctx.config`, `ctx.secrets` and `ctx.resources`, which your own provider fills from its config file and mounted secrets, and a TypeScript provider fills from the handler's entry in the service config. See [Config, secrets and resources](#config-secrets-and-resources).
 
 This needs a TypeScript provider that provides `@kaleido-io/workflow-engine-sdk` 1.1.0-rc.1 or later. In a TypeScript provider, a handler registers under the name in the service config instead of the `.transactionHandler(name, …)` call. The console and `ksdk package` fill that in from the name the handler is defined with, or from the file's name when it has none. Keeping each handler in a file of its own, with the registration in a separate entry point like the one above, lets you develop and test it locally and then upload it as it is.
 
@@ -254,9 +254,9 @@ Each action gets a context as its second argument, one per transaction:
 | `ctx.signal` | An `AbortSignal` that aborts when the engine's deadline for the request passes |
 | `ctx.requestId` | The ID of the request the transaction arrived in, for correlating logs |
 | `ctx.providerName`, `ctx.handlerName` | Where the action is running |
-| `ctx.config` | The handler's config. See [Config, secrets and files](#config-secrets-and-files). |
+| `ctx.config` | The handler's config. See [Config, secrets and resources](#config-secrets-and-resources). |
 | `ctx.secrets` | The handler's secrets, by name |
-| `ctx.files`, `ctx.file(name)` | The handler's files, by name, as paths. `ctx.file(name)` throws for a name the handler has no file for. |
+| `ctx.resources`, `ctx.resource(name)` | The handler's resources: files from where it's deployed, by name, as paths. `ctx.resource(name)` throws for a name the handler has no resource for. |
 
 With a hosted binding, calls go through the platform as the user or application that submitted the transaction, so each call carries the caller's identity and needs no setup. `AssetManagerClient` and `SubledgerClient` accept the context and a binding name directly. For a service without a typed client, `GenericServiceClient` from `@kaleido-io/core-sdk` sends requests to paths relative to the service's base URL:
 
@@ -345,11 +345,11 @@ export const transferProcessor = defineProcessor('transfers', async (events: Eve
 });
 ```
 
-Register it with `.eventProcessor('transfers', transferProcessor)`. The context has `ctx.getServiceClientOptions(bindingName)`, `ctx.signal`, `ctx.requestId`, `ctx.config`, `ctx.secrets` and `ctx.files`, as for transaction handlers.
+Register it with `.eventProcessor('transfers', transferProcessor)`. The context has `ctx.getServiceClientOptions(bindingName)`, `ctx.signal`, `ctx.requestId`, `ctx.config`, `ctx.secrets` and `ctx.resources`, as for transaction handlers.
 
-### Config, secrets and files
+### Config, secrets and resources
 
-A handler gets three kinds of settings from where it's deployed: `ctx.config`, an object of its own settings; `ctx.secrets`, string values by name; and `ctx.files`, paths of files by name. They describe how the handler is set up, so they're the same for every request it handles.
+A handler gets three kinds of settings from where it's deployed: `ctx.config`, an object of its own settings; `ctx.secrets`, string values by name; and `ctx.resources`, paths of files by name, such as a trust store or a schema. They describe how the handler is set up, so they're the same for every request it handles.
 
 In your own provider, every handler sees the provider's config file, the one `CONFIG_FILE` names, as `ctx.config`, and the secrets mounted under `KALEIDO_SECRETS_DIR` as `ctx.secrets`. A credential set mounted at `<dir>/<name>/value` is the secret `<name>`, and any other file in its directory, such as a basic auth set's `username`, is `<name>/<file>`. To give one handler settings of its own, register it with them:
 
@@ -358,14 +358,14 @@ WorkflowEngineClient.fromConfigFile<MyConfig>()
   .eventProcessor('ledger-writer', ledgerWriter, {
     config: { book: 'primary' },
     secrets: { apiKey: process.env.LEDGER_API_KEY ?? '' },
-    files: { truststore: '/etc/ledger/truststore.p12' },
+    resources: { truststore: '/etc/ledger/truststore.p12' },
   })
   .start();
 ```
 
 Each one you give replaces the provider-wide value for that handler; any you leave out falls back to it.
 
-In a TypeScript provider, each handler's entry in the service config sets them: `config` inline or `configFile` from a JSON or YAML file, `secrets` from key credential sets, and `files` from the service's file sets. The provider's own config file is never visible to handlers.
+In a TypeScript provider, each handler's entry in the service config sets them: `config` inline or `configFile` from a JSON or YAML file, `secrets` from key credential sets, and `resources` from the service's file sets, mounted into the pod. The provider's own config file is never visible to handlers.
 
 The three are optional in the context types, so that a context built by hand in a test needn't list them; a handler the SDK runs always has all three. Settings that vary per request, such as a workflow's config profiles or a stream's config, come from the workflow or the stream instead, not from `ctx.config`.
 
@@ -401,7 +401,7 @@ The result is what the engine receives: `result` (an `EvalResult`), `output`, `e
 | `bindings` | The client options `ctx.getServiceClientOptions(name)` returns, by binding name |
 | `config` | `ctx.config` |
 | `secrets` | `ctx.secrets` |
-| `files` | `ctx.files` and `ctx.file(name)` |
+| `resources` | `ctx.resources` and `ctx.resource(name)` |
 | `stageDirector` | The stage's directing fields. They default to `outputPath: '/output'`, `nextStage: 'next'` and `failureStage: 'failed'`. |
 | `ctx` | Any other part of the context, such as `signal` |
 
@@ -674,7 +674,7 @@ You can also pass any object that implements `EventSource`.
 Use the fluent `.eventProcessor()` builder method. The batch function receives an `EventProcessorContext` with:
 
 - `ctx.config` — typed access to the handler's config: your `provider-config.yaml`, or what the handler was registered with
-- `ctx.secrets`, `ctx.files` — the handler's secrets and files (see [Config, secrets and files](#config-secrets-and-files))
+- `ctx.secrets`, `ctx.resources` — the handler's secrets and resources (see [Config, secrets and resources](#config-secrets-and-resources))
 - `ctx.getServiceClientOptions(bindingName)` — resolve a service binding (works for both hosted and non-hosted bindings)
 - `ctx.signal` — per-request `AbortSignal` that respects the WFE request deadline
 - `ctx.requestId` — per-batch request ID for correlation logging

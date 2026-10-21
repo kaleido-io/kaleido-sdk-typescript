@@ -86,7 +86,7 @@ export interface WorkflowEngineClientConfig {
 
 /**
  * What a handler is registered with in place of the client's config, secrets
- * and files. Each one left out falls back to the client's.
+ * and resources. Each one left out falls back to the client's.
  */
 export type HandlerRegistrationOptions<CustomConfig = unknown> = HandlerRegistrationResources<CustomConfig>;
 
@@ -130,7 +130,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
       providerName: config.providerName,
       config: this.customConfig,
       secrets: frozenCopy(config.secrets ?? {}),
-      files: frozenCopy({}),
+      resources: frozenCopy({}),
       getServiceClientOptions: (name, authRef) => this.getServiceClientOptions(name, authRef),
     });
   }
@@ -373,7 +373,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     this.runtime.setHandlerResources(name, {
       config: options.config,
       secrets: frozenCopy(options.secrets),
-      files: frozenCopy(options.files),
+      resources: frozenCopy(options.resources),
     });
   }
 
