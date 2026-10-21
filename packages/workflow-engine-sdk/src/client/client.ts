@@ -28,15 +28,15 @@ import {
 import { ServiceBindingsMap, ServiceBindingConfig } from '../service/types';
 import { ServiceClientOptions } from '@kaleido-io/core-sdk/http';
 import { WSProxyAdapter } from '../service/ws_proxy_adapter';
-import { ConfigLoader, KALEIDO_CONFIG_FILE, WFE_CONFIG_FILE, CONFIG_FILE } from '../config/config';
+import { ConfigLoader, KALEIDO_CONFIG_FILE, WFE_CONFIG_FILE, CONFIG_FILE, KALEIDO_SECRETS_DIR } from '../config/config';
 import { newLogger } from '@kaleido-io/core-sdk/log';
 import { createEventProcessorBase, EventProcessorEvent } from '../factories/event_processor';
-import { RequestContext } from '../types/core';
+import { HandlerRegistrationResources, RequestContext } from '../types/core';
 import {
   SetupContext,
   createSetupContext,
 } from '@kaleido-io/core-sdk/context';
-import { createEventProcessorContext } from '../app/context';
+import { createEventProcessorContext, createHandlerResources } from '../app/context';
 import type { EventProcessorDef, TransactionHandlerRegistration } from '../app/types';
 
 const log = newLogger('WorkflowEngineClient');
@@ -77,12 +77,27 @@ export interface WorkflowEngineClientConfig {
   maxAttempts?: number;
   /** Service bindings for platform service access (asset-manager, key-manager, etc.) */
   serviceBindings?: ServiceBindingsMap;
+  /**
+   * Secrets every handler sees as `ctx.secrets`, unless it is registered with
+   * its own. `fromConfigFile` loads them from `KALEIDO_SECRETS_DIR` when set.
+   */
+  secrets?: Record<string, string>;
 }
 
-type RegisteredHandler =
+/**
+ * What a handler is registered with in place of the client's config, secrets
+ * and files. Each one left out falls back to the client's.
+ */
+export type HandlerRegistrationOptions<CustomConfig = unknown> = HandlerRegistrationResources<CustomConfig>;
+
+const frozenCopy = (entries: Record<string, string> | undefined): Readonly<Record<string, string>> | undefined =>
+  entries === undefined ? undefined : Object.freeze({ ...entries });
+
+type RegisteredHandler = { resources?: HandlerRegistrationResources } & (
   | { name: string; type: 'eventProcessor'; def: EventProcessorDef<unknown, unknown> }
   | { name: string; type: 'transactionHandler'; def: TransactionHandlerRegistration }
-  | { name: string; type: 'eventSource'; source: EventSource };
+  | { name: string; type: 'eventSource'; source: EventSource }
+);
 
 export class WorkflowEngineClient<CustomConfig = unknown> {
   private runtime: HandlerRuntime;
@@ -114,6 +129,8 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     this.runtime.setProviderServices({
       providerName: config.providerName,
       config: this.customConfig,
+      secrets: frozenCopy(config.secrets ?? {}),
+      files: frozenCopy({}),
       getServiceClientOptions: (name, authRef) => this.getServiceClientOptions(name, authRef),
     });
   }
@@ -127,12 +144,24 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
    *   1. `path` argument
    *   2. `KALEIDO_CONFIG_FILE` env var
    *   3. `WFE_CONFIG_FILE` env var (legacy)
+   *
+   * The provider's own config, which handlers see as `ctx.config`, comes from
+   * the file `CONFIG_FILE` names, unless `options.customConfig` is given. The
+   * secrets under `KALEIDO_SECRETS_DIR`, when it is set, become every
+   * handler's `ctx.secrets`.
    */
-  static fromConfigFile<C = unknown>(path?: string): WorkflowEngineClient<C> {
+  static fromConfigFile<C = unknown>(path?: string, options?: { customConfig?: C }): WorkflowEngineClient<C> {
     const wfeClientConfig = ConfigLoader.loadClientConfigFromFile(path);
     const serviceBindings = ConfigLoader.loadServiceBindings(path);
     if (Object.keys(serviceBindings).length > 0) {
       wfeClientConfig.serviceBindings = serviceBindings;
+    }
+    const secretsDir = process.env[KALEIDO_SECRETS_DIR]?.trim();
+    if (secretsDir) {
+      wfeClientConfig.secrets = ConfigLoader.loadSecretsDir(secretsDir);
+    }
+    if (options?.customConfig !== undefined) {
+      return new WorkflowEngineClient<C>(wfeClientConfig, options.customConfig);
     }
 
     // Resolve the provider-specific ("custom") config file.
@@ -201,9 +230,18 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
    * Register an event processor handler.
    * The handler name must be unique within this client.
    */
-  eventProcessor<C = CustomConfig, E = unknown>(name: string, def: EventProcessorDef<C, E>): this {
+  eventProcessor<C = CustomConfig, E = unknown>(
+    name: string,
+    def: EventProcessorDef<C, E>,
+    options?: HandlerRegistrationOptions<C>,
+  ): this {
     this.assertUniqueHandlerName(name);
-    this.registeredHandlers.push({ name, type: 'eventProcessor', def: def as EventProcessorDef<unknown, unknown> });
+    this.registeredHandlers.push({
+      name,
+      type: 'eventProcessor',
+      def: def as EventProcessorDef<unknown, unknown>,
+      resources: options,
+    });
     return this;
   }
 
@@ -211,9 +249,9 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
    * Register a WFE transaction handler.
    * The handler name must be unique within this client.
    */
-  transactionHandler(name: string, def: TransactionHandlerRegistration): this {
+  transactionHandler(name: string, def: TransactionHandlerRegistration, options?: HandlerRegistrationOptions): this {
     this.assertUniqueHandlerName(name);
-    this.registeredHandlers.push({ name, type: 'transactionHandler', def });
+    this.registeredHandlers.push({ name, type: 'transactionHandler', def, resources: options });
     return this;
   }
 
@@ -221,10 +259,10 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
    * Register a WFE event source.
    * The handler name is taken from `source.name` and must be unique within this client.
    */
-  eventSource(source: EventSource): this {
+  eventSource(source: EventSource, options?: HandlerRegistrationOptions): this {
     const name = source.name;
     this.assertUniqueHandlerName(name);
-    this.registeredHandlers.push({ name, type: 'eventSource', source });
+    this.registeredHandlers.push({ name, type: 'eventSource', source, resources: options });
     return this;
   }
 
@@ -315,16 +353,35 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
 
   // ── Low-level registration API (used by newWorkflowEngineClient) ────────────
 
-  registerTransactionHandler(name: string, handler: TransactionHandler): void {
+  registerTransactionHandler(name: string, handler: TransactionHandler, options?: HandlerRegistrationOptions): void {
+    this.setHandlerResources(name, options);
     this.runtime.registerTransactionHandler(name, handler);
   }
 
-  registerEventSource(name: string, handler: EventSource): void {
+  registerEventSource(name: string, handler: EventSource, options?: HandlerRegistrationOptions): void {
+    this.setHandlerResources(name, options);
     this.runtime.registerEventSource(name, handler);
   }
 
-  registerEventProcessor(name: string, handler: EventProcessor): void {
+  registerEventProcessor(name: string, handler: EventProcessor, options?: HandlerRegistrationOptions): void {
+    this.setHandlerResources(name, options);
     this.runtime.registerEventProcessor(name, handler);
+  }
+
+  private setHandlerResources(name: string, options: HandlerRegistrationOptions | undefined): void {
+    if (!options) return;
+    this.runtime.setHandlerResources(name, {
+      config: options.config,
+      secrets: frozenCopy(options.secrets),
+      files: frozenCopy(options.files),
+    });
+  }
+
+  /** The config a handler sees: what it was registered with, or else the client's. */
+  private configFor(handlerName: string): CustomConfig {
+    const registered = this.registeredHandlers.find((h) => h.name === handlerName);
+    const own = registered?.resources?.config;
+    return (own !== undefined ? own : this.customConfig) as CustomConfig;
   }
 
   async connect(): Promise<void> {
@@ -398,7 +455,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
   private buildSetupContext(handlerName: string, signal: AbortSignal, authRef?: string): SetupContext<CustomConfig> {
     return createSetupContext(
       (name) => this.getServiceClientOptions(name, authRef),
-      this.customConfig,
+      this.configFor(handlerName),
       this.wfeConfig.providerName,
       handlerName,
       signal,
@@ -420,7 +477,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
   private registerBuilderHandlers(): void {
     for (const registered of this.registeredHandlers) {
       if (registered.type === 'eventProcessor') {
-        const { name, def } = registered;
+        const { name, def, resources } = registered;
         this.registerEventProcessor(
           name,
           createEventProcessorBase(
@@ -429,16 +486,21 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
               // Use the per-request signal so the batch observes the request
               // deadline / cancellation — not a start-level signal that is never aborted.
               const setupCtx = this.buildSetupContext(name, reqCtx.signal, reqCtx.authRef);
-              const ctx = createEventProcessorContext(setupCtx, reqCtx.requestId);
+              const ctx = createEventProcessorContext(
+                setupCtx,
+                reqCtx.requestId,
+                createHandlerResources(name, reqCtx.provider),
+              );
               return def.processBatch(ctx, events);
             },
           ),
+          resources,
         );
       } else if (registered.type === 'transactionHandler') {
-        const { name, def } = registered;
-        this.registerTransactionHandler(name, def.handler);
+        const { name, def, resources } = registered;
+        this.registerTransactionHandler(name, def.handler, resources);
       } else if (registered.type === 'eventSource') {
-        this.registerEventSource(registered.name, registered.source);
+        this.registerEventSource(registered.name, registered.source, registered.resources);
       }
     }
   }

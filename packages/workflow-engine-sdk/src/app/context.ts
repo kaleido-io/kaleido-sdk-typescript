@@ -20,18 +20,63 @@ import type { RequestContext, WSEvaluateTransaction, WSEventStreamInfo } from '.
 import { newError, SDKErrors } from '../i18n/errors';
 
 /**
+ * The secrets and files a handler was given where it is deployed.
+ *
+ * In a TypeScript provider they come from the handler's entry in the service
+ * config. In your own provider they come from what you register the handler
+ * with, and secrets default to the ones mounted under `KALEIDO_SECRETS_DIR`.
+ *
+ * A handler run by the SDK always has all three. They are optional in the type
+ * so that a context built by hand, for example in a test, needn't list them.
+ */
+export interface HandlerResources {
+  /** The handler's secrets, by name. */
+  readonly secrets?: Readonly<Record<string, string>>;
+  /** The handler's files, by name, as paths. */
+  readonly files?: Readonly<Record<string, string>>;
+  /** The path of the handler's file with this name. Throws for a name the handler has no file for. */
+  file?(name: string): string;
+}
+
+/** {@link HandlerResources} as the SDK fills them in, with every member present. */
+type FilledHandlerResources = Required<HandlerResources>;
+
+const noEntries: Readonly<Record<string, string>> = Object.freeze({});
+
+/** @internal — the secrets and files of the handler handling a request. */
+export function createHandlerResources(
+  handlerName: string,
+  provider?: { secrets?: Readonly<Record<string, string>>; files?: Readonly<Record<string, string>> },
+): FilledHandlerResources {
+  const secrets = provider?.secrets ?? noEntries;
+  const files = provider?.files ?? noEntries;
+  return {
+    secrets,
+    files,
+    file(name: string): string {
+      const path = Object.prototype.hasOwnProperty.call(files, name) ? files[name] : undefined;
+      if (path === undefined) {
+        throw newError(SDKErrors.MsgSDKHandlerFileUnknown, handlerName, name, Object.keys(files).join(', ') || '(none)');
+      }
+      return path;
+    },
+  };
+}
+
+/**
  * Context injected into event processor `processBatch` callbacks.
  * Extends {@link SetupContext} with the request-scoped ID for the current batch.
  */
-export interface EventProcessorContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
+export interface EventProcessorContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerResources {
   readonly requestId: string;
 }
 
 export function createEventProcessorContext<C>(
   setupCtx: SetupContext<C>,
   requestId: string,
+  resources: HandlerResources = createHandlerResources(setupCtx.handlerName),
 ): EventProcessorContext<C> {
-  return { ...setupCtx, requestId };
+  return { ...setupCtx, ...resources, requestId };
 }
 
 /**
@@ -41,7 +86,7 @@ export function createEventProcessorContext<C>(
  * (using its authRef), so hosted bindings work here without a setup hook.
  * `signal` aborts when the engine's deadline for the request passes.
  */
-export interface TransactionContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
+export interface TransactionContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerResources {
   readonly requestId: string;
   readonly transaction: WSEvaluateTransaction;
 }
@@ -49,11 +94,11 @@ export interface TransactionContext<CustomConfig = unknown> extends SetupContext
 /**
  * Context passed to an event source poll function, one per poll.
  *
- * `config` is the provider's config; the stream's own config is on the poll
+ * `config` is the handler's config; the stream's own config is on the poll
  * function's first argument. Bindings resolve as the stream's owner (using the
  * poll's authRef).
  */
-export interface EventSourceContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
+export interface EventSourceContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerResources {
   readonly requestId: string;
   readonly stream: WSEventStreamInfo;
 }
@@ -84,6 +129,7 @@ export function createTransactionContext(
       handlerName,
       reqContext?.signal ?? neverAborted,
     ),
+    ...createHandlerResources(handlerName, reqContext?.provider),
     requestId: reqContext?.requestId ?? '',
     transaction,
   };
@@ -104,6 +150,7 @@ export function createEventSourceContext(
       handlerName,
       reqContext.signal,
     ),
+    ...createHandlerResources(handlerName, reqContext.provider),
     requestId: reqContext.requestId,
     stream: { streamId: stream.streamId, streamName: stream.streamName },
   };

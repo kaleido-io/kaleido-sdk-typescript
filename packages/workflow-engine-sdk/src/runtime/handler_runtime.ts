@@ -33,6 +33,7 @@ import {
   ServiceProxyResponse,
   RequestContext,
   ProviderServices,
+  HandlerRegistrationResources,
 } from '../types/core';
 import {
   Handler,
@@ -172,6 +173,8 @@ export class HandlerRuntime {
    * per request. Set by WorkflowEngineClient; absent for direct-runtime use.
    */
   private providerServices?: ProviderServices;
+  /** What each handler was registered with, by the name the engine addresses it by. */
+  private readonly handlerResources = new Map<string, HandlerRegistrationResources>();
 
   constructor(config: HandlerRuntimeConfig) {
     if (config.server) {
@@ -245,6 +248,31 @@ export class HandlerRuntime {
    */
   setProviderServices(services: ProviderServices): void {
     this.providerServices = services;
+  }
+
+  /**
+   * Set the config, secrets and files a handler was registered with. A request
+   * for the handler sees them in place of the provider-wide ones; each that is
+   * left out falls back to the provider-wide value.
+   */
+  setHandlerResources(handlerName: string, resources: HandlerRegistrationResources): void {
+    this.handlerResources.set(handlerName, resources);
+  }
+
+  /** What a handler's requests reach through the provider. */
+  private providerServicesFor(handlerName: string | undefined): ProviderServices | undefined {
+    const base = this.providerServices;
+    const own = handlerName === undefined ? undefined : this.handlerResources.get(handlerName);
+    if (!base || !own) {
+      return base;
+    }
+    return {
+      providerName: base.providerName,
+      getServiceClientOptions: base.getServiceClientOptions,
+      config: own.config !== undefined ? own.config : base.config,
+      secrets: own.secrets ?? base.secrets,
+      files: own.files ?? base.files,
+    };
   }
 
   /**
@@ -706,6 +734,11 @@ export class HandlerRuntime {
     this.sendMessage(response);
   }
 
+  private providerFor(handlerName: string | undefined): { provider?: ProviderServices } {
+    const provider = this.providerServicesFor(handlerName);
+    return provider ? { provider } : {};
+  }
+
   newRequestContext(envelope: WSHandlerEnvelope): RequestContext {
     const controller = new AbortController();
     let timeoutId: NodeJS.Timeout | undefined;
@@ -736,7 +769,7 @@ export class HandlerRuntime {
         if (timeoutId !== undefined) clearTimeout(timeoutId);
         controller.abort();
       },
-      ...(this.providerServices ? { provider: this.providerServices } : {}),
+      ...this.providerFor(envelope?.handler),
     }
   }
 
