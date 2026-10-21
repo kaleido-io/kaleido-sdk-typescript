@@ -119,3 +119,59 @@ jobs:
             if (!found) { console.error('FAIL: no @kaleido-io/* deps were added'); failed = true; }
             if (failed) process.exit(1);
           "
+
+  init-sdk-version:
+    name: ksdk init --sdk-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      # Release tags exist only on published versions, so tag throwaway releases in the
+      # checkout: one at HEAD with its own workflow-engine-sdk version, and one without
+      # the snippet package template
+      - name: Tag test releases
+        run: |
+          git config user.name ci
+          git config user.email ci@example.com
+          git checkout -q -b sdk-version-test
+          node -e "
+            const f = 'packages/workflow-engine-sdk/package.json';
+            const pkg = JSON.parse(require('fs').readFileSync(f, 'utf-8'));
+            pkg.version = '99.0.0';
+            require('fs').writeFileSync(f, JSON.stringify(pkg, null, 2) + '\n');
+          "
+          git commit -qam "Test release"
+          git tag "@kaleido-io/workflow-engine-sdk@99.0.0"
+          git rm -rq samples/typescript-provider-package
+          git commit -qm "Test release without the snippet package template"
+          git tag "@kaleido-io/workflow-engine-sdk@98.0.0"
+
+      - name: Init at a release pins its versions
+        run: |
+          mkdir -p /tmp/ksdk-version-test && cd /tmp/ksdk-version-test
+          KSDK_REPO_URL="$GITHUB_WORKSPACE" node "$GITHUB_WORKSPACE/packages/kaleido-sdk/bin/ksdk.js" \
+            init my-handlers --template typescript-provider-package --sdk-version 99.0.0
+          node -e "
+            const pkg = JSON.parse(require('fs').readFileSync('my-handlers/package.json', 'utf-8'));
+            const v = pkg.dependencies['@kaleido-io/workflow-engine-sdk'];
+            if (v !== '^99.0.0') { console.error('FAIL: workflow-engine-sdk pinned to ' + v); process.exit(1); }
+            console.log('OK:   @kaleido-io/workflow-engine-sdk => ' + v);
+          "
+
+      - name: Init rejects unknown releases and releases without the template
+        run: |
+          cd /tmp/ksdk-version-test
+          KSDK="$GITHUB_WORKSPACE/packages/kaleido-sdk/bin/ksdk.js"
+          for v in 97.0.0 98.0.0 latest; do
+            name="rejected-${v//./-}"
+            if KSDK_REPO_URL="$GITHUB_WORKSPACE" node "$KSDK" init "$name" --template typescript-provider-package --sdk-version $v 2> err.txt; then
+              echo "FAIL: --sdk-version $v was accepted"; exit 1
+            fi
+            cat err.txt
+            grep -q -e "not a released version" -e "is not available for" -e "needs a version" err.txt || { echo "FAIL: unexpected error for $v"; exit 1; }
+            test ! -d "$name" || { echo "FAIL: $name was created"; exit 1; }
+          done

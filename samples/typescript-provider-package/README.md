@@ -10,6 +10,8 @@ cd my-handlers
 npm install
 ```
 
+To match the TypeScript provider you deploy to, add `--sdk-version` with the `@kaleido-io/workflow-engine-sdk` version it runs. The project then depends on the SDK versions of that release.
+
 ## Develop
 
 | Path | What it is |
