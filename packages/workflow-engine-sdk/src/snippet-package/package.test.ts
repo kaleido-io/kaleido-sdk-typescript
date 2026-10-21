@@ -20,6 +20,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFil
 import { tmpdir } from 'os';
 import { join } from 'path';
 
+import * as typescript from 'typescript';
+
 import { readZip, writeZip, ZipFormatError } from './zip';
 import {
   MAX_PACKAGE_ENTRIES,
@@ -222,5 +224,60 @@ describe('packSnippetPackage', () => {
     const { zip, files } = packSnippetPackage(dir);
     expect(files).toEqual(['.gitignore', 'package.json', 'src/lib/format.ts', 'src/transaction/payments.ts', 'test/payments.test.ts']);
     expect(inspectSnippetPackage(zip).problems).toEqual([]);
+  });
+});
+
+describe('packSnippetPackage handler list', () => {
+  const project = (files: Record<string, string>) => {
+    const dir = mkdtempSync(join(tmpdir(), 'pack-handlers-'));
+    for (const [p, c] of Object.entries(files)) {
+      mkdirSync(join(dir, p, '..'), { recursive: true });
+      writeFileSync(join(dir, p), c);
+    }
+    return dir;
+  };
+  const zippedPackageJson = (zip: Buffer) =>
+    JSON.parse(readZip(zip).find((e) => e.path === 'package.json')!.read().toString('utf8'));
+  const sourcePackageJson = JSON.stringify({ name: 'acme-handlers', version: '1.0.0', dependencies: { '@kaleido-io/workflow-engine-sdk': '^1.1.0' } }, null, 2);
+  const handlerFiles = {
+    'src/transaction/payments.ts': "export const paymentHandler = defineTransactionHandler('payments', {});\n",
+    'src/processor/audit.ts': 'export const auditProcessor = defineProcessor(async () => {});\n',
+  };
+
+  it('lists the handlers found in the code in the zip, leaving the project\'s package.json as it is', () => {
+    const dir = project({ 'package.json': sourcePackageJson, ...handlerFiles });
+    const packed = packSnippetPackage(dir, { typescript });
+    expect(packed.handlerSource).toBe('code');
+    expect(packed.problems).toEqual([]);
+    expect(packed.handlers).toEqual({
+      eventProcessors: [{ name: 'audit', entry: 'src/processor/audit.ts' }],
+      transactionHandlers: [{ name: 'payments', entry: 'src/transaction/payments.ts' }],
+    });
+    expect(zippedPackageJson(packed.zip).kaleido).toEqual(packed.handlers);
+    expect(readFileSync(join(dir, 'package.json'), 'utf8')).toBe(sourcePackageJson);
+    expect(inspectSnippetPackage(packed.zip).problems).toEqual([]);
+  });
+
+  it('uses a "kaleido" section as it is, warning about handlers in the code that it leaves out', () => {
+    const kaleido = { transactionHandlers: [{ name: 'pay', entry: 'src/transaction/payments.ts' }] };
+    const dir = project({ 'package.json': JSON.stringify({ ...JSON.parse(sourcePackageJson), kaleido }), ...handlerFiles });
+    const packed = packSnippetPackage(dir, { typescript });
+    expect(packed.handlerSource).toBe('package.json');
+    expect(packed.handlers).toEqual(kaleido);
+    expect(zippedPackageJson(packed.zip).kaleido).toEqual(kaleido);
+    expect(packed.warnings).toEqual([
+      'src/processor/audit.ts defines handler "audit", which the package.json "kaleido" section doesn\'t list, so it won\'t be offered',
+    ]);
+  });
+
+  it('reports handlers it cannot list, and leaves the zip\'s package.json without a section', () => {
+    const dir = project({
+      'package.json': sourcePackageJson,
+      'src/a.ts': "export const a = defineTransactionHandler('same', {});\n",
+      'src/b.ts': "export const b = defineProcessor('same', async () => {});\n",
+    });
+    const packed = packSnippetPackage(dir, { typescript });
+    expect(packed.problems).toEqual(['src/a.ts and src/b.ts both define a handler named "same"; handler names must be unique in a package']);
+    expect(zippedPackageJson(packed.zip).kaleido).toBeUndefined();
   });
 });

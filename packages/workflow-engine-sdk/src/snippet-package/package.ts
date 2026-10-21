@@ -24,6 +24,7 @@
  * own Go implementation of them) and in the TypeScript provider.
  */
 
+import { discoverHandlers, isHandlerSourceFile, manifestFromHandlers, type DiscoverOptions } from './discover';
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { dirname, join, relative, resolve, sep } from 'path';
 import { readZip, writeZip, type ZipEntry, type ZipInput } from './zip';
@@ -318,7 +319,33 @@ function ignoredByGitignore(directory: string): (relPath: string) => boolean {
  * node_modules, .git, build output, editor settings, anything .gitignore
  * names, and earlier package zips.
  */
-export function packSnippetPackage(directory: string): { zip: Buffer; files: string[] } {
+/** What `packSnippetPackage` built, and where its handler list came from. */
+export interface PackedSnippetPackage {
+  /** The zip, ready to upload. */
+  zip: Buffer;
+  /** The files in the zip, relative to the package root. */
+  files: string[];
+  /**
+   * `package.json` when the project lists its handlers in a "kaleido" section,
+   * which is used as it is; `code` when the list was found in the source and
+   * written into the zip's package.json, leaving the project's untouched.
+   */
+  handlerSource: 'package.json' | 'code';
+  /** The handlers the zip's package.json lists. */
+  handlers: SnippetPackageManifest;
+  /** Handlers that couldn't be listed from the source; the zip is not usable while there are any. */
+  problems: string[];
+  /** Differences between a "kaleido" section and the source, which don't stop the package. */
+  warnings: string[];
+}
+
+/**
+ * Zip a snippet package project, leaving out node_modules, build output,
+ * lockfiles, files `.gitignore` names and earlier zips. When the project's
+ * package.json has no "kaleido" section, the handlers are found in the source
+ * and listed in the zip's package.json.
+ */
+export function packSnippetPackage(directory: string, options: DiscoverOptions = {}): PackedSnippetPackage {
   const ignored = ignoredByGitignore(directory);
   const inputs: ZipInput[] = [];
   const walk = (dir: string) => {
@@ -342,5 +369,35 @@ export function packSnippetPackage(directory: string): { zip: Buffer; files: str
     throw new Error(`${directory} is not a directory`);
   }
   walk(directory);
-  return { zip: writeZip(inputs), files: inputs.map((i) => i.path).sort() };
+
+  const sources: Record<string, string> = {};
+  for (const input of inputs) {
+    if (isHandlerSourceFile(input.path)) {
+      sources[input.path] = input.content.toString('utf8');
+    }
+  }
+  const discovery = discoverHandlers(sources, options);
+  const packageJsonInput = inputs.find((i) => i.path === 'package.json');
+  let pkg: SnippetPackageJson | undefined;
+  try {
+    pkg = packageJsonInput ? JSON.parse(packageJsonInput.content.toString('utf8')) : undefined;
+  } catch {
+    pkg = undefined;
+  }
+
+  let result: Omit<PackedSnippetPackage, 'zip' | 'files'>;
+  if (pkg && typeof pkg === 'object' && pkg.kaleido !== undefined) {
+    const listed = new Set(HANDLER_KINDS.flatMap((kind) => (Array.isArray(pkg?.kaleido?.[kind]) ? pkg!.kaleido![kind]! : []).map((h) => h?.entry)));
+    const warnings = discovery.handlers
+      .filter((h) => !listed.has(h.entry))
+      .map((h) => `${h.entry} defines handler "${h.name}", which the package.json "kaleido" section doesn't list, so it won't be offered`);
+    result = { handlerSource: 'package.json', handlers: pkg.kaleido, problems: [], warnings };
+  } else {
+    const handlers = manifestFromHandlers(discovery.handlers);
+    if (pkg && typeof pkg === 'object' && packageJsonInput && discovery.problems.length === 0) {
+      packageJsonInput.content = Buffer.from(JSON.stringify({ ...pkg, kaleido: handlers }, null, 2) + '\n');
+    }
+    result = { handlerSource: 'code', handlers, problems: discovery.problems, warnings: [] };
+  }
+  return { zip: writeZip(inputs), files: inputs.map((i) => i.path).sort(), ...result };
 }

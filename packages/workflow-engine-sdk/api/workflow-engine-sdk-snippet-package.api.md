@@ -8,16 +8,44 @@
 export function checkSnippetPackage(files: SnippetPackageFile[]): SnippetPackageCheck;
 
 // @public
+export interface DiscoveredHandler {
+    entry: string;
+    kind: HandlerKind;
+    name: string;
+    named: boolean;
+}
+
+// @public
+export function discoverHandlers(files: Record<string, string>, options?: DiscoverOptions): HandlerDiscovery;
+
+// @public
+export interface DiscoverOptions {
+    typescript?: unknown;
+}
+
+// @public
 export function extractSnippetPackage(zip: Buffer, directory: string): NormalizedSnippetPackage & SnippetPackageCheck;
 
 // @public (undocumented)
 export const HANDLER_KINDS: HandlerKind[];
+
+// @public
+export interface HandlerDiscovery {
+    handlers: DiscoveredHandler[];
+    problems: string[];
+}
 
 // @public (undocumented)
 export type HandlerKind = 'transactionHandlers' | 'eventSources' | 'eventProcessors';
 
 // @public
 export function inspectSnippetPackage(zip: Buffer): NormalizedSnippetPackage & SnippetPackageCheck;
+
+// @public
+export function isHandlerSourceFile(path: string): boolean;
+
+// @public
+export function manifestFromHandlers(handlers: DiscoveredHandler[]): SnippetPackageManifest;
 
 // @public
 export const MAX_PACKAGE_ENTRIES = 5000;
@@ -39,10 +67,17 @@ export interface NormalizedSnippetPackage {
 export function normalizeSnippetPackage(entries: ZipEntry[]): NormalizedSnippetPackage;
 
 // @public
-export function packSnippetPackage(directory: string): {
-    zip: Buffer;
+export interface PackedSnippetPackage {
     files: string[];
-};
+    handlers: SnippetPackageManifest;
+    handlerSource: 'package.json' | 'code';
+    problems: string[];
+    warnings: string[];
+    zip: Buffer;
+}
+
+// @public
+export function packSnippetPackage(directory: string, options?: DiscoverOptions): PackedSnippetPackage;
 
 // @public
 export function readZip(buf: Buffer): ZipEntry[];

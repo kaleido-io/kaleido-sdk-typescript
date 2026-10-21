@@ -41,5 +41,8 @@ export type {
   NormalizedSnippetPackage,
   SnippetPackageCheck,
 } from './package';
+export type { PackedSnippetPackage } from './package';
+export { discoverHandlers, manifestFromHandlers, isHandlerSourceFile } from './discover';
+export type { DiscoveredHandler, HandlerDiscovery, DiscoverOptions } from './discover';
 export { readZip, writeZip, ZipFormatError } from './zip';
 export type { ZipEntry, ZipInput } from './zip';
