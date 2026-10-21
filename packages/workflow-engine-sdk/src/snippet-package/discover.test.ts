@@ -70,6 +70,19 @@ describe.each([
     expect(problems).toEqual(['src/a.ts and src/b.ts both define a handler named "dup"; handler names must be unique in a package']);
   });
 
+  it('accepts names the workflow engine accepts, and reports ones it would refuse', () => {
+    const { handlers, problems } = discoverHandlers({
+      'src/stub.ts': `export const s = defineTransactionHandler('coreBankingStub', {});\n`,
+      'src/bad.ts': `export const b = defineTransactionHandler('bad name', {});\n`,
+      'src/my handler.ts': `export const h = defineProcessor(async () => {});\n`,
+    }, options);
+    expect(handlers).toEqual([{ kind: 'transactionHandlers', name: 'coreBankingStub', entry: 'src/stub.ts', named: true }]);
+    expect(problems).toEqual([
+      expect.stringContaining('src/bad.ts: handler name "bad name" must be 1 to 64 letters'),
+      expect.stringContaining('src/my handler.ts: the file name gives the handler the name "my handler"'),
+    ]);
+  });
+
   it('asks for a string literal when the name is in a variable', () => {
     const { handlers, problems } = discoverHandlers({
       'src/a.ts': `const NAME = 'x';\nexport const a = defineTransactionHandler(NAME, {});\n`,

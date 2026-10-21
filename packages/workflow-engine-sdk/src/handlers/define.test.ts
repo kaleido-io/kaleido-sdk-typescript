@@ -435,9 +435,18 @@ describe('named handlers', () => {
     expect(definedName(fromAnotherCopy)).toBe('other');
   });
 
-  it('refuses a name that is not lowercase letters, numbers and hyphens', () => {
-    expect(() => defineTransactionHandler('Payments', { a: () => 1 })).toThrow('defineTransactionHandler: handler name "Payments" must be lowercase');
-    expect(() => defineProcessor('ledger writer', async () => {})).toThrow('defineProcessor: handler name "ledger writer"');
+  it('accepts the names the workflow engine accepts, including camel case, dots and underscores', () => {
+    expect(definedName(defineTransactionHandler('coreBankingStub', { a: () => 1 }))).toBe('coreBankingStub');
+    expect(definedName(defineProcessor('ledger.writer_v2', async () => {}))).toBe('ledger.writer_v2');
+    expect(definedName(defineEventSource('Feed-1', { poll: () => ({ checkpoint: 0 }) }))).toBe('Feed-1');
+  });
+
+  it('refuses a name the workflow engine would refuse', () => {
+    expect(() => defineTransactionHandler('ledger writer', { a: () => 1 })).toThrow(
+      'defineTransactionHandler: handler name "ledger writer" must be 1 to 64 letters',
+    );
     expect(() => defineProcessor('-x', async () => {})).toThrow('handler name "-x"');
+    expect(() => defineProcessor('x.', async () => {})).toThrow('handler name "x."');
+    expect(() => defineEventSource('a'.repeat(65), { poll: () => ({ checkpoint: 0 }) })).toThrow('defineEventSource: handler name');
   });
 });

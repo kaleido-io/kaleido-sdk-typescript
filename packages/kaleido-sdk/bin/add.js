@@ -36,7 +36,7 @@ if (!kind || args.includes('--help') || args.includes('-h')) {
 Usage: npx ksdk add <kind> <name>
 
   kind    ${Object.keys(KINDS).join(' | ')}
-  name    The handler name workflows and streams bind to (lowercase letters, numbers and hyphens)
+  name    The handler name workflows and streams bind to (letters, numbers, '.', '_' and '-')
 
 Writes a starter handler under src/, named in its code, and a test under test/.
 If package.json has a "kaleido" section, the handler is added to it too.
@@ -56,7 +56,10 @@ const fail = (message) => {
 
 const spec = KINDS[kind];
 if (!spec) fail(`unknown kind "${kind}". Use one of: ${Object.keys(KINDS).join(', ')}`);
-if (!name || !/^[a-z0-9][a-z0-9-]*$/.test(name)) fail('the name must be lowercase letters, numbers and hyphens');
+// The workflow engine's rule for the handler names that workflows and streams bind to
+if (!name || !/^[0-9a-zA-Z]([0-9a-zA-Z._-]{0,62}[0-9a-zA-Z])?$/.test(name)) {
+  fail("the name must be 1 to 64 letters, numbers, '.', '_' or '-', starting and ending with a letter or number");
+}
 
 const pkgPath = join(process.cwd(), 'package.json');
 if (!existsSync(pkgPath)) fail('no package.json in the current directory. Run this in a snippet package project.');
@@ -89,7 +92,10 @@ for (const file of [entry, testFile]) {
   if (existsSync(join(process.cwd(), file))) fail(`${file} already exists`);
 }
 
-const camel = name.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
+// A JavaScript identifier from the name: each '-', '.' or '_' joins the next word in camel case
+const words = name.split(/[-._]+/).filter(Boolean);
+const joined = words.map((w, i) => (i === 0 ? w[0].toLowerCase() + w.slice(1) : w[0].toUpperCase() + w.slice(1))).join('');
+const camel = /^[0-9]/.test(joined) ? `handler${joined}` : joined;
 const fromTest = `../${entry.replace(/\.ts$/, '.js')}`;
 
 const Camel = camel[0].toUpperCase() + camel.slice(1);

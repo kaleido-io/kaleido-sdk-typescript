@@ -20,6 +20,7 @@
  */
 
 import type { HandlerKind, SnippetPackageHandler, SnippetPackageManifest } from './package';
+import { HANDLER_NAME_RULE, isValidHandlerName } from '../handlers/define';
 
 const DEFINERS: Record<string, HandlerKind> = {
   defineTransactionHandler: 'transactionHandlers',
@@ -115,9 +116,18 @@ export function discoverHandlers(files: Record<string, string>, options: Discove
       problems.push(`${path}: give ${handler.definer} its handler name as a string literal, such as ${handler.definer}('${baseName(path)}', …), so it can be read without running the code`);
       continue;
     }
+    const name = handler.literal ?? baseName(path);
+    if (!isValidHandlerName(name)) {
+      problems.push(
+        handler.literal !== undefined
+          ? `${path}: handler name "${name}" must be ${HANDLER_NAME_RULE}`
+          : `${path}: the file name gives the handler the name "${name}", which must be ${HANDLER_NAME_RULE}; rename the file or name the handler in its ${handler.definer} call`,
+      );
+      continue;
+    }
     handlers.push({
       kind: DEFINERS[handler.definer],
-      name: handler.literal ?? baseName(path),
+      name,
       entry: path,
       named: handler.literal !== undefined,
     });

@@ -44,11 +44,21 @@ const DEFINED_TRANSACTION_HANDLER = Symbol.for('@kaleido-io/workflow-engine-sdk/
 const DEFINED_PROCESSOR = Symbol.for('@kaleido-io/workflow-engine-sdk/defined-processor');
 const HANDLER_NAME = Symbol.for('@kaleido-io/workflow-engine-sdk/handler-name');
 
-const HANDLER_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+// The workflow engine's rule for the provider handler names that workflows and streams bind to.
+const HANDLER_NAME_PATTERN = /^[0-9a-zA-Z]([0-9a-zA-Z._-]{0,62}[0-9a-zA-Z])?$/;
+
+/** Whether a name is valid for a handler: what workflows and streams can bind to. */
+export function isValidHandlerName(name: string): boolean {
+  return HANDLER_NAME_PATTERN.test(name);
+}
+
+/** Why a handler name isn't valid, for an error message. */
+export const HANDLER_NAME_RULE =
+  "1 to 64 letters, numbers, '.', '_' or '-', starting and ending with a letter or number";
 
 function checkHandlerName(name: string, definer: string): string {
-  if (!HANDLER_NAME_PATTERN.test(name)) {
-    throw new Error(`${definer}: handler name "${name}" must be lowercase letters, numbers and hyphens, starting with a letter or number`);
+  if (!isValidHandlerName(name)) {
+    throw new Error(`${definer}: handler name "${name}" must be ${HANDLER_NAME_RULE}`);
   }
   return name;
 }
@@ -385,6 +395,7 @@ export function defineEventSource<CP, CF = unknown, DT = unknown>(
   name: string,
   definition: EventSourceDefinition<CP, CF, DT>,
 ): EventSourceBuilder<CP, CF, DT> {
+  checkHandlerName(name, 'defineEventSource');
   const source = createEventSource<CP, CF, DT>(name, async (conf, checkpoint, _authRef, ctx) => {
     const { config, ...stream } = conf;
     // The SDK always passes a poll its context; only a direct call of the poll function could leave it out.
