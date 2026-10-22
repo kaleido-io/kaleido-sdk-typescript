@@ -27,7 +27,7 @@ const args = process.argv.slice(2);
 
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`
-Usage: npx ksdk package [--out <file>] [--dir <project>]
+Usage: npx ksdk package [--out <file>] [--dir <project>] [--config <file>]
 
 Zips a TypeScript provider snippet package, leaving out node_modules, build
 output, lockfiles and anything .gitignore names, then checks it: a package.json at the
@@ -37,11 +37,19 @@ The handlers are found in the code: each file that exports one made with
 defineTransactionHandler, defineEventSource or defineProcessor, named as it is
 defined or after the file. They are listed in the zip's package.json; the
 project's own package.json is left as it is. A "kaleido" section in the
-project's package.json is used instead, to rename, leave out or add handlers.
+project's package.json that lists handlers is used instead, to rename, leave out
+or add handlers.
+
+The package's default config file, which every handler reads as ctx.config
+unless it has its own, is recorded too: the --config file, else the package.json
+"kaleido.config", else config/provider-config.yaml when there is one. A handler's
+own config file is named in "kaleido.handlerConfig", by handler name. Config
+files ship in the package, so keep credentials out of them.
 
 Options:
   --out <file>    Where to write the zip (default: <name>-<version>.zip)
   --dir <project> The project to package (default: the current directory)
+  --config <file> The package's default config file, relative to the project
 `);
   process.exit(0);
 }
@@ -72,7 +80,7 @@ try {
   typescript = undefined;
 }
 
-const packed = packSnippetPackage(projectDir, { typescript });
+const packed = packSnippetPackage(projectDir, { typescript, config: option('--config') });
 if (packed.problems.length > 0) {
   console.error('The handlers could not be listed:');
   for (const problem of packed.problems) console.error(`  - ${problem}`);
@@ -93,3 +101,4 @@ const handlers = ['transactionHandlers', 'eventSources', 'eventProcessors']
 const source = packed.handlerSource === 'code' ? 'found in the code' : 'from the package.json "kaleido" section';
 console.log(`Wrote ${out}: ${files.length} files, ${zip.length} bytes.`);
 console.log(handlers.length > 0 ? `Handlers, ${source}: ${handlers.join(', ')}` : `No handlers ${source}.`);
+if (packed.handlers?.config) console.log(`Default config: ${packed.handlers.config}`);
