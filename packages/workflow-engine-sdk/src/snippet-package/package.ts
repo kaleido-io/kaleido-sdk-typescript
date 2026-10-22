@@ -70,12 +70,19 @@ const EXCLUDED_PROJECT_ROOTS = new Set([
 export type HandlerKind = 'transactionHandlers' | 'eventSources' | 'eventProcessors';
 export const HANDLER_KINDS: HandlerKind[] = ['transactionHandlers', 'eventSources', 'eventProcessors'];
 
-/** A handler a package provides: its name, the source file that exports it, and the file its config is in, if it has its own. */
+/**
+ * A handler a package provides: its name, the source file that exports it, the
+ * file its config is in, if it has its own, and the names of the secrets it reads.
+ */
 export interface SnippetPackageHandler {
   name: string;
   entry: string;
   config?: string;
+  secrets?: string[];
 }
+
+/** The rule a secret's name follows, where it is the key of a handler's secrets in a service config. */
+export const SECRET_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 /**
  * The `kaleido` section of a package's package.json: its handlers, and its
@@ -89,6 +96,11 @@ export type SnippetPackageManifest = Partial<Record<HandlerKind, SnippetPackageH
    * project's package.json; `ksdk package` moves each onto its handler's entry.
    */
   handlerConfig?: Record<string, string>;
+  /**
+   * The secrets particular handlers read, by handler name. Written by hand in a
+   * project's package.json; `ksdk package` moves each list onto its handler's entry.
+   */
+  handlerSecrets?: Record<string, string[]>;
 };
 
 /** The package's default config file when nothing else names one. */
@@ -487,6 +499,7 @@ export function packSnippetPackage(directory: string, options: PackOptions = {})
   const included = new Set(inputs.map((i) => i.path));
   const handlers: SnippetPackageManifest = { ...result.handlers };
   delete handlers.handlerConfig;
+  delete handlers.handlerSecrets;
   const defaultConfig = options.config ?? kaleido?.config ?? (included.has(DEFAULT_PACKAGE_CONFIG_FILE) ? DEFAULT_PACKAGE_CONFIG_FILE : undefined);
   if (defaultConfig !== undefined) {
     handlers.config = defaultConfig.replace(/^\.\//, '');
@@ -494,20 +507,46 @@ export function packSnippetPackage(directory: string, options: PackOptions = {})
     delete handlers.config;
   }
   const handlerConfig = kaleido?.handlerConfig ?? {};
+  const handlerSecrets = kaleido?.handlerSecrets ?? {};
   const named = new Set<string>();
   for (const kind of HANDLER_KINDS) {
     if (!handlers[kind]) {
       continue;
     }
     handlers[kind] = handlers[kind]!.map((h) => {
-      const own = handlerConfig[h.name] ?? h.config;
       named.add(h.name);
-      return own !== undefined ? { ...h, config: own.replace(/^\.\//, '') } : h;
+      const own = handlerConfig[h.name] ?? h.config;
+      const secrets = handlerSecrets[h.name] ?? h.secrets;
+      return {
+        ...h,
+        ...(own !== undefined ? { config: own.replace(/^\.\//, '') } : {}),
+        ...(secrets !== undefined ? { secrets: [...new Set(secrets)] } : {}),
+      };
     });
   }
   const problems = [...result.problems];
-  for (const name of Object.keys(handlerConfig).filter((n) => !named.has(n))) {
-    problems.push(`package.json "kaleido.handlerConfig" names "${name}", which isn't one of the package's handlers`);
+  for (const [section, map] of [['handlerConfig', handlerConfig], ['handlerSecrets', handlerSecrets]] as const) {
+    for (const name of Object.keys(map).filter((n) => !named.has(n))) {
+      problems.push(`package.json "kaleido.${section}" names "${name}", which isn't one of the package's handlers`);
+    }
+  }
+  for (const kind of HANDLER_KINDS) {
+    for (const h of handlers[kind] ?? []) {
+      if (h.secrets === undefined) {
+        continue;
+      }
+      if (!Array.isArray(h.secrets)) {
+        problems.push(`Handler "${h.name}": its secrets must be a list of names`);
+        continue;
+      }
+      for (const secret of h.secrets) {
+        if (typeof secret !== 'string' || !SECRET_NAME_PATTERN.test(secret)) {
+          problems.push(
+            `Handler "${h.name}": secret name ${JSON.stringify(secret)} must start with a letter or digit and contain only letters, digits, ".", "_" and "-"`,
+          );
+        }
+      }
+    }
   }
   const configFiles = [handlers.config, ...HANDLER_KINDS.flatMap((kind) => (handlers[kind] ?? []).map((h) => h.config))];
   for (const file of new Set(configFiles.filter((f): f is string => f !== undefined))) {

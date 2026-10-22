@@ -149,6 +149,8 @@ export interface SnippetPackagePlan {
   defaultConfigFile?: string;
   /** The config file of each handler that has its own, by name. */
   handlerConfigFiles: Record<string, string>;
+  /** The secrets each handler reads, by name; a handler not listed reads none. */
+  handlerSecretNames: Record<string, string[]>;
 }
 
 /**
@@ -165,10 +167,14 @@ export function planSnippetPackage(packageDir: string, options: RunSnippetPackag
   const manifest: SnippetPackageManifest = packed.handlers;
   const handlers = HANDLER_KINDS.flatMap((kind) => (manifest[kind] ?? []).map((h) => ({ kind, name: h.name, entry: h.entry })));
   const handlerConfigFiles: Record<string, string> = {};
+  const handlerSecretNames: Record<string, string[]> = {};
   for (const kind of HANDLER_KINDS) {
     for (const h of manifest[kind] ?? []) {
       if (h.config) {
         handlerConfigFiles[h.name] = resolve(dir, h.config);
+      }
+      if (h.secrets && h.secrets.length > 0) {
+        handlerSecretNames[h.name] = h.secrets;
       }
     }
   }
@@ -180,7 +186,7 @@ export function planSnippetPackage(packageDir: string, options: RunSnippetPackag
     defaultConfigFile = resolve(dir, DEFAULT_PACKAGE_CONFIG_FILE);
   }
   const supplied = Object.keys(pkg.dependencies ?? {}).filter(isSuppliedDependency);
-  return { packageName: pkg.name ?? dir, handlers, supplied, defaultConfigFile, handlerConfigFiles };
+  return { packageName: pkg.name ?? dir, handlers, supplied, defaultConfigFile, handlerConfigFiles, handlerSecretNames };
 }
 
 /**
@@ -201,10 +207,15 @@ export async function runSnippetPackage(packageDir: string, options: RunSnippetP
 
   const loaded = await loadPackageHandlers(dir, plan.handlers, { packageName: plan.packageName, supplied: plan.supplied });
   const client = WorkflowEngineClient.fromConfigFile(options.kaleidoConfigFile, { customConfig: defaultConfig as unknown });
-  registerPackageHandlers(client, loaded, (h) => (handlerConfigs[h.name] ? { config: handlerConfigs[h.name] } : undefined));
+  // As in a TypeScript provider, a handler sees only the secrets it reads: those its package lists for it
+  registerPackageHandlers(client, loaded, (h) => ({
+    ...(handlerConfigs[h.name] ? { config: handlerConfigs[h.name] } : {}),
+    secretNames: plan.handlerSecretNames[h.name] ?? [],
+  }));
   for (const h of loaded) {
     const configFrom = plan.handlerConfigFiles[h.name] ?? plan.defaultConfigFile ?? 'none';
-    log.info(`Loaded ${h.kind === 'transactionHandlers' ? 'transaction handler' : h.kind === 'eventSources' ? 'event source' : 'event processor'} ${h.name} from ${h.entry}, config: ${configFrom}`);
+    const secrets = plan.handlerSecretNames[h.name]?.join(', ') || 'none';
+    log.info(`Loaded ${h.kind === 'transactionHandlers' ? 'transaction handler' : h.kind === 'eventSources' ? 'event source' : 'event processor'} ${h.name} from ${h.entry}, config: ${configFrom}, secrets: ${secrets}`);
   }
   await client.start();
   return client;

@@ -46,6 +46,10 @@ unless it has its own, is recorded too: the --config file, else the package.json
 own config file is named in "kaleido.handlerConfig", by handler name. Config
 files ship in the package, so keep credentials out of them.
 
+The secrets each handler reads are listed in "kaleido.handlerSecrets", by handler
+name. Only their names go in the package; the console asks for their values when
+the package is added to a service.
+
 Options:
   --out <file>    Where to write the zip (default: <name>-<version>.zip)
   --dir <project> The project to package (default: the current directory)

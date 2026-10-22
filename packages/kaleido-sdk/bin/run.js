@@ -37,7 +37,8 @@ imports are checked against the packages the provider supplies.
 
 Each handler's ctx.config is its own config file, when the package.json
 "kaleido.handlerConfig" names one, or the package's default config file.
-Secrets come from KALEIDO_SECRETS_DIR, one directory per credential set.
+Each handler sees only the secrets "kaleido.handlerSecrets" lists for it, read
+from KALEIDO_SECRETS_DIR: one directory per secret, holding a file named value.
 
 Options:
   --dir <project>          The project to run (default: the current directory)

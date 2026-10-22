@@ -49,7 +49,7 @@ export type { DiscoveredHandler, HandlerDiscovery, DiscoverOptions } from './dis
 export { readZip, writeZip, ZipFormatError } from './zip';
 export type { ZipEntry, ZipInput } from './zip';
 
-export { DEFAULT_PACKAGE_CONFIG_FILE } from './package';
+export { DEFAULT_PACKAGE_CONFIG_FILE, SECRET_NAME_PATTERN } from './package';
 export type { PackOptions } from './package';
 export { resolvePackageEntry, importedPackageName, packageImportCheck } from './imports';
 export type { PackageHandlerRef, PackageImportCheck } from './imports';

@@ -54,7 +54,15 @@ Each handler reads `config/provider-config.yaml` as `ctx.config`. That file is t
 "kaleido": { "handlerConfig": { "payments": "config/payments.yaml" } }
 ```
 
-Set `CONFIG_FILE` to use a different default locally without changing the package. Secrets come from `KALEIDO_SECRETS_DIR`, with one directory per credential set, and are never part of the package.
+Set `CONFIG_FILE` to use a different default locally without changing the package.
+
+A handler reads a secret with `ctx.secret('name')`, and sees only the secrets listed for it in `package.json`:
+
+```json
+"kaleido": { "handlerSecrets": { "payments": ["coreBankingApiKey"] } }
+```
+
+Only the names ship in the package. Run locally, the values come from `KALEIDO_SECRETS_DIR`, one directory per secret holding a file named `value`. On the platform, the console asks for each listed secret when the package is added to a TypeScript provider, and you can add others and choose which handlers see each one.
 
 ## Dependencies
 

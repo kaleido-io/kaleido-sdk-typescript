@@ -357,6 +357,28 @@ describe('packSnippetPackage handler list', () => {
     expect(packed.files).not.toContain('config/local.yaml');
   });
 
+  it('moves the secrets each handler reads onto its entry, and refuses bad names or unknown handlers', () => {
+    const good = project({
+      'package.json': JSON.stringify({ ...JSON.parse(sourcePackageJson), kaleido: { handlerSecrets: { payments: ['coreBankingApiKey', 'coreBankingApiKey'] } } }),
+      ...handlerFiles,
+    });
+    const packed = packSnippetPackage(good, { typescript });
+    expect(packed.problems).toEqual([]);
+    expect(packed.handlers.transactionHandlers).toEqual([
+      { name: 'payments', entry: 'src/transaction/payments.ts', secrets: ['coreBankingApiKey'] },
+    ]);
+    expect(zippedPackageJson(packed.zip).kaleido.handlerSecrets).toBeUndefined();
+
+    const bad = project({
+      'package.json': JSON.stringify({ ...JSON.parse(sourcePackageJson), kaleido: { handlerSecrets: { payments: ['../key'], nobody: ['x'] } } }),
+      ...handlerFiles,
+    });
+    expect(packSnippetPackage(bad, { typescript }).problems).toEqual([
+      'package.json "kaleido.handlerSecrets" names "nobody", which isn\'t one of the package\'s handlers',
+      'Handler "payments": secret name "../key" must start with a letter or digit and contain only letters, digits, ".", "_" and "-"',
+    ]);
+  });
+
   it('uses a "kaleido" section as it is, warning about handlers in the code that it leaves out', () => {
     const kaleido = { transactionHandlers: [{ name: 'pay', entry: 'src/transaction/payments.ts' }] };
     const dir = project({ 'package.json': JSON.stringify({ ...JSON.parse(sourcePackageJson), kaleido }), ...handlerFiles });

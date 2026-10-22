@@ -168,6 +168,14 @@ describe('planSnippetPackage', () => {
     expect(planSnippetPackage(dir).handlerConfigFiles).toEqual({ feed: join(dir, 'config/feed.yaml') });
   });
 
+  it('lists the secrets each handler reads, and none for the rest', () => {
+    const dir = project({
+      ...base,
+      'package.json': JSON.stringify({ name: 'acme', dependencies: { zod: '^4' }, kaleido: { handlerSecrets: { pay: ['apiKey'] } } }),
+    });
+    expect(planSnippetPackage(dir).handlerSecretNames).toEqual({ pay: ['apiKey'] });
+  });
+
   it('has no default config when the package names none and has no conventional file', () => {
     expect(planSnippetPackage(project(base)).defaultConfigFile).toBeUndefined();
   });
