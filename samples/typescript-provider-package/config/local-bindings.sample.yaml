@@ -1,0 +1,23 @@
+# How `npm run start:local` reaches a workflow engine. Copy this to
+# config/local-bindings.yaml, which .gitignore keeps out of git and out of the package,
+# and fill in your environment.
+workflow-engine:
+  # The environment's workflow engine; the SDK connects to <url>/ws
+  url: https://<platform-host>/endpoint/<environment id>/<workflow engine service id>/rest
+  # The provider name workflows and streams bind these handlers to
+  providerName: my-handlers-local
+  auth:
+    type: basic
+    username: <api key name>
+    password: <api key value>
+
+# Handlers that call other platform services through bindings (for example
+# ctx.getServiceClientOptions('subledger')) get them from the service config on
+# the platform; run locally, give each one its endpoint and credentials here.
+# service-bindings:
+#   subledger:
+#     url: https://<platform-host>/endpoint/<environment id>/<subledger service id>/rest
+#     auth:
+#       type: basic
+#       username: <api key name>
+#       password: <api key value>

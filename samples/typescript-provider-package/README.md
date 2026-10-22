@@ -42,11 +42,11 @@ npm run typecheck    # type check, with no build output
 ## Run it locally
 
 ```bash
-cp config/local.sample.yaml config/local.yaml   # then fill in your environment
+cp config/local-bindings.sample.yaml config/local-bindings.yaml   # then fill in your environment
 npm run start:local
 ```
 
-`npm run start:local` runs the handlers on your machine, connected to an environment's workflow engine under the `providerName` in `config/local.yaml`, so workflows and streams bound to that name use them. It runs them exactly as a TypeScript provider does: the handlers are found the way `npm run package` finds them, each is bundled on its own, and its imports are checked against what the provider supplies. Code that works locally works once uploaded.
+`npm run start:local` runs the handlers on your machine, connected to an environment's workflow engine under the `providerName` in `config/local-bindings.yaml`, so workflows and streams bound to that name use them. It runs them exactly as a TypeScript provider does: the handlers are found the way `npm run package` finds them, each is bundled on its own, and its imports are checked against what the provider supplies. Code that works locally works once uploaded.
 
 Each handler reads `config/provider-config.yaml` as `ctx.config`. That file is the package's default config and ships in the zip. To give one handler a file of its own, name it in `package.json`:
 

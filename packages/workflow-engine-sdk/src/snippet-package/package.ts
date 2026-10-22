@@ -388,7 +388,7 @@ function ignoredByGitignore(directory: string): (relPath: string) => boolean {
     // no .gitignore
   }
   // Without git: a pattern with a slash before its end is a path from the directory
-  // (`config/local.yaml`, `/dist`); one without matches a name at any depth (`*.log`, `logs/`).
+  // (`config/local-bindings.yaml`, `/dist`); one without matches a name at any depth (`*.log`, `logs/`).
   // Either one also leaves out everything under a directory it matches.
   const matchers = patterns.map((p) => {
     const body = p.replace(/\/$/, '');

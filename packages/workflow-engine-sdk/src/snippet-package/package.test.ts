@@ -245,12 +245,12 @@ describe('packSnippetPackage', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pack-paths-'));
     write(dir, {
       ...validFiles,
-      'config/local.yaml': 'password: not-for-the-zip',
+      'config/local-bindings.yaml': 'password: not-for-the-zip',
       'config/provider-config.yaml': 'book: primary',
       'build/out.js': 'built',
       'src/fixtures/secret.txt': 'x',
       'src/build/keep.ts': 'kept: only the top-level build is ignored',
-      '.gitignore': 'config/local.yaml\n/build/\n**/secret.txt\n',
+      '.gitignore': 'config/local-bindings.yaml\n/build/\n**/secret.txt\n',
     });
     const { files } = packSnippetPackage(dir);
     expect(files).toEqual([
@@ -267,10 +267,10 @@ describe('packSnippetPackage', () => {
     const repo = mkdtempSync(join(tmpdir(), 'pack-repo-'));
     execFileSync('git', ['init', '-q'], { cwd: repo });
     const dir = join(repo, 'handlers');
-    write(repo, { '.gitignore': 'handlers/config/local.yaml\n*.log\n' });
+    write(repo, { '.gitignore': 'handlers/config/local-bindings.yaml\n*.log\n' });
     write(dir, {
       ...validFiles,
-      'config/local.yaml': 'password: not-for-the-zip',
+      'config/local-bindings.yaml': 'password: not-for-the-zip',
       'config/provider-config.yaml': 'book: primary',
       'run.log': 'x',
     });
@@ -340,21 +340,21 @@ describe('packSnippetPackage handler list', () => {
   });
 
   it('refuses a config file that is missing or left out, and handlerConfig for a handler the package has not got', () => {
-    const kaleido = { config: 'config/missing.yaml', handlerConfig: { payments: 'config/local.yaml', nobody: 'config/x.yaml' } };
+    const kaleido = { config: 'config/missing.yaml', handlerConfig: { payments: 'config/local-bindings.yaml', nobody: 'config/x.yaml' } };
     const dir = project({
       'package.json': JSON.stringify({ ...JSON.parse(sourcePackageJson), kaleido }),
       ...handlerFiles,
-      '.gitignore': 'config/local.yaml\n',
-      'config/local.yaml': 'password: not-for-the-zip\n',
+      '.gitignore': 'config/local-bindings.yaml\n',
+      'config/local-bindings.yaml': 'password: not-for-the-zip\n',
       'config/x.yaml': 'x: 1\n',
     });
     const packed = packSnippetPackage(dir, { typescript });
     expect(packed.problems).toEqual([
       'package.json "kaleido.handlerConfig" names "nobody", which isn\'t one of the package\'s handlers',
       "Config file config/missing.yaml isn't in the package: it doesn't exist, or .gitignore leaves it out",
-      "Config file config/local.yaml isn't in the package: it doesn't exist, or .gitignore leaves it out",
+      "Config file config/local-bindings.yaml isn't in the package: it doesn't exist, or .gitignore leaves it out",
     ]);
-    expect(packed.files).not.toContain('config/local.yaml');
+    expect(packed.files).not.toContain('config/local-bindings.yaml');
   });
 
   it('moves the secrets each handler reads onto its entry, and refuses bad names or unknown handlers', () => {

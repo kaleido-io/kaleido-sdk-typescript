@@ -44,9 +44,10 @@ Options:
   --dir <project>          The project to run (default: the current directory)
   --config <file>          The default config file (default: CONFIG_FILE, then the
                            package.json "kaleido.config", then config/provider-config.yaml)
-  --kaleido-config <file>  How to reach the workflow engine (default: KALEIDO_CONFIG_FILE,
-                           then config/local.yaml). Keep this file out of git and out of
-                           the package: it holds credentials.
+  --kaleido-config <file>  How to reach the workflow engine, and any service bindings
+                           (default: KALEIDO_CONFIG_FILE, then config/local-bindings.yaml).
+                           Keep this file out of git and out of the package: it holds
+                           credentials.
 `);
   process.exit(0);
 }
@@ -60,12 +61,12 @@ const projectDir = resolve(option('--dir') ?? process.cwd());
 const configFile = option('--config') ? resolve(option('--config')) : undefined;
 
 let kaleidoConfigFile = option('--kaleido-config') ? resolve(option('--kaleido-config')) : process.env.KALEIDO_CONFIG_FILE?.trim() || undefined;
-if (!kaleidoConfigFile && existsSync(join(projectDir, 'config/local.yaml'))) {
-  kaleidoConfigFile = join(projectDir, 'config/local.yaml');
+if (!kaleidoConfigFile && existsSync(join(projectDir, 'config/local-bindings.yaml'))) {
+  kaleidoConfigFile = join(projectDir, 'config/local-bindings.yaml');
 }
 if (!kaleidoConfigFile) {
   console.error(
-    'Error: say how to reach the workflow engine, with KALEIDO_CONFIG_FILE, --kaleido-config, or a config/local.yaml in the project.',
+    'Error: say how to reach the workflow engine, with KALEIDO_CONFIG_FILE, --kaleido-config, or a config/local-bindings.yaml in the project.',
   );
   process.exit(1);
 }

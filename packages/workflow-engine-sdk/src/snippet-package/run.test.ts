@@ -158,12 +158,12 @@ describe('planSnippetPackage', () => {
       }),
       'config/provider-config.yaml': 'a: 1\n',
       'config/shared.yaml': 'a: 2\n',
-      'config/local.yaml': 'a: 3\n',
+      'config/override.yaml': 'a: 3\n',
       'config/feed.yaml': 'a: 4\n',
     });
     expect(planSnippetPackage(dir).defaultConfigFile).toBe(join(dir, 'config/shared.yaml'));
-    process.env.CONFIG_FILE = 'config/local.yaml';
-    expect(planSnippetPackage(dir).defaultConfigFile).toBe(join(dir, 'config/local.yaml'));
+    process.env.CONFIG_FILE = 'config/override.yaml';
+    expect(planSnippetPackage(dir).defaultConfigFile).toBe(join(dir, 'config/override.yaml'));
     expect(planSnippetPackage(dir, { configFile: 'config/provider-config.yaml' }).defaultConfigFile).toBe(join(dir, 'config/provider-config.yaml'));
     expect(planSnippetPackage(dir).handlerConfigFiles).toEqual({ feed: join(dir, 'config/feed.yaml') });
   });
