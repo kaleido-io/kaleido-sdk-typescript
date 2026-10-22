@@ -39,6 +39,23 @@ npm test             # unit tests
 npm run typecheck    # type check, with no build output
 ```
 
+## Run it locally
+
+```bash
+cp config/local.sample.yaml config/local.yaml   # then fill in your environment
+npm run start:local
+```
+
+`npm run start:local` runs the handlers on your machine, connected to an environment's workflow engine under the `providerName` in `config/local.yaml`, so workflows and streams bound to that name use them. It runs them exactly as a TypeScript provider does: the handlers are found the way `npm run package` finds them, each is bundled on its own, and its imports are checked against what the provider supplies. Code that works locally works once uploaded.
+
+Each handler reads `config/provider-config.yaml` as `ctx.config`. That file is the package's default config and ships in the zip. To give one handler a file of its own, name it in `package.json`:
+
+```json
+"kaleido": { "handlerConfig": { "payments": "config/payments.yaml" } }
+```
+
+Set `CONFIG_FILE` to use a different default locally without changing the package. Secrets come from `KALEIDO_SECRETS_DIR`, with one directory per credential set, and are never part of the package.
+
 ## Dependencies
 
 A snippet package may depend only on `@kaleido-io/*` packages and `zod`. The TypeScript provider supplies them, so the versions you can use are the ones its image ships. Build and test tools belong in `devDependencies`, which never leave your machine.
