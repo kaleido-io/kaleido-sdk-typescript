@@ -233,6 +233,50 @@ describe('packSnippetPackage', () => {
     expect(files).toEqual(['.gitignore', 'package.json', 'src/lib/format.ts', 'src/transaction/payments.ts', 'test/payments.test.ts']);
     expect(inspectSnippetPackage(zip).problems).toEqual([]);
   });
+
+  const write = (dir: string, files: Record<string, string>) => {
+    for (const [p, c] of Object.entries(files)) {
+      mkdirSync(join(dir, p, '..'), { recursive: true });
+      writeFileSync(join(dir, p), c);
+    }
+  };
+
+  it('leaves out files a .gitignore names by path, as well as by name', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pack-paths-'));
+    write(dir, {
+      ...validFiles,
+      'config/local.yaml': 'password: not-for-the-zip',
+      'config/provider-config.yaml': 'book: primary',
+      'build/out.js': 'built',
+      'src/fixtures/secret.txt': 'x',
+      'src/build/keep.ts': 'kept: only the top-level build is ignored',
+      '.gitignore': 'config/local.yaml\n/build/\n**/secret.txt\n',
+    });
+    const { files } = packSnippetPackage(dir);
+    expect(files).toEqual([
+      '.gitignore',
+      'config/provider-config.yaml',
+      'package.json',
+      'src/build/keep.ts',
+      'src/lib/format.ts',
+      'src/transaction/payments.ts',
+    ]);
+  });
+
+  it("leaves out files that only a parent repository's .gitignore names", () => {
+    const repo = mkdtempSync(join(tmpdir(), 'pack-repo-'));
+    execFileSync('git', ['init', '-q'], { cwd: repo });
+    const dir = join(repo, 'handlers');
+    write(repo, { '.gitignore': 'handlers/config/local.yaml\n*.log\n' });
+    write(dir, {
+      ...validFiles,
+      'config/local.yaml': 'password: not-for-the-zip',
+      'config/provider-config.yaml': 'book: primary',
+      'run.log': 'x',
+    });
+    const { files } = packSnippetPackage(dir);
+    expect(files).toEqual(['config/provider-config.yaml', 'package.json', 'src/lib/format.ts', 'src/transaction/payments.ts']);
+  });
 });
 
 describe('packSnippetPackage handler list', () => {

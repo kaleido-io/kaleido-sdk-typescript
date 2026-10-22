@@ -25,6 +25,7 @@
  */
 
 import { discoverHandlers, isHandlerSourceFile, manifestFromHandlers, type DiscoverOptions } from './discover';
+import { execFileSync } from 'child_process';
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { dirname, join, relative, resolve, sep } from 'path';
 import { readZip, writeZip, type ZipEntry, type ZipInput } from './zip';
@@ -299,7 +300,57 @@ export function extractSnippetPackage(zip: Buffer, directory: string): Normalize
   return inspected;
 }
 
+/**
+ * The untracked files git ignores under `directory`, as paths relative to it (a directory ends in
+ * `/`), or undefined when it isn't in a git work tree or git isn't installed. Git applies every
+ * .gitignore above and below the directory and the user's own excludes, so a file ignored only
+ * by the repository's root .gitignore, such as a local config holding credentials, stays out.
+ */
+function gitIgnored(directory: string): Set<string> | undefined {
+  try {
+    const out = execFileSync('git', ['ls-files', '-z', '--others', '--ignored', '--exclude-standard', '--directory', '.'], {
+      cwd: directory,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return new Set(out.toString('utf8').split('\0').filter((p) => p !== ''));
+  } catch {
+    return undefined;
+  }
+}
+
+function gitignorePatternRegExp(body: string): RegExp {
+  const source = body
+    .split(/(\*\*\/|\*\*|\*|\?)/)
+    .map((part) => {
+      switch (part) {
+        case '**/':
+          return '(?:.*/)?';
+        case '**':
+          return '.*';
+        case '*':
+          return '[^/]*';
+        case '?':
+          return '[^/]';
+        default:
+          return part.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+      }
+    })
+    .join('');
+  return new RegExp('^' + source + '$');
+}
+
+/** Whether git, or failing that the directory's own .gitignore, leaves out a path relative to it. */
 function ignoredByGitignore(directory: string): (relPath: string) => boolean {
+  const fromGit = gitIgnored(directory);
+  if (fromGit) {
+    return (rel) => {
+      if (fromGit.has(rel)) {
+        return true;
+      }
+      const parts = segments(rel);
+      return parts.some((_, i) => i < parts.length - 1 && fromGit.has(parts.slice(0, i + 1).join('/') + '/'));
+    };
+  }
   let patterns: string[] = [];
   try {
     patterns = readFileSync(join(directory, '.gitignore'), 'utf8')
@@ -309,14 +360,19 @@ function ignoredByGitignore(directory: string): (relPath: string) => boolean {
   } catch {
     // no .gitignore
   }
-  // Plain names and directory names only (`dist`, `dist/`, `*.log`); enough for typical projects.
+  // Without git: a pattern with a slash before its end is a path from the directory
+  // (`config/local.yaml`, `/dist`); one without matches a name at any depth (`*.log`, `logs/`).
+  // Either one also leaves out everything under a directory it matches.
   const matchers = patterns.map((p) => {
-    const anchored = p.startsWith('/');
-    const body = p.replace(/^\//, '').replace(/\/$/, '');
-    const re = new RegExp('^' + body.split('*').map((s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('[^/]*') + '$');
+    const body = p.replace(/\/$/, '');
+    const isPath = body.includes('/');
+    const re = gitignorePatternRegExp(body.replace(/^\//, ''));
     return (rel: string) => {
       const parts = segments(rel);
-      return anchored ? re.test(parts[0]) : parts.some((s) => re.test(s));
+      if (isPath) {
+        return parts.some((_, i) => re.test(parts.slice(0, i + 1).join('/')));
+      }
+      return parts.some((s) => re.test(s));
     };
   });
   return (rel) => matchers.some((m) => m(rel));
