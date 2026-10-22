@@ -238,6 +238,11 @@ export interface HandlerRegistrationResources<CustomConfig = unknown> {
   config?: CustomConfig;
   /** The handler's secrets, by name, seen as `ctx.secrets`. */
   secrets?: Record<string, string>;
+  /**
+   * Names of the client's secrets (`KALEIDO_SECRETS_DIR`) the handler sees, when
+   * it isn't given `secrets` of its own. A handler given neither sees none.
+   */
+  secretNames?: string[];
   /** The handler's resources, by name, as paths, seen as `ctx.resources` and through `ctx.resource(name)`. */
   resources?: Record<string, string>;
 }

@@ -78,15 +78,17 @@ export interface WorkflowEngineClientConfig {
   /** Service bindings for platform service access (asset-manager, key-manager, etc.) */
   serviceBindings?: ServiceBindingsMap;
   /**
-   * Secrets every handler sees as `ctx.secrets`, unless it is registered with
-   * its own. `fromConfigFile` loads them from `KALEIDO_SECRETS_DIR` when set.
+   * Secrets handlers can be given by name, with `secretNames` when they are
+   * registered; a handler sees only those it names. `fromConfigFile` loads them
+   * from `KALEIDO_SECRETS_DIR` when it is set.
    */
   secrets?: Record<string, string>;
 }
 
 /**
- * What a handler is registered with in place of the client's config, secrets
- * and resources. Each one left out falls back to the client's.
+ * What a handler is registered with in place of the client's config and
+ * resources, which it falls back to when they are left out. Its secrets are
+ * only those it is given, or names from the client's.
  */
 export type HandlerRegistrationOptions<CustomConfig = unknown> = HandlerRegistrationResources<CustomConfig>;
 
@@ -129,7 +131,8 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     this.runtime.setProviderServices({
       providerName: config.providerName,
       config: this.customConfig,
-      secrets: frozenCopy(config.secrets ?? {}),
+      // Handlers see none of the client's secrets unless their registration names them
+      secrets: frozenCopy({}),
       resources: frozenCopy({}),
       getServiceClientOptions: (name, authRef) => this.getServiceClientOptions(name, authRef),
     });
@@ -147,8 +150,8 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
    *
    * The provider's own config, which handlers see as `ctx.config`, comes from
    * the file `CONFIG_FILE` names, unless `options.customConfig` is given. The
-   * secrets under `KALEIDO_SECRETS_DIR`, when it is set, become every
-   * handler's `ctx.secrets`.
+   * secrets under `KALEIDO_SECRETS_DIR`, when it is set, are the ones a
+   * handler can be given by name with `secretNames`.
    */
   static fromConfigFile<C = unknown>(path?: string, options?: { customConfig?: C }): WorkflowEngineClient<C> {
     const wfeClientConfig = ConfigLoader.loadClientConfigFromFile(path);
@@ -372,9 +375,20 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     if (!options) return;
     this.runtime.setHandlerResources(name, {
       config: options.config,
-      secrets: frozenCopy(options.secrets),
+      secrets: frozenCopy(options.secrets ?? this.namedSecrets(name, options.secretNames)),
       resources: frozenCopy(options.resources),
     });
+  }
+
+  /** The client's secrets a handler's registration names, warning about any the client hasn't got. */
+  private namedSecrets(handlerName: string, names: string[] | undefined): Record<string, string> | undefined {
+    if (names === undefined) return undefined;
+    const pool = this.wfeConfig.secrets ?? {};
+    const missing = names.filter((n) => !(n in pool));
+    if (missing.length > 0) {
+      log.warn(`Handler "${handlerName}" is given secrets that aren't available: ${missing.join(', ')}`);
+    }
+    return Object.fromEntries(names.filter((n) => n in pool).map((n) => [n, pool[n]]));
   }
 
   /** The config a handler sees: what it was registered with, or else the client's. */

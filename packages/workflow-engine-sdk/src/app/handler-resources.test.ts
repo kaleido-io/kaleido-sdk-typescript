@@ -50,7 +50,7 @@ function resourcesOf(ctx: HandlerResources & { config: unknown }) {
 }
 
 describe('handler config, secrets and resources', () => {
-  it('gives each registered handler its own, and the rest the client\'s', async () => {
+  it('gives each registered handler its own, the rest the client\'s config, and no secrets it doesn\'t name', async () => {
     const client = startedClient({ shared: true }, { shared: 'provider-secret' });
     const noop = createTransactionHandler('x', new Map());
     client
@@ -82,9 +82,23 @@ describe('handler config, secrets and resources', () => {
     });
     expect(resourcesOf(ctxFor('plain'))).toEqual({
       config: { shared: true },
-      secrets: { shared: 'provider-secret' },
+      secrets: {},
       resources: {},
     });
+  });
+
+  it('gives a handler the client\'s secrets it names, and only those', async () => {
+    const client = startedClient({}, { coreBankingApiKey: 'cbs', smtpPassword: 'smtp' });
+    const noop = createTransactionHandler('x', new Map());
+    client
+      .transactionHandler('payments', { handler: noop }, { secretNames: ['coreBankingApiKey'] })
+      .transactionHandler('reports', { handler: noop }, { secretNames: ['coreBankingApiKey', 'smtpPassword', 'missing'] });
+    await client.start();
+    const { runtime } = client as unknown as Internals;
+    const ctxFor = (name: string) => createTransactionContext(runtime.newRequestContext(envelope(name)), name, transaction);
+
+    expect(resourcesOf(ctxFor('payments')).secrets).toEqual({ coreBankingApiKey: 'cbs' });
+    expect(resourcesOf(ctxFor('reports')).secrets).toEqual({ coreBankingApiKey: 'cbs', smtpPassword: 'smtp' });
   });
 
   it('applies to event sources and event processors too', async () => {
