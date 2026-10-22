@@ -310,6 +310,53 @@ describe('packSnippetPackage handler list', () => {
     expect(inspectSnippetPackage(packed.zip).problems).toEqual([]);
   });
 
+  it('records the conventional config file as the package default', () => {
+    const dir = project({ 'package.json': sourcePackageJson, ...handlerFiles, 'config/provider-config.yaml': 'book: primary\n' });
+    const packed = packSnippetPackage(dir, { typescript });
+    expect(packed.problems).toEqual([]);
+    expect(packed.handlers.config).toBe('config/provider-config.yaml');
+    expect(zippedPackageJson(packed.zip).kaleido.config).toBe('config/provider-config.yaml');
+  });
+
+  it('takes the default from the option, and each handler\'s own config from handlerConfig, still finding the handlers in the code', () => {
+    const kaleido = { config: 'config/shared.yaml', handlerConfig: { audit: './config/audit.yaml' } };
+    const dir = project({
+      'package.json': JSON.stringify({ ...JSON.parse(sourcePackageJson), kaleido }),
+      ...handlerFiles,
+      'config/shared.yaml': 'a: 1\n',
+      'config/other.yaml': 'a: 2\n',
+      'config/audit.yaml': 'a: 3\n',
+    });
+    expect(packSnippetPackage(dir, { typescript }).handlers.config).toBe('config/shared.yaml');
+    const packed = packSnippetPackage(dir, { typescript, config: 'config/other.yaml' });
+    expect(packed.handlerSource).toBe('code');
+    expect(packed.problems).toEqual([]);
+    expect(packed.handlers).toEqual({
+      config: 'config/other.yaml',
+      eventProcessors: [{ name: 'audit', entry: 'src/processor/audit.ts', config: 'config/audit.yaml' }],
+      transactionHandlers: [{ name: 'payments', entry: 'src/transaction/payments.ts' }],
+    });
+    expect(zippedPackageJson(packed.zip).kaleido).toEqual(packed.handlers);
+  });
+
+  it('refuses a config file that is missing or left out, and handlerConfig for a handler the package has not got', () => {
+    const kaleido = { config: 'config/missing.yaml', handlerConfig: { payments: 'config/local.yaml', nobody: 'config/x.yaml' } };
+    const dir = project({
+      'package.json': JSON.stringify({ ...JSON.parse(sourcePackageJson), kaleido }),
+      ...handlerFiles,
+      '.gitignore': 'config/local.yaml\n',
+      'config/local.yaml': 'password: not-for-the-zip\n',
+      'config/x.yaml': 'x: 1\n',
+    });
+    const packed = packSnippetPackage(dir, { typescript });
+    expect(packed.problems).toEqual([
+      'package.json "kaleido.handlerConfig" names "nobody", which isn\'t one of the package\'s handlers',
+      "Config file config/missing.yaml isn't in the package: it doesn't exist, or .gitignore leaves it out",
+      "Config file config/local.yaml isn't in the package: it doesn't exist, or .gitignore leaves it out",
+    ]);
+    expect(packed.files).not.toContain('config/local.yaml');
+  });
+
   it('uses a "kaleido" section as it is, warning about handlers in the code that it leaves out', () => {
     const kaleido = { transactionHandlers: [{ name: 'pay', entry: 'src/transaction/payments.ts' }] };
     const dir = project({ 'package.json': JSON.stringify({ ...JSON.parse(sourcePackageJson), kaleido }), ...handlerFiles });

@@ -70,14 +70,29 @@ const EXCLUDED_PROJECT_ROOTS = new Set([
 export type HandlerKind = 'transactionHandlers' | 'eventSources' | 'eventProcessors';
 export const HANDLER_KINDS: HandlerKind[] = ['transactionHandlers', 'eventSources', 'eventProcessors'];
 
-/** A handler a package provides: its name and the source file that exports it. */
+/** A handler a package provides: its name, the source file that exports it, and the file its config is in, if it has its own. */
 export interface SnippetPackageHandler {
   name: string;
   entry: string;
+  config?: string;
 }
 
-/** The `kaleido` section of a package's package.json. */
-export type SnippetPackageManifest = Partial<Record<HandlerKind, SnippetPackageHandler[]>>;
+/**
+ * The `kaleido` section of a package's package.json: its handlers, and its
+ * default config file, which every handler without its own config reads as
+ * `ctx.config`. Paths are relative to the package root.
+ */
+export type SnippetPackageManifest = Partial<Record<HandlerKind, SnippetPackageHandler[]>> & {
+  config?: string;
+  /**
+   * Config files of particular handlers, by handler name. Written by hand in a
+   * project's package.json; `ksdk package` moves each onto its handler's entry.
+   */
+  handlerConfig?: Record<string, string>;
+};
+
+/** The package's default config file when nothing else names one. */
+export const DEFAULT_PACKAGE_CONFIG_FILE = 'config/provider-config.yaml';
 
 export interface SnippetPackageJson {
   name?: string;
@@ -409,7 +424,13 @@ export interface PackedSnippetPackage {
  * package.json has no "kaleido" section, the handlers are found in the source
  * and listed in the zip's package.json.
  */
-export function packSnippetPackage(directory: string, options: DiscoverOptions = {}): PackedSnippetPackage {
+/** How `packSnippetPackage` reads a project. */
+export interface PackOptions extends DiscoverOptions {
+  /** The package's default config file, relative to the project; overrides the package.json's. */
+  config?: string;
+}
+
+export function packSnippetPackage(directory: string, options: PackOptions = {}): PackedSnippetPackage {
   const ignored = ignoredByGitignore(directory);
   const inputs: ZipInput[] = [];
   const walk = (dir: string) => {
@@ -450,18 +471,54 @@ export function packSnippetPackage(directory: string, options: DiscoverOptions =
   }
 
   let result: Omit<PackedSnippetPackage, 'zip' | 'files'>;
-  if (pkg && typeof pkg === 'object' && pkg.kaleido !== undefined) {
-    const listed = new Set(HANDLER_KINDS.flatMap((kind) => (Array.isArray(pkg?.kaleido?.[kind]) ? pkg!.kaleido![kind]! : []).map((h) => h?.entry)));
+  const kaleido = pkg && typeof pkg === 'object' ? pkg.kaleido : undefined;
+  if (kaleido !== undefined && HANDLER_KINDS.some((kind) => Array.isArray(kaleido[kind]))) {
+    const listed = new Set(HANDLER_KINDS.flatMap((kind) => (Array.isArray(kaleido[kind]) ? kaleido[kind]! : []).map((h) => h?.entry)));
     const warnings = discovery.handlers
       .filter((h) => !listed.has(h.entry))
       .map((h) => `${h.entry} defines handler "${h.name}", which the package.json "kaleido" section doesn't list, so it won't be offered`);
-    result = { handlerSource: 'package.json', handlers: pkg.kaleido, problems: [], warnings };
+    result = { handlerSource: 'package.json', handlers: kaleido, problems: [], warnings };
   } else {
-    const handlers = manifestFromHandlers(discovery.handlers);
-    if (pkg && typeof pkg === 'object' && packageJsonInput && discovery.problems.length === 0) {
-      packageJsonInput.content = Buffer.from(JSON.stringify({ ...pkg, kaleido: handlers }, null, 2) + '\n');
+    result = { handlerSource: 'code', handlers: manifestFromHandlers(discovery.handlers), problems: discovery.problems, warnings: [] };
+  }
+
+  // Config files: the nominated default, else the package.json's, else the conventional
+  // file when the project has it; and each handler's own. Each must be in the zip.
+  const included = new Set(inputs.map((i) => i.path));
+  const handlers: SnippetPackageManifest = { ...result.handlers };
+  delete handlers.handlerConfig;
+  const defaultConfig = options.config ?? kaleido?.config ?? (included.has(DEFAULT_PACKAGE_CONFIG_FILE) ? DEFAULT_PACKAGE_CONFIG_FILE : undefined);
+  if (defaultConfig !== undefined) {
+    handlers.config = defaultConfig.replace(/^\.\//, '');
+  } else {
+    delete handlers.config;
+  }
+  const handlerConfig = kaleido?.handlerConfig ?? {};
+  const named = new Set<string>();
+  for (const kind of HANDLER_KINDS) {
+    if (!handlers[kind]) {
+      continue;
     }
-    result = { handlerSource: 'code', handlers, problems: discovery.problems, warnings: [] };
+    handlers[kind] = handlers[kind]!.map((h) => {
+      const own = handlerConfig[h.name] ?? h.config;
+      named.add(h.name);
+      return own !== undefined ? { ...h, config: own.replace(/^\.\//, '') } : h;
+    });
+  }
+  const problems = [...result.problems];
+  for (const name of Object.keys(handlerConfig).filter((n) => !named.has(n))) {
+    problems.push(`package.json "kaleido.handlerConfig" names "${name}", which isn't one of the package's handlers`);
+  }
+  const configFiles = [handlers.config, ...HANDLER_KINDS.flatMap((kind) => (handlers[kind] ?? []).map((h) => h.config))];
+  for (const file of new Set(configFiles.filter((f): f is string => f !== undefined))) {
+    if (!included.has(file)) {
+      problems.push(`Config file ${file} isn't in the package: it doesn't exist, or .gitignore leaves it out`);
+    }
+  }
+  result = { ...result, handlers, problems };
+
+  if (pkg && typeof pkg === 'object' && packageJsonInput && problems.length === 0) {
+    packageJsonInput.content = Buffer.from(JSON.stringify({ ...pkg, kaleido: handlers }, null, 2) + '\n');
   }
   return { zip: writeZip(inputs), files: inputs.map((i) => i.path).sort(), ...result };
 }
