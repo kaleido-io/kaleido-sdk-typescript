@@ -566,6 +566,7 @@ export type HandlerRegistrationOptions<CustomConfig = unknown> = HandlerRegistra
 export interface HandlerRegistrationResources<CustomConfig = unknown> {
     config?: CustomConfig;
     resources?: Record<string, string>;
+    secretNames?: string[];
     secrets?: Record<string, string>;
 }
 
