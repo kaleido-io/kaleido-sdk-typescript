@@ -351,19 +351,19 @@ Register it with `.eventProcessor('transfers', transferProcessor)`. The context 
 
 A handler gets three kinds of settings from where it's deployed: `ctx.config`, an object of its own settings; `ctx.secrets`, string values by name; and `ctx.resources`, paths of files by name, such as a trust store or a schema. They describe how the handler is set up, so they're the same for every request it handles.
 
-In your own provider, every handler sees the provider's config file, the one `CONFIG_FILE` names, as `ctx.config`, and the secrets mounted under `KALEIDO_SECRETS_DIR` as `ctx.secrets`. A credential set mounted at `<dir>/<name>/value` is the secret `<name>`, and any other file in its directory, such as a basic auth set's `username`, is `<name>/<file>`. To give one handler settings of its own, register it with them:
+In your own provider, every handler sees the provider's config file, the one `CONFIG_FILE` names, as `ctx.config`. Secrets come from the credential sets mounted under `KALEIDO_SECRETS_DIR`: a credential set mounted at `<dir>/<name>/value` is the secret `<name>`, and any other file in its directory, such as a basic auth set's `username`, is `<name>/<file>`. A handler sees only the secrets it is registered with, so a handler registered without any sees none. To give one handler settings of its own, register it with them:
 
 ```typescript
 WorkflowEngineClient.fromConfigFile<MyConfig>()
   .eventProcessor('ledger-writer', ledgerWriter, {
     config: { book: 'primary' },
-    secrets: { apiKey: process.env.LEDGER_API_KEY ?? '' },
+    secretNames: ['ledgerApiKey'],
     resources: { truststore: '/etc/ledger/truststore.p12' },
   })
   .start();
 ```
 
-Each one you give replaces the provider-wide value for that handler; any you leave out falls back to it.
+`config` and `resources` replace the provider-wide value for that handler, and any you leave out falls back to it. `secretNames` picks the handler's secrets from `KALEIDO_SECRETS_DIR` by name; to give a handler secret values directly instead, pass `secrets: { apiKey: '...' }`.
 
 In a TypeScript provider, each handler's entry in the service config sets them: `config` inline or `configFile` from a JSON or YAML file, `secrets` from key credential sets, and `resources` from the service's file sets, mounted into the pod. The provider's own config file is never visible to handlers.
 
@@ -924,7 +924,7 @@ By default configuration is sourced from the following environment variables:
 
 - `KALEIDO_CONFIG_FILE` — path to `config.yaml` (preferred). Used by `fromConfigFile()` when no path argument is provided.
 - `CONFIG_FILE` — path to `provider-config.yaml` (app-specific settings loaded by the Workflow Engine client)
-- `KALEIDO_SECRETS_DIR` — directory of mounted credential sets, loaded as every handler's `ctx.secrets`
+- `KALEIDO_SECRETS_DIR` — directory of mounted credential sets, which handlers are given secrets from by name
 
 Using these environment variables means that you can inject configuration into a Docker
 container at development time. When running hosted within the Kaleido platform, the
