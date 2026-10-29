@@ -66,7 +66,7 @@ Only the names ship in the package. Run locally, the values come from `KALEIDO_S
 
 ## Dependencies
 
-A snippet package may depend only on `@kaleido-io/*` packages and `zod`. The TypeScript provider supplies them, so the versions you can use are the ones its image ships. Build and test tools belong in `devDependencies`, which never leave your machine.
+A snippet package may depend only on `@kaleido-io/*` packages, `zod` and `ethers`. The TypeScript provider supplies them, so the versions you can use are the ones its image ships. Build and test tools belong in `devDependencies`, which never leave your machine.
 
 Shared code goes in the package itself, under `src/`.
 

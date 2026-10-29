@@ -31,7 +31,7 @@ Usage: npx ksdk package [--out <file>] [--dir <project>] [--config <file>]
 
 Zips a TypeScript provider snippet package, leaving out node_modules, build
 output, lockfiles and anything .gitignore names, then checks it: a package.json at the
-root, dependencies only on @kaleido-io/* packages and zod, and every handler present.
+root, dependencies only on @kaleido-io/* packages, zod and ethers, and every handler present.
 
 The handlers are found in the code: each file that exports one made with
 defineTransactionHandler, defineEventSource or defineProcessor, named as it is

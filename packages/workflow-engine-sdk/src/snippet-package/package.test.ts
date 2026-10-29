@@ -152,6 +152,13 @@ describe('checkSnippetPackage', () => {
     expect(isSuppliedDependency('zod-extra')).toBe(false);
   });
 
+  it('accepts ethers, which the TypeScript provider supplies alongside the Kaleido SDKs', () => {
+    expect(check({ ...validFiles, 'package.json': pkgJson({ dependencies: { '@kaleido-io/workflow-engine-sdk': '^1.1.0', ethers: '^6.17.0' } }) })).toEqual([]);
+    expect(isSuppliedDependency('ethers')).toBe(true);
+    expect(isSuppliedDependency('@ethersproject/abi')).toBe(false);
+    expect(isSuppliedDependency('@noble/hashes')).toBe(false);
+  });
+
   it('needs a package.json at the root, and a valid one', () => {
     expect(check({ 'src/a.ts': 'x', 'other/b.ts': 'y' })).toEqual(['the package has no package.json at its root']);
     expect(check({ 'package.json': '[1]' })).toEqual([expect.stringContaining('package.json is not a valid JSON object')]);
