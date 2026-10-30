@@ -72,6 +72,12 @@ You can also add a template into an existing project (omit project name):
 npx @kaleido-io/kaleido-sdk init --template erc20-indexer
 ```
 
+By default a template comes from the main branch of this repository. To build against an earlier release, for example the version a TypeScript provider runs, give its `@kaleido-io/workflow-engine-sdk` version. The template and every `@kaleido-io` dependency then come from that release:
+
+```bash
+npx @kaleido-io/kaleido-sdk init my-handlers --template typescript-provider-package --sdk-version 1.1.0
+```
+
 ### What gets created on disk
 
 When you scaffold a **new project**, you should see a layout like:

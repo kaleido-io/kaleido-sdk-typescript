@@ -1,0 +1,23 @@
+{
+  "name": "typescript-provider-package",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Handlers for the Kaleido TypeScript provider, uploaded as a snippet package",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "start:local": "ksdk run",
+    "package": "ksdk package"
+  },
+  "dependencies": {
+    "@kaleido-io/core-sdk": "^1.1.0-rc.1",
+    "@kaleido-io/workflow-engine-sdk": "^1.1.0-rc.1"
+  },
+  "devDependencies": {
+    "@kaleido-io/kaleido-sdk": "^1.1.0-rc.1",
+    "@types/node": "^22.15.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  }
+}

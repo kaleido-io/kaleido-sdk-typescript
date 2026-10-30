@@ -90,6 +90,9 @@ export const SDKErrors = {
   MsgSDKDeadlineNotWaiting: fe('KA140640', "Deadline can only be used with WAITING result type (action='%s' result='%s')"),
   MsgSDKDirectorNextStageAndSubflow: fe('KA140641', "Handler input cannot specify both 'nextStage' and 'nextSubflow'"),
   MsgSDKServiceBindingsNeedClient: fe('KA140642', "Service binding '%s' can't be resolved: the handler isn't running in a WorkflowEngineClient"),
+  MsgSDKHandlerFileUnknown: fe('KA140643', "Handler '%s' has no file named '%s'. Its files are: %s"),
+  MsgSDKSecretsDirUnreadable: fe('KA140644', "Can't read the secrets directory '%s': %s"),
+  MsgSDKHandlerSecretUnknown: fe('KA140645', "Handler '%s' has no secret named '%s'. Its secrets are: %s"),
 
   // Engine connection errors
   MsgSDKEngineNotConnected: fe('KA140627', 'WebSocket is not connected. Cannot submit async transactions'),

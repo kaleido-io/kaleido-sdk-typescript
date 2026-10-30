@@ -146,6 +146,7 @@ export class ConfigLoader {
     static createClientConfig(config: WorkflowEngineConfig, providerName: string): WorkflowEngineClientConfig;
     static httpUrlToWsUrl(baseUrl: string): string;
     static loadClientConfigFromFile(configFilePath?: string): WorkflowEngineClientConfig;
+    static loadSecretsDir(dir: string): Record<string, string>;
     // (undocumented)
     static loadServiceBindings(configFilePath?: string): ServiceBindingsMap;
     static logConfigSummary(config: WorkflowEngineConfig): void;
@@ -313,6 +314,9 @@ export interface CreateWorkflowResponse {
 }
 
 // @public
+export function definedName(value: unknown): string | undefined;
+
+// @public
 export type DefinedProcessor<CustomConfig = unknown, EventData = unknown> = EventProcessorDef<CustomConfig, EventData>['processBatch'] & EventProcessorDef<CustomConfig, EventData>;
 
 // @public
@@ -321,7 +325,7 @@ export class DefinedTransactionHandler<A extends Record<string, TransactionActio
     readonly [ACTIONS]?: A;
     // (undocumented)
     readonly [DEFINED_TRANSACTION_HANDLER] = true;
-    constructor(actions: A);
+    constructor(actions: A, name?: string);
     readonly handler: TransactionHandler;
 }
 
@@ -329,7 +333,13 @@ export class DefinedTransactionHandler<A extends Record<string, TransactionActio
 export function defineEventSource<CP, CF = unknown, DT = unknown>(name: string, definition: EventSourceDefinition<CP, CF, DT>): EventSourceBuilder<CP, CF, DT>;
 
 // @public
+export function defineProcessor<EventData = unknown, CustomConfig = unknown>(name: string, fn: (events: EventProcessorEvent<EventData>[], ctx: EventProcessorContext<CustomConfig>) => Promise<void> | void): DefinedProcessor<CustomConfig, EventData>;
+
+// @public
 export function defineProcessor<EventData = unknown, CustomConfig = unknown>(fn: (events: EventProcessorEvent<EventData>[], ctx: EventProcessorContext<CustomConfig>) => Promise<void> | void): DefinedProcessor<CustomConfig, EventData>;
+
+// @public
+export function defineTransactionHandler<A extends Record<string, TransactionAction>>(name: string, actions: A): DefinedTransactionHandler<A>;
 
 // @public
 export function defineTransactionHandler<A extends Record<string, TransactionAction>>(actions: A): DefinedTransactionHandler<A>;
@@ -372,7 +382,7 @@ export interface EventProcessor extends Handler {
 }
 
 // @public
-export interface EventProcessorContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
+export interface EventProcessorContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerSecretsAndFiles {
     // (undocumented)
     readonly requestId: string;
 }
@@ -430,7 +440,7 @@ export interface EventSourceConf<CF> extends WSEventStreamInfo {
 export type EventSourceConfigParserFn<CF> = (info: WSEventStreamInfo, config: any) => Promise<CF>;
 
 // @public
-export interface EventSourceContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
+export interface EventSourceContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerSecretsAndFiles {
     // (undocumented)
     readonly requestId: string;
     // (undocumented)
@@ -550,11 +560,30 @@ export interface HandlerEvent {
 }
 
 // @public
+export type HandlerRegistrationOptions<CustomConfig = unknown> = HandlerRegistrationSettings<CustomConfig>;
+
+// @public
+export interface HandlerRegistrationSettings<CustomConfig = unknown> {
+    config?: CustomConfig;
+    files?: Record<string, string>;
+    secretNames?: string[];
+    secrets?: Record<string, string>;
+}
+
+// @public
 export enum HandlerRuntimeMode {
     // (undocumented)
     INBOUND = "inbound",
     // (undocumented)
     OUTBOUND = "outbound"
+}
+
+// @public
+export interface HandlerSecretsAndFiles {
+    file?(name: string): string;
+    readonly files?: Readonly<Record<string, string>>;
+    secret?(name: string): string;
+    readonly secrets?: Readonly<Record<string, string>>;
 }
 
 // @public (undocumented)
@@ -593,6 +622,9 @@ export function isDefinedTransactionHandler(value: unknown): value is DefinedTra
 
 // @public
 export const KALEIDO_CONFIG_FILE = "KALEIDO_CONFIG_FILE";
+
+// @public
+export const KALEIDO_SECRETS_DIR = "KALEIDO_SECRETS_DIR";
 
 // @public (undocumented)
 export function kidColon(prefix: string, value: string): string;
@@ -687,9 +719,11 @@ export interface ProviderConfig<CustomConfig> {
 // @public
 export interface ProviderServices {
     readonly config: unknown;
+    readonly files?: Readonly<Record<string, string>>;
     getServiceClientOptions(bindingName: string, authRef?: string): ServiceClientOptions;
     // (undocumented)
     readonly providerName: string;
+    readonly secrets?: Readonly<Record<string, string>>;
 }
 
 // @public
@@ -769,6 +803,9 @@ export const SDKErrors: {
     readonly MsgSDKDeadlineNotWaiting: ErrorMessage;
     readonly MsgSDKDirectorNextStageAndSubflow: ErrorMessage;
     readonly MsgSDKServiceBindingsNeedClient: ErrorMessage;
+    readonly MsgSDKHandlerFileUnknown: ErrorMessage;
+    readonly MsgSDKSecretsDirUnreadable: ErrorMessage;
+    readonly MsgSDKHandlerSecretUnknown: ErrorMessage;
     readonly MsgSDKEngineNotConnected: ErrorMessage;
 };
 
@@ -915,7 +952,7 @@ export interface TokenAuth {
 export type TransactionAction<I = any> = (input: I, ctx: TransactionContext<any>) => unknown;
 
 // @public
-export interface TransactionContext<CustomConfig = unknown> extends SetupContext<CustomConfig> {
+export interface TransactionContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerSecretsAndFiles {
     // (undocumented)
     readonly requestId: string;
     // (undocumented)
@@ -1062,9 +1099,11 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     static _createForTest<C = unknown>(customConfig?: C, wfeConfig?: WorkflowEngineClientConfig): WorkflowEngineClient<C>;
     // (undocumented)
     disconnect(): void;
-    eventProcessor<C = CustomConfig, E = unknown>(name: string, def: EventProcessorDef<C, E>): this;
-    eventSource(source: EventSource_2): this;
-    static fromConfigFile<C = unknown>(path?: string): WorkflowEngineClient<C>;
+    eventProcessor<C = CustomConfig, E = unknown>(name: string, def: EventProcessorDef<C, E>, options?: HandlerRegistrationOptions<C>): this;
+    eventSource(source: EventSource_2, options?: HandlerRegistrationOptions): this;
+    static fromConfigFile<C = unknown>(path?: string, options?: {
+        customConfig?: C;
+    }): WorkflowEngineClient<C>;
     // (undocumented)
     getServiceBinding(name: string): ServiceBindingConfig;
     // (undocumented)
@@ -1076,11 +1115,11 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     // (undocumented)
     get isConnected(): boolean;
     // (undocumented)
-    registerEventProcessor(name: string, handler: EventProcessor): void;
+    registerEventProcessor(name: string, handler: EventProcessor, options?: HandlerRegistrationOptions): void;
     // (undocumented)
-    registerEventSource(name: string, handler: EventSource_2): void;
+    registerEventSource(name: string, handler: EventSource_2, options?: HandlerRegistrationOptions): void;
     // (undocumented)
-    registerTransactionHandler(name: string, handler: TransactionHandler): void;
+    registerTransactionHandler(name: string, handler: TransactionHandler, options?: HandlerRegistrationOptions): void;
     // @internal
     runSetupOnTrigger(authRef: string): Promise<{
         status: 'success' | 'error';
@@ -1089,7 +1128,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
     setup(authRef?: string): Promise<void>;
     start(): Promise<void>;
     stop(): void;
-    transactionHandler(name: string, def: TransactionHandlerRegistration): this;
+    transactionHandler(name: string, def: TransactionHandlerRegistration, options?: HandlerRegistrationOptions): this;
 }
 
 // @public (undocumented)
@@ -1110,6 +1149,7 @@ export interface WorkflowEngineClientConfig {
     providerName: string;
     // (undocumented)
     reconnectDelay?: number;
+    secrets?: Record<string, string>;
     server?: ServerConfig;
     serviceBindings?: ServiceBindingsMap;
     url?: string;
