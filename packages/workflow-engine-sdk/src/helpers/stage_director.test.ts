@@ -297,7 +297,8 @@ describe('BasicStageDirector', () => {
                 batchHandler: async (batchIn) => {
                     return batchIn.map((req, i) => ({
                         result: EvalResult.COMPLETE,
-                        output: { processed: i, batch: true }
+                        output: { processed: i, batch: true },
+                        flush: i === 1,
                     }));
                 }
             }],
@@ -335,6 +336,7 @@ describe('BasicStageDirector', () => {
             expect(result.stage).toBe('end');
             expect(result.stateUpdates).toBeDefined();
             expect(result.stateUpdates?.[0]?.value).toEqual({ processed: i, batch: true });
+            expect(result.flush).toBe(i === 1 ? true : undefined);
         });
     })
 
@@ -1208,5 +1210,29 @@ describe('StageDirectorHelper', () => {
         expect(result.deadline).toBeUndefined();
         expect(result.stage).toBeUndefined();
         expect(result.error).toBeUndefined();
+    })
+
+    it.each([
+        [EvalResult.COMPLETE, { stage: 'next-stage' }],
+        [EvalResult.WAITING, {}],
+        [EvalResult.HARD_FAILURE, { stage: 'failure-stage' }],
+    ])('should set flush on result %s when asked', (evalResult, expected) => {
+        const flush = (flush?: boolean) => StageDirectorHelper.mapOutput(
+            mockStageDirector,
+            mockRequest,
+            evalResult,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            flush,
+        );
+        expect(flush(true)).toMatchObject({ ...expected, flush: true });
+        expect(flush(false).flush).toBeUndefined();
+        expect(flush().flush).toBeUndefined();
     })
 })

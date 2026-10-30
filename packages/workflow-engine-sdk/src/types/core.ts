@@ -192,6 +192,13 @@ export interface WSEvaluateReplyResult {
   triggers?: Trigger[];
   events?: HandlerEvent[];
   deadline?: string;
+  /**
+   * Commit this result, and every earlier write of the executor, before the transaction is evaluated again.
+   * Set on a result whose output a later action exposes outside the engine and cannot reproduce exactly, such as
+   * a signed transaction's hash before it is submitted, or on a result that allocates from a shared ordered
+   * resource such as a nonce.
+   */
+  flush?: boolean;
 }
 
 export interface RequestContext {

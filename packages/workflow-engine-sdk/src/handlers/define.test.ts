@@ -57,6 +57,8 @@ const actions = defineTransactionHandler({
   'wait-string': () => waiting({ deadline: '2031-01-01T00:00:00.000Z' }),
   'wait-with-output': () => waiting({ output: { submitted: 'tx-1' } }),
   'wait-plain': () => waiting(),
+  'complete-flush': () => complete({ hash: '0x1' }, { flush: true }),
+  'wait-flush': () => waiting({ output: { nonce: 5 }, flush: true }),
   throws: async () => { throw new Error('plain failure'); },
   'throws-string': () => { throw 'not an Error'; },
   'throws-object': () => { throw { code: 7 }; },
@@ -95,6 +97,11 @@ describe('defineTransactionHandler', () => {
     expect(await reply(actions, 'wait-string')).toEqual({ deadline: '2031-01-01T00:00:00.000Z' });
     expect(await reply(actions, 'wait-with-output')).toEqual({ stateUpdates: [{ op: 'add', path: '/output', value: { submitted: 'tx-1' } }] });
     expect(await reply(actions, 'wait-plain')).toEqual({});
+  });
+
+  it('asks for a flush with complete() and waiting()', async () => {
+    expect(await reply(actions, 'complete-flush')).toEqual({ stage: 'next', flush: true, stateUpdates: [{ op: 'add', path: '/output', value: { hash: '0x1' } }] });
+    expect(await reply(actions, 'wait-flush')).toEqual({ flush: true, stateUpdates: [{ op: 'add', path: '/output', value: { nonce: 5 } }] });
   });
 
   it('routes a StageError to its stage with its data', async () => {

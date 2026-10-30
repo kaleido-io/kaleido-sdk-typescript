@@ -49,6 +49,7 @@ export interface CompleteOutcome {
   readonly output?: unknown;
   readonly stage?: string;
   readonly events?: HandlerEvent[];
+  readonly flush?: boolean;
 }
 
 /** Returned by `waiting()`. */
@@ -56,6 +57,7 @@ export interface WaitingOutcome {
   readonly [KIND]: 'waiting';
   readonly output?: unknown;
   readonly deadline?: string;
+  readonly flush?: boolean;
 }
 
 export type ActionOutcome = CompleteOutcome | WaitingOutcome;
@@ -65,6 +67,13 @@ export interface CompleteOptions {
   stage?: string;
   /** Events to emit, for example to wake transactions waiting on a topic. */
   events?: HandlerEvent[];
+  /**
+   * Commit this result, and every earlier write of the executor, before the transaction is evaluated again. Set it
+   * when a later action exposes this output outside the engine and cannot reproduce it exactly, such as a signed
+   * transaction's hash before it is submitted, or when the result allocates from a shared ordered resource such as
+   * a nonce.
+   */
+  flush?: boolean;
 }
 
 export interface WaitingOptions {
@@ -72,17 +81,24 @@ export interface WaitingOptions {
   deadline?: Date | string;
   /** Output to store at the stage's `outputPath` while waiting. */
   output?: unknown;
+  /**
+   * Commit this result, and every earlier write of the executor, before the transaction is evaluated again. Set it
+   * when a later action exposes this output outside the engine and cannot reproduce it exactly, such as a signed
+   * transaction's hash before it is submitted, or when the result allocates from a shared ordered resource such as
+   * a nonce.
+   */
+  flush?: boolean;
 }
 
 /** Complete the stage, optionally choosing the next stage or emitting events. */
 export function complete(output?: unknown, options: CompleteOptions = {}): CompleteOutcome {
-  return { [KIND]: 'complete', output, stage: options.stage, events: options.events };
+  return { [KIND]: 'complete', output, stage: options.stage, events: options.events, flush: options.flush };
 }
 
 /** Stay in the stage until an event or the deadline wakes it. */
 export function waiting(options: WaitingOptions = {}): WaitingOutcome {
   const deadline = options.deadline instanceof Date ? options.deadline.toISOString() : options.deadline;
-  return { [KIND]: 'waiting', output: options.output, deadline };
+  return { [KIND]: 'waiting', output: options.output, deadline, flush: options.flush };
 }
 
 export interface StageErrorOptions {
@@ -154,12 +170,12 @@ type HandlerResult = Awaited<ReturnType<TransactionHandlerFn<WithStageDirector>>
 function toResult(returned: unknown): HandlerResult {
   switch (kindOf(returned)) {
     case 'complete': {
-      const { output, stage, events } = returned as CompleteOutcome;
-      return { result: EvalResult.COMPLETE, output, customStage: stage, events };
+      const { output, stage, events, flush } = returned as CompleteOutcome;
+      return { result: EvalResult.COMPLETE, output, customStage: stage, events, flush };
     }
     case 'waiting': {
-      const { output, deadline } = returned as WaitingOutcome;
-      return { result: EvalResult.WAITING, output, deadline };
+      const { output, deadline, flush } = returned as WaitingOutcome;
+      return { result: EvalResult.WAITING, output, deadline, flush };
     }
     default:
       return { result: EvalResult.COMPLETE, output: returned };

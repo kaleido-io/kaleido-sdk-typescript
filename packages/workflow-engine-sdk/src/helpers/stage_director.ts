@@ -86,8 +86,13 @@ export class StageDirectorHelper {
     customStage?: string,
     events?: HandlerEvent[],
     deadline?: string,
+    flush?: boolean,
   ): WSEvaluateReplyResult {
     const replyResult: WSEvaluateReplyResult = {};
+
+    if (flush) {
+      replyResult.flush = true;
+    }
 
     // Add triggers if provided
     if (triggers && triggers.length > 0) {
@@ -374,7 +379,7 @@ async function execMapped<T extends WithStageDirector>(
       throw newError(SDKErrors.MsgSDKHandlerNotConfigured);
     }
     const handlerResult = await config.handler(transaction, input, ctx);
-    const { result, output, error, errorData, triggers, extraUpdates, customStage, events, deadline } = handlerResult as {
+    const { result, output, error, errorData, triggers, extraUpdates, customStage, events, deadline, flush } = handlerResult as {
       result: EvalResult;
       output?: any;
       error?: Error;
@@ -384,6 +389,7 @@ async function execMapped<T extends WithStageDirector>(
       extraUpdates?: Patch;
       customStage?: string;
       deadline?: string;
+      flush?: boolean;
     };
     return StageDirectorHelper.mapOutput(
       input.stageDirector,
@@ -397,6 +403,7 @@ async function execMapped<T extends WithStageDirector>(
       customStage,
       events,
       deadline,
+      flush,
     );
   } catch (error) {
     log.error('Handler execution failed:', error);
@@ -438,6 +445,7 @@ async function execBatchMapped<T extends WithStageDirector>(
         batchResult.customStage,
         batchResult.events,
         batchResult.deadline,
+        batchResult.flush,
       );
     });
   } catch (error) {

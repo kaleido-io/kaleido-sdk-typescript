@@ -111,6 +111,7 @@ export function complete(output?: unknown, options?: CompleteOptions): CompleteO
 // @public (undocumented)
 export interface CompleteOptions {
     events?: HandlerEvent[];
+    flush?: boolean;
     stage?: string;
 }
 
@@ -120,6 +121,8 @@ export interface CompleteOutcome {
     readonly [KIND]: 'complete';
     // (undocumented)
     readonly events?: HandlerEvent[];
+    // (undocumented)
+    readonly flush?: boolean;
     // (undocumented)
     readonly output?: unknown;
     // (undocumented)
@@ -869,7 +872,7 @@ export interface StageDirector {
 
 // @public
 export class StageDirectorHelper {
-    static mapOutput(stageDirector: StageDirector, transaction: WSEvaluateTransaction, result: EvalResult, output?: any, error?: Error, errorData?: any, triggers?: Trigger[], extraStateUpdates?: Patch, customStage?: string, events?: HandlerEvent[], deadline?: string): WSEvaluateReplyResult;
+    static mapOutput(stageDirector: StageDirector, transaction: WSEvaluateTransaction, result: EvalResult, output?: any, error?: Error, errorData?: any, triggers?: Trigger[], extraStateUpdates?: Patch, customStage?: string, events?: HandlerEvent[], deadline?: string, flush?: boolean): WSEvaluateReplyResult;
 }
 
 // @public
@@ -954,6 +957,7 @@ export interface TransactionHandlerBatchOut {
     events?: HandlerEvent[];
     // (undocumented)
     extraUpdates?: Patch;
+    flush?: boolean;
     // (undocumented)
     output?: any;
     // (undocumented)
@@ -982,6 +986,7 @@ ctx?: TransactionContext) => Promise<{
     extraUpdates?: Patch;
     customStage?: string;
     deadline?: string;
+    flush?: boolean;
 }>;
 
 // @public
@@ -1029,6 +1034,7 @@ export function waiting(options?: WaitingOptions): WaitingOutcome;
 // @public (undocumented)
 export interface WaitingOptions {
     deadline?: Date | string;
+    flush?: boolean;
     output?: unknown;
 }
 
@@ -1038,6 +1044,8 @@ export interface WaitingOutcome {
     readonly [KIND]: 'waiting';
     // (undocumented)
     readonly deadline?: string;
+    // (undocumented)
+    readonly flush?: boolean;
     // (undocumented)
     readonly output?: unknown;
 }
@@ -1174,6 +1182,7 @@ export interface WSEvaluateReplyResult {
     error?: string;
     // (undocumented)
     events?: HandlerEvent[];
+    flush?: boolean;
     // (undocumented)
     stage?: string;
     // (undocumented)
