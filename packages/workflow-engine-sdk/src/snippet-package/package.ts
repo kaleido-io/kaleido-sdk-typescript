@@ -178,19 +178,6 @@ export function normalizeSnippetPackage(entries: ZipEntry[]): NormalizedSnippetP
   return { files, changes };
 }
 
-function unsafePath(path: string): string | undefined {
-  if (path.startsWith('/') || /^[A-Za-z]:/.test(path)) {
-    return 'is an absolute path';
-  }
-  if (path.includes('\\')) {
-    return 'contains a backslash';
-  }
-  if (segments(path).includes('..')) {
-    return 'contains a .. segment';
-  }
-  return undefined;
-}
-
 function checkDependencies(pkg: SnippetPackageJson, problems: string[]): void {
   for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies'] as const) {
     for (const name of Object.keys(pkg[section] ?? {})) {
@@ -242,7 +229,7 @@ function checkManifest(pkg: SnippetPackageJson, paths: Set<string>, problems: st
 }
 
 /** Check a normalised package against the snippet package rules. */
-export function checkSnippetPackage(files: SnippetPackageFile[]): SnippetPackageCheck {
+export async function checkSnippetPackage(files: SnippetPackageFile[]): Promise<SnippetPackageCheck> {
   const problems: string[] = [];
   if (files.length === 0) {
     return { problems: ['the package is empty'] };
@@ -253,10 +240,6 @@ export function checkSnippetPackage(files: SnippetPackageFile[]): SnippetPackage
   let total = 0;
   for (const { path, entry } of files) {
     total += entry.uncompressedSize;
-    const unsafe = unsafePath(path);
-    if (unsafe) {
-      problems.push(`${path} ${unsafe}`);
-    }
     if (entry.isSymlink) {
       problems.push(`${path} is a symbolic link, which a package can't contain`);
     }
@@ -279,7 +262,7 @@ export function checkSnippetPackage(files: SnippetPackageFile[]): SnippetPackage
   }
   let packageJson: SnippetPackageJson;
   try {
-    const parsed = JSON.parse(packageJsonFile.entry.read().toString('utf8')) as unknown;
+    const parsed = JSON.parse((await packageJsonFile.entry.read()).toString('utf8')) as unknown;
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       throw new Error('not an object');
     }
@@ -293,10 +276,13 @@ export function checkSnippetPackage(files: SnippetPackageFile[]): SnippetPackage
   return { problems, packageJson };
 }
 
-/** Read, normalise and check a snippet package zip. */
-export function inspectSnippetPackage(zip: Buffer): NormalizedSnippetPackage & SnippetPackageCheck {
-  const normalized = normalizeSnippetPackage(readZip(zip));
-  return { ...normalized, ...checkSnippetPackage(normalized.files) };
+/**
+ * Read, normalise and check a snippet package zip. Rejects a zip that can't be
+ * read, or that has absolute paths, `..` segments or backslashes in its entry names.
+ */
+export async function inspectSnippetPackage(zip: Buffer): Promise<NormalizedSnippetPackage & SnippetPackageCheck> {
+  const normalized = normalizeSnippetPackage(await readZip(zip));
+  return { ...normalized, ...(await checkSnippetPackage(normalized.files)) };
 }
 
 export class SnippetPackageError extends Error {
@@ -310,8 +296,8 @@ export class SnippetPackageError extends Error {
  * Unzip a snippet package into a directory, after normalising and checking it.
  * Throws a SnippetPackageError listing every problem when it isn't valid.
  */
-export function extractSnippetPackage(zip: Buffer, directory: string): NormalizedSnippetPackage & SnippetPackageCheck {
-  const inspected = inspectSnippetPackage(zip);
+export async function extractSnippetPackage(zip: Buffer, directory: string): Promise<NormalizedSnippetPackage & SnippetPackageCheck> {
+  const inspected = await inspectSnippetPackage(zip);
   if (inspected.problems.length > 0) {
     throw new SnippetPackageError(inspected.problems);
   }
@@ -322,7 +308,7 @@ export function extractSnippetPackage(zip: Buffer, directory: string): Normalize
       throw new SnippetPackageError([`${path} would be written outside the package directory`]);
     }
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, entry.read());
+    writeFileSync(target, await entry.read());
   }
   return inspected;
 }
@@ -430,19 +416,14 @@ export interface PackedSnippetPackage {
   warnings: string[];
 }
 
-/**
- * Zip a snippet package project, leaving out node_modules, build output,
- * lockfiles, files `.gitignore` names and earlier zips. When the project's
- * package.json has no "kaleido" section, the handlers are found in the source
- * and listed in the zip's package.json.
- */
 /** How `packSnippetPackage` reads a project. */
 export interface PackOptions extends DiscoverOptions {
   /** The package's default config file, relative to the project; overrides the package.json's. */
   config?: string;
 }
 
-export function packSnippetPackage(directory: string, options: PackOptions = {}): PackedSnippetPackage {
+/** The files `packSnippetPackage` would zip, and what it found out about the handlers, without zipping them. */
+export function snippetPackageContents(directory: string, options: PackOptions = {}): Omit<PackedSnippetPackage, 'zip'> & { inputs: ZipInput[] } {
   const ignored = ignoredByGitignore(directory);
   const inputs: ZipInput[] = [];
   const walk = (dir: string) => {
@@ -559,5 +540,16 @@ export function packSnippetPackage(directory: string, options: PackOptions = {})
   if (pkg && typeof pkg === 'object' && packageJsonInput && problems.length === 0) {
     packageJsonInput.content = Buffer.from(JSON.stringify({ ...pkg, kaleido: handlers }, null, 2) + '\n');
   }
-  return { zip: writeZip(inputs), files: inputs.map((i) => i.path).sort(), ...result };
+  return { inputs, files: inputs.map((i) => i.path).sort(), ...result };
+}
+
+/**
+ * Zip a snippet package project, leaving out node_modules, build output,
+ * lockfiles, files `.gitignore` names and earlier zips. When the project's
+ * package.json has no "kaleido" section, the handlers are found in the source
+ * and listed in the zip's package.json.
+ */
+export async function packSnippetPackage(directory: string, options: PackOptions = {}): Promise<PackedSnippetPackage> {
+  const { inputs, ...contents } = snippetPackageContents(directory, options);
+  return { zip: await writeZip(inputs), ...contents };
 }

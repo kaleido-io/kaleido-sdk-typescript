@@ -26,7 +26,7 @@ export interface BundleHandlerOptions {
 }
 
 // @public
-export function checkSnippetPackage(files: SnippetPackageFile[]): SnippetPackageCheck;
+export function checkSnippetPackage(files: SnippetPackageFile[]): Promise<SnippetPackageCheck>;
 
 // @public
 export const DEFAULT_PACKAGE_CONFIG_FILE = "config/provider-config.yaml";
@@ -67,7 +67,7 @@ export function extractEventProcessorDef(loaded: Record<string, unknown>, handle
 export function extractEventSource(loaded: Record<string, unknown>, handlerName: string, handlerFile: string, importPath: string): EventSource_2;
 
 // @public
-export function extractSnippetPackage(zip: Buffer, directory: string): NormalizedSnippetPackage & SnippetPackageCheck;
+export function extractSnippetPackage(zip: Buffer, directory: string): Promise<NormalizedSnippetPackage & SnippetPackageCheck>;
 
 // @public (undocumented)
 export const HANDLER_KINDS: HandlerKind[];
@@ -95,7 +95,7 @@ export type HandlerKind = 'transactionHandlers' | 'eventSources' | 'eventProcess
 export function importedPackageName(specifier: string): string;
 
 // @public
-export function inspectSnippetPackage(zip: Buffer): NormalizedSnippetPackage & SnippetPackageCheck;
+export function inspectSnippetPackage(zip: Buffer): Promise<NormalizedSnippetPackage & SnippetPackageCheck>;
 
 // @public
 export function isHandlerSourceFile(path: string): boolean;
@@ -192,17 +192,14 @@ export interface PackOptions extends DiscoverOptions {
     config?: string;
 }
 
-// @public (undocumented)
-export function packSnippetPackage(directory: string, options?: PackOptions): PackedSnippetPackage;
+// @public
+export function packSnippetPackage(directory: string, options?: PackOptions): Promise<PackedSnippetPackage>;
 
 // @public
 export function planSnippetPackage(packageDir: string, options?: RunSnippetPackageOptions): SnippetPackagePlan;
 
 // @public
 export function readHandlerConfigFile(path: string): Record<string, unknown>;
-
-// @public
-export function readZip(buf: Buffer): ZipEntry[];
 
 // Warning: (ae-forgotten-export) The symbol "WorkflowEngineClient" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "HandlerRegistrationOptions" needs to be exported by the entry point index.d.ts
@@ -304,9 +301,6 @@ export const SUPPLIED_LIBRARIES: readonly string[];
 export const SUPPORTED_DEPENDENCY_SCOPE = "@kaleido-io/";
 
 // @public
-export function writeZip(files: ZipInput[]): Buffer;
-
-// @public
 export interface ZipEntry {
     // (undocumented)
     readonly compressedSize: number;
@@ -314,22 +308,9 @@ export interface ZipEntry {
     readonly isDirectory: boolean;
     readonly isSymlink: boolean;
     readonly path: string;
-    read(): Buffer;
+    read(): Promise<Buffer>;
     // (undocumented)
     readonly uncompressedSize: number;
-}
-
-// @public (undocumented)
-export class ZipFormatError extends Error {
-    constructor(message: string);
-}
-
-// @public
-export interface ZipInput {
-    // (undocumented)
-    content: Buffer;
-    // (undocumented)
-    path: string;
 }
 
 // (No @packageDocumentation comment for this package)

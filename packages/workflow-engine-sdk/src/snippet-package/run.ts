@@ -27,7 +27,7 @@ import type { WithStageDirector } from '../types/core';
 import { extractActionMap, extractEventProcessorDef, extractEventSource } from './extract';
 import { packageImportCheck, resolvePackageEntry } from './imports';
 import { bundleHandler, evaluateHandlerBundle, type BundleHandlerOptions } from './load';
-import { DEFAULT_PACKAGE_CONFIG_FILE, HANDLER_KINDS, isSuppliedDependency, packSnippetPackage, type HandlerKind, type SnippetPackageJson, type SnippetPackageManifest } from './package';
+import { DEFAULT_PACKAGE_CONFIG_FILE, HANDLER_KINDS, isSuppliedDependency, snippetPackageContents, type HandlerKind, type SnippetPackageJson, type SnippetPackageManifest } from './package';
 import type { DiscoverOptions } from './discover';
 
 const log = newLogger('snippet-package');
@@ -159,7 +159,7 @@ export interface SnippetPackagePlan {
  */
 export function planSnippetPackage(packageDir: string, options: RunSnippetPackageOptions = {}): SnippetPackagePlan {
   const dir = resolve(packageDir);
-  const packed = packSnippetPackage(dir, { typescript: options.typescript });
+  const packed = snippetPackageContents(dir, { typescript: options.typescript });
   if (packed.problems.length > 0) {
     throw new Error(`The handlers in ${dir} can't be listed:\n${packed.problems.join('\n')}`);
   }
