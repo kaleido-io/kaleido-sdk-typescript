@@ -24,7 +24,7 @@ import { ConfigLoader } from '../config/config.js';
 import type { EventProcessor, EventSource } from '../interfaces/handlers.js';
 import type { HandlerRuntime } from '../runtime/handler_runtime.js';
 import { WSMessageType, type WSEvaluateTransaction, type WSHandlerEnvelope } from '../types/core.js';
-import { createEventSourceContext, createTransactionContext, type HandlerResources } from './context.js';
+import { createEventSourceContext, createTransactionContext, type HandlerSecretsAndFiles } from './context.js';
 import { createTransactionHandler } from '../factories/transaction_handler.js';
 
 interface Internals {
@@ -45,11 +45,11 @@ const envelope = (handler: string, messageType = WSMessageType.HANDLE_TRANSACTIO
 
 const transaction = { authRef: 'a-1' } as WSEvaluateTransaction;
 
-function resourcesOf(ctx: HandlerResources & { config: unknown }) {
-  return { config: ctx.config, secrets: { ...ctx.secrets }, resources: { ...ctx.resources } };
+function settingsOf(ctx: HandlerSecretsAndFiles & { config: unknown }) {
+  return { config: ctx.config, secrets: { ...ctx.secrets }, files: { ...ctx.files } };
 }
 
-describe('handler config, secrets and resources', () => {
+describe('handler config, secrets and files', () => {
   it('gives each registered handler its own, the rest the client\'s config, and no secrets it doesn\'t name', async () => {
     const client = startedClient({ shared: true }, { shared: 'provider-secret' });
     const noop = createTransactionHandler('x', new Map());
@@ -57,7 +57,7 @@ describe('handler config, secrets and resources', () => {
       .transactionHandler('payments', { handler: noop }, {
         config: { book: 'primary' },
         secrets: { apiKey: 'payments-key' },
-        resources: { truststore: '/etc/resources/payments/truststore.p12' },
+        files: { truststore: '/etc/provider/files/payments/truststore.p12' },
       })
       .transactionHandler('refunds', { handler: noop }, {
         config: { book: 'secondary' },
@@ -69,21 +69,21 @@ describe('handler config, secrets and resources', () => {
 
     const ctxFor = (name: string) => createTransactionContext(runtime.newRequestContext(envelope(name)), name, transaction);
 
-    expect(resourcesOf(ctxFor('payments'))).toEqual({
+    expect(settingsOf(ctxFor('payments'))).toEqual({
       config: { book: 'primary' },
       secrets: { apiKey: 'payments-key' },
-      resources: { truststore: '/etc/resources/payments/truststore.p12' },
+      files: { truststore: '/etc/provider/files/payments/truststore.p12' },
     });
-    // No resources of its own, so the client's (none)
-    expect(resourcesOf(ctxFor('refunds'))).toEqual({
+    // No files of its own, so the client's (none)
+    expect(settingsOf(ctxFor('refunds'))).toEqual({
       config: { book: 'secondary' },
       secrets: { apiKey: 'refunds-key' },
-      resources: {},
+      files: {},
     });
-    expect(resourcesOf(ctxFor('plain'))).toEqual({
+    expect(settingsOf(ctxFor('plain'))).toEqual({
       config: { shared: true },
       secrets: {},
-      resources: {},
+      files: {},
     });
   });
 
@@ -97,8 +97,8 @@ describe('handler config, secrets and resources', () => {
     const { runtime } = client as unknown as Internals;
     const ctxFor = (name: string) => createTransactionContext(runtime.newRequestContext(envelope(name)), name, transaction);
 
-    expect(resourcesOf(ctxFor('payments')).secrets).toEqual({ coreBankingApiKey: 'cbs' });
-    expect(resourcesOf(ctxFor('reports')).secrets).toEqual({ coreBankingApiKey: 'cbs', smtpPassword: 'smtp' });
+    expect(settingsOf(ctxFor('payments')).secrets).toEqual({ coreBankingApiKey: 'cbs' });
+    expect(settingsOf(ctxFor('reports')).secrets).toEqual({ coreBankingApiKey: 'cbs', smtpPassword: 'smtp' });
   });
 
   it('applies to event sources and event processors too', async () => {
@@ -108,12 +108,12 @@ describe('handler config, secrets and resources', () => {
       init: jest.fn(), close: jest.fn(),
       eventSourcePoll: jest.fn(), eventSourceValidateConfig: jest.fn(), eventSourceDelete: jest.fn(),
     } as unknown as EventSource;
-    let processorCtx: (HandlerResources & { config: unknown }) | undefined;
+    let processorCtx: (HandlerSecretsAndFiles & { config: unknown }) | undefined;
     client
       .eventSource(source, { config: { book: 'feed-book' }, secrets: { token: 'feed-token' } })
       .eventProcessor('writer', {
         processBatch: async (ctx) => { processorCtx = ctx; },
-      }, { config: { book: 'writer-book' }, resources: { schema: '/etc/resources/writer/schema.json' } });
+      }, { config: { book: 'writer-book' }, files: { schema: '/etc/provider/files/writer/schema.json' } });
     await client.start();
     const { runtime } = client as unknown as Internals;
 
@@ -123,37 +123,37 @@ describe('handler config, secrets and resources', () => {
       { streamId: 's1', streamName: 'n' } as never,
       undefined,
     );
-    expect(resourcesOf(sourceCtx)).toEqual({ config: { book: 'feed-book' }, secrets: { token: 'feed-token' }, resources: {} });
+    expect(settingsOf(sourceCtx)).toEqual({ config: { book: 'feed-book' }, secrets: { token: 'feed-token' }, files: {} });
 
     const processorReq = runtime.newRequestContext(envelope('writer', WSMessageType.EVENT_PROCESSOR_BATCH));
     await runtime.eventProcessors.get('writer')!.eventProcessorBatch(processorReq, {} as never, { events: [] } as never);
-    expect(resourcesOf(processorCtx!)).toEqual({
+    expect(settingsOf(processorCtx!)).toEqual({
       config: { book: 'writer-book' },
       secrets: {},
-      resources: { schema: '/etc/resources/writer/schema.json' },
+      files: { schema: '/etc/provider/files/writer/schema.json' },
     });
-    expect(processorCtx!.resource!('schema')).toBe('/etc/resources/writer/schema.json');
+    expect(processorCtx!.file!('schema')).toBe('/etc/provider/files/writer/schema.json');
   });
 
-  it('keeps a handler\'s secrets and resources read-only', async () => {
+  it('keeps a handler\'s secrets and files read-only', async () => {
     const client = startedClient({});
     client.transactionHandler('h', { handler: createTransactionHandler('h', new Map()) }, {
-      secrets: { apiKey: 'k' }, resources: { f: '/x' },
+      secrets: { apiKey: 'k' }, files: { f: '/x' },
     });
     await client.start();
     const { runtime } = client as unknown as Internals;
     const ctx = createTransactionContext(runtime.newRequestContext(envelope('h')), 'h', transaction);
     expect(Object.isFrozen(ctx.secrets)).toBe(true);
-    expect(Object.isFrozen(ctx.resources)).toBe(true);
+    expect(Object.isFrozen(ctx.files)).toBe(true);
   });
 
-  it('names the handler\'s resources when asked for one it lacks', async () => {
+  it('names the handler\'s files when asked for one it lacks', async () => {
     const client = startedClient({});
-    client.transactionHandler('h', { handler: createTransactionHandler('h', new Map()) }, { resources: { a: '/a', b: '/b' } });
+    client.transactionHandler('h', { handler: createTransactionHandler('h', new Map()) }, { files: { a: '/a', b: '/b' } });
     await client.start();
     const { runtime } = client as unknown as Internals;
     const ctx = createTransactionContext(runtime.newRequestContext(envelope('h')), 'h', transaction);
-    expect(() => ctx.resource!('c')).toThrow("Handler 'h' has no resource named 'c'. Its resources are: a, b");
+    expect(() => ctx.file!('c')).toThrow("Handler 'h' has no file named 'c'. Its files are: a, b");
   });
 
   it('returns a secret by name, and names the secrets but never their values when asked for one it lacks', async () => {

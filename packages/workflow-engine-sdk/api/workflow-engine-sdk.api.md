@@ -382,7 +382,7 @@ export interface EventProcessor extends Handler {
 }
 
 // @public
-export interface EventProcessorContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerResources {
+export interface EventProcessorContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerSecretsAndFiles {
     // (undocumented)
     readonly requestId: string;
 }
@@ -440,7 +440,7 @@ export interface EventSourceConf<CF> extends WSEventStreamInfo {
 export type EventSourceConfigParserFn<CF> = (info: WSEventStreamInfo, config: any) => Promise<CF>;
 
 // @public
-export interface EventSourceContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerResources {
+export interface EventSourceContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerSecretsAndFiles {
     // (undocumented)
     readonly requestId: string;
     // (undocumented)
@@ -560,22 +560,14 @@ export interface HandlerEvent {
 }
 
 // @public
-export type HandlerRegistrationOptions<CustomConfig = unknown> = HandlerRegistrationResources<CustomConfig>;
+export type HandlerRegistrationOptions<CustomConfig = unknown> = HandlerRegistrationSettings<CustomConfig>;
 
 // @public
-export interface HandlerRegistrationResources<CustomConfig = unknown> {
+export interface HandlerRegistrationSettings<CustomConfig = unknown> {
     config?: CustomConfig;
-    resources?: Record<string, string>;
+    files?: Record<string, string>;
     secretNames?: string[];
     secrets?: Record<string, string>;
-}
-
-// @public
-export interface HandlerResources {
-    resource?(name: string): string;
-    readonly resources?: Readonly<Record<string, string>>;
-    secret?(name: string): string;
-    readonly secrets?: Readonly<Record<string, string>>;
 }
 
 // @public
@@ -584,6 +576,14 @@ export enum HandlerRuntimeMode {
     INBOUND = "inbound",
     // (undocumented)
     OUTBOUND = "outbound"
+}
+
+// @public
+export interface HandlerSecretsAndFiles {
+    file?(name: string): string;
+    readonly files?: Readonly<Record<string, string>>;
+    secret?(name: string): string;
+    readonly secrets?: Readonly<Record<string, string>>;
 }
 
 // @public (undocumented)
@@ -719,10 +719,10 @@ export interface ProviderConfig<CustomConfig> {
 // @public
 export interface ProviderServices {
     readonly config: unknown;
+    readonly files?: Readonly<Record<string, string>>;
     getServiceClientOptions(bindingName: string, authRef?: string): ServiceClientOptions;
     // (undocumented)
     readonly providerName: string;
-    readonly resources?: Readonly<Record<string, string>>;
     readonly secrets?: Readonly<Record<string, string>>;
 }
 
@@ -803,7 +803,7 @@ export const SDKErrors: {
     readonly MsgSDKDeadlineNotWaiting: ErrorMessage;
     readonly MsgSDKDirectorNextStageAndSubflow: ErrorMessage;
     readonly MsgSDKServiceBindingsNeedClient: ErrorMessage;
-    readonly MsgSDKHandlerResourceUnknown: ErrorMessage;
+    readonly MsgSDKHandlerFileUnknown: ErrorMessage;
     readonly MsgSDKSecretsDirUnreadable: ErrorMessage;
     readonly MsgSDKHandlerSecretUnknown: ErrorMessage;
     readonly MsgSDKEngineNotConnected: ErrorMessage;
@@ -952,7 +952,7 @@ export interface TokenAuth {
 export type TransactionAction<I = any> = (input: I, ctx: TransactionContext<any>) => unknown;
 
 // @public
-export interface TransactionContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerResources {
+export interface TransactionContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerSecretsAndFiles {
     // (undocumented)
     readonly requestId: string;
     // (undocumented)
