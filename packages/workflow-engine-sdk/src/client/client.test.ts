@@ -53,6 +53,7 @@ describe('WorkflowEngineClient', () => {
       registerEventProcessor: mockRegisterEventProcessor,
       start: mockStart,
       stop: mockStop,
+      setProviderServices: jest.fn(),
       get isWebSocketConnected() { return mockIsWebSocketConnected; },
     } as any as jest.Mocked<HandlerRuntime>;
 

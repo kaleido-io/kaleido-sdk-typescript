@@ -1192,3 +1192,51 @@ describe('HandlerRuntime', () => {
         });
     })
 })
+describe('HandlerRuntime request context deadlines', () => {
+    const envelope = (deadline?: string) => ({ messageType: WSMessageType.HANDLE_TRANSACTIONS, id: 'req-1', deadline });
+    const tick = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    it('aborts the signal when the deadline passes', async () => {
+        const reqContext = new HandlerRuntime(handlerRuntimeConfig).newRequestContext(envelope(new Date(Date.now() + 20).toISOString()));
+        expect(reqContext.signal.aborted).toBe(false);
+        await tick(60);
+        expect(reqContext.signal.aborted).toBe(true);
+        reqContext.cancel();
+    });
+
+    it('aborts at a deadline beyond the timer range, and not before', () => {
+        jest.useFakeTimers();
+        try {
+            const day = 24 * 60 * 60 * 1000;
+            const reqContext = new HandlerRuntime(handlerRuntimeConfig).newRequestContext(envelope(new Date(Date.now() + 40 * day).toISOString()));
+            expect(reqContext.signal.aborted).toBe(false);
+            jest.advanceTimersByTime(40 * day - 1);
+            expect(reqContext.signal.aborted).toBe(false);
+            jest.advanceTimersByTime(1);
+            expect(reqContext.signal.aborted).toBe(true);
+            reqContext.cancel();
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('stops waiting for a far deadline when cancelled', () => {
+        jest.useFakeTimers();
+        try {
+            const reqContext = new HandlerRuntime(handlerRuntimeConfig).newRequestContext(envelope(new Date(Date.now() + 40 * 24 * 60 * 60 * 1000).toISOString()));
+            reqContext.cancel();
+            expect(reqContext.signal.aborted).toBe(true);
+            expect(jest.getTimerCount()).toBe(0);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('never aborts without a deadline until cancelled', async () => {
+        const reqContext = new HandlerRuntime(handlerRuntimeConfig).newRequestContext(envelope());
+        await tick(30);
+        expect(reqContext.signal.aborted).toBe(false);
+        reqContext.cancel();
+        expect(reqContext.signal.aborted).toBe(true);
+    });
+});

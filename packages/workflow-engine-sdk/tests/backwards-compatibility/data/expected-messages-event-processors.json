@@ -1,0 +1,363 @@
+{
+  "replies": [
+    {
+      "step": "builder-success",
+      "sent": {
+        "messageType": "event_processor_batch",
+        "id": "e1",
+        "handler": "indexer",
+        "streamId": "stream-1",
+        "streamName": "stream-one",
+        "events": [
+          {
+            "idempotencyKey": "k1",
+            "topic": "t",
+            "data": {}
+          },
+          {
+            "idempotencyKey": "k2",
+            "topic": "t",
+            "data": {
+              "n": 2
+            }
+          }
+        ],
+        "authRef": "auth-e1"
+      },
+      "reply": {
+        "messageType": "event_processor_batch_result",
+        "id": "e1",
+        "handler": "indexer"
+      }
+    },
+    {
+      "step": "builder-hosted-call",
+      "sent": {
+        "messageType": "event_processor_batch",
+        "id": "e2",
+        "handler": "indexer",
+        "streamId": "stream-1",
+        "streamName": "stream-one",
+        "events": [
+          {
+            "idempotencyKey": "k3",
+            "topic": "t",
+            "data": {
+              "call": "/api/v1/pools"
+            }
+          }
+        ],
+        "authRef": "auth-e2"
+      },
+      "reply": {
+        "messageType": "event_processor_batch_result",
+        "id": "e2",
+        "handler": "indexer"
+      }
+    },
+    {
+      "step": "builder-hosted-call-no-auth-ref",
+      "sent": {
+        "messageType": "event_processor_batch",
+        "id": "e3",
+        "handler": "indexer",
+        "streamId": "stream-1",
+        "streamName": "stream-one",
+        "events": [
+          {
+            "idempotencyKey": "k4",
+            "topic": "t",
+            "data": {
+              "call": "/api/v1/pools"
+            }
+          }
+        ]
+      },
+      "reply": {
+        "messageType": "event_processor_batch_result",
+        "id": "e3",
+        "handler": "indexer"
+      }
+    },
+    {
+      "step": "builder-hosted-call-fails",
+      "sent": {
+        "messageType": "event_processor_batch",
+        "id": "e4",
+        "handler": "indexer",
+        "streamId": "stream-1",
+        "streamName": "stream-one",
+        "events": [
+          {
+            "idempotencyKey": "k5",
+            "topic": "t",
+            "data": {
+              "call": "/api/v1/unavailable"
+            }
+          }
+        ],
+        "authRef": "auth-e4"
+      },
+      "reply": {
+        "messageType": "event_processor_batch_result",
+        "id": "e4",
+        "handler": "indexer",
+        "error": "Service proxy error: service unavailable"
+      }
+    },
+    {
+      "step": "builder-throws",
+      "sent": {
+        "messageType": "event_processor_batch",
+        "id": "e5",
+        "handler": "indexer",
+        "streamId": "stream-1",
+        "streamName": "stream-one",
+        "events": [
+          {
+            "idempotencyKey": "k6",
+            "topic": "t",
+            "data": {
+              "fail": true
+            }
+          }
+        ],
+        "authRef": "auth-e5"
+      },
+      "reply": {
+        "messageType": "event_processor_batch_result",
+        "id": "e5",
+        "handler": "indexer",
+        "error": "indexer failed on k6"
+      }
+    },
+    {
+      "step": "builder-empty-batch",
+      "sent": {
+        "messageType": "event_processor_batch",
+        "id": "e6",
+        "handler": "indexer",
+        "streamId": "stream-1",
+        "streamName": "stream-one",
+        "events": []
+      },
+      "reply": {
+        "messageType": "event_processor_batch_result",
+        "id": "e6",
+        "handler": "indexer"
+      }
+    },
+    {
+      "step": "raw-success",
+      "sent": {
+        "messageType": "event_processor_batch",
+        "id": "e7",
+        "handler": "raw-processor",
+        "streamId": "stream-1",
+        "streamName": "stream-one",
+        "events": [
+          {
+            "idempotencyKey": "k7",
+            "topic": "t",
+            "data": {}
+          }
+        ],
+        "authRef": "auth-e7"
+      },
+      "reply": {
+        "messageType": "event_processor_batch_result",
+        "id": "e7",
+        "handler": "raw-processor"
+      }
+    },
+    {
+      "step": "raw-sets-error",
+      "sent": {
+        "messageType": "event_processor_batch",
+        "id": "e8",
+        "handler": "raw-processor",
+        "streamId": "stream-1",
+        "streamName": "stream-one",
+        "events": [
+          {
+            "idempotencyKey": "k8",
+            "topic": "t",
+            "data": {
+              "fail": true
+            }
+          }
+        ]
+      },
+      "reply": {
+        "messageType": "event_processor_batch_result",
+        "id": "e8",
+        "handler": "raw-processor",
+        "error": "raw processor rejected the batch"
+      }
+    },
+    {
+      "step": "unknown-processor",
+      "sent": {
+        "messageType": "event_processor_batch",
+        "id": "e9",
+        "handler": "nope",
+        "streamId": "stream-1",
+        "streamName": "stream-one",
+        "events": [
+          {
+            "idempotencyKey": "k9",
+            "topic": "t",
+            "data": {}
+          }
+        ]
+      },
+      "reply": {
+        "messageType": "event_processor_batch_result",
+        "id": "e9",
+        "handler": "nope",
+        "error": "No event processor registered: nope"
+      }
+    }
+  ],
+  "builderContextSeen": [
+    {
+      "config": {
+        "table": "balances"
+      },
+      "providerName": "compat-provider",
+      "handlerName": "indexer",
+      "requestId": "e1",
+      "aborted": false,
+      "events": [
+        {
+          "idempotencyKey": "k1",
+          "topic": "t",
+          "data": {}
+        },
+        {
+          "idempotencyKey": "k2",
+          "topic": "t",
+          "data": {
+            "n": 2
+          }
+        }
+      ],
+      "results": []
+    },
+    {
+      "config": {
+        "table": "balances"
+      },
+      "providerName": "compat-provider",
+      "handlerName": "indexer",
+      "requestId": "e2",
+      "aborted": false,
+      "events": [
+        {
+          "idempotencyKey": "k3",
+          "topic": "t",
+          "data": {
+            "call": "/api/v1/pools"
+          }
+        }
+      ],
+      "results": [
+        {
+          "items": [
+            {
+              "id": "pool-1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "config": {
+        "table": "balances"
+      },
+      "providerName": "compat-provider",
+      "handlerName": "indexer",
+      "requestId": "e3",
+      "aborted": false,
+      "events": [
+        {
+          "idempotencyKey": "k4",
+          "topic": "t",
+          "data": {
+            "call": "/api/v1/pools"
+          }
+        }
+      ],
+      "results": [
+        {
+          "items": [
+            {
+              "id": "pool-1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "config": {
+        "table": "balances"
+      },
+      "providerName": "compat-provider",
+      "handlerName": "indexer",
+      "requestId": "e6",
+      "aborted": false,
+      "events": [],
+      "results": []
+    }
+  ],
+  "rawRequestContextSeen": [
+    {
+      "requestId": "e7",
+      "authRef": "auth-e7",
+      "events": 1,
+      "streamId": "stream-1",
+      "streamName": "stream-one"
+    },
+    {
+      "requestId": "e8",
+      "authRef": null,
+      "events": 1,
+      "streamId": "stream-1",
+      "streamName": "stream-one"
+    }
+  ],
+  "serviceProxyRequests": [
+    {
+      "messageType": "service-proxy-request",
+      "requestId": "<generated-id>",
+      "serviceType": "AssetManagerService",
+      "id": "s-am",
+      "authRef": "auth-e2",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/pools?limit=1"
+      }
+    },
+    {
+      "messageType": "service-proxy-request",
+      "requestId": "<generated-id>",
+      "serviceType": "AssetManagerService",
+      "id": "s-am",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/pools?limit=1"
+      }
+    },
+    {
+      "messageType": "service-proxy-request",
+      "requestId": "<generated-id>",
+      "serviceType": "AssetManagerService",
+      "id": "s-am",
+      "authRef": "auth-e4",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/unavailable?limit=1"
+      }
+    }
+  ]
+}

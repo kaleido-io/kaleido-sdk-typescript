@@ -1,0 +1,36 @@
+{
+  "registrations": [
+    {
+      "messageType": "register_provider",
+      "id": "<generated-id>",
+      "providerName": "compat-provider",
+      "providerMetadata": {
+        "version": "1.2.3"
+      }
+    },
+    {
+      "messageType": "register_handler",
+      "id": "<generated-id>",
+      "handlerType": "transaction_handler",
+      "handler": "captured"
+    },
+    {
+      "messageType": "register_handler",
+      "id": "<generated-id>",
+      "handlerType": "event_source",
+      "handler": "source"
+    }
+  ],
+  "trigger": {
+    "messageType": "setup-trigger-response",
+    "requestId": "setup-4",
+    "status": "success"
+  },
+  "hostedOptions": {
+    "transport": "ws-proxy",
+    "wsProxy": "<adapter>",
+    "serviceType": "AssetManagerService",
+    "id": "s-am",
+    "authRef": "auth-x"
+  }
+}

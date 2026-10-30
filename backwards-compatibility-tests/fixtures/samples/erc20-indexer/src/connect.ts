@@ -14,27 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { WorkflowEngineClient, fatalError } from '@kaleido-io/workflow-engine-sdk';
+import { ERC20Indexer } from './erc20/indexer.js';
 
-import provider from '../provider.js';
-
-export const stream = {
-    'name': 'event-echo-stream',
-    'description': 'Listen for events from the custom event source and pass them to the echo event processor',
-    eventSource: {
-        type: 'handler',
-        handler: {
-            name: 'my-listener',
-            provider: provider.name,
-            config: {
-                'pollingInterval': '2s'
-            },
-        },
-    },
-    eventProcessor: {
-        type: 'handler',
-        handler: {
-            name: 'echo',
-            provider: provider.name,
-        },
-    },
-}
+WorkflowEngineClient.fromConfigFile()
+    .eventProcessor('erc20-indexer', new ERC20Indexer())
+    .start()
+    .catch(fatalError);

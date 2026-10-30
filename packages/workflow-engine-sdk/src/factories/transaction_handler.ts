@@ -80,11 +80,11 @@ class TransactionHandlerBase<T extends WithStageDirector> implements Transaction
   }
 
   async transactionHandlerBatch(
-    _reqContext: RequestContext,
+    reqContext: RequestContext,
     reply: WSHandleTransactionsResult,
     batch: WSHandleTransactions
   ): Promise<void> {
-    await evalDirected(reply, batch, this.actionMap);
+    await evalDirected(reply, batch, this.actionMap, reqContext);
   }
 }
 

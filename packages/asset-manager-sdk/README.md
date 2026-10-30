@@ -151,7 +151,6 @@ In both cases, your SDK usage can stay the same; only configuration values chang
 ```yaml
 service-bindings:
   asset-manager:
-    type: asset-manager
     bindingType: non-hosted
     url: https://am.example.com/api/v1
     auth:
@@ -161,7 +160,7 @@ service-bindings:
 
   # Hosted binding example (resolved via ws-proxy)
   asset-manager-hosted:
-    type: asset-manager
+    serviceType: AssetManagerService
     bindingType: hosted
     id: svc-am-001
 ```
@@ -184,7 +183,6 @@ const amClient2 = AssetManagerClient.fromConfigFile('assetManager2');
 ```yaml
 service-bindings:
   assetManager1:
-    type: asset-manager
     bindingType: non-hosted
     url: https://am.example.kaleido.cloud/api/v1
     auth:
@@ -192,7 +190,6 @@ service-bindings:
       token: ${AM_TOKEN}
       scheme: Bearer
   assetManager2:
-    type: asset-manager
     bindingType: non-hosted
     url: https://am2.example.kaleido.cloud/api/v1
     auth:
@@ -206,7 +203,6 @@ service-bindings:
 ```yaml
 service-bindings:
   asset-manager:
-    type: asset-manager
     bindingType: non-hosted
     url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-env/s:my-asset-manager/rest
     auth:
@@ -220,7 +216,6 @@ service-bindings:
 ```yaml
 service-bindings:
   asset-manager:
-    type: asset-manager
     bindingType: non-hosted
     url: https://am.example.com/api/v1
     auth:
@@ -639,7 +634,6 @@ workflow-engine:
 
 service-bindings:
   asset-manager:
-    type: asset-manager
     bindingType: non-hosted
     url: https://am.example.com/api/v1
     auth:
@@ -648,7 +642,6 @@ service-bindings:
       scheme: Bearer
 
   evm-connector:
-    type: connector
     bindingType: non-hosted
     url: https://evm-connector.example.com
     auth:

@@ -15,52 +15,19 @@
 // limitations under the License.
 
 import { AssetManagerClient } from '@kaleido-io/asset-manager-sdk';
-import {
-  BasicStageDirector,
-  ActionConfig,
-  EvalResult,
-  InvocationMode,
-  WithStageDirector,
-} from '@kaleido-io/workflow-engine-sdk';
+import { complete, defineTransactionHandler } from '@kaleido-io/workflow-engine-sdk';
 
-class ListPoolsInput implements WithStageDirector {
-  public stageDirector: BasicStageDirector;
-
-  constructor(data: any) {
-    this.stageDirector = new BasicStageDirector(
-      data.action || 'list-pools',
-      data.outputPath || '/output',
-      data.nextStage || 'end',
-      data.failureStage || 'failed',
-    );
-  }
-
-  getStageDirector(): BasicStageDirector {
-    return this.stageDirector;
-  }
-
-  name(): string {
-    return 'list-pools';
-  }
-}
-
-export function createActionMap(
-  getAmClient: (authRef?: string) => AssetManagerClient,
-): Map<string, ActionConfig<ListPoolsInput>> {
-  return new Map([
-    [
-      'list-pools',
-      {
-        invocationMode: InvocationMode.PARALLEL,
-        handler: async (transaction) => {
-          console.log('[list-pools] authRef:', transaction.authRef ?? '(undefined)');
-          const result = await getAmClient(transaction.authRef).getPools();
-          return {
-            result: EvalResult.COMPLETE,
-            output: { pools: result?.items ?? [] },
-          };
-        },
-      },
-    ],
-  ]);
-}
+export const listPoolsHandler = defineTransactionHandler({
+  // The context resolves the 'asset-manager' binding as the transaction's caller,
+  // so with a hosted binding the provider proxy calls the Asset Manager with
+  // their credentials. No setup hook is needed.
+  'list-pools': async (_input, ctx) => {
+    const assetManager = new AssetManagerClient(ctx, 'asset-manager');
+    const pools = (await assetManager.getPools())?.items ?? [];
+    // With no pools, finish in the flow's 'no-pools' stage instead of nextStage.
+    if (pools.length === 0) {
+      return complete({ pools }, { stage: 'no-pools' });
+    }
+    return { pools };
+  },
+});

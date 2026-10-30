@@ -32,6 +32,7 @@ import {
   WSEventProcessorBatchRequest,
   ServiceProxyResponse,
   RequestContext,
+  ProviderServices,
 } from '../types/core';
 import {
   Handler,
@@ -58,6 +59,9 @@ export enum HandlerRuntimeMode {
 
 /** Default listen port for inbound WebSocket server when `server.port` is omitted. */
 export const DEFAULT_INBOUND_WS_PORT = 6000;
+
+/** The longest delay setTimeout supports (about 24.8 days). */
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
 
 export function resolveInboundListenPort(port?: number): number {
   return port ?? DEFAULT_INBOUND_WS_PORT;
@@ -163,6 +167,12 @@ export class HandlerRuntime {
    */
   private providerCapabilities: import('../types/core').ProviderCapabilities = {};
 
+  /**
+   * Attached to every request context, so handlers can resolve service bindings
+   * per request. Set by WorkflowEngineClient; absent for direct-runtime use.
+   */
+  private providerServices?: ProviderServices;
+
   constructor(config: HandlerRuntimeConfig) {
     if (config.server) {
       this.mode = HandlerRuntimeMode.INBOUND;
@@ -227,6 +237,14 @@ export class HandlerRuntime {
    */
   setProviderCapabilities(caps: import('../types/core').ProviderCapabilities): void {
     this.providerCapabilities = { ...caps };
+  }
+
+  /**
+   * Set what handlers can reach through the provider, attached to every request
+   * context from then on.
+   */
+  setProviderServices(services: ProviderServices): void {
+    this.providerServices = services;
   }
 
   /**
@@ -691,12 +709,23 @@ export class HandlerRuntime {
   newRequestContext(envelope: WSHandlerEnvelope): RequestContext {
     const controller = new AbortController();
     let timeoutId: NodeJS.Timeout | undefined;
-    if (typeof envelope?.deadline == 'string' && envelope.deadline.length > 0) {
-      const startTime = new Date().getTime();
-      const deadlineTimeout = new Date(envelope.deadline).getTime() - startTime;
-      timeoutId = setTimeout(() => {
-        controller.abort(`deadline exceeded after ${new Date().getTime() - startTime}ms`);
-      }, deadlineTimeout);
+    const deadline = typeof envelope?.deadline == 'string' && envelope.deadline.length > 0
+      ? new Date(envelope.deadline).getTime()
+      : NaN;
+    if (!Number.isNaN(deadline)) {
+      const startTime = Date.now();
+      // setTimeout fires straight away for a delay it can't represent, so a far
+      // deadline is reached in steps no longer than it allows.
+      const arm = () => {
+        timeoutId = setTimeout(() => {
+          if (Date.now() < deadline) {
+            arm();
+            return;
+          }
+          controller.abort(`deadline exceeded after ${Date.now() - startTime}ms`);
+        }, Math.min(Math.max(deadline - Date.now(), 0), MAX_TIMER_DELAY_MS));
+      };
+      arm();
     }
     return {
       requestId: envelope.id,
@@ -707,6 +736,7 @@ export class HandlerRuntime {
         if (timeoutId !== undefined) clearTimeout(timeoutId);
         controller.abort();
       },
+      ...(this.providerServices ? { provider: this.providerServices } : {}),
     }
   }
 

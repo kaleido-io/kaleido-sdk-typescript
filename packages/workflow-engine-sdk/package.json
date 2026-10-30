@@ -1,10 +1,17 @@
 {
   "name": "@kaleido-io/workflow-engine-sdk",
-  "version": "1.0.1",
+  "version": "1.1.0-rc.1",
   "description": "TypeScript SDK for Kaleido Workflow Engine",
   "type": "module",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "testing": [
+        "./dist/src/testing/index.d.ts"
+      ]
+    }
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kaleido-io/kaleido-sdk-typescript.git"
@@ -20,6 +27,8 @@
     "test:component": "jest tests/componenttest",
     "test:all": "jest --coverage",
     "lint": "eslint . --config eslint.config.mjs",
+    "api:check": "for c in api-extractor*.json; do api-extractor run -c $c || exit 1; done",
+    "api:update": "for c in api-extractor*.json; do api-extractor run --local -c $c || exit 1; done",
     "lint:fix": "eslint . --fix --config eslint.config.mjs"
   },
   "keywords": [
@@ -34,7 +43,7 @@
   "author": "Kaleido",
   "license": "Apache-2.0",
   "dependencies": {
-    "@kaleido-io/core-sdk": "^1.0.0",
+    "@kaleido-io/core-sdk": "^1.1.0-rc.1",
     "axios": "^1.13.0",
     "exponential-backoff": "^3.1.1",
     "fast-json-patch": "^3.1.1",
@@ -45,6 +54,7 @@
     "@eslint/compat": "^2.0.0",
     "@eslint/js": "^10.0.0",
     "@jest/globals": "^30.2.0",
+    "@microsoft/api-extractor": "^7.59.2",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.2.1",
@@ -74,6 +84,10 @@
     ".": {
       "import": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
+    },
+    "./testing": {
+      "import": "./dist/src/testing/index.js",
+      "types": "./dist/src/testing/index.d.ts"
     }
   },
   "sideEffects": false

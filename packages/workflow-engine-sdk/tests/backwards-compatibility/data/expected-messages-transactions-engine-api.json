@@ -1,0 +1,83 @@
+{
+  "requestContextSeen": [
+    {
+      "requestId": "b-submit",
+      "authRef": null,
+      "authTokens": {
+        "workflow-engine": "token-1"
+      },
+      "aborted": false
+    }
+  ],
+  "engineApiRequests": [
+    {
+      "messageType": "engineapi_submit_transactions",
+      "id": "<generated-id>",
+      "activeRequestId": "b-submit",
+      "authRef": "auth-56",
+      "transactions": [
+        {
+          "workflow": "follow-on",
+          "operation": "start",
+          "input": {
+            "from": "txn-56"
+          },
+          "idempotencyKey": "follow-txn-56"
+        }
+      ]
+    },
+    {
+      "messageType": "engineapi_submit_transactions",
+      "id": "<generated-id>",
+      "activeRequestId": "b-submit",
+      "authRef": "auth-57",
+      "transactions": [
+        {
+          "workflow": "follow-on",
+          "operation": "start",
+          "input": {
+            "from": "txn-57"
+          },
+          "idempotencyKey": "follow-txn-57"
+        }
+      ]
+    }
+  ],
+  "reply": {
+    "messageType": "handle_transactions_result",
+    "handler": "submitter",
+    "id": "b-submit",
+    "results": [
+      {
+        "stage": "submitted",
+        "stateUpdates": [
+          {
+            "op": "add",
+            "path": "/submissions",
+            "value": [
+              {
+                "id": "submitted-0",
+                "position": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "stage": "submitted",
+        "stateUpdates": [
+          {
+            "op": "add",
+            "path": "/submissions",
+            "value": [
+              {
+                "id": "submitted-0",
+                "position": 0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

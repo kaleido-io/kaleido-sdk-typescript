@@ -14,40 +14,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-import { ActionConfig, EvalResult, InvocationMode, WithStageDirector, WSEvaluateTransaction } from '@kaleido-io/workflow-engine-sdk';
+import { complete, defineTransactionHandler } from '@kaleido-io/workflow-engine-sdk';
 
 // The stage's mapped input: the result of the stage's inputMap in flow.ts.
 // This is not transaction.state.input, which is the operation's input.
-interface HelloInput extends WithStageDirector {
+interface HelloInput {
     name?: string;
 }
 
-const map: Map<string, ActionConfig<HelloInput>> = new Map([
-    ['hello', {
-        invocationMode: InvocationMode.PARALLEL, handler: async (transaction: WSEvaluateTransaction, input: HelloInput) => {
-            if (input?.name === undefined) {
-                return {
-                    result: EvalResult.HARD_FAILURE,
-                    error: new Error('Name is required')
-                }
-            } else {
-                return {
-                    result: EvalResult.COMPLETE,
-                    output: {
-                        greeting: `Hello ${input.name}!`,
-                    },
-                    events: [
-                        {
-                            idempotencyKey: transaction.idempotencyKey,
-                            topic: 'greeting',
-                            data: `Hello ${input.name}!`
-                        }
-                    ]
-                }
-            }
+export const helloHandler = defineTransactionHandler({
+    hello: async (input: HelloInput, ctx) => {
+        if (input.name === undefined) {
+            // A throw fails the stage: the transaction moves to the stage's failureStage.
+            throw new Error('Name is required');
         }
-    }],
-]);
-
-export const actionMap = map;
+        const greeting = `Hello ${input.name}!`;
+        return complete({ greeting }, {
+            events: [{ idempotencyKey: ctx.transaction.idempotencyKey, topic: 'greeting', data: greeting }],
+        });
+    },
+});

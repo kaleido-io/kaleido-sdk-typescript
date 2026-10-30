@@ -34,6 +34,7 @@ import {
   WSListenerPollResult,
   WithStageDirector
 } from '../types/core';
+import type { TransactionContext } from '../app/context';
 
 /**
  * EngineAPI interface
@@ -100,8 +101,10 @@ export interface EventProcessor extends Handler {
  */
 export type TransactionHandlerFn<T extends WithStageDirector> = (
   transaction: WSEvaluateTransaction,
-  input: T
-) => Promise<{ result: EvalResult; output?: any; error?: Error; triggers?: Trigger[]; events?: HandlerEvent[]; extraUpdates?: Patch; customStage?: string; deadline?: string }>;
+  input: T,
+  /** Always passed by the SDK. Optional so that code calling a handler directly, such as a unit test, can leave it out. */
+  ctx?: TransactionContext,
+) => Promise<{ result: EvalResult; output?: any; error?: Error; errorData?: any; triggers?: Trigger[]; events?: HandlerEvent[]; extraUpdates?: Patch; customStage?: string; deadline?: string }>;
 
 /**
  * Input for batch directed transaction handling
@@ -109,6 +112,8 @@ export type TransactionHandlerFn<T extends WithStageDirector> = (
 export interface TransactionHandlerBatchIn<T extends WithStageDirector> {
   transaction: WSEvaluateTransaction;
   value: T;
+  /** The transaction's own context. Always set by the SDK; optional for inputs built by hand. */
+  ctx?: TransactionContext;
 }
 
 /**

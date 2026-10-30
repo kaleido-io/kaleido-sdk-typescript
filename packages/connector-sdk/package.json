@@ -42,7 +42,7 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "@kaleido-io/core-sdk": "^1.0.0"
+    "@kaleido-io/core-sdk": "^1.1.0-rc.1"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.0",

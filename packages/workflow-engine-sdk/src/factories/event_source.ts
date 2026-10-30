@@ -30,6 +30,7 @@ import {
 } from '../types/core';
 import { newLogger } from '@kaleido-io/core-sdk/log';
 import { formatError, getErrorMessage } from '../utils/errors';
+import { createEventSourceContext, type EventSourceContext } from '../app/context';
 
 const log = newLogger('event_source_factory');
 
@@ -51,11 +52,16 @@ export interface EventSourceEvent<DT> {
 
 /**
  * Poll function signature for event sources: (config, checkpointIn) => checkpointOut, events.
+ *
+ * `ctx` resolves service bindings as the stream's owner and carries the poll's
+ * deadline signal. The SDK always passes it; it is optional so that code calling
+ * a poll function directly, such as a unit test, can leave it out.
  */
 export type EventSourcePollFn<CP, CF, DT> = (
   config: EventSourceConf<CF>,
   checkpointIn: CP | null,
   authRef?: string,
+  ctx?: EventSourceContext,
 ) => Promise<{ checkpointOut: CP; events: EventSourceEvent<DT>[] }>;
 
 /**
@@ -209,7 +215,7 @@ class EventSourceBase<CP, CF, DT> implements EventSourceBuilder<CP, CF, DT> {
    * Mutates the `result` parameter to match the engine's output-by-reference API.
    */
   async eventSourcePoll(
-    _reqContext: RequestContext,
+    reqContext: RequestContext,
     config: WSEventSourceConfig,
     result: WSListenerPollResult,
     request: WSListenerPollRequest
@@ -225,7 +231,8 @@ class EventSourceBase<CP, CF, DT> implements EventSourceBuilder<CP, CF, DT> {
       const checkpointIn: CP | null = request.checkpoint ?? null;
 
       // Call user's poll function
-      const pollResult = await this.pollFn(esConf, checkpointIn, request.authRef);
+      const ctx = createEventSourceContext(reqContext, request.handler ?? this.name, esConf, request.authRef);
+      const pollResult = await this.pollFn(esConf, checkpointIn, request.authRef, ctx);
 
       // Map events to ListenerEvent format
       result.events = pollResult.events.map((evt): ListenerEvent => ({
