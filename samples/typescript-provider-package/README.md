@@ -66,9 +66,32 @@ Only the names ship in the package. Run locally, the values come from `KALEIDO_S
 
 ## Dependencies
 
-A snippet package may depend only on `@kaleido-io/*` packages and `zod`. The TypeScript provider supplies them, so the versions you can use are the ones its image ships. Build and test tools belong in `devDependencies`, which never leave your machine.
+A snippet package may depend only on `@kaleido-io/*` packages, `zod` and `ethers`. The TypeScript provider supplies them, so the versions you can use are the ones its image ships. Build and test tools belong in `devDependencies`, which never leave your machine.
 
 Shared code goes in the package itself, under `src/`.
+
+### Adding a supplied library
+
+The template doesn't include `zod` or `ethers`. Add one when a handler needs it, with a range that matches the major version the TypeScript provider ships:
+
+| Library | Range |
+|---------|-------|
+| `zod` | `^4.6.0` |
+| `ethers` | `^6.17.0` |
+
+```bash
+npm install ethers@^6.17.0
+```
+
+```ts
+import { keccak256, toUtf8Bytes } from 'ethers';
+
+const digest = keccak256(toUtf8Bytes(input.reference));
+```
+
+Install a version within that range so your tests run against the same API the provider gives your handlers. A plain `npm install ethers` installs the latest release, which can be a newer major version than the provider has.
+
+The provider checks each range a package declares against the version in its image, whether or not the package imports it. A package whose range the image doesn't satisfy is refused when it's loaded, with a message naming the version the provider has. So declare only the libraries you use, and leave out any you stop using.
 
 ## Package and upload
 
