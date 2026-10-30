@@ -31,12 +31,12 @@ import { WSProxyAdapter } from '../service/ws_proxy_adapter';
 import { ConfigLoader, KALEIDO_CONFIG_FILE, WFE_CONFIG_FILE, CONFIG_FILE, KALEIDO_SECRETS_DIR } from '../config/config';
 import { newLogger } from '@kaleido-io/core-sdk/log';
 import { createEventProcessorBase, EventProcessorEvent } from '../factories/event_processor';
-import { HandlerRegistrationResources, RequestContext } from '../types/core';
+import { HandlerRegistrationSettings, RequestContext } from '../types/core';
 import {
   SetupContext,
   createSetupContext,
 } from '@kaleido-io/core-sdk/context';
-import { createEventProcessorContext, createHandlerResources } from '../app/context';
+import { createEventProcessorContext, createHandlerSecretsAndFiles } from '../app/context';
 import type { EventProcessorDef, TransactionHandlerRegistration } from '../app/types';
 
 const log = newLogger('WorkflowEngineClient');
@@ -87,15 +87,15 @@ export interface WorkflowEngineClientConfig {
 
 /**
  * What a handler is registered with in place of the client's config and
- * resources, which it falls back to when they are left out. Its secrets are
+ * files, which it falls back to when they are left out. Its secrets are
  * only those it is given, or names from the client's.
  */
-export type HandlerRegistrationOptions<CustomConfig = unknown> = HandlerRegistrationResources<CustomConfig>;
+export type HandlerRegistrationOptions<CustomConfig = unknown> = HandlerRegistrationSettings<CustomConfig>;
 
 const frozenCopy = (entries: Record<string, string> | undefined): Readonly<Record<string, string>> | undefined =>
   entries === undefined ? undefined : Object.freeze({ ...entries });
 
-type RegisteredHandler = { resources?: HandlerRegistrationResources } & (
+type RegisteredHandler = { settings?: HandlerRegistrationSettings } & (
   | { name: string; type: 'eventProcessor'; def: EventProcessorDef<unknown, unknown> }
   | { name: string; type: 'transactionHandler'; def: TransactionHandlerRegistration }
   | { name: string; type: 'eventSource'; source: EventSource }
@@ -133,7 +133,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
       config: this.customConfig,
       // Handlers see none of the client's secrets unless their registration names them
       secrets: frozenCopy({}),
-      resources: frozenCopy({}),
+      files: frozenCopy({}),
       getServiceClientOptions: (name, authRef) => this.getServiceClientOptions(name, authRef),
     });
   }
@@ -243,7 +243,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
       name,
       type: 'eventProcessor',
       def: def as EventProcessorDef<unknown, unknown>,
-      resources: options,
+      settings: options,
     });
     return this;
   }
@@ -254,7 +254,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
    */
   transactionHandler(name: string, def: TransactionHandlerRegistration, options?: HandlerRegistrationOptions): this {
     this.assertUniqueHandlerName(name);
-    this.registeredHandlers.push({ name, type: 'transactionHandler', def, resources: options });
+    this.registeredHandlers.push({ name, type: 'transactionHandler', def, settings: options });
     return this;
   }
 
@@ -265,7 +265,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
   eventSource(source: EventSource, options?: HandlerRegistrationOptions): this {
     const name = source.name;
     this.assertUniqueHandlerName(name);
-    this.registeredHandlers.push({ name, type: 'eventSource', source, resources: options });
+    this.registeredHandlers.push({ name, type: 'eventSource', source, settings: options });
     return this;
   }
 
@@ -357,26 +357,26 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
   // ── Low-level registration API (used by newWorkflowEngineClient) ────────────
 
   registerTransactionHandler(name: string, handler: TransactionHandler, options?: HandlerRegistrationOptions): void {
-    this.setHandlerResources(name, options);
+    this.setHandlerSettings(name, options);
     this.runtime.registerTransactionHandler(name, handler);
   }
 
   registerEventSource(name: string, handler: EventSource, options?: HandlerRegistrationOptions): void {
-    this.setHandlerResources(name, options);
+    this.setHandlerSettings(name, options);
     this.runtime.registerEventSource(name, handler);
   }
 
   registerEventProcessor(name: string, handler: EventProcessor, options?: HandlerRegistrationOptions): void {
-    this.setHandlerResources(name, options);
+    this.setHandlerSettings(name, options);
     this.runtime.registerEventProcessor(name, handler);
   }
 
-  private setHandlerResources(name: string, options: HandlerRegistrationOptions | undefined): void {
+  private setHandlerSettings(name: string, options: HandlerRegistrationOptions | undefined): void {
     if (!options) return;
-    this.runtime.setHandlerResources(name, {
+    this.runtime.setHandlerSettings(name, {
       config: options.config,
       secrets: frozenCopy(options.secrets ?? this.namedSecrets(name, options.secretNames)),
-      resources: frozenCopy(options.resources),
+      files: frozenCopy(options.files),
     });
   }
 
@@ -394,7 +394,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
   /** The config a handler sees: what it was registered with, or else the client's. */
   private configFor(handlerName: string): CustomConfig {
     const registered = this.registeredHandlers.find((h) => h.name === handlerName);
-    const own = registered?.resources?.config;
+    const own = registered?.settings?.config;
     return (own !== undefined ? own : this.customConfig) as CustomConfig;
   }
 
@@ -491,7 +491,7 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
   private registerBuilderHandlers(): void {
     for (const registered of this.registeredHandlers) {
       if (registered.type === 'eventProcessor') {
-        const { name, def, resources } = registered;
+        const { name, def, settings } = registered;
         this.registerEventProcessor(
           name,
           createEventProcessorBase(
@@ -503,18 +503,18 @@ export class WorkflowEngineClient<CustomConfig = unknown> {
               const ctx = createEventProcessorContext(
                 setupCtx,
                 reqCtx.requestId,
-                createHandlerResources(name, reqCtx.provider),
+                createHandlerSecretsAndFiles(name, reqCtx.provider),
               );
               return def.processBatch(ctx, events);
             },
           ),
-          resources,
+          settings,
         );
       } else if (registered.type === 'transactionHandler') {
-        const { name, def, resources } = registered;
-        this.registerTransactionHandler(name, def.handler, resources);
+        const { name, def, settings } = registered;
+        this.registerTransactionHandler(name, def.handler, settings);
       } else if (registered.type === 'eventSource') {
-        this.registerEventSource(registered.name, registered.source, registered.resources);
+        this.registerEventSource(registered.name, registered.source, registered.settings);
       }
     }
   }

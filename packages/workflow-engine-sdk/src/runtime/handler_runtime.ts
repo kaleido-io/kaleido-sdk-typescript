@@ -33,7 +33,7 @@ import {
   ServiceProxyResponse,
   RequestContext,
   ProviderServices,
-  HandlerRegistrationResources,
+  HandlerRegistrationSettings,
 } from '../types/core';
 import {
   Handler,
@@ -174,7 +174,7 @@ export class HandlerRuntime {
    */
   private providerServices?: ProviderServices;
   /** What each handler was registered with, by the name the engine addresses it by. */
-  private readonly handlerResources = new Map<string, HandlerRegistrationResources>();
+  private readonly handlerSettings = new Map<string, HandlerRegistrationSettings>();
 
   constructor(config: HandlerRuntimeConfig) {
     if (config.server) {
@@ -251,18 +251,18 @@ export class HandlerRuntime {
   }
 
   /**
-   * Set the config, secrets and resources a handler was registered with. A request
+   * Set the config, secrets and files a handler was registered with. A request
    * for the handler sees them in place of the provider-wide ones; each that is
    * left out falls back to the provider-wide value.
    */
-  setHandlerResources(handlerName: string, resources: HandlerRegistrationResources): void {
-    this.handlerResources.set(handlerName, resources);
+  setHandlerSettings(handlerName: string, settings: HandlerRegistrationSettings): void {
+    this.handlerSettings.set(handlerName, settings);
   }
 
   /** What a handler's requests reach through the provider. */
   private providerServicesFor(handlerName: string | undefined): ProviderServices | undefined {
     const base = this.providerServices;
-    const own = handlerName === undefined ? undefined : this.handlerResources.get(handlerName);
+    const own = handlerName === undefined ? undefined : this.handlerSettings.get(handlerName);
     if (!base || !own) {
       return base;
     }
@@ -271,7 +271,7 @@ export class HandlerRuntime {
       getServiceClientOptions: base.getServiceClientOptions,
       config: own.config !== undefined ? own.config : base.config,
       secrets: own.secrets ?? base.secrets,
-      resources: own.resources ?? base.resources,
+      files: own.files ?? base.files,
     };
   }
 

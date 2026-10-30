@@ -20,7 +20,7 @@ import type { RequestContext, WSEvaluateTransaction, WSEventStreamInfo } from '.
 import { newError, SDKErrors } from '../i18n/errors';
 
 /**
- * The secrets and resources a handler was given where it is deployed.
+ * The secrets and files a handler was given where it is deployed.
  *
  * In a TypeScript provider they come from the handler's entry in the service
  * config. In your own provider they come from what you register the handler
@@ -30,32 +30,32 @@ import { newError, SDKErrors } from '../i18n/errors';
  * so that a context built by hand, for example in a test, needn't list them:
  * the context types are public, and requiring them would break code that does.
  */
-export interface HandlerResources {
+export interface HandlerSecretsAndFiles {
   /** The handler's secrets, by name. */
   readonly secrets?: Readonly<Record<string, string>>;
   /** The value of the handler's secret with this name. Throws for a name the handler has no secret for. */
   secret?(name: string): string;
-  /** The handler's resources: files from the service's file sets, mounted into the pod, by name, as paths. */
-  readonly resources?: Readonly<Record<string, string>>;
-  /** The path of the handler's resource with this name. Throws for a name the handler has no resource for. */
-  resource?(name: string): string;
+  /** The handler's files from the service's file sets, mounted into the pod, by name, as paths. */
+  readonly files?: Readonly<Record<string, string>>;
+  /** The path of the handler's file with this name. Throws for a name the handler has no file for. */
+  file?(name: string): string;
 }
 
-/** {@link HandlerResources} as the SDK fills them in, with every member present. */
-type FilledHandlerResources = Required<HandlerResources>;
+/** {@link HandlerSecretsAndFiles} as the SDK fills them in, with every member present. */
+type FilledHandlerSecretsAndFiles = Required<HandlerSecretsAndFiles>;
 
 const noEntries: Readonly<Record<string, string>> = Object.freeze({});
 
-/** @internal — the secrets and resources of the handler handling a request. */
-export function createHandlerResources(
+/** @internal — the secrets and files of the handler handling a request. */
+export function createHandlerSecretsAndFiles(
   handlerName: string,
-  provider?: { secrets?: Readonly<Record<string, string>>; resources?: Readonly<Record<string, string>> },
-): FilledHandlerResources {
+  provider?: { secrets?: Readonly<Record<string, string>>; files?: Readonly<Record<string, string>> },
+): FilledHandlerSecretsAndFiles {
   const secrets = provider?.secrets ?? noEntries;
-  const resources = provider?.resources ?? noEntries;
+  const files = provider?.files ?? noEntries;
   return {
     secrets,
-    resources,
+    files,
     secret(name: string): string {
       const value = Object.prototype.hasOwnProperty.call(secrets, name) ? secrets[name] : undefined;
       if (value === undefined) {
@@ -64,10 +64,10 @@ export function createHandlerResources(
       }
       return value;
     },
-    resource(name: string): string {
-      const path = Object.prototype.hasOwnProperty.call(resources, name) ? resources[name] : undefined;
+    file(name: string): string {
+      const path = Object.prototype.hasOwnProperty.call(files, name) ? files[name] : undefined;
       if (path === undefined) {
-        throw newError(SDKErrors.MsgSDKHandlerResourceUnknown, handlerName, name, Object.keys(resources).join(', ') || '(none)');
+        throw newError(SDKErrors.MsgSDKHandlerFileUnknown, handlerName, name, Object.keys(files).join(', ') || '(none)');
       }
       return path;
     },
@@ -78,16 +78,16 @@ export function createHandlerResources(
  * Context injected into event processor `processBatch` callbacks.
  * Extends {@link SetupContext} with the request-scoped ID for the current batch.
  */
-export interface EventProcessorContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerResources {
+export interface EventProcessorContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerSecretsAndFiles {
   readonly requestId: string;
 }
 
 export function createEventProcessorContext<C>(
   setupCtx: SetupContext<C>,
   requestId: string,
-  resources: HandlerResources = createHandlerResources(setupCtx.handlerName),
+  secretsAndFiles: HandlerSecretsAndFiles = createHandlerSecretsAndFiles(setupCtx.handlerName),
 ): EventProcessorContext<C> {
-  return { ...setupCtx, ...resources, requestId };
+  return { ...setupCtx, ...secretsAndFiles, requestId };
 }
 
 /**
@@ -97,7 +97,7 @@ export function createEventProcessorContext<C>(
  * (using its authRef), so hosted bindings work here without a setup hook.
  * `signal` aborts when the engine's deadline for the request passes.
  */
-export interface TransactionContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerResources {
+export interface TransactionContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerSecretsAndFiles {
   readonly requestId: string;
   readonly transaction: WSEvaluateTransaction;
 }
@@ -109,7 +109,7 @@ export interface TransactionContext<CustomConfig = unknown> extends SetupContext
  * function's first argument. Bindings resolve as the stream's owner (using the
  * poll's authRef).
  */
-export interface EventSourceContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerResources {
+export interface EventSourceContext<CustomConfig = unknown> extends SetupContext<CustomConfig>, HandlerSecretsAndFiles {
   readonly requestId: string;
   readonly stream: WSEventStreamInfo;
 }
@@ -140,7 +140,7 @@ export function createTransactionContext(
       handlerName,
       reqContext?.signal ?? neverAborted,
     ),
-    ...createHandlerResources(handlerName, reqContext?.provider),
+    ...createHandlerSecretsAndFiles(handlerName, reqContext?.provider),
     requestId: reqContext?.requestId ?? '',
     transaction,
   };
@@ -161,7 +161,7 @@ export function createEventSourceContext(
       handlerName,
       reqContext.signal,
     ),
-    ...createHandlerResources(handlerName, reqContext.provider),
+    ...createHandlerSecretsAndFiles(handlerName, reqContext.provider),
     requestId: reqContext.requestId,
     stream: { streamId: stream.streamId, streamName: stream.streamName },
   };
