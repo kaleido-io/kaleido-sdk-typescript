@@ -84,14 +84,14 @@ try {
   typescript = undefined;
 }
 
-const packed = packSnippetPackage(projectDir, { typescript, config: option('--config') });
+const packed = await packSnippetPackage(projectDir, { typescript, config: option('--config') });
 if (packed.problems.length > 0) {
   console.error('The handlers could not be listed:');
   for (const problem of packed.problems) console.error(`  - ${problem}`);
   process.exit(1);
 }
 const { zip, files } = packed;
-const { problems } = inspectSnippetPackage(zip);
+const { problems } = await inspectSnippetPackage(zip);
 if (problems.length > 0) {
   console.error('The package is not valid:');
   for (const problem of problems) console.error(`  - ${problem}`);
