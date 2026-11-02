@@ -42,6 +42,26 @@ import { EvalResult, HandlerEvent, InvocationMode, WithStageDirector, type WSEve
 const KIND = Symbol.for('@kaleido-io/workflow-engine-sdk/handler-result');
 const DEFINED_TRANSACTION_HANDLER = Symbol.for('@kaleido-io/workflow-engine-sdk/defined-transaction-handler');
 const DEFINED_PROCESSOR = Symbol.for('@kaleido-io/workflow-engine-sdk/defined-processor');
+const HANDLER_NAME = Symbol.for('@kaleido-io/workflow-engine-sdk/handler-name');
+
+// The workflow engine's rule for the provider handler names that workflows and streams bind to.
+const HANDLER_NAME_PATTERN = /^[0-9a-zA-Z]([0-9a-zA-Z._-]{0,62}[0-9a-zA-Z])?$/;
+
+/** Whether a name is valid for a handler: what workflows and streams can bind to. */
+export function isValidHandlerName(name: string): boolean {
+  return HANDLER_NAME_PATTERN.test(name);
+}
+
+/** Why a handler name isn't valid, for an error message. */
+export const HANDLER_NAME_RULE =
+  "1 to 64 letters, numbers, '.', '_' or '-', starting and ending with a letter or number";
+
+function checkHandlerName(name: string, definer: string): string {
+  if (!isValidHandlerName(name)) {
+    throw new Error(`${definer}: handler name "${name}" must be ${HANDLER_NAME_RULE}`);
+  }
+  return name;
+}
 
 /** Returned by `complete()`. */
 export interface CompleteOutcome {
@@ -192,8 +212,12 @@ export class DefinedTransactionHandler<A extends Record<string, TransactionActio
   /** The handler that runs these actions, for `.transactionHandler(name, …)`. */
   readonly handler: TransactionHandler;
 
-  constructor(actions: A) {
+  /** `name` is the name it registers under when none is given at registration. */
+  constructor(actions: A, name?: string) {
     super();
+    if (name !== undefined) {
+      (this as unknown as Record<symbol, unknown>)[HANDLER_NAME] = name;
+    }
     for (const [action, run] of Object.entries(actions)) {
       this.set(action, {
         invocationMode: InvocationMode.PARALLEL,
@@ -208,15 +232,16 @@ export class DefinedTransactionHandler<A extends Record<string, TransactionActio
       });
     }
     // The name a handler registers under comes from .transactionHandler(name, …).
-    this.handler = createTransactionHandler('', this);
+    this.handler = createTransactionHandler(name ?? '', this);
   }
 }
 
 /**
- * Define a transaction handler's actions.
+ * Define a transaction handler's actions, and optionally the name it registers
+ * under. A TypeScript provider uses the name when its config gives none.
  *
  * @example
- * export const helloHandler = defineTransactionHandler({
+ * export const helloHandler = defineTransactionHandler('hello', {
  *   hello: async (input: { name: string }) => ({ greeting: `Hello ${input.name}!` }),
  *   'list-pools': async (_input, ctx) => {
  *     const assets = new AssetManagerClient(ctx, 'asset-manager');
@@ -227,8 +252,17 @@ export class DefinedTransactionHandler<A extends Record<string, TransactionActio
  * // In a custom provider:
  * client.transactionHandler('hello', helloHandler);
  */
-export function defineTransactionHandler<A extends Record<string, TransactionAction>>(actions: A): DefinedTransactionHandler<A> {
-  return new DefinedTransactionHandler(actions);
+export function defineTransactionHandler<A extends Record<string, TransactionAction>>(name: string, actions: A): DefinedTransactionHandler<A>;
+/** Define a transaction handler's actions without a name. */
+export function defineTransactionHandler<A extends Record<string, TransactionAction>>(actions: A): DefinedTransactionHandler<A>;
+export function defineTransactionHandler<A extends Record<string, TransactionAction>>(
+  nameOrActions: string | A,
+  actions?: A,
+): DefinedTransactionHandler<A> {
+  if (typeof nameOrActions === 'string') {
+    return new DefinedTransactionHandler(actions ?? ({} as A), checkHandlerName(nameOrActions, 'defineTransactionHandler'));
+  }
+  return new DefinedTransactionHandler(nameOrActions);
 }
 
 /** True for a value returned by `defineTransactionHandler`, from any copy of the SDK. */
@@ -248,23 +282,64 @@ export type DefinedProcessor<CustomConfig = unknown, EventData = unknown> =
 /**
  * Define an event processor from a function that handles each batch.
  *
+ * A name is optional; a TypeScript provider uses it when its config gives none.
+ *
  * @example
- * export const transferProcessor = defineProcessor(async (events: EventProcessorEvent<Transfer>[], ctx) => {
+ * export const transferProcessor = defineProcessor('transfers', async (events: EventProcessorEvent<Transfer>[], ctx) => {
  *   for (const event of events) { ... }
  * });
  */
 export function defineProcessor<EventData = unknown, CustomConfig = unknown>(
+  name: string,
   fn: (events: EventProcessorEvent<EventData>[], ctx: EventProcessorContext<CustomConfig>) => Promise<void> | void,
+): DefinedProcessor<CustomConfig, EventData>;
+/** Define an event processor without a name. */
+export function defineProcessor<EventData = unknown, CustomConfig = unknown>(
+  fn: (events: EventProcessorEvent<EventData>[], ctx: EventProcessorContext<CustomConfig>) => Promise<void> | void,
+): DefinedProcessor<CustomConfig, EventData>;
+export function defineProcessor<EventData = unknown, CustomConfig = unknown>(
+  nameOrFn: string | ProcessorFn<EventData, CustomConfig>,
+  maybeFn?: ProcessorFn<EventData, CustomConfig>,
 ): DefinedProcessor<CustomConfig, EventData> {
+  const named = typeof nameOrFn === 'string';
+  const fn = named ? maybeFn : nameOrFn;
+  if (typeof fn !== 'function') {
+    throw new Error('defineProcessor: a function that handles each batch is required');
+  }
   const processBatch = async (ctx: EventProcessorContext<CustomConfig>, events: EventProcessorEvent<EventData>[]) => {
     await fn(events, ctx);
   };
-  return Object.assign(processBatch, { processBatch, [DEFINED_PROCESSOR]: true });
+  const marks = named
+    ? { [DEFINED_PROCESSOR]: true, [HANDLER_NAME]: checkHandlerName(nameOrFn, 'defineProcessor') }
+    : { [DEFINED_PROCESSOR]: true };
+  return Object.assign(processBatch, { processBatch }, marks);
 }
+
+type ProcessorFn<EventData, CustomConfig> = (
+  events: EventProcessorEvent<EventData>[],
+  ctx: EventProcessorContext<CustomConfig>,
+) => Promise<void> | void;
 
 /** True for a value returned by `defineProcessor`, from any copy of the SDK. */
 export function isDefinedProcessor(value: unknown): value is DefinedProcessor {
   return typeof value === 'function' && (value as unknown as Record<symbol, unknown>)[DEFINED_PROCESSOR] === true;
+}
+
+/**
+ * The name a handler was defined with: the first argument of
+ * `defineTransactionHandler` or `defineProcessor` when one was given, or an
+ * event source's name. Undefined for anything else, from any copy of the SDK.
+ */
+export function definedName(value: unknown): string | undefined {
+  if (isDefinedTransactionHandler(value) || isDefinedProcessor(value)) {
+    const name = (value as unknown as Record<symbol, unknown>)[HANDLER_NAME];
+    return typeof name === 'string' ? name : undefined;
+  }
+  if (value !== null && typeof value === 'object' && typeof (value as { eventSourcePoll?: unknown }).eventSourcePoll === 'function') {
+    const name = (value as { name?: unknown }).name;
+    return typeof name === 'string' ? name : undefined;
+  }
+  return undefined;
 }
 
 /** What each poll of an event source from `defineEventSource` receives. */
@@ -320,6 +395,7 @@ export function defineEventSource<CP, CF = unknown, DT = unknown>(
   name: string,
   definition: EventSourceDefinition<CP, CF, DT>,
 ): EventSourceBuilder<CP, CF, DT> {
+  checkHandlerName(name, 'defineEventSource');
   const source = createEventSource<CP, CF, DT>(name, async (conf, checkpoint, _authRef, ctx) => {
     const { config, ...stream } = conf;
     // The SDK always passes a poll its context; only a direct call of the poll function could leave it out.

@@ -1,0 +1,5 @@
+# The package's default config. Every handler reads it as ctx.config, run
+# locally with `npm run start:local` and in a TypeScript provider, unless the
+# package.json "kaleido.handlerConfig" gives the handler a file of its own.
+# It ships in the package, so keep credentials out of it: use secrets.
+{}

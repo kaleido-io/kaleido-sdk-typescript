@@ -22,11 +22,12 @@ import { EvalResult, InvocationMode, RequestContext, WSEvaluateReplyResult, WSHa
 import type { ActionConfig } from '../interfaces/handlers';
 import type { EventProcessorContext, EventSourceContext, TransactionContext } from '../app/context';
 import { invokeAction } from '../testing';
-import { RetryableError, StageError, complete, defineEventSource, defineProcessor, defineTransactionHandler, isDefinedProcessor, isDefinedTransactionHandler, waiting } from './define';
+import { RetryableError, StageError, complete, defineEventSource, defineProcessor, defineTransactionHandler, definedName, isDefinedProcessor, isDefinedTransactionHandler, waiting } from './define';
 import { WorkflowEngineClient } from '../client/client';
 import { createTransactionHandler } from '../factories/transaction_handler';
 import type { TransactionHandlerRegistration } from '../app/types';
 import type { EventProcessorDef } from '../app/types';
+import type { EventProcessorEvent } from '../factories/event_processor';
 import { FakeEngine } from '../../tests/backwards-compatibility/fixtures/fake-engine';
 
 void mockLogger;
@@ -379,5 +380,73 @@ describe('defineEventSource', () => {
     const client = new WorkflowEngineClient({ providerName: 'p', url: 'ws://unused' }).eventSource(source);
     expect(client).toBeInstanceOf(WorkflowEngineClient);
     expect(source.name).toBe('counter');
+  });
+});
+
+describe('named handlers', () => {
+  const ctx = { requestId: 'r1', config: { table: 't' } } as unknown as EventProcessorContext<{ table: string }>;
+
+  it('gives a transaction handler a name, with the same actions and input checks as the unnamed form', async () => {
+    const named = defineTransactionHandler('greeter', {
+      greet: async (input: { name: string }) => ({ greeting: `Hello ${input.name}!` }),
+    });
+    expect(definedName(named)).toBe('greeter');
+    expect(named.handler.name).toBe('greeter');
+    expect(isDefinedTransactionHandler(named)).toBe(true);
+    expect(await reply(named, 'greet', { name: 'Ada' }))
+      .toEqual({ stage: 'next', stateUpdates: [{ op: 'add', path: '/output', value: { greeting: 'Hello Ada!' } }] });
+    expect((await invokeAction(named, 'greet', { name: 'Ada' })).output).toEqual({ greeting: 'Hello Ada!' });
+    // @ts-expect-error the wrong input type, checked as for an unnamed handler
+    await invokeAction(named, 'greet', { name: 42 });
+    defineTransactionHandler('checked', {
+      // @ts-expect-error a typo in an input field
+      c: (input: { name: string }) => input.nmae,
+    });
+  });
+
+  it('gives a processor a name, keeping its function name and both ways of calling it', async () => {
+    const seen: unknown[] = [];
+    const processor = defineProcessor('ledger-writer', async (batch: EventProcessorEvent<{ n: number }>[], c: EventProcessorContext<{ table: string }>) => {
+      seen.push({ count: batch.length, table: c.config.table });
+    });
+    expect(definedName(processor)).toBe('ledger-writer');
+    expect(isDefinedProcessor(processor)).toBe(true);
+    await processor(ctx, [{ idempotencyKey: 'k1', topic: 't', data: { n: 1 } }]);
+    await processor.processBatch(ctx, []);
+    expect(seen).toEqual([{ count: 1, table: 't' }, { count: 0, table: 't' }]);
+    const def: EventProcessorDef = defineProcessor('plain', async () => {});
+    void def;
+  });
+
+  it('reads the name of an event source, and nothing for unnamed or other values', () => {
+    expect(definedName(defineEventSource('feed', { poll: () => ({ checkpoint: 1 }) }))).toBe('feed');
+    expect(definedName(defineTransactionHandler({ a: () => 1 }))).toBeUndefined();
+    expect(definedName(defineProcessor(async () => {}))).toBeUndefined();
+    expect(definedName(new Map())).toBeUndefined();
+    expect(definedName(() => {})).toBeUndefined();
+    expect(definedName(undefined)).toBeUndefined();
+  });
+
+  it('reads a name given by another copy of the SDK', () => {
+    const fromAnotherCopy = Object.assign(new Map(), {
+      [Symbol.for('@kaleido-io/workflow-engine-sdk/defined-transaction-handler')]: true,
+      [Symbol.for('@kaleido-io/workflow-engine-sdk/handler-name')]: 'other',
+    });
+    expect(definedName(fromAnotherCopy)).toBe('other');
+  });
+
+  it('accepts the names the workflow engine accepts, including camel case, dots and underscores', () => {
+    expect(definedName(defineTransactionHandler('coreBankingStub', { a: () => 1 }))).toBe('coreBankingStub');
+    expect(definedName(defineProcessor('ledger.writer_v2', async () => {}))).toBe('ledger.writer_v2');
+    expect(definedName(defineEventSource('Feed-1', { poll: () => ({ checkpoint: 0 }) }))).toBe('Feed-1');
+  });
+
+  it('refuses a name the workflow engine would refuse', () => {
+    expect(() => defineTransactionHandler('ledger writer', { a: () => 1 })).toThrow(
+      'defineTransactionHandler: handler name "ledger writer" must be 1 to 64 letters',
+    );
+    expect(() => defineProcessor('-x', async () => {})).toThrow('handler name "-x"');
+    expect(() => defineProcessor('x.', async () => {})).toThrow('handler name "x."');
+    expect(() => defineEventSource('a'.repeat(65), { poll: () => ({ checkpoint: 0 }) })).toThrow('defineEventSource: handler name');
   });
 });

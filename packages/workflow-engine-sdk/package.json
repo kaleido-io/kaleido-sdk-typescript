@@ -9,6 +9,9 @@
     "*": {
       "testing": [
         "./dist/src/testing/index.d.ts"
+      ],
+      "snippet-package": [
+        "./dist/src/snippet-package/index.d.ts"
       ]
     }
   },
@@ -48,7 +51,9 @@
     "exponential-backoff": "^3.1.1",
     "fast-json-patch": "^3.1.1",
     "js-yaml": "^4.1.1",
-    "ws": "^8.14.0"
+    "ws": "^8.14.0",
+    "yauzl": "^3.4.0",
+    "yazl": "^3.3.1"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.0",
@@ -59,6 +64,9 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.2.1",
     "@types/ws": "^8.5.0",
+    "@types/yauzl": "^3.4.0",
+    "@types/yazl": "^3.3.1",
+    "esbuild": "^0.28.0",
     "eslint": "^10.0.0",
     "eslint-plugin-notice": "^1.0.0",
     "find-root": "^1.1.0",
@@ -88,7 +96,19 @@
     "./testing": {
       "import": "./dist/src/testing/index.js",
       "types": "./dist/src/testing/index.d.ts"
+    },
+    "./snippet-package": {
+      "import": "./dist/src/snippet-package/index.js",
+      "types": "./dist/src/snippet-package/index.d.ts"
     }
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "peerDependencies": {
+    "esbuild": ">=0.25.0"
+  },
+  "peerDependenciesMeta": {
+    "esbuild": {
+      "optional": true
+    }
+  }
 }

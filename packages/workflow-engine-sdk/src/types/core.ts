@@ -213,13 +213,38 @@ export interface RequestContext {
  */
 export interface ProviderServices {
   readonly providerName: string;
-  /** The provider's own config, from its config file. */
+  /**
+   * The config of the handler handling the request: the config it was
+   * registered with, or else the provider's own config from its config file.
+   */
   readonly config: unknown;
+  /** The handler's secrets, by name. */
+  readonly secrets?: Readonly<Record<string, string>>;
+  /** The handler's files from the service's file sets, mounted into the pod, by name, as paths. */
+  readonly files?: Readonly<Record<string, string>>;
   /**
    * Resolve a named service binding. Pass the authRef of the transaction or
    * poll being handled, so a hosted binding calls the service as the caller.
    */
   getServiceClientOptions(bindingName: string, authRef?: string): ServiceClientOptions;
+}
+
+/**
+ * What a handler is registered with in place of the provider-wide config,
+ * secrets and files. Each one left out falls back to the provider-wide value.
+ */
+export interface HandlerRegistrationSettings<CustomConfig = unknown> {
+  /** The handler's config, seen as `ctx.config`. */
+  config?: CustomConfig;
+  /** The handler's secrets, by name, seen as `ctx.secrets`. */
+  secrets?: Record<string, string>;
+  /**
+   * Names of the client's secrets (`KALEIDO_SECRETS_DIR`) the handler sees, when
+   * it isn't given `secrets` of its own. A handler given neither sees none.
+   */
+  secretNames?: string[];
+  /** The handler's files, by name, as paths, seen as `ctx.files` and through `ctx.file(name)`. */
+  files?: Record<string, string>;
 }
 
 /**

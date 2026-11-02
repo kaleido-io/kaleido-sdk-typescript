@@ -22,7 +22,7 @@ import { spawnSync } from 'child_process';
 import { tmpdir } from 'os';
 
 const GITHUB_REPO = process.env.KSDK_REPO_URL ?? 'https://github.com/kaleido-io/kaleido-sdk-typescript.git';
-const AVAILABLE_TEMPLATES = ['workflow-engine-provider', 'erc20-indexer', 'btc-indexer', 'native-eth-indexer', 'canton-cip56-indexer'];
+const AVAILABLE_TEMPLATES = ['workflow-engine-provider', 'typescript-provider-package', 'erc20-indexer', 'btc-indexer', 'native-eth-indexer', 'canton-cip56-indexer'];
 const projectNameRegex = /^(?:@[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*|[a-z0-9][a-z0-9-]*)$/;
 
 const __filename = fileURLToPath(import.meta.url);
@@ -93,12 +93,16 @@ Usage: npx @kaleido-io/kaleido-sdk init [project-name] [options]
 
 Options:
   --template <name>   Template to scaffold (${AVAILABLE_TEMPLATES.join(', ')})
+  --sdk-version <v>   Use the template and SDK versions from the release of
+                      @kaleido-io/workflow-engine-sdk <v>, e.g. the version a
+                      TypeScript provider runs. Defaults to the main branch.
   --help, -h          Show this help message
 
 Examples:
   npx @kaleido-io/kaleido-sdk init my-provider --template workflow-engine-provider
   npx @kaleido-io/kaleido-sdk init @my-org/my-provider --template erc20-indexer
   npx @kaleido-io/kaleido-sdk init --template erc20-indexer    # add to current project
+  npx @kaleido-io/kaleido-sdk init my-handlers --template typescript-provider-package --sdk-version 1.1.0
 `);
   process.exit(0);
 }
@@ -136,6 +140,18 @@ if (!templateName) {
   }
 }
 
+// ── SDK version (optional) ────────────────────────────────────────────────────
+
+const sdkVersionIdx = args.indexOf('--sdk-version');
+const sdkVersion = sdkVersionIdx !== -1 ? args[sdkVersionIdx + 1] : null;
+if (sdkVersionIdx !== -1 && (!sdkVersion || !/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(sdkVersion))) {
+  console.error('Error: --sdk-version needs a version such as 1.1.0 or 1.1.0-rc.1.');
+  process.exit(1);
+}
+// Releases are tagged per package; the workflow-engine-sdk tag fixes both the
+// template and the versions of the other SDK packages it was released with
+const sdkTag = sdkVersion ? `@kaleido-io/workflow-engine-sdk@${sdkVersion}` : null;
+
 if (!AVAILABLE_TEMPLATES.includes(templateName)) {
   console.error(`Error: Unknown template "${templateName}".`);
   console.error(`Available templates: ${AVAILABLE_TEMPLATES.join(', ')}`);
@@ -172,7 +188,7 @@ if (gitCheck.status !== 0) {
 if (addToExisting) {
   console.log(`\nAdding "${templateName}" template to existing project at ${cwd}\n`);
 } else {
-  console.log(`\nCreating new project: ${projectName} (template: ${templateName})`);
+  console.log(`\nCreating new project: ${projectName} (template: ${templateName}${sdkVersion ? `, workflow-engine-sdk ${sdkVersion}` : ''})`);
   console.log(`Location: ${targetDir}\n`);
 }
 
@@ -212,10 +228,18 @@ try {
 
   const clone = spawnSync(
     'git',
-    ['clone', '--depth=1', '--filter=blob:none', '--sparse', '--quiet', GITHUB_REPO, tmpDir],
+    ['clone', '--depth=1', '--filter=blob:none', '--sparse', '--quiet', ...(sdkTag ? ['--branch', sdkTag] : []), GITHUB_REPO, tmpDir],
     { stdio: ['ignore', 'ignore', 'pipe'] }
   );
-  if (clone.status !== 0) throw new Error(`git clone failed: ${clone.stderr?.toString().trim()}`);
+  if (clone.status !== 0) {
+    if (sdkTag) {
+      const tag = spawnSync('git', ['ls-remote', '--tags', GITHUB_REPO, `refs/tags/${sdkTag}`], { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] });
+      if (tag.status === 0 && !tag.stdout.trim()) {
+        throw new Error(`@kaleido-io/workflow-engine-sdk ${sdkVersion} is not a released version. Check the version and try again.`);
+      }
+    }
+    throw new Error(`git clone failed: ${clone.stderr?.toString().trim()}`);
+  }
 
   const sparse = spawnSync(
     'git',
@@ -243,7 +267,11 @@ try {
   }
 
   const sourceDir = join(tmpDir, 'samples', templateName);
-  if (!existsSync(sourceDir)) throw new Error(`Template "${templateName}" not found in repository.`);
+  if (!existsSync(sourceDir)) {
+    throw new Error(sdkVersion
+      ? `Template "${templateName}" is not available for @kaleido-io/workflow-engine-sdk ${sdkVersion}. Use a later --sdk-version, or leave it out to use the main branch.`
+      : `Template "${templateName}" not found in repository.`);
+  }
 
   // Read the template's @kaleido-io/* deps before cleanup so we can merge them in add-to-existing mode
   const templatePkgPath = join(sourceDir, 'package.json');
@@ -325,11 +353,12 @@ if (existsSync(pkgPath)) {
       }
     }
   } else {
-    // New project: set name and pin all @kaleido-io/* wildcards
+    // New project: set name and pin all @kaleido-io/* wildcards. With --sdk-version every
+    // @kaleido-io/* dependency is pinned to that release, whatever range the template declares.
     pkg.name = projectName;
     for (const section of ['dependencies', 'devDependencies', 'peerDependencies']) {
       for (const dep of Object.keys(pkg[section] ?? {})) {
-        if (dep.startsWith('@kaleido-io/') && pkg[section][dep] === '*') {
+        if (dep.startsWith('@kaleido-io/') && (pkg[section][dep] === '*' || (sdkVersion && versionMap[dep]))) {
           pkg[section][dep] = versionMap[dep] ?? FALLBACK_VERSION;
         }
       }
@@ -361,6 +390,12 @@ if (addToExisting) {
   console.log('Next steps:');
   console.log(`\tcd ${projectDirName}`);
   console.log('\tnpm install');
-  console.log('\t# Edit config files with your configuration');
-  console.log('\tnpm run start:dev\n');
+  if (templateName === 'typescript-provider-package') {
+    console.log('\tnpm test');
+    console.log('\tnpx ksdk add transaction-handler <name>   # add more handlers');
+    console.log('\tnpm run package                            # zip it for upload to a TypeScript provider\n');
+  } else {
+    console.log('\t# Edit config files with your configuration');
+    console.log('\tnpm run start:dev\n');
+  }
 }

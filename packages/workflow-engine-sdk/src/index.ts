@@ -25,6 +25,7 @@
 export {
   WorkflowEngineClient,
   WorkflowEngineClientConfig,
+  HandlerRegistrationOptions,
   ServerConfig,
   ServerTlsConfig,
 } from './client/client';
@@ -47,6 +48,7 @@ export {
   KALEIDO_CONFIG_FILE,
   WFE_CONFIG_FILE,
   CONFIG_FILE,
+  KALEIDO_SECRETS_DIR,
 } from './config/config';
 
 export {
@@ -109,6 +111,7 @@ export {
   defineProcessor,
   isDefinedProcessor,
   defineEventSource,
+  definedName,
   complete,
   waiting,
   StageError,
@@ -173,5 +176,5 @@ export { HandlerRuntimeMode } from "./runtime/handler_runtime";
 
 // ── Builder API ───────────────────────────────────────────────────────────────
 
-export type { EventProcessorContext, TransactionContext, EventSourceContext } from './app/context';
+export type { EventProcessorContext, TransactionContext, EventSourceContext, HandlerSecretsAndFiles } from './app/context';
 export type { EventProcessorDef, TransactionHandlerRegistration } from './app/types';

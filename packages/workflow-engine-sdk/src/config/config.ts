@@ -46,6 +46,12 @@ export const WFE_CONFIG_FILE = "WFE_CONFIG_FILE";
  */
 export const CONFIG_FILE = "CONFIG_FILE";
 
+/**
+ * Environment variable name for the directory a provider's secrets are mounted
+ * in, one directory per credential set: `<dir>/<name>/<key>`.
+ */
+export const KALEIDO_SECRETS_DIR = "KALEIDO_SECRETS_DIR";
+
 const WFE_CONFIG_KEYS = {
   providerName: "providerName",
   providerMetadata: "providerMetadata",
@@ -469,6 +475,33 @@ export class ConfigLoader {
     if (config.workflowEngine.retryDelay) {
       log.info(`  Retry Delay: ${config.workflowEngine.retryDelay}`);
     }
+  }
+
+  /**
+   * Read the secrets mounted under `dir`, one directory per credential set.
+   * A set's `value` file becomes the secret named after the set; any other
+   * file, such as a basic auth set's `username` and `password`, becomes
+   * `<set>/<file>`. Entries whose names start with `.` are left out, as are
+   * plain files at the top level.
+   */
+  static loadSecretsDir(dir: string): Record<string, string> {
+    let sets: string[];
+    try {
+      sets = fs.readdirSync(dir);
+    } catch (err) {
+      throw newError(SDKErrors.MsgSDKSecretsDirUnreadable, dir, err instanceof Error ? err.message : String(err));
+    }
+    const secrets: Record<string, string> = {};
+    for (const set of sets.filter((name) => !name.startsWith('.')).sort()) {
+      const setDir = `${dir}/${set}`;
+      if (!fs.statSync(setDir).isDirectory()) continue;
+      for (const key of fs.readdirSync(setDir).filter((name) => !name.startsWith('.')).sort()) {
+        const file = `${setDir}/${key}`;
+        if (!fs.statSync(file).isFile()) continue;
+        secrets[key === 'value' ? set : `${set}/${key}`] = fs.readFileSync(file, 'utf8');
+      }
+    }
+    return secrets;
   }
 
   static loadServiceBindings(configFilePath?: string): ServiceBindingsMap {

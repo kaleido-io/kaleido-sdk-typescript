@@ -190,7 +190,7 @@ describe('WorkflowEngineClient builder', () => {
 
     await client.start();
 
-    expect(client.registerEventProcessor).toHaveBeenCalledWith('my-ep', expect.anything());
+    expect(client.registerEventProcessor).toHaveBeenCalledWith('my-ep', expect.anything(), undefined);
   });
 
   it('registers event source on start()', async () => {
@@ -204,7 +204,7 @@ describe('WorkflowEngineClient builder', () => {
     client.eventSource(mockSource);
     await client.start();
 
-    expect(client.registerEventSource).toHaveBeenCalledWith('my-source', mockSource);
+    expect(client.registerEventSource).toHaveBeenCalledWith('my-source', mockSource, undefined);
   });
 
   it('stop() calls disconnect', async () => {
