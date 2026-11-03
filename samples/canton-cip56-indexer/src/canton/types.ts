@@ -15,14 +15,6 @@
 // limitations under the License.
 
 import type {
-  AddressBulkInput as Address,
-  AssetBulkInput as Asset,
-  FragmentBulkInput as Fragment,
-  PoolBulkInput as Pool,
-  TransferBulkInput as Transfer,
-} from '@kaleido-io/asset-manager-sdk';
-
-import type {
   CantonContractEvent,
   CantonCompletionFailedEvent,
   CantonStreamEvent,
@@ -48,45 +40,3 @@ export {
   HOLDING_INTERFACE,
   TRANSFER_INSTRUCTION_INTERFACE,
 } from '@kaleido-io/connector-sdk/canton';
-
-// ── Indexer batch context types ─────────────────────────────────────
-
-export type ContractInfo = {
-  owner: string;
-  amount?: string;
-  asset?: string;
-  poolRef?: string;
-};
-
-export type TransferContext = {
-  sender: string;
-  receiver: string;
-  amount?: string;
-  instrumentId?: string;
-  contractId?: string;
-};
-
-export type BatchContext = {
-  fragmentMap: Map<string, Fragment>;
-  transfers: Transfer[];
-  addressMap: Map<string, Address>;
-  assetMap: Map<string, Asset>;
-  poolMap: Map<string, Pool>;
-  addressSet: Set<string>;
-  txContext: Map<string, TransferContext>;
-  contracts: Map<string, ContractInfo>;
-  addAddress: (addr: Address) => void;
-};
-
-export type ScanCreatesResult = {
-  contracts: Map<string, ContractInfo>;
-  batchTI: Map<string, TransferContext>;
-};
-
-export type ScanContextResult = {
-  txContext: Map<string, TransferContext>;
-  archiveMisses: Set<string>;
-  tiMisses: string[];
-  exerciseEvents: CantonContractEvent[];
-  txIdsInBatch: Set<string>;
-};

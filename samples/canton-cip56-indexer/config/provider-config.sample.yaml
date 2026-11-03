@@ -3,6 +3,12 @@
 # Copy this file to config/provider-config.yaml and fill in your values.
 # Set CONFIG_FILE env var to point to your config (default: ./config/provider-config.yaml).
 
+# Token Subledger target. bindingName must match the service-binding name in config.yaml.
+subledger:
+  bindingName: subledger
+  chain: canton                  # the blockchain Chain every row is written under
+  source: canton-cip56-indexer   # written on each chain transaction
+
 # Canton-specific stream configuration. Used in the setup hook to upsert the WFE stream.
 # stream.connectorBindingName must match the service-binding name in config.yaml for the connector.
 stream:
@@ -14,7 +20,7 @@ stream:
     fromOffset: 0
     includeCreatedEventBlob: false
     filters:
-      parties: []
+      parties: []   # e.g. the instrument admin party: it co-signs every holding and transfer instruction
       interfaceIds:
         - '#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding'
         - '#splice-api-token-transfer-instruction-v1:Splice.Api.Token.TransferInstructionV1:TransferInstruction'
