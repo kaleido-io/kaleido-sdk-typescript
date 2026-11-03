@@ -16,10 +16,17 @@
 
 import type { CantonContractEventsConfig } from '@kaleido-io/connector-sdk/canton';
 
-// Canton-specific application config fields.
-// Platform connection (WFE URL, AM, auth, connector) live in the top-level
-// IndexerConfig fields; add canton-specific fields here as needed.
+// Provider config (CONFIG_FILE). Platform connections (WFE URL, auth, the
+// canton-connector and subledger service bindings) live in config.yaml.
 export interface CantonConfig {
+  subledger?: {
+    /** Service binding of the Token Subledger (default `subledger`). */
+    bindingName?: string;
+    /** The blockchain Chain the ledger is written under (default `canton`). */
+    chain?: string;
+    /** The `source` written on each chain transaction (default `canton-cip56-indexer`). */
+    source?: string;
+  };
   stream?: {
     connectorBindingName: string;
     factory: string;
