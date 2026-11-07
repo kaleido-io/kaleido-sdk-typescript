@@ -1,0 +1,23 @@
+# Configuration for the lifecycle state machine sample (KALEIDO_CONFIG_FILE).
+# Copy this file to config/config.yaml and fill in your values.
+# Set KALEIDO_CONFIG_FILE to point to your config (default: ./config/config.yaml).
+
+workflow-engine:
+  providerName: payment-lifecycle
+  providerMetadata:
+    displayName: Payment Lifecycle
+    description: Drives payment transactions from their lifecycle events
+  url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-env/s:workflow-engine/rest
+  auth:
+    type: basic
+    username: myuser
+    password: my-api-key
+
+service-bindings:
+  subledger:
+    bindingType: non-hosted
+    url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-env/s:my-subledger/rest
+    auth:
+      type: basic
+      username: myuser
+      password: my-api-key
