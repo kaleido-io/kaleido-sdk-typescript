@@ -164,172 +164,59 @@ Items for the same row, within a section and root, are combined by `duplicates`:
 
 ## Lifecycle state machines
 
-`@kaleido-io/subledger-sdk/state-machine` drives transactions of one lifecycle transaction type from that type's `lifecycle.events`. A handler is a state machine: state × event → transition. The state is the handler's own vocabulary, held in the transaction's `labels.state`; the event's name selects the transition; the transition reads the transaction, adds the rows to write to a builder, and returns the next state. Those rows and the new state label go out as one bulk upsert.
+A lifecycle tracks a transaction to its outcome, for as long as that takes and across every party involved, and decides at each change what happens next. A workflow does one party's piece of that work and ends; a wait is a condition on the record.
 
-```typescript
-import { go, pass, stateMachine, stepRef } from "@kaleido-io/subledger-sdk/state-machine";
+`@kaleido-io/subledger-sdk/state-machine` can be used to react to the lifecycle record and drive the transaction. A handler is a state machine: the transaction's current state is held in `labels.state`, and each written lifecycle event may select a transition. A transition may add entries to the transaction record, and may move the transaction to a new state.
 
-// The handler's business refusals.
-class Rejection extends Error {}
+- A **state** is something that has become true of the transaction. Where parties share a transaction, the states are agreed between them, and often mirror states from a shared smart contract.
+- A **step** is a unit of work to be done, with a start and an outcome on the record.
+- A **workflow** is the platform method for carrying out a step. A workflow has its own internal stages, but anything internal to a workflow is an operational detail and not a part of the lifecycle record.
 
-// route(ctx, transaction): the handler's routing decision, throwing a Rejection to refuse.
+The record is the source of truth. A handler decides from the record, not from the event that woke it. Every row is named from the transaction and written once, so a handler can run again safely. A signal that carries a condition's key meets it; a signal may repeat or arrive after the transaction has moved on.
 
-const stepOf = (transaction, name) => transaction.steps?.find((s) => s.name === name);
-
-// Routing has no workflow: its transition does the work. Workflows perform accept and settle.
-async function routePayment(ctx, { transaction, event }) {
-  const type = transaction.transactionTypeUrn;
-  const routing = stepRef(transaction, "routing");
-  try {
-    await route(ctx, transaction);
-  } catch (err) {
-    if (!(err instanceof Rejection)) throw err;
-    ctx.builder.lifecycle.add({
-      stepOutcomes: [
-        {
-          transactionTypeUrn: type,
-          items: [
-            { stepUrn: routing, status: "failed", error: err.message, causationUrn: event.urn },
-          ],
-        },
-      ],
-      transactionOutcomes: [
-        {
-          transactionTypeUrn: type,
-          items: [
-            {
-              transactionUrn: transaction.urn,
-              status: "failed",
-              error: err.message,
-              causationUrn: event.urn,
-            },
-          ],
-        },
-      ],
-    });
-    return go("failed");
-  }
-  ctx.builder.lifecycle.add({
-    stepOutcomes: [
-      {
-        transactionTypeUrn: type,
-        items: [{ stepUrn: routing, status: "completed", causationUrn: event.urn }],
-      },
-    ],
-    stepStarts: [
-      {
-        transactionTypeUrn: type,
-        items: [{ stepUrn: stepRef(transaction, "accept"), causationUrn: event.urn }],
-      },
-    ],
-  });
-  return go("accept");
-}
-
-// The settle workflow, on completing, adds a `settle` condition keyed on its
-// evidence; the indexer's signal for that evidence meets it.
-function settled(ctx, { transaction }) {
-  ctx.builder.lifecycle.add({
-    transactionOutcomes: [
-      {
-        transactionTypeUrn: transaction.transactionTypeUrn,
-        items: [
-          {
-            transactionUrn: transaction.urn,
-            status: "completed",
-            causationUrn: stepOf(transaction, "settle").urn,
-          },
-        ],
-      },
-    ],
-  });
-  return go("done");
-}
-
-function startSettle(ctx, { transaction, event }) {
-  if (stepOf(transaction, "accept")?.status !== "completed") return pass();
-  ctx.builder.lifecycle.add({
-    stepStarts: [
-      {
-        transactionTypeUrn: transaction.transactionTypeUrn,
-        items: [{ stepUrn: stepRef(transaction, "settle"), causationUrn: event.urn }],
-      },
-    ],
-  });
-  return go("settle");
-}
-
-function failOnFailedStep(ctx, { transaction, event }) {
-  const step = transaction.steps?.find((s) => s.urn === event.subjectUrn);
-  if (step?.status !== "failed") return pass();
-  ctx.builder.lifecycle.add({
-    transactionOutcomes: [
-      {
-        transactionTypeUrn: transaction.transactionTypeUrn,
-        items: [
-          {
-            transactionUrn: transaction.urn,
-            status: "failed",
-            error: step.outcome?.error,
-            causationUrn: step.urn,
-          },
-        ],
-      },
-    ],
-  });
-  return go("failed");
-}
-
-const payment = stateMachine({
-  initial: "routing",
-  final: ["done", "failed"],
-  states: {
-    routing: {
-      "step-started.routing": { to: ["accept", "failed"], run: routePayment },
-    },
-    accept: {
-      "step-outcome.accept": { to: ["settle"], run: startSettle },
-    },
-    settle: {
-      "condition-signaled.settle.*": { to: ["done"], run: settled },
-    },
-    "*": {
-      "step-outcome.*": { to: ["failed"], run: failOnFailedStep },
-    },
-  },
-});
-
-WorkflowEngineClient.fromConfigFile().eventProcessor("payments", payment.eventProcessor()).start();
-```
+The [lifecycle state machine sample](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/lifecycle-state-machine-sample) is a complete handler: a payment machine whose steps the machine starts in turn, run as a workflow engine event processor over the type's `lifecycle.events`.
 
 ### Definition
 
-| Field       | Description                                                                                                                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `initial`   | The state of a transaction with no `labels.state`                                                                                                                                                               |
-| `states`    | Transitions by state, then by event key: `{ to, run }`, the states the transition may move to and the function that decides. The `*` state applies in every state not in `final`, after the state's own entries |
-| `final`     | Final states, for which the `*` state does not apply                                                                                                                                                            |
-| `subledger` | Name of the subledger service binding; default `subledger`                                                                                                                                                      |
+| Field               | Description                                                                                                                                                                      |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `initial`           | The state of a transaction with no `labels.state`                                                                                                                                |
+| `states`            | Each state's `steps` and its transitions `on` each event key. The `*` state applies in every state not in `final`, after the state's own entries                                 |
+| `final`             | Final states                                                                                                                                                                     |
+| `transactionFilter` | Whether the machine drives a transaction, where several machines share a transaction type; for example `(tx) => tx.labels?.role === "originator"`. Defaults to every transaction |
+| `options`           | `autoStartSteps`, which has the machine start each state's steps (see Steps)                                                                                                     |
 
-Three words name different things. A transaction's or step's `status` (`active`, `completed`, `failed`) is the service's, derived from its outcomes. Its state is the handler's position in its machine, held in `labels.state` in the handler's own vocabulary. The blockchain module's `State` entity is an on-chain state record, unrelated to either.
+A transaction's or step's `status` (`active`, `completed`, `failed`) is the service's, derived from its outcomes. Its state is the handler's, in the handler's own vocabulary.
 
-An event key is a glob over event names: `*` matches any run of characters, and everything else matches literally. `step-outcome.notify` matches that event only, `step-outcome.*` any step's outcome, `condition-signaled.mint.*` any signal meeting the `mint` condition, and `*` every event. A state's matching keys are tried in declaration order, then the `*` state's. A transition that returns `pass()` leaves the event to the next match, and what it added is discarded; `stay()` ends the search and writes what was added, if anything. A transition that moves to a state outside its `to` throws. `machine.mermaid()` draws the `to` lists as a mermaid `stateDiagram-v2`, with the `*` state as one "any state" node.
+A transition is `{ to, run }`, the states it may go to and the function that decides, or a fixed move such as `go("done")`.
 
-Lifecycle event names are `<eventType>.<member>`: `step-started.routing`, `step-outcome.mint`, `condition-signaled.mint.<signal id>`, `transaction-outcome`. The handler's own writes return as events, so a transition reads the record rather than trusting the event. An event that matches no transition in the current state is ignored.
+Event names are the event type, then the member it concerns, if any: `transaction-outcome`, `step-outcome.mint`, `condition-signaled.mint.<signal id>`. A member's name may contain dots. The handler's own writes return as events.
+
+An event key is an event name in which `*` stands for any whole part: `step-outcome.*` matches any step's outcome, `condition-signaled.mint.*` any signal meeting the `mint` condition. `stateMachine()` rejects a key that can match no event, and a `to` that names a state the definition neither defines nor lists in `final`.
+
+For each event, the current state's matching transitions are tried in declaration order, then the `*` state's. `pass()` leaves the event to the next match and discards what the transition added; `stay()` keeps the state; `go(state)` goes to a state in the transition's `to`. `ifCompleted(t)` and `ifFailed(t)` run `t` only when the step the outcome names has that status, and pass otherwise. An event that matches no transition is ignored. `machine.mermaid()` draws the machine as a mermaid `stateDiagram-v2`.
+
+### Steps
+
+A state's `steps` list every step a transaction may do in it, in order. A step is added to the transaction, pending and labelled with its state, as soon as the handler knows it will happen, and starts when it is ready: its state is current and the state's earlier steps are done. A step that is never added is skipped, and a step's state is fixed once added.
+
+`startNextStep(ctx, input, state)` starts the first of `state`'s pending steps, unless one of its steps is running or has failed. With `options: { autoStartSteps: true }`, the machine calls it after every event, for the state the transaction ends in, and `machine.handles(event)` also accepts the outcome of any defined step.
+
+Write steps, starts and outcomes with the helpers, `addSteps`, `startStep`, `startNextStep`, `concludeStep` and `concludeTransaction`, rather than by hand: the rule recognises rows only in the form they write. Each takes the API's input, without the URNs it fills in. The service derives no transaction outcome: the transition that concludes the transaction writes it, and goes to a final state.
+
+A wait on something outside the transaction is a state with no steps; two steps that cannot follow each other directly belong to two states. A wait that belongs to a step, such as a chain transaction's confirmation, is the step's own: the workflow run writes the condition and ends with the step started, and the transition judging the signal concludes the step.
 
 ### Transitions and writes
 
-A transition is `(ctx, { transaction, state, event, signal }) => Next`, synchronous or async. `transaction` is the transaction with its steps, legs and conditions; `state` is the machine's state; `event` is the lifecycle event being handled; `signal` is the signal a `condition-signaled` event reports. `ctx.config` is the handler's config, typed by `stateMachine<Config>(…)` and passed through from the provider unchecked. `ctx.subledger` is the subledger client's read side (`SubledgerReader`, its `bulkQuery`), and `ctx.builder` its write side: a `BulkUpsertBuilder` for that attempt alone, to which the transition adds the rows it writes, in the bulk upsert's own shape. The event processor writes them. Lifecycle sections are scoped by the transaction type (`transaction.transactionTypeUrn`); members name their `transactionUrn` and facts their `causationUrn`, usually the triggering event's URN. The service derives no transaction outcome: a handler writes both endings. The transition returns what happens next: `go(state)` to move, `stay()` to keep the state, or `pass()` to leave the event to the next match. Each builds a `Next`, `{ action: "go", state }`, `{ action: "stay" }` or `{ action: "pass" }`.
+A transition's `run` is `(ctx, { transaction, state, event }) => Next`, synchronous or async. `ctx.config` is the handler's config, typed by `stateMachine<Config>(…)`; `ctx.subledger` reads the subledger; `ctx.builder` collects the rows the transition writes, in the bulk upsert's own shape. `conditionOf(input)` returns the condition a `condition-signaled` event met, and `stepUrn(transaction, name)` a step's full URN.
 
-The builder writes rows `create_or_ignore` and labels `create_or_update`, so evaluating an event twice writes the same rows, and the state label is rewritten with the same value. A transition can configure its own sections, for example `ctx.builder.lifecycle.configure({ stepStarts: { updateStrategy: "create_only" } })` to make a step start a claim; a unique conflict (`KA240201`) then fails the write, and the stream retries the batch. A fact names its step by `stepRef(transaction, name)`, the step's ref within the type.
-
-The event processor relies on the stream delivering a transaction's events in order, one at a time, so the only overlap is a redelivered event. A host that evaluates one transaction's events in parallel needs a claim: `create_only` step starts cover part of it, and a record of each transition written with a check of the state it moved from would cover the rest.
+Rows are written `create_or_ignore` and labels `create_or_update`, except step labels, which are `create_or_ignore`, so evaluating an event twice writes the same rows. A transition can configure its own sections, for example `ctx.builder.lifecycle.configure({ stepStarts: { updateStrategy: "create_only" } })` to make a step start a claim; a unique conflict then fails the write, and the stream retries the batch.
 
 ### Hosts
 
-`machine.eventProcessor()` returns an `EventProcessorDef` for a workflow engine stream over the type's `lifecycle.events`, delivering the event row as each stream event's data. For each event in a batch, in order, the processor reads the transaction in one bulk query (with its children, and for a `condition-signaled` event the signal it reports), runs the transition, and writes the body. Events no transition keys on are skipped without a read. Errors propagate, so the stream retries the batch.
+`handleEvents(ctx, machines, events)` runs one or more machines on a batch of lifecycle events. It skips events no machine `handles()`, without a read. For each other event, in order, it reads the transaction, with its children, evaluates it with the first machine whose `transactionFilter` accepts the transaction, and writes the result. The machines' filters should together cover every transaction on the stream: an event whose transaction no filter accepts is skipped, with a warning. `ctx` is `{ config, subledger }`, where `subledger` reads and writes. It relies on a transaction's events arriving in order, one at a time. Errors propagate, so the stream retries the batch, and the batch's earlier events run again in the states they left their transactions in. `readTransaction(client, event)` reads one event's transaction.
 
-`machine.evaluate(ctx, machine.input(transaction, event, signal))` is the same evaluation without I/O, where `ctx` is `{ config, subledger }`. It returns an `EvaluationResult`, the compiled body and the states moved from and to, or `undefined` when no transition matches, every match passes, or a `stay()` adds nothing.
+`machine.evaluate(ctx, transaction, event)` is the evaluation without I/O, where `ctx` is `{ config, subledger }`. It returns `{ from, to, body }`, or `undefined` when it writes nothing.
 
 ## Errors
 
