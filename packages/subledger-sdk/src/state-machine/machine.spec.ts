@@ -126,7 +126,7 @@ describe("event keys", () => {
     }
   });
 
-  it("order the state's matches, then the * state's, except in a final state", async () => {
+  it("order the state's matches, then the machine's own, except in a final state", async () => {
     const tried: string[] = [];
     const entry = (key: string): TransitionEntry => ({
       to: [],
@@ -140,9 +140,9 @@ describe("event keys", () => {
       final: ["done", "failed"],
       states: {
         a: { on: { "step-outcome.*": entry("a *"), "step-outcome.x": entry("a x") } },
-        "*": { on: { "step-outcome.*": entry("any *"), "transaction-outcome": entry("any end") } },
-        failed: {},
+        b: {},
       },
+      on: { "step-outcome.*": entry("any *"), "transaction-outcome": entry("any end") },
     });
     const keys = async (state: string, name: string) => {
       tried.length = 0;
@@ -175,8 +175,8 @@ describe("event keys", () => {
             },
           },
         },
-        "*": { on: { "step-outcome.*": { to: ["failed"], run: () => go("failed") } } },
       },
+      on: { "step-outcome.*": { to: ["failed"], run: () => go("failed") } },
     });
     const result = await machine.evaluate(ctx, record(), event("step-outcome.x"));
     expect(result).toMatchObject({ to: "failed" });
@@ -195,8 +195,8 @@ describe("ifCompleted and ifFailed", () => {
           "step-outcome.y": ifFailed(go("retrying")),
         },
       },
-      "*": { on: { "step-outcome.*": go("failed") } },
     },
+    on: { "step-outcome.*": go("failed") },
   });
   const outcome = (name: string, status: Step["status"]) =>
     machine.evaluate(
@@ -305,8 +305,8 @@ describe("declared targets", () => {
           "condition-signaled.settle.*": { to: ["done"], run: () => go("done") },
         },
       },
-      "*": { on: { "step-outcome.*": { to: ["failed"], run: () => pass() } } },
     },
+    on: { "step-outcome.*": { to: ["failed"], run: () => pass() } },
   });
 
   it("refuse a target the machine does not define or list as final", () => {
@@ -321,13 +321,22 @@ describe("declared targets", () => {
     ).toThrow("Transition a on step-outcome.x: goes to unknown state nowhere");
   });
 
+  it("refuse an initial state not in states, and a final state in states", () => {
+    expect(() => stateMachine({ initial: "a", final: [], states: { b: {} } })).toThrow(
+      "Initial state a is not in states",
+    );
+    expect(() => stateMachine({ initial: "a", final: ["a"], states: { a: {} } })).toThrow(
+      "Final state a is also in states",
+    );
+  });
+
   it("refuse a go to a state the entry does not declare", async () => {
     await expect(machine.evaluate(ctx, record(), event("transaction-accepted"))).rejects.toThrow(
       "went to elsewhere, which is not in its to: settling",
     );
   });
 
-  it("draw one arrow per source and target, and the * state as one node", () => {
+  it("draw one arrow per source and target, and the machine's own transitions from one node", () => {
     expect(machine.mermaid().split("\n")).toEqual([
       "stateDiagram-v2",
       '    state "any state" as anyState',
@@ -389,11 +398,9 @@ describe("steps", () => {
           "step-outcome.notify": ifCompleted(go("completed")),
         },
       },
-      "*": {
-        on: {
-          "step-outcome.*": ifFailed(go("failed")),
-        },
-      },
+    },
+    on: {
+      "step-outcome.*": ifFailed(go("failed")),
     },
   });
 

@@ -46,12 +46,14 @@ export const STATE_LABEL = "state";
 
 /** The state machine definition. */
 export interface StateMachineDef<Config = unknown> {
-  /** The initial state of a transaction, i.e. one with no state label. */
+  /** The initial state of a transaction, i.e. one with no state label. One of `states`. */
   initial: string;
-  /** Final states, for which the `*` state does not apply. */
+  /** Final states: a transaction in one has no steps to start and handles no events. Not in `states`. */
   final: string[];
-  /** The states, with their steps and transitions. */
+  /** The non-final states, with their steps and transitions. */
   states: Record<string, StateDef<Config>>;
+  /** Transitions that apply in every non-final state, after the state's own. */
+  on?: StateTransitions<Config>;
   /** Whether the machine drives a transaction, for hosts that run several machines. Defaults to every transaction. */
   transactionFilter?: (transaction: Transaction) => boolean;
   /** Options for how the machine runs. */
@@ -393,50 +395,58 @@ export interface EvaluationResult {
   body: BulkUpsertInput;
 }
 
-/** The special state that matches every non-final state. */
-const ANY = "*";
-
 /**
  * The state machine for one transaction type, driven by its lifecycle
  * events. A transaction's state is stored in its `state` label.
  *
  * For each event, the transitions of the current state are tried in order,
- * then those of the `*` state (unless the current state is final). The first
- * that does not "pass" handles the event: it adds the rows to write, and can
- * take the transaction to a new state.
+ * then the machine's own. The first that does not "pass" handles the event:
+ * it adds the rows to write, and can take the transaction to a new state. A
+ * transaction in a final state handles no events.
  *
  * A state's `steps` list every step a transaction may do in it, in order. A
  * transaction's steps are added, pending, when the handler knows they will
  * happen, and started when they are ready to be done.
  */
 export class StateMachine<Config = unknown> {
-  private readonly transitions: Transition<Config>[];
+  /** Each state's transitions, in declaration order. */
+  private readonly byState: Map<string, Transition<Config>[]>;
+  /** The machine's own transitions, which apply in every non-final state. */
+  private readonly anyState: Transition<Config>[];
   private readonly definedSteps: Set<string>;
   private readonly options: Required<StateMachineOptions>;
 
   /**
-   * Initialize the state machine.
-   * Throws when a transition names an invalid state or event.
+   * Initialize the state machine. Throws when the definition is invalid.
    */
   constructor(readonly def: StateMachineDef<Config>) {
     this.options = { ...DEFAULT_OPTIONS, ...def.options };
-    this.transitions = transitionsOf(def);
+    this.byState = new Map(
+      Object.entries(def.states).map(([state, { on }]) => [state, transitionsOf(on)]),
+    );
+    this.anyState = transitionsOf(def.on);
     this.definedSteps = new Set(Object.values(def.states).flatMap((s) => s.steps ?? []));
-    const known = new Set([...Object.keys(def.states), ...def.final]);
-    for (const { state, eventKey, to } of this.transitions) {
-      const validKey = splitName(eventKey)?.parts.every(
-        (part) => part === "*" || (part && !part.includes("*")),
-      );
-      if (!validKey) {
-        throw new Error(`Transition ${state} on ${eventKey}: invalid event key`);
-      }
-      const unknown = to.filter((target) => target === ANY || !known.has(target));
-      if (unknown.length > 0) {
-        throw new Error(
-          `Transition ${state} on ${eventKey}: goes to unknown state ${unknown.join(", ")}`,
-        );
-      }
+    this.validate();
+  }
+
+  /**
+   * Throws when `initial` is not a state, a final state is in `states`,
+   * or a transition has an invalid event key or target.
+   */
+  private validate() {
+    const states = Object.keys(this.def.states);
+    if (!states.includes(this.def.initial)) {
+      throw new Error(`Initial state ${this.def.initial} is not in states`);
     }
+    const listed = this.def.final.filter((state) => states.includes(state));
+    if (listed.length > 0) {
+      throw new Error(`Final state ${listed.join(", ")} is also in states`);
+    }
+    const known = new Set([...states, ...this.def.final]);
+    for (const [state, transitions] of this.byState) {
+      checkTransitions(state, transitions, known);
+    }
+    checkTransitions("any state", this.anyState, known);
   }
 
   /**
@@ -444,7 +454,8 @@ export class StateMachine<Config = unknown> {
    * or, with `autoStartSteps`, it is the outcome of any defined step.
    */
   handles(event: LifecycleEvent): boolean {
-    if (this.transitions.some(({ eventKey }) => matchesKey(eventKey, event.name))) {
+    const transitions = [...this.byState.values(), this.anyState].flat();
+    if (transitions.some(({ eventKey }) => matchesKey(eventKey, event.name))) {
       return true;
     }
     if (this.options.autoStartSteps && event.eventType === "step-outcome") {
@@ -469,6 +480,9 @@ export class StateMachine<Config = unknown> {
       state: transaction.labels?.[STATE_LABEL] ?? this.def.initial,
       event,
     };
+    if (this.def.final.includes(input.state)) {
+      return undefined; // no transition from final states
+    }
     const { builder, state } = await this.transition(ctx, input);
     if (this.options.autoStartSteps) {
       startNextStep({ ...ctx, builder, def: this.def }, input, state);
@@ -502,8 +516,10 @@ export class StateMachine<Config = unknown> {
     ctx: EvaluationContext<Config>,
     input: TransitionInput,
   ): Promise<{ builder: BulkUpsertBuilder; state: string }> {
-    const name = input.event.name;
-    const matches = [...this.matchesIn(input.state, name), ...this.anyMatches(input.state, name)];
+    const thisState = this.byState.get(input.state) ?? [];
+    const matches = [...thisState, ...this.anyState].filter(({ eventKey }) =>
+      matchesKey(eventKey, input.event.name),
+    );
     for (const { eventKey, to, run } of matches) {
       const builder = transitionBuilder();
       const next = await run({ ...ctx, builder, def: this.def }, input);
@@ -524,24 +540,28 @@ export class StateMachine<Config = unknown> {
   /**
    * A mermaid `stateDiagram-v2` of the machine: one arrow per source and
    * target, labeled with the event keys that take it, and under each state
-   * its steps. The `*` state is drawn as one "any state" node.
+   * its steps. The machine's own transitions leave one "any state" node.
    */
   mermaid(): string {
-    const node = (state: string) => (state === ANY ? "anyState" : state);
-
     const eventKeysByArrow = new Map<string, string[]>();
     const reached = new Set<string>();
-    for (const { state, eventKey, to } of this.transitions) {
-      for (const target of to) {
-        const arrow = `${node(state)} --> ${target}`;
-        eventKeysByArrow.set(arrow, [...(eventKeysByArrow.get(arrow) ?? []), eventKey]);
-        reached.add(target);
+    const draw = (from: string, transitions: Transition<Config>[]) => {
+      for (const { eventKey, to } of transitions) {
+        for (const target of to) {
+          const arrow = `${from} --> ${target}`;
+          eventKeysByArrow.set(arrow, [...(eventKeysByArrow.get(arrow) ?? []), eventKey]);
+          reached.add(target);
+        }
       }
+    };
+    for (const [state, transitions] of this.byState) {
+      draw(state, transitions);
     }
+    draw("anyState", this.anyState);
 
     const lines = ["stateDiagram-v2"];
-    if (this.def.states[ANY]) {
-      lines.push(`    state "any state" as ${node(ANY)}`);
+    if (this.def.on) {
+      lines.push('    state "any state" as anyState');
     }
     lines.push(`    [*] --> ${this.def.initial}`);
     for (const [arrow, eventKeys] of eventKeysByArrow) {
@@ -553,23 +573,11 @@ export class StateMachine<Config = unknown> {
       }
     }
     for (const [state, { steps = [] }] of Object.entries(this.def.states)) {
-      if (state !== ANY && steps.length > 0) {
+      if (steps.length > 0) {
         lines.push(`    ${state}: ${steps.join("<br/>")}`);
       }
     }
     return lines.join("\n");
-  }
-
-  /** The transitions of one table that match an event, in declaration order. */
-  private matchesIn(table: string, eventName: string): Transition<Config>[] {
-    return this.transitions.filter(
-      ({ state, eventKey }) => state === table && matchesKey(eventKey, eventName),
-    );
-  }
-
-  /** The `*` state's matches, which apply in every state but the final ones. */
-  private anyMatches(state: string, eventName: string): Transition<Config>[] {
-    return this.def.final.includes(state) ? [] : this.matchesIn(ANY, eventName);
   }
 }
 
@@ -648,25 +656,38 @@ export function matchesKey(eventKey: string, eventName: string): boolean {
   );
 }
 
-/** A transition as the machine reads it: the state it leaves, its event name, and its entry. */
+/** A transition as the machine reads it: its event key and its entry. */
 interface Transition<Config = unknown> extends TransitionEntry<Config> {
-  state: string;
   eventKey: string;
 }
 
-/**
- * Every transition of a definition: the state it leaves, its event name, and
- * its entry. A bare `go` is an entry whose `to` is its target.
- */
-function transitionsOf<Config>(def: StateMachineDef<Config>): Transition<Config>[] {
-  return Object.entries(def.states).flatMap(([state, { on = {} }]) =>
-    Object.entries(on).flatMap(([eventKey, transition]) => {
-      if (transition === undefined) {
-        return [];
-      }
-      return [{ state, eventKey, ...entryOf(transition) }];
-    }),
+/** The transitions of an `on` map, in declaration order. */
+function transitionsOf<Config>(on: StateTransitions<Config> = {}): Transition<Config>[] {
+  return Object.entries(on).flatMap(([eventKey, transition]) =>
+    transition === undefined ? [] : [{ eventKey, ...entryOf(transition) }],
   );
+}
+
+/** Throws when a transition has an invalid event key or goes to a state the machine does not know. */
+function checkTransitions<Config>(
+  state: string,
+  transitions: Transition<Config>[],
+  known: Set<string>,
+): void {
+  for (const { eventKey, to } of transitions) {
+    const validKey = splitName(eventKey)?.parts.every(
+      (part) => part === "*" || (part && !part.includes("*")),
+    );
+    if (!validKey) {
+      throw new Error(`Transition ${state} on ${eventKey}: invalid event key`);
+    }
+    const unknown = to.filter((target) => !known.has(target));
+    if (unknown.length > 0) {
+      throw new Error(
+        `Transition ${state} on ${eventKey}: goes to unknown state ${unknown.join(", ")}`,
+      );
+    }
+  }
 }
 
 /** The entry for a transition: itself, or for a fixed move, an entry whose `to` is its target. */

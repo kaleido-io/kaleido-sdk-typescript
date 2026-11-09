@@ -180,9 +180,10 @@ The [lifecycle state machine sample](https://github.com/kaleido-io/kaleido-sdk-t
 
 | Field               | Description                                                                                                                                                                      |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `initial`           | The state of a transaction with no `labels.state`                                                                                                                                |
-| `states`            | Each state's `steps` and its transitions `on` each event key. The `*` state applies in every state not in `final`, after the state's own entries                                 |
-| `final`             | Final states                                                                                                                                                                     |
+| `initial`           | The state of a transaction with no `labels.state`; one of `states`                                                                                                               |
+| `states`            | Each non-final state's `steps` and its transitions `on` each event key                                                                                                           |
+| `on`                | Transitions that apply in every non-final state, after the state's own                                                                                                           |
+| `final`             | Final states, which have no steps or transitions and are not in `states`                                                                                                         |
 | `transactionFilter` | Whether the machine drives a transaction, where several machines share a transaction type; for example `(tx) => tx.labels?.role === "originator"`. Defaults to every transaction |
 | `options`           | `autoStartSteps`, which has the machine start each state's steps (see Steps)                                                                                                     |
 
@@ -194,7 +195,7 @@ Event names are the event type, then the member it concerns, if any: `transactio
 
 An event key is an event name in which `*` stands for any whole part: `step-outcome.*` matches any step's outcome, `condition-signaled.mint.*` any signal meeting the `mint` condition. `stateMachine()` rejects a key that can match no event, and a `to` that names a state the definition neither defines nor lists in `final`.
 
-For each event, the current state's matching transitions are tried in declaration order, then the `*` state's. `pass()` leaves the event to the next match and discards what the transition added; `stay()` keeps the state; `go(state)` goes to a state in the transition's `to`. `ifCompleted(t)` and `ifFailed(t)` run `t` only when the step the outcome names has that status, and pass otherwise. An event that matches no transition is ignored. `machine.mermaid()` draws the machine as a mermaid `stateDiagram-v2`.
+For each event, the current state's matching transitions are tried in declaration order, then the machine's own `on`. `pass()` leaves the event to the next match and discards what the transition added; `stay()` keeps the state; `go(state)` goes to a state in the transition's `to`. `ifCompleted(t)` and `ifFailed(t)` run `t` only when the step the outcome names has that status, and pass otherwise. An event that matches no transition is ignored. `machine.mermaid()` draws the machine as a mermaid `stateDiagram-v2`.
 
 ### Steps
 

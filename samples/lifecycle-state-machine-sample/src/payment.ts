@@ -25,10 +25,10 @@ import {
 } from "@kaleido-io/subledger-sdk/state-machine";
 
 /**
- * A payment's lifecycle. Each state is a fact about the payment. Once it is
- * accepted, it plans its steps, reserve then settle, which the machine
- * starts in turn; a completed settle makes it settled, and any failed step
- * makes it failed.
+ * A simple payment lifecycle. Each state is a fact about the payment.
+ * Once it is accepted, it plans its steps (reserve then settle), which the
+ * machine starts in turn. A completed settle makes it settled, and any
+ * failed step makes it failed.
  */
 export const payment = stateMachine({
   initial: "accepted",
@@ -60,23 +60,19 @@ export const payment = stateMachine({
         }),
       },
     },
-    "*": {
-      on: {
-        "step-outcome.*": ifFailed({
-          to: ["failed"],
-          run: (ctx, { transaction, event }) => {
-            const step = transaction.steps?.find(
-              (s) => s.urn === event.subjectUrn,
-            );
-            concludeTransaction(ctx, transaction, {
-              causationUrn: event.urn,
-              status: "failed",
-              error: `${step?.name} failed`,
-            });
-            return go("failed");
-          },
-        }),
+  },
+  on: {
+    "step-outcome.*": ifFailed({
+      to: ["failed"],
+      run: (ctx, { transaction, event }) => {
+        const step = transaction.steps?.find((s) => s.urn === event.subjectUrn);
+        concludeTransaction(ctx, transaction, {
+          causationUrn: event.urn,
+          status: "failed",
+          error: `${step?.name} failed`,
+        });
+        return go("failed");
       },
-    },
+    }),
   },
 });
