@@ -44,6 +44,7 @@ export type {
   StateDef,
   StateMachineDef,
   StateMachineOptions,
+  StateTransitions,
   SubledgerReader,
   TransitionContext,
   TransitionEntry,

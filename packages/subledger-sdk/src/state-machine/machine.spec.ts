@@ -647,7 +647,7 @@ describe("steps", () => {
 });
 
 describe("record writers", () => {
-  const machine = stateMachine({ initial: "a", final: [], states: { a: {} } });
+  const machine = stateMachine({ initial: "a", final: [], states: { a: { steps: ["s1"] } } });
   const writes = (write: (ctx: TransitionContext) => void) => {
     const builder = new BulkUpsertBuilder(
       { bulkUpsert: async () => ({}) },
@@ -667,6 +667,12 @@ describe("record writers", () => {
     expect(l?.steps?.[0].items).toEqual([
       { name: "s1", transactionUrn: TX, labels: { leg: "fund", state: "a" }, info: { venue: "x" } },
     ]);
+  });
+
+  it("refuse a step its state does not list", () => {
+    expect(() => writes((c) => addSteps(c, record(), [{ name: "s2", state: "a" }]))).toThrow(
+      "Step s2 is not one of the steps of state a",
+    );
   });
 
   it("start and conclude a step, and conclude the transaction", () => {

@@ -227,13 +227,18 @@ export function stepUrn(transaction: Transaction, step: string): string {
 
 /**
  * Add pending steps to the transaction, each labeled with the state it runs
- * in. Labels are written create_or_ignore, so a step's state is fixed once added.
+ * in. Throws if the state machine definition does not include these `steps`.
  */
 export function addSteps<Config>(
   ctx: TransitionContext<Config>,
   transaction: Transaction,
   steps: StepDef[],
 ): void {
+  for (const { name, state } of steps) {
+    if (!ctx.def.states[state]?.steps?.includes(name)) {
+      throw new Error(`Step ${name} is not one of the steps of state ${state}`);
+    }
+  }
   ctx.builder.lifecycle.configure({
     steps: { labelStrategy: "create_or_ignore" },
   });
