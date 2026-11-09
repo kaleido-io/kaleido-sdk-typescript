@@ -1,6 +1,6 @@
 {
   "name": "@kaleido-io/subledger-sdk",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "TypeScript SDK client for the Kaleido Subledger service",
   "type": "module",
   "main": "dist/src/index.js",
@@ -38,19 +38,10 @@
     "@kaleido-io/core-sdk": "^1.1.0-rc.1",
     "deepmerge": "^4.3.1"
   },
-  "peerDependencies": {
-    "@kaleido-io/workflow-engine-sdk": "^1.0.0 || ^1.1.0-rc.1"
-  },
-  "peerDependenciesMeta": {
-    "@kaleido-io/workflow-engine-sdk": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@eslint/compat": "^2.0.0",
     "@eslint/js": "^10.0.0",
     "@jest/globals": "^30.0.0",
-    "@kaleido-io/workflow-engine-sdk": "^1.1.0-rc.1",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.0.0",

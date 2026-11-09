@@ -15,9 +15,18 @@
 // limitations under the License.
 import { root } from "@kaleido-io/core-sdk/kurn";
 import { newLogger } from "@kaleido-io/core-sdk/log";
-import type { EventProcessorDef } from "@kaleido-io/workflow-engine-sdk";
 import { BulkUpsertBuilder, type IBulkUpsertClient } from "../bulk-upsert-builder.js";
-import type { BulkUpsertInput, Event, Signal, Transaction } from "../schema.js";
+import type {
+  BulkUpsertInput,
+  Condition,
+  Event,
+  Step,
+  StepInput,
+  StepOutcomeInput,
+  StepStartInput,
+  Transaction,
+  TransactionOutcomeInput,
+} from "../schema.js";
 import { SubledgerClient } from "../subledger.js";
 
 const log = newLogger("subledger-state-machine");
@@ -27,6 +36,7 @@ const log = newLogger("subledger-state-machine");
 
 export type LifecycleEvent = Event;
 export type SubledgerReader = Pick<SubledgerClient, "bulkQuery">;
+export type SubledgerWriter = Pick<SubledgerClient, "bulkUpsert">;
 
 // ---------------------------------------------------------------------------
 // Definitions
@@ -34,75 +44,117 @@ export type SubledgerReader = Pick<SubledgerClient, "bulkQuery">;
 /** The transaction label that holds the handler's state. */
 export const STATE_LABEL = "state";
 
-/**
- * The context passed to all transitions: the handler's config, the read-only
- * subledger client, and a builder for the new rows the transition writes.
- */
-export interface TransitionContext<Config = unknown> {
-  config: Config;
-  subledger: SubledgerReader;
-  builder: BulkUpsertBuilder;
+/** The state machine definition. */
+export interface StateMachineDef<Config = unknown> {
+  /** The initial state of a transaction, i.e. one with no state label. One of `states`. */
+  initial: string;
+  /** Final states: a transaction in one has no steps to start and handles no events. Not in `states`. */
+  final: string[];
+  /** The non-final states, with their steps and transitions. */
+  states: Record<string, StateDef<Config>>;
+  /** Transitions that apply in every non-final state, after the state's own. */
+  on?: StateTransitions<Config>;
+  /** Whether the machine drives a transaction, for hosts that run several machines. Defaults to every transaction. */
+  transactionFilter?: (transaction: Transaction) => boolean;
+  /** Options for how the machine runs. */
+  options?: StateMachineOptions;
 }
 
-/**
- * The input to a transition: the full transaction with its children, its
- * current state, the event, and for `condition-signaled` only, the signal it
- * reports.
- */
-export interface TransitionInput {
-  transaction: Transaction;
-  state: string;
-  event: LifecycleEvent;
-  signal?: Signal;
+/** Options for how a state machine runs. */
+export interface StateMachineOptions {
+  /**
+   * Apply `startNextStep` after each event's transition has run. Defaults to
+   * false. When set:
+   * - going to a state starts its first pending step
+   * - adding steps to the state and staying in that state starts the next
+   *   pending step
+   * - a completed outcome of a step in the current state starts the next
+   *   pending step in the current state
+   */
+  autoStartSteps?: boolean;
 }
 
+const DEFAULT_OPTIONS: Required<StateMachineOptions> = {
+  autoStartSteps: false,
+};
+
+/** One state: the steps the transaction does in it, and its transitions. */
+export interface StateDef<Config = unknown> {
+  /** Every step a transaction may do in this state, in the order they run. */
+  steps?: string[];
+  /** Transitions out of the state, by event key. */
+  on?: StateTransitions<Config>;
+}
+
+/** Transitions out of one state, by event key. */
+export type StateTransitions<Config = unknown> = Partial<
+  Record<EventKey, TransitionEntry<Config> | Go>
+>;
+
 /**
- * What a transition function returns: move to a new state, stay in the current
- * one, or opt out and pass the event to the next matching transition instead.
+ * An event key: a lifecycle event name in which `*` may stand for a whole
+ * segment. `step-outcome.notify` matches that event, `step-outcome.*` any
+ * step's outcome, `condition-signaled.mint.*` every signal meeting the `mint`
+ * condition.
  */
-export type Next = { action: "go"; state: string } | { action: "stay" } | { action: "pass" };
+export type EventKey =
+  | "transaction-accepted"
+  | "transaction-outcome"
+  | `${"step-added" | "step-started" | "step-outcome" | "leg-added" | "condition-added"}.${string}`
+  | `condition-signaled.${string}.${string}`;
 
-/** A handler function for a transition */
-export type TransitionFn<Config = unknown> = (
-  ctx: TransitionContext<Config>,
-  input: TransitionInput,
-) => Next | Promise<Next>;
+/** The number of parts each type of event name has after its type. */
+const NAME_PARTS: Record<LifecycleEvent["eventType"], number> = {
+  "transaction-accepted": 0,
+  "transaction-outcome": 0,
+  "step-added": 1,
+  "step-started": 1,
+  "step-outcome": 1,
+  "leg-added": 1,
+  "condition-added": 1,
+  "condition-signaled": 2,
+};
 
-/** A possible transition: the states it may move to, and the function that decides. */
+/** A possible transition: the states it may go to, and the function that decides. */
 export interface TransitionEntry<Config = unknown> {
   to: string[];
   run: TransitionFn<Config>;
 }
 
-/** Transitions out of one state, by event name (glob wildcards supported). */
-export type StateTransitions<Config = unknown> = Record<string, TransitionEntry<Config>>;
+/** The function that decides a transition: it adds the rows to write, and returns what happens next. */
+export type TransitionFn<Config = unknown> = (
+  ctx: TransitionContext<Config>,
+  input: TransitionInput,
+) => Next | Promise<Next>;
 
-/** The state machine definition. */
-export interface StateMachineDef<Config = unknown> {
-  /** Name of the subledger service binding. Defaults to `subledger`. */
-  subledger?: string;
-  /** The state of a transaction with no state label. */
-  initial: string;
-  /** Final states, for which the `*` state does not apply. */
-  final: string[];
-  /**
-   * Allowed transitions by state, tried in declaration order. The special `*`
-   * state should be defined last, and applies to every non-final state.
-   */
-  states: Record<string, StateTransitions<Config>>;
+/** What the caller of `evaluate` supplies: the handler's config, and the read-only subledger client. */
+export interface EvaluationContext<Config = unknown> {
+  config: Config;
+  subledger: SubledgerReader;
 }
 
 /**
- * The result of an evaluation:: the event key of the transition that handled the event,
- * the state it was in and the state it moves to (the same when it stays), and the body
- * to write back to subledger.
+ * What a transition receives: the evaluation context, a builder for the new
+ * rows the transition writes, and the machine's definition.
  */
-export interface EvaluationResult {
-  eventKey: string;
-  from: string;
-  to: string;
-  body: BulkUpsertInput;
+export interface TransitionContext<Config = unknown> extends EvaluationContext<Config> {
+  builder: BulkUpsertBuilder;
+  def: StateMachineDef<Config>;
 }
+
+/** The input to a transition: the full transaction with its children, its current state, and the event. */
+export interface TransitionInput {
+  transaction: Transaction;
+  state: string;
+  event: LifecycleEvent;
+}
+
+/**
+ * What a transition function returns: go to a new state, stay in the current
+ * one, or opt out and pass the event to the next matching transition instead.
+ */
+export type Next = Go | { action: "stay" } | { action: "pass" };
+export type Go = { action: "go"; state: string };
 
 /** Define a transaction type's state machine. `Config` is the type of the handler's config. */
 export function stateMachine<Config = unknown>(def: StateMachineDef<Config>): StateMachine<Config> {
@@ -110,7 +162,7 @@ export function stateMachine<Config = unknown>(def: StateMachineDef<Config>): St
 }
 
 /** Move to `state`. */
-export function go(state: string): Next {
+export function go(state: string): Go {
   return { action: "go", state };
 }
 
@@ -124,145 +176,397 @@ export function pass(): Next {
   return { action: "pass" };
 }
 
-/** A step's reference within the transaction, `<transaction>:<step>`. */
-export function stepRef(transaction: Transaction, step: string): string {
-  return `${transaction.name}:${step}`;
+/**
+ * Wrap a step outcome's transition to run only when the step outcome
+ * is "completed".
+ */
+export function ifCompleted<Config = unknown>(
+  transition: TransitionEntry<Config> | Go,
+): TransitionEntry<Config> {
+  return ifStepStatus("completed", transition);
+}
+
+/**
+ * Wrap a step outcome's transition to run only when the step outcome
+ * is "failed".
+ */
+export function ifFailed<Config = unknown>(
+  transition: TransitionEntry<Config> | Go,
+): TransitionEntry<Config> {
+  return ifStepStatus("failed", transition);
+}
+
+function ifStepStatus<Config>(
+  status: StepOutcomeInput["status"],
+  transition: TransitionEntry<Config> | Go,
+): TransitionEntry<Config> {
+  const { to, run } = entryOf(transition);
+  return {
+    to,
+    run: (ctx, input) => {
+      const { transaction, event } = input;
+      const step = transaction.steps?.find((s) => s.urn === event.subjectUrn);
+      return step?.status === status ? run(ctx, input) : pass();
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Steps
+
+export interface StepDef extends Omit<StepInput, "transactionUrn"> {
+  state: string;
+}
+export type StepStartDef = Omit<StepStartInput, "stepUrn">;
+export type StepOutcomeDef = Omit<StepOutcomeInput, "stepUrn">;
+export type TransactionOutcomeDef = Omit<TransactionOutcomeInput, "transactionUrn">;
+
+export function stepUrn(transaction: Transaction, step: string): string {
+  return `${transaction.urn}:step=${step}`;
+}
+
+/**
+ * Add pending steps to the transaction, each labeled with the state it runs
+ * in. Throws if the state machine definition does not include these `steps`.
+ */
+export function addSteps<Config>(
+  ctx: TransitionContext<Config>,
+  transaction: Transaction,
+  steps: StepDef[],
+): void {
+  for (const { name, state } of steps) {
+    if (!ctx.def.states[state]?.steps?.includes(name)) {
+      throw new Error(`Step ${name} is not one of the steps of state ${state}`);
+    }
+  }
+  ctx.builder.lifecycle.configure({
+    steps: { labelStrategy: "create_or_ignore" },
+  });
+  ctx.builder.lifecycle.add({
+    steps: [
+      {
+        transactionTypeUrn: transaction.transactionTypeUrn,
+        items: steps.map(({ state, labels, ...step }) => ({
+          ...step,
+          transactionUrn: transaction.urn,
+          labels: { ...labels, [STATE_LABEL]: state },
+        })),
+      },
+    ],
+  });
+}
+
+/** Start one of the transaction's steps. */
+export function startStep<Config>(
+  ctx: TransitionContext<Config>,
+  transaction: Transaction,
+  step: string,
+  start: StepStartDef = {},
+): void {
+  ctx.builder.lifecycle.add({
+    stepStarts: [
+      {
+        transactionTypeUrn: transaction.transactionTypeUrn,
+        items: [{ ...start, stepUrn: stepUrn(transaction, step) }],
+      },
+    ],
+  });
+}
+
+/** Conclude one of the transaction's steps. */
+export function concludeStep<Config>(
+  ctx: TransitionContext<Config>,
+  transaction: Transaction,
+  step: string,
+  outcome: StepOutcomeDef,
+): void {
+  ctx.builder.lifecycle.add({
+    stepOutcomes: [
+      {
+        transactionTypeUrn: transaction.transactionTypeUrn,
+        items: [{ ...outcome, stepUrn: stepUrn(transaction, step) }],
+      },
+    ],
+  });
+}
+
+/** Conclude the transaction. */
+export function concludeTransaction<Config>(
+  ctx: TransitionContext<Config>,
+  transaction: Transaction,
+  outcome: TransactionOutcomeDef,
+): void {
+  ctx.builder.lifecycle.add({
+    transactionOutcomes: [
+      {
+        transactionTypeUrn: transaction.transactionTypeUrn,
+        items: [{ ...outcome, transactionUrn: transaction.urn }],
+      },
+    ],
+  });
+}
+
+/**
+ * Start the first of `state`'s pending steps, in the order the state lists
+ * them, unless one of its steps is running or has failed. Returns the step
+ * it started.
+ */
+export function startNextStep<Config>(
+  ctx: TransitionContext<Config>,
+  input: TransitionInput,
+  state: string,
+): string | undefined {
+  const { def, builder } = ctx;
+  const { transaction, event } = input;
+  const steps = stepsOf(transaction, state, builder);
+  if (steps.some((s) => s.status === "started" || s.status === "failed")) {
+    return undefined;
+  }
+  const pending = def.states[state]?.steps?.find((name) =>
+    steps.some((s) => s.name === name && s.status === "pending"),
+  );
+  if (pending) {
+    startStep(ctx, transaction, pending, { causationUrn: event.urn });
+  }
+  return pending;
+}
+
+/**
+ * The transaction's steps in `state`. If a builder is provided, the
+ * unwritten steps and step starts are also included.
+ */
+function stepsOf(
+  transaction: Transaction,
+  state: string,
+  builder?: BulkUpsertBuilder,
+): Pick<Step, "name" | "status">[] {
+  const steps = (transaction.steps ?? [])
+    .filter((s) => s.labels?.[STATE_LABEL] === state)
+    .map(({ name, status }): Pick<Step, "name" | "status"> => ({ name, status }));
+  if (!builder) {
+    return steps;
+  }
+
+  const body = builder.toBulkUpsert().lifecycle;
+  const type = transaction.transactionTypeUrn;
+  for (const step of itemsOfType(type, body?.steps)) {
+    if (
+      step.transactionUrn === transaction.urn &&
+      step.labels?.[STATE_LABEL] === state &&
+      !steps.some((s) => s.name === step.name)
+    ) {
+      steps.push({ name: step.name, status: "pending" });
+    }
+  }
+  const started = new Set(itemsOfType(type, body?.stepStarts).map((i) => i.stepUrn));
+  return steps.map((s) =>
+    started.has(stepUrn(transaction, s.name)) ? { ...s, status: "started" } : s,
+  );
+}
+
+/** The items one transaction type's groups hold in a lifecycle body section. */
+function itemsOfType<T>(
+  transactionTypeUrn: string,
+  sections: { transactionTypeUrn: string; items: T[] }[] = [],
+): T[] {
+  return sections
+    .filter((s) => s.transactionTypeUrn === transactionTypeUrn)
+    .flatMap((s) => s.items);
+}
+
+// ---------------------------------------------------------------------------
+// Conditions
+
+/** The condition a `condition-signaled` event reports a signal for. */
+export function conditionOf(transition: TransitionInput): Condition {
+  const { transaction, event } = transition;
+  const condition = transaction.conditions?.find((c) => c.urn === event.subjectUrn);
+  if (!condition) {
+    throw new Error(`${event.urn} names no condition of ${transaction.urn}`);
+  }
+  return condition;
 }
 
 // ---------------------------------------------------------------------------
 // The machine
 
-/** The special state that matches every non-final state. */
-const ANY = "*";
+/** The result of evaluating an event. */
+export interface EvaluationResult {
+  /** The transaction's state before the event. */
+  from: string;
+  /** The transaction's state after the event (the same as `from` when it stays). */
+  to: string;
+  /** The rows to write, including the state label. */
+  body: BulkUpsertInput;
+}
 
 /**
  * The state machine for one transaction type, driven by its lifecycle
  * events. A transaction's state is stored in its `state` label.
  *
  * For each event, the transitions of the current state are tried in order,
- * then those of the `*` state (unless the current state is final). Each
- * matched transition function is given the opportunity to handle the event,
- * and the first one that chooses to do so can write or update any items in
- * the subledger, and can move the transaction to a new state.
+ * then the machine's own. The first that does not "pass" handles the event:
+ * it adds the rows to write, and can take the transaction to a new state. A
+ * transaction in a final state handles no events.
  *
- * `eventProcessor()` runs the machine on a stream of lifecycle events.
+ * A state's `steps` list every step a transaction may do in it, in order. A
+ * transaction's steps are added, pending, when the handler knows they will
+ * happen, and started when they are ready to be done.
  */
 export class StateMachine<Config = unknown> {
-  constructor(readonly def: StateMachineDef<Config>) {}
-
-  /** Compute a transition's input. */
-  input(transaction: Transaction, event: LifecycleEvent, signal?: Signal): TransitionInput {
-    const state = transaction.labels?.[STATE_LABEL] ?? this.def.initial;
-    return { transaction, state, event, signal };
-  }
-
-  /** Check whether any state has a transition for the event. */
-  handles(eventName: string): boolean {
-    return Object.values(this.def.states).some((table) =>
-      Object.keys(table).some((eventKey) => matchesKey(eventKey, eventName)),
-    );
-  }
+  /** Each state's transitions, in declaration order. */
+  private readonly byState: Map<string, Transition<Config>[]>;
+  /** The machine's own transitions, which apply in every non-final state. */
+  private readonly anyState: Transition<Config>[];
+  private readonly definedSteps: Set<string>;
+  private readonly options: Required<StateMachineOptions>;
 
   /**
-   * All possible transitions for an event in a given state: the state's own matches
-   * in order, then the `*` state's.
+   * Initialize the state machine. Throws when the definition is invalid.
    */
-  lookup(state: string, eventName: string): ({ eventKey: string } & TransitionEntry<Config>)[] {
-    const tables = [this.def.states[state]];
-    if (!this.def.final.includes(state)) {
-      tables.push(this.def.states[ANY]);
-    }
-    return tables.flatMap((table) =>
-      Object.entries(table ?? {})
-        .filter(([eventKey]) => matchesKey(eventKey, eventName))
-        .map(([eventKey, entry]) => ({ eventKey, ...entry })),
+  constructor(readonly def: StateMachineDef<Config>) {
+    this.options = { ...DEFAULT_OPTIONS, ...def.options };
+    this.byState = new Map(
+      Object.entries(def.states).map(([state, { on }]) => [state, transitionsOf(on)]),
     );
+    this.anyState = transitionsOf(def.on);
+    this.definedSteps = new Set(Object.values(def.states).flatMap((s) => s.steps ?? []));
+    this.validate();
   }
 
   /**
-   * Evaluate an event: run the transitions that match it, each with a fresh
-   * builder, until one handles it (does not pass), and add the state label to
-   * what it wrote. A move to a state outside the transition's `to` is an error.
+   * Throws when `initial` is not a state, a final state is in `states`,
+   * or a transition has an invalid event key or target.
+   */
+  private validate() {
+    const states = Object.keys(this.def.states);
+    if (!states.includes(this.def.initial)) {
+      throw new Error(`Initial state ${this.def.initial} is not in states`);
+    }
+    const listed = this.def.final.filter((state) => states.includes(state));
+    if (listed.length > 0) {
+      throw new Error(`Final state ${listed.join(", ")} is also in states`);
+    }
+    const known = new Set([...states, ...this.def.final]);
+    for (const [state, transitions] of this.byState) {
+      checkTransitions(state, transitions, known);
+    }
+    checkTransitions("any state", this.anyState, known);
+  }
+
+  /**
+   * Whether the machine may act on the given event: a transition matches it,
+   * or, with `autoStartSteps`, it is the outcome of any defined step.
+   */
+  handles(event: LifecycleEvent): boolean {
+    const transitions = [...this.byState.values(), this.anyState].flat();
+    if (transitions.some(({ eventKey }) => matchesKey(eventKey, event.name))) {
+      return true;
+    }
+    if (this.options.autoStartSteps && event.eventType === "step-outcome") {
+      const step = splitName(event.name)?.parts[0];
+      return step !== undefined && this.definedSteps.has(step);
+    }
+    return false;
+  }
+
+  /**
+   * Evaluate an event for its transaction: the transition that handles it, then, with
+   * `autoStartSteps`, the steps rule for the state the transaction is in or
+   * goes to, then the state label, as one body.
    */
   async evaluate(
-    ctx: Omit<TransitionContext<Config>, "builder">,
-    input: TransitionInput,
+    ctx: EvaluationContext<Config>,
+    transaction: Transaction,
+    event: LifecycleEvent,
   ): Promise<EvaluationResult | undefined> {
-    const name = input.event.name;
-    const matches = name ? this.lookup(input.state, name) : [];
+    const input: TransitionInput = {
+      transaction,
+      state: transaction.labels?.[STATE_LABEL] ?? this.def.initial,
+      event,
+    };
+    if (this.def.final.includes(input.state)) {
+      return undefined; // no transition from final states
+    }
+    const { builder, state } = await this.transition(ctx, input);
+    if (this.options.autoStartSteps) {
+      startNextStep({ ...ctx, builder, def: this.def }, input, state);
+    }
+    if (state === input.state && !builder.hasUpdates()) {
+      return undefined;
+    }
+    builder.lifecycle.add({
+      transactions: [
+        {
+          transactionTypeUrn: input.transaction.transactionTypeUrn,
+          items: [{ name: input.transaction.name, labels: { [STATE_LABEL]: state } }],
+        },
+      ],
+    });
+    return {
+      from: input.state,
+      to: state,
+      body: builder.toBulkUpsert(),
+    };
+  }
+
+  /**
+   * Run the transitions that match the event, each with a fresh builder,
+   * until one handles it (does not pass). Returns that transition's builder
+   * and the state it goes to, or an empty builder and the current state when
+   * none handles it. A `go` to a state outside the transition's `to` list is
+   * an error.
+   */
+  private async transition(
+    ctx: EvaluationContext<Config>,
+    input: TransitionInput,
+  ): Promise<{ builder: BulkUpsertBuilder; state: string }> {
+    const thisState = this.byState.get(input.state) ?? [];
+    const matches = [...thisState, ...this.anyState].filter(({ eventKey }) =>
+      matchesKey(eventKey, input.event.name),
+    );
     for (const { eventKey, to, run } of matches) {
       const builder = transitionBuilder();
-      const next = await run({ ...ctx, builder }, input);
+      const next = await run({ ...ctx, builder, def: this.def }, input);
       if (next.action === "pass") {
         continue;
       }
       const state = next.action === "go" ? next.state : input.state;
       if (state !== input.state && !to.includes(state)) {
         throw new Error(
-          `Transition ${input.state} on ${eventKey} moved to ${state}, which is not in its to: ${to.join(", ")}`,
+          `Transition ${input.state} on ${eventKey}: went to ${state}, which is not in its to: ${to.join(", ")}`,
         );
       }
-      if (state === input.state && !builder.hasUpdates()) {
-        return undefined;
-      }
-      builder.lifecycle.add({
-        transactions: [
-          {
-            transactionTypeUrn: input.transaction.transactionTypeUrn,
-            items: [{ name: input.transaction.name, labels: { [STATE_LABEL]: state } }],
-          },
-        ],
-      });
-      return { from: input.state, to: state, eventKey, body: builder.toBulkUpsert() };
+      return { builder, state };
     }
-    return undefined;
-  }
-
-  /**
-   * The event processor: for each event of a batch, in order, read its
-   * transaction, run the transition, and write the body. The handler's config
-   * is passed through as `Config`, unchecked. It relies on the stream
-   * delivering a transaction's events in order, one at a time: evaluating a
-   * redelivered event writes the same rows again, and the defaults ignore them.
-   */
-  eventProcessor(): EventProcessorDef<unknown, LifecycleEvent> {
-    return {
-      processBatch: async (engineCtx, events) => {
-        // Per batch: the context carries the batch's authRef and deadline signal.
-        const client = new SubledgerClient(engineCtx, this.def.subledger ?? "subledger");
-        const ctx = { config: engineCtx.config as Config, subledger: client };
-        for (const { data: event } of events) {
-          if (event.name && event.transactionUrn && this.handles(event.name)) {
-            await this.process(client, ctx, event);
-          }
-        }
-      },
-    };
+    return { builder: transitionBuilder(), state: input.state };
   }
 
   /**
    * A mermaid `stateDiagram-v2` of the machine: one arrow per source and
-   * target, labelled with the event keys that take it. The `*` state is drawn
-   * as one "any state" node.
+   * target, labeled with the event keys that take it, and under each state
+   * its steps. The machine's own transitions leave one "any state" node.
    */
   mermaid(): string {
-    const node = (state: string) => (state === ANY ? "anyState" : state);
-
     const eventKeysByArrow = new Map<string, string[]>();
     const reached = new Set<string>();
-    for (const [from, table] of Object.entries(this.def.states)) {
-      for (const [eventKey, { to }] of Object.entries(table)) {
+    const draw = (from: string, transitions: Transition<Config>[]) => {
+      for (const { eventKey, to } of transitions) {
         for (const target of to) {
-          const arrow = `${node(from)} --> ${target}`;
+          const arrow = `${from} --> ${target}`;
           eventKeysByArrow.set(arrow, [...(eventKeysByArrow.get(arrow) ?? []), eventKey]);
           reached.add(target);
         }
       }
+    };
+    for (const [state, transitions] of this.byState) {
+      draw(state, transitions);
     }
+    draw("anyState", this.anyState);
 
     const lines = ["stateDiagram-v2"];
-    if (this.def.states[ANY]) {
-      lines.push(`    state "any state" as ${node(ANY)}`);
+    if (this.def.on) {
+      lines.push('    state "any state" as anyState');
     }
     lines.push(`    [*] --> ${this.def.initial}`);
     for (const [arrow, eventKeys] of eventKeysByArrow) {
@@ -273,60 +577,131 @@ export class StateMachine<Config = unknown> {
         lines.push(`    ${state} --> [*]`);
       }
     }
+    for (const [state, { steps = [] }] of Object.entries(this.def.states)) {
+      if (steps.length > 0) {
+        lines.push(`    ${state}: ${steps.join("<br/>")}`);
+      }
+    }
     return lines.join("\n");
   }
+}
 
-  private async process(
-    client: SubledgerClient,
-    ctx: Omit<TransitionContext<Config>, "builder">,
-    event: LifecycleEvent,
-  ): Promise<void> {
-    const read = await readTransaction(client, event);
-    if (!read) {
+// ---------------------------------------------------------------------------
+// Event handling
+
+/**
+ * For each event in order that one of the machines handles, read its
+ * transaction, evaluate it with the first machine whose transaction filter
+ * accepts the transaction, and write the result. An event whose transaction
+ * is not found, or that no machine's filter accepts, is skipped.
+ */
+export async function handleEvents<Config>(
+  ctx: EvaluationContext<Config> & { subledger: SubledgerWriter },
+  machines: StateMachine<Config>[],
+  events: LifecycleEvent[],
+): Promise<void> {
+  for (const event of events) {
+    if (!machines.some((m) => m.handles(event))) {
+      continue;
+    }
+    const transaction = await readTransaction(ctx.subledger, event);
+    if (!transaction) {
       log.warn(`${event.transactionUrn} not found; skipping ${event.name}`);
-      return;
+      continue;
     }
-    const result = await this.evaluate(ctx, this.input(read.transaction, event, read.signal));
-    if (!result) {
-      return;
+    const machine = machines.find(
+      (m) => m.def.transactionFilter === undefined || m.def.transactionFilter(transaction),
+    );
+    if (!machine) {
+      log.warn(`No state machine drives ${transaction.urn}; skipping ${event.name}`);
+      continue;
     }
-    await client.bulkUpsert(result.body);
-    log.info(`${read.transaction.name} ${event.name}: ${result.from} -> ${result.to}`);
+    const result = await machine.evaluate(ctx, transaction, event);
+    if (result) {
+      log.info(`${transaction.name} ${event.name}: ${result.from} -> ${result.to}`);
+      await ctx.subledger.bulkUpsert(result.body);
+    }
   }
 }
 
 // ---------------------------------------------------------------------------
 // Internals
 
-/** Whether an event key (a glob where `*` matches any run of characters) matches an event name. */
-export function matchesKey(eventKey: string, eventName: string): boolean {
-  // TODO: once the SDK's minimum is Node 24, match with a RegExp built from the
-  // key's parts with RegExp.escape.
-  const [first, ...rest] = eventKey.split("*");
-  if (rest.length === 0) {
-    return eventName === first;
-  }
-  const last = rest.pop()!;
-  if (!eventName.startsWith(first)) {
-    return false;
-  }
-  let from = first.length;
-  for (const part of rest) {
-    const at = eventName.indexOf(part, from);
-    if (at < 0) {
-      return false;
+/** Split an event name or key into its type and parts, or undefined if it fits no format. */
+function splitName(name: string): { type: string; parts: string[] } | undefined {
+  const [type, ...segments] = name.split(".");
+  switch (NAME_PARTS[type as LifecycleEvent["eventType"]]) {
+    case 0:
+      // <type>
+      return segments.length === 0 ? { type, parts: [] } : undefined;
+    case 1:
+      // <type>.<member>, where the member's name may contain dots
+      return segments.length >= 1 ? { type, parts: [segments.join(".")] } : undefined;
+    case 2: {
+      // condition-signaled.<condition>.<signal id>, where the signal id has no dots
+      const signalId = segments.pop();
+      return segments.length >= 1 && signalId
+        ? { type, parts: [segments.join("."), signalId] }
+        : undefined;
     }
-    from = at + part.length;
+    default:
+      return undefined;
   }
-  return eventName.length - from >= last.length && eventName.endsWith(last);
 }
 
-/**
- * A builder for one transition, with writes disabled (the event processor will write
- * the body).
- */
+/** Whether an event key matches an event name: part by part, `*` standing for any whole part. */
+export function matchesKey(eventKey: string, eventName: string): boolean {
+  const key = splitName(eventKey);
+  const name = splitName(eventName);
+  return (
+    !!key &&
+    !!name &&
+    key.type === name.type &&
+    key.parts.every((part, i) => part === "*" || part === name.parts[i])
+  );
+}
+
+/** A transition as the machine reads it: its event key and its entry. */
+interface Transition<Config = unknown> extends TransitionEntry<Config> {
+  eventKey: string;
+}
+
+/** The transitions of an `on` map, in declaration order. */
+function transitionsOf<Config>(on: StateTransitions<Config> = {}): Transition<Config>[] {
+  return Object.entries(on).flatMap(([eventKey, transition]) =>
+    transition === undefined ? [] : [{ eventKey, ...entryOf(transition) }],
+  );
+}
+
+/** Throws when a transition has an invalid event key or goes to a state the machine does not know. */
+function checkTransitions<Config>(
+  state: string,
+  transitions: Transition<Config>[],
+  known: Set<string>,
+): void {
+  for (const { eventKey, to } of transitions) {
+    const validKey = splitName(eventKey)?.parts.every(
+      (part) => part === "*" || (part && !part.includes("*")),
+    );
+    if (!validKey) {
+      throw new Error(`Transition ${state} on ${eventKey}: invalid event key`);
+    }
+    const unknown = to.filter((target) => !known.has(target));
+    if (unknown.length > 0) {
+      throw new Error(
+        `Transition ${state} on ${eventKey}: goes to unknown state ${unknown.join(", ")}`,
+      );
+    }
+  }
+}
+
+/** The entry for a transition: itself, or for a fixed move, an entry whose `to` is its target. */
+function entryOf<Config>(transition: TransitionEntry<Config> | Go): TransitionEntry<Config> {
+  return "run" in transition ? transition : { to: [transition.state], run: () => transition };
+}
+
+/** A builder for one transition, with writes disabled: the caller of `evaluate` writes the body. */
 function transitionBuilder(): BulkUpsertBuilder {
-  // The event processor writes the body; the builder itself never executes.
   const noWrites: IBulkUpsertClient = {
     bulkUpsert: () =>
       Promise.reject(new Error("a transition's builder cannot be executed directly")),
@@ -336,32 +711,22 @@ function transitionBuilder(): BulkUpsertBuilder {
   });
 }
 
-/**
- * Read an event's transaction in one query: the transaction with its children, and for
- * a `condition-signaled` event, the signal it reports.
- */
+/** Read an event's transaction, with its children. */
 export async function readTransaction(
   client: SubledgerReader,
   event: LifecycleEvent,
-): Promise<{ transaction: Transaction; signal?: Signal } | undefined> {
-  const urn = event.transactionUrn;
-  const signalKey = (event.detail as { signalIdempotencyKey?: string } | undefined)
-    ?.signalIdempotencyKey;
+): Promise<Transaction | undefined> {
   const out = await client.bulkQuery({
     lifecycle: {
       transactions: [
         {
-          transactionTypeUrn: root(urn),
-          equal: [{ field: "urn", value: urn }],
+          transactionTypeUrn: root(event.transactionUrn),
+          equal: [{ field: "urn", value: event.transactionUrn }],
           limit: 1,
         },
       ],
-      ...(signalKey
-        ? { signals: { equal: [{ field: "idempotencyKey", value: signalKey }], limit: 1 } }
-        : {}),
     },
     options: { includeChildren: true },
   });
-  const transaction = out.lifecycle?.transactions?.[0]?.items?.[0];
-  return transaction && { transaction, signal: out.lifecycle?.signals?.items?.[0] };
+  return out.lifecycle?.transactions?.[0]?.items?.[0];
 }

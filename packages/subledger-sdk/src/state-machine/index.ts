@@ -13,16 +13,42 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-export { STATE_LABEL, StateMachine, go, pass, stateMachine, stay, stepRef } from "./machine.js";
+export {
+  STATE_LABEL,
+  StateMachine,
+  addSteps,
+  concludeStep,
+  concludeTransaction,
+  conditionOf,
+  go,
+  pass,
+  handleEvents,
+  ifCompleted,
+  ifFailed,
+  readTransaction,
+  startNextStep,
+  startStep,
+  stateMachine,
+  stay,
+  stepUrn,
+} from "./machine.js";
 export type {
+  EvaluationContext,
+  Go,
   EvaluationResult,
   LifecycleEvent,
   Next,
+  StepDef,
+  StepOutcomeDef,
+  StepStartDef,
+  StateDef,
   StateMachineDef,
+  StateMachineOptions,
   StateTransitions,
   SubledgerReader,
   TransitionContext,
   TransitionEntry,
   TransitionFn,
+  TransactionOutcomeDef,
   TransitionInput,
 } from "./machine.js";
