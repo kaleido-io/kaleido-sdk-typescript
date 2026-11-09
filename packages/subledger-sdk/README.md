@@ -164,60 +164,41 @@ Items for the same row, within a section and root, are combined by `duplicates`:
 
 ## Lifecycle state machines
 
-A lifecycle tracks a transaction to its outcome, for as long as that takes and across every party involved, and decides at each change what happens next. A workflow does one party's piece of that work and ends; a wait is a condition on the record.
+The lifecycle module of the subledger it used to track transactions throughout their life,
+up to a final outcome. There are many ways to drive this tracking, including via updates
+written from a workflow, or from an off-platform service. For advanced transaction types
+that are driven by events from multiple sources, the `@kaleido-io/subledger-sdk/state-machine`
+package can be used to react to changes in the lifecycle and trigger the next piece of
+work.
 
-`@kaleido-io/subledger-sdk/state-machine` can be used to react to the lifecycle record and drive the transaction. A handler is a state machine: the transaction's current state is held in `labels.state`, and each written lifecycle event may select a transition. A transition may add entries to the transaction record, and may move the transaction to a new state.
+### Definition
+
+A state machine is defined via `stateMachine(def: StateMachineDef)`. The state machine
+definition sets out the list of `states` for the transaction, along with the `steps` that
+may execute in each state and the `transition` functions that run based on transaction
+`events`.
 
 - A **state** is something that has become true of the transaction. Where parties share a transaction, the states are agreed between them, and often mirror states from a shared smart contract.
 - A **step** is a unit of work to be done, with a start and an outcome on the record.
 - A **workflow** is the platform method for carrying out a step. A workflow has its own internal stages, but anything internal to a workflow is an operational detail and not a part of the lifecycle record.
 
-The record is the source of truth. A handler decides from the record, not from the event that woke it. Every row is named from the transaction and written once, so a handler can run again safely. A signal that carries a condition's key meets it; a signal may repeat or arrive after the transaction has moved on.
+A definition is comprised of:
 
-The [lifecycle state machine sample](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/lifecycle-state-machine-sample) is a complete handler: a payment machine whose steps the machine starts in turn, run as a workflow engine event processor over the type's `lifecycle.events`.
+| Field               | Description                                                                             |
+| ------------------- | --------------------------------------------------------------------------------------- |
+| `initial`           | The state of a transaction with no recorded state (must appear in `states`)             |
+| `states`            | Each state's `steps` and its transitions `on` each event key                            |
+| `final`             | Final states, which have no steps or transitions (and are not in `states`)              |
+| `on`                | Global transitions that apply in every non-final state, evaluated after the state's own |
+| `transactionFilter` | Optional filter to determine whether the machine drives a particular transaction        |
 
-### Definition
+### Usage
 
-| Field               | Description                                                                                                                                                                      |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `initial`           | The state of a transaction with no `labels.state`; one of `states`                                                                                                               |
-| `states`            | Each non-final state's `steps` and its transitions `on` each event key                                                                                                           |
-| `on`                | Transitions that apply in every non-final state, after the state's own                                                                                                           |
-| `final`             | Final states, which have no steps or transitions and are not in `states`                                                                                                         |
-| `transactionFilter` | Whether the machine drives a transaction, where several machines share a transaction type; for example `(tx) => tx.labels?.role === "originator"`. Defaults to every transaction |
-| `options`           | `autoStartSteps`, which has the machine start each state's steps (see Steps)                                                                                                     |
+A lifecycle state machine is designed to be driven via a workflow engine event processor.
+Create a custom provider to register an event processor, and call
+`handleEvents(ctx, machines, events)` for each batch of delivered events.
 
-A transaction's or step's `status` (`active`, `completed`, `failed`) is the service's, derived from its outcomes. Its state is the handler's, in the handler's own vocabulary.
-
-A transition is `{ to, run }`, the states it may go to and the function that decides, or a fixed move such as `go("done")`.
-
-Event names are the event type, then the member it concerns, if any: `transaction-outcome`, `step-outcome.mint`, `condition-signaled.mint.<signal id>`. A member's name may contain dots. The handler's own writes return as events.
-
-An event key is an event name in which `*` stands for any whole part: `step-outcome.*` matches any step's outcome, `condition-signaled.mint.*` any signal meeting the `mint` condition. `stateMachine()` rejects a key that can match no event, and a `to` that names a state the definition neither defines nor lists in `final`.
-
-For each event, the current state's matching transitions are tried in declaration order, then the machine's own `on`. `pass()` leaves the event to the next match and discards what the transition added; `stay()` keeps the state; `go(state)` goes to a state in the transition's `to`. `ifCompleted(t)` and `ifFailed(t)` run `t` only when the step the outcome names has that status, and pass otherwise. An event that matches no transition is ignored. `machine.mermaid()` draws the machine as a mermaid `stateDiagram-v2`.
-
-### Steps
-
-A state's `steps` list every step a transaction may do in it, in order. A step is added to the transaction, pending and labelled with its state, as soon as the handler knows it will happen, and starts when it is ready: its state is current and the state's earlier steps are done. A step that is never added is skipped, and a step's state is fixed once added.
-
-`startNextStep(ctx, input, state)` starts the first of `state`'s pending steps, unless one of its steps is running or has failed. With `options: { autoStartSteps: true }`, the machine calls it after every event, for the state the transaction ends in, and `machine.handles(event)` also accepts the outcome of any defined step.
-
-Write steps, starts and outcomes with the helpers, `addSteps`, `startStep`, `startNextStep`, `concludeStep` and `concludeTransaction`, rather than by hand: the rule recognises rows only in the form they write. Each takes the API's input, without the URNs it fills in. The service derives no transaction outcome: the transition that concludes the transaction writes it, and goes to a final state.
-
-A wait on something outside the transaction is a state with no steps; two steps that cannot follow each other directly belong to two states. A wait that belongs to a step, such as a chain transaction's confirmation, is the step's own: the workflow run writes the condition and ends with the step started, and the transition judging the signal concludes the step.
-
-### Transitions and writes
-
-A transition's `run` is `(ctx, { transaction, state, event }) => Next`, synchronous or async. `ctx.config` is the handler's config, typed by `stateMachine<Config>(…)`; `ctx.subledger` reads the subledger; `ctx.builder` collects the rows the transition writes, in the bulk upsert's own shape. `conditionOf(input)` returns the condition a `condition-signaled` event met, and `stepUrn(transaction, name)` a step's full URN.
-
-Rows are written `create_or_ignore` and labels `create_or_update`, except step labels, which are `create_or_ignore`, so evaluating an event twice writes the same rows. A transition can configure its own sections, for example `ctx.builder.lifecycle.configure({ stepStarts: { updateStrategy: "create_only" } })` to make a step start a claim; a unique conflict then fails the write, and the stream retries the batch.
-
-### Hosts
-
-`handleEvents(ctx, machines, events)` runs one or more machines on a batch of lifecycle events. It skips events no machine `handles()`, without a read. For each other event, in order, it reads the transaction, with its children, evaluates it with the first machine whose `transactionFilter` accepts the transaction, and writes the result. The machines' filters should together cover every transaction on the stream: an event whose transaction no filter accepts is skipped, with a warning. `ctx` is `{ config, subledger }`, where `subledger` reads and writes. It relies on a transaction's events arriving in order, one at a time. Errors propagate, so the stream retries the batch, and the batch's earlier events run again in the states they left their transactions in. `readTransaction(client, event)` reads one event's transaction.
-
-`machine.evaluate(ctx, transaction, event)` is the evaluation without I/O, where `ctx` is `{ config, subledger }`. It returns `{ from, to, body }`, or `undefined` when it writes nothing.
+The [lifecycle state machine sample](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/lifecycle-state-machine-sample) is a simple example of a complete state machine.
 
 ## Errors
 
