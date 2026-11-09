@@ -2,15 +2,15 @@
 
 A TypeScript client for the Kaleido subledger service. Use it to read and write subledger records — parties, wallets and assets, books and journal entries, chain and token evidence, and the lifecycle of transactions — from standalone applications or from workflow engine providers.
 
-This package is one of several Kaleido TypeScript SDK packages. For details of other SDK packages or general information about Kaleido SDKs see the [Kaleido TypeScript SDK Readme](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/README.md)
+This package is one of several Kaleido TypeScript SDK packages. For details of other SDK packages or general information about Kaleido SDKs see the [Kaleido TypeScript SDK README](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/README.md)
 
 ## What this SDK provides
 
 - **`SubledgerClient`** — typed client for the subledger service. The current release supports bulk query and bulk upsert across every collection.
 - **`BulkUpsertBuilder`** — accumulates writes into one bulk upsert, naming each row once, with optional auto-flush
 - **Types** — every schema in the service's OpenAPI document, by name (`Step`, `TransactionInput`, `QueryJSON`, …)
-- **`errorCode(err)`** — the `KAxxxxxx` code of a failed request; `ErrorCodes` names the common ones
-- **`@kaleido-io/subledger-sdk/state-machine`** — a state machine framework for handlers that drive lifecycle transactions from their events
+- **`errorCode(err)`** — the `KAxxxxxx` code of a failed request; `ErrorCodes` names the common ones, such as `UniqueConflict`
+- **`@kaleido-io/subledger-sdk/state-machine`** — a state machine framework for processors that drive lifecycle transactions from their events
 
 Hosted and non-hosted operation, project scaffolding and the configuration model are shared with the other SDK packages and described in the [Kaleido SDK README](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/packages/kaleido-sdk/README.md).
 
@@ -154,29 +154,21 @@ The builder has one property per module: `registry`, `accounting`, `blockchain`,
 | `<module>.configure(settings)`     | Overrides the builder's `defaults` option for sections of the module, field by field                                                                                         |
 | `addFinalizer(fn)`                 | Runs `fn` after the next successful `execute()`                                                                                                                              |
 | `toBulkUpsert()`                   | The bulk body for the accumulated items                                                                                                                                      |
-| `execute()`                        | Sends the body and returns the `BulkUpsertOutput`; items and finalizers are cleared whether it succeeds or throws                                                            |
+| `execute()`                        | Sends the body and returns the `BulkUpsertOutput` (`undefined` if empty); items and finalizers are cleared whether it succeeds or throws                                     |
 | `autoFlush(n)`                     | A wrapper with the same module properties, whose `add` executes once `n` items are held                                                                                      |
 | `hasUpdates()`, `getCount()`       | Accumulated item state                                                                                                                                                       |
 
-`defaults.updateStrategy` is required; `labelStrategy` has no default, and the service rejects a section whose items carry labels without one. A section's settings resolve when the body is built, so `configure` can come before or after `add`. Configuring a section again with a different value throws. Defaults and `configure` settings persist across `execute()` calls.
+`updateStrategy` is required; `labelStrategy` is required if any labels are provided.
 
-Items for the same row, within a section and root, are combined by `duplicates`: `MERGE` (default) deep-merges, `SKIP` keeps the first, `REPLACE` keeps the last. A row is identified by its `name` and the parent refs that shape its URN; signals by `idempotencyKey`; step starts and outcomes by `stepUrn`; transaction outcomes by `transactionUrn`; endings (hold releases, wallet unassignments, state archivals, coin spends, lock releases) by the ref of the row they end; identifiers by `value`. Refs are compared as written: a name and a full URN for the same parent are not combined, and the service rejects the request with `KA240225` when both resolve to the same URN.
+Items for the same row are combined by `duplicates`: `MERGE` (default) deep-merges, `SKIP` keeps the first, `REPLACE` keeps the last. Refs are compared as written: a name and a full URN for the same parent are not combined, and the service rejects the request with `KA240225` when both resolve to the same URN.
 
 ## Lifecycle state machines
 
-The lifecycle module of the subledger it used to track transactions throughout their life,
-up to a final outcome. There are many ways to drive this tracking, including via updates
-written from a workflow, or from an off-platform service. For advanced transaction types
-that are driven by events from multiple sources, the `@kaleido-io/subledger-sdk/state-machine`
-package can be used to react to changes in the lifecycle and trigger the next piece of
-work.
+The lifecycle module of the subledger is used to track transactions throughout their life, up to a final outcome. There are many ways to drive this tracking, including via updates written from a workflow, or from an off-platform service. For advanced transaction types that are driven by events from multiple sources, the `@kaleido-io/subledger-sdk/state-machine` package can be used to react to changes in the lifecycle and trigger the next piece of work.
 
 ### Definition
 
-A state machine is defined via `stateMachine(def: StateMachineDef)`. The state machine
-definition sets out the list of `states` for the transaction, along with the `steps` that
-may execute in each state and the `transition` functions that run based on transaction
-`events`.
+A state machine is defined via `stateMachine(def: StateMachineDef)`. The state machine definition sets out the list of `states` for the transaction, along with the `steps` that may execute in each state and the transitions that run based on transaction events.
 
 - A **state** is something that has become true of the transaction. Where parties share a transaction, the states are agreed between them, and often mirror states from a shared smart contract.
 - A **step** is a unit of work to be done, with a start and an outcome on the record.
@@ -191,25 +183,29 @@ A definition is comprised of:
 | `final`             | Final states, which have no steps or transitions (and are not in `states`)              |
 | `on`                | Global transitions that apply in every non-final state, evaluated after the state's own |
 | `transactionFilter` | Optional filter to determine whether the machine drives a particular transaction        |
+| `options`           | Options to configure the state machine behavior                                         |
+
+Event keys in `on` name lifecycle events, such as `transaction-accepted` or `step-outcome.settle`. `*` matches a whole segment, as in `step-outcome.*`. A transition is `{ to, run }`, where `to` records the possible transitions that could result, and `run` evaluates the current
+transaction state to determine if a transition occurs.
 
 ### Usage
 
-A lifecycle state machine is designed to be driven via a workflow engine event processor.
-Create a custom provider to register an event processor, and call
-`handleEvents(ctx, machines, events)` for each batch of delivered events.
+A lifecycle state machine is designed to be driven via a workflow engine event processor. Create a custom provider to register an event processor, and call `handleEvents` for each batch of delivered events:
+
+```typescript
+processBatch: async (engineCtx, events) => {
+  const subledger = new SubledgerClient(engineCtx, "subledger");
+  await handleEvents({ config: engineCtx.config, subledger }, [payment], events.map((e) => e.data));
+},
+```
+
+`handleEvents` evaluates each event against the first machine whose `transactionFilter` accepts its transaction.
 
 The [lifecycle state machine sample](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/lifecycle-state-machine-sample) is a simple example of a complete state machine.
 
-## Errors
-
-A failed request carries a `KAxxxxxx` code. `errorCode(err)` returns it; `ErrorCodes` names the ones callers commonly branch on, such as `UniqueConflict` (`KA240201`) and `DuplicateUrn` (`KA240225`).
-
 ## Exported types
 
-- **Schemas:** every component schema of the service's OpenAPI document, by its schema name — entities (`Transaction`, `Step`, `JournalEntry`, …), inputs (`TransactionInput`, …), bulk envelopes (`BulkUpsertInput`, `BulkQueryOutput`, …) and queries (`QueryJSON`, `FilterJSON`, …)
-- **Builder:** `ModuleUpsertInput`, `ModuleSettings`, `SectionSettings`, `BulkModule`, `SectionOf`, `ItemOf`, `UpdateStrategy`, `LabelStrategy`, `DuplicateStrategy`, `ModuleBuilder`, `IBulkUpsertClient`
-
-Fields the service requires are required in the input types.
+Every component schema of the service's OpenAPI document is exported by its schema name — entities (`Transaction`, `Step`, `JournalEntry`, …), inputs (`TransactionInput`, …), bulk envelopes (`BulkUpsertInput`, `BulkQueryOutput`, …) and queries (`QueryJSON`, `FilterJSON`, …). Fields the service requires are required in the input types.
 
 ### Updating the generated types
 
