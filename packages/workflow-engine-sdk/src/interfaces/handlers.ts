@@ -104,7 +104,7 @@ export type TransactionHandlerFn<T extends WithStageDirector> = (
   input: T,
   /** Always passed by the SDK. Optional so that code calling a handler directly, such as a unit test, can leave it out. */
   ctx?: TransactionContext,
-) => Promise<{ result: EvalResult; output?: any; error?: Error; errorData?: any; triggers?: Trigger[]; events?: HandlerEvent[]; extraUpdates?: Patch; customStage?: string; deadline?: string }>;
+) => Promise<{ result: EvalResult; output?: any; error?: Error; errorData?: any; triggers?: Trigger[]; events?: HandlerEvent[]; extraUpdates?: Patch; customStage?: string; deadline?: string; flush?: boolean }>;
 
 /**
  * Input for batch directed transaction handling
@@ -129,6 +129,13 @@ export interface TransactionHandlerBatchOut {
   customStage?: string;
   events?: HandlerEvent[];
   deadline?: string;
+  /**
+   * Commit this result, and every earlier write of the executor, before the transaction is evaluated again.
+   * Set on a result whose output a later action exposes outside the engine and cannot reproduce exactly, such as
+   * a signed transaction's hash before it is submitted, or on a result that allocates from a shared ordered
+   * resource such as a nonce.
+   */
+  flush?: boolean;
 }
 
 /**
