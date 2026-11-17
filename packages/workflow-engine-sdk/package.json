@@ -91,15 +91,18 @@
   "exports": {
     ".": {
       "import": "./dist/src/index.js",
-      "types": "./dist/src/index.d.ts"
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
     },
     "./testing": {
       "import": "./dist/src/testing/index.js",
-      "types": "./dist/src/testing/index.d.ts"
+      "types": "./dist/src/testing/index.d.ts",
+      "default": "./dist/src/testing/index.js"
     },
     "./snippet-package": {
       "import": "./dist/src/snippet-package/index.js",
-      "types": "./dist/src/snippet-package/index.d.ts"
+      "types": "./dist/src/snippet-package/index.d.ts",
+      "default": "./dist/src/snippet-package/index.js"
     }
   },
   "sideEffects": false,

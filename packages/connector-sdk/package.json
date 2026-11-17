@@ -12,19 +12,23 @@
   "exports": {
     ".": {
       "import": "./dist/src/index.js",
-      "types": "./dist/src/index.d.ts"
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
     },
     "./evm": {
       "import": "./dist/src/evm/index.js",
-      "types": "./dist/src/evm/index.d.ts"
+      "types": "./dist/src/evm/index.d.ts",
+      "default": "./dist/src/evm/index.js"
     },
     "./btc": {
       "import": "./dist/src/btc/index.js",
-      "types": "./dist/src/btc/index.d.ts"
+      "types": "./dist/src/btc/index.d.ts",
+      "default": "./dist/src/btc/index.js"
     },
     "./canton": {
       "import": "./dist/src/canton/index.js",
-      "types": "./dist/src/canton/index.d.ts"
+      "types": "./dist/src/canton/index.d.ts",
+      "default": "./dist/src/canton/index.js"
     }
   },
   "scripts": {
