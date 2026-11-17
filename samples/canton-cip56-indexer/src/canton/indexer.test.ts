@@ -14,291 +14,178 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { EventProcessorContext } from '@kaleido-io/workflow-engine-sdk';
+import { describe, it, expect, beforeEach } from 'vitest';
 import type { CantonConfig } from '../config.js';
 import { CantonCIP56Indexer } from './indexer.js';
+import type { SetupContext } from '@kaleido-io/core-sdk/context';
 import {
-  makeEvent,
+  ADMIN, ALICE, BOB,
+  FakeSubledger,
+  archive,
+  holding,
   makeCompletionFailed,
-  wrapEvents,
-  mockAmClient,
+  makeEvent,
   mockEventProcessorContext,
-  holdingInterfaceView,
+  tiInterfaceView,
+  wrapEvents,
 } from './test-helpers.js';
+import { stateName } from '../subledger/mapping.js';
 
-vi.mock('@kaleido-io/asset-manager-sdk', async (importOriginal) => {
-  const real = await importOriginal();
-  return { ...real, AssetManagerClient: vi.fn() };
-});
+const units = (n: number) => (BigInt(n) * 10n ** 10n).toString();
+const cid = (n: number) => '00' + n.toString(16).padStart(64, '0') + 'ca'.repeat(36); // a 138-char Canton contract id
 
-describe('CantonCIP56Indexer (integration)', () => {
+// The demo flows of sub-canton (05_mint, 06_transfer, 07_accept, 08_preapproval).
+const H1 = cid(1), H2 = cid(2), H3 = cid(3), H4 = cid(4), H5 = cid(5), H6 = cid(6), TI = cid(7);
+const lock = { holders: [ADMIN], expiresAt: null, expiresAfter: null, context: 'transfer to party-002' };
+
+const mint = () => [holding(H1, ALICE, '100.0000000000', { offset: 10, transactionId: 't-mint', updateId: '1220aa01' })];
+const offer = () => {
+  const u = { offset: 20, transactionId: 't-offer', updateId: '1220aa02' };
+  return [
+    archive(H1, { ...u }),
+    holding(H2, ALICE, '30.0000000000', { ...u, lock }),
+    holding(H3, ALICE, '70.0000000000', { ...u }),
+    makeEvent({
+      ...u,
+      contractId: TI,
+      templateId: 'pkg:SimpleToken:SimpleTransferInstruction',
+      entityName: 'SimpleTransferInstruction',
+      interfaceViews: [tiInterfaceView({ sender: ALICE, receiver: BOB, amount: '30.0000000000', instrumentId: { admin: ADMIN, id: 'TOK1' } })],
+    }),
+  ];
+};
+const accept = () => {
+  const u = { offset: 30, transactionId: 't-accept', updateId: '1220aa03' };
+  return [
+    archive(TI, { ...u, choice: 'TransferInstruction_Accept', entityName: 'SimpleTransferInstruction' }),
+    archive(H2, { ...u }),
+    holding(H4, BOB, '30.0000000000', { ...u }),
+  ];
+};
+const direct = () => {
+  const u = { offset: 40, transactionId: 't-direct', updateId: '1220aa04' };
+  return [archive(H3, { ...u }), holding(H5, BOB, '20.0000000000', { ...u }), holding(H6, ALICE, '50.0000000000', { ...u })];
+};
+
+describe('CantonCIP56Indexer -> subledger', () => {
+  let sl: FakeSubledger;
   let indexer: CantonCIP56Indexer;
-  let am: ReturnType<typeof mockAmClient>;
-  let ctx: EventProcessorContext<CantonConfig>;
+  const ctx = mockEventProcessorContext();
 
   beforeEach(() => {
-    indexer = new CantonCIP56Indexer();
-    am = mockAmClient();
-    ctx = mockEventProcessorContext(am);
+    sl = new FakeSubledger();
+    indexer = new CantonCIP56Indexer(() => sl);
   });
 
-  it('processes events in processBatch', async () => {
-    const event = makeEvent({
-      offset: 42,
-      interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '1', instrumentId: { id: 'TOK', admin: 'b::fp' } })],
-    });
-    await indexer.processBatch(ctx, wrapEvents([event]));
-    expect(am.bulkUpsert).toHaveBeenCalled();
+  it('setup creates the chain and checks its sequence levels', async () => {
+    await indexer.setup(ctx as unknown as SetupContext<CantonConfig>);
+    expect(sl.items('blockchain', 'chains')).toMatchObject([{ name: 'canton', transactionSequenceLevels: 1, eventSequenceLevels: 2 }]);
+    sl.chainLevels = { transactionSequenceLevels: 2, eventSequenceLevels: 2 };
+    let err: Error | undefined;
+    await indexer.setup(ctx as unknown as SetupContext<CantonConfig>).catch((e) => (err = e));
+    expect(err?.message).toMatch(/immutable on a chain/);
   });
 
-  it('does not call bulkUpsert when no relevant events', async () => {
-    const event = makeEvent({
-      eventType: 'exercised',
-      consuming: false,
-      choice: 'SomeNonConsumingChoice',
-    });
-    await indexer.processBatch(ctx, wrapEvents([event]));
-    expect(am.bulkUpsert).not.toHaveBeenCalled();
+  it('mint: evidence, parties with wallets, token, coin and a transfer', async () => {
+    await indexer.processBatch(ctx, wrapEvents(mint()));
+    expect(sl.bodies).toHaveLength(1); // no endings
+    expect(sl.items('blockchain', 'transactions')).toMatchObject([{ name: '1220aa01', ledgerSequence: '10', source: 'canton-cip56-indexer' }]);
+    expect(sl.items('blockchain', 'events')).toMatchObject([{ transactionUrn: '1220aa01', name: '0', ledgerSequence: '10/0' }]);
+    expect(sl.items('blockchain', 'states')).toMatchObject([{
+      name: stateName(H1), locator: H1,
+      labels: { template: 'SimpleHolding', kind: 'holding', owner: ALICE, admin: ADMIN, instrumentId: 'TOK1', amount: '100.0000000000', locked: 'false' },
+    }]);
+    expect(stateName(H1)).toHaveLength(66);
+    expect(sl.items('registry', 'parties')).toMatchObject([
+      { name: 'issuer-001-1220aa', type: 'financial-institution' },
+      { name: 'party-001-1220bb', type: 'legal-entity' },
+    ]);
+    // the wallet identifier is the party id: coins and balances of that holder count in the wallet
+    expect(sl.items('registry', 'walletIdentifiers')).toMatchObject([
+      { value: ADMIN, scheme: 'canton', walletUrn: 'issuer-001-1220aa' },
+      { value: ALICE, scheme: 'canton', walletUrn: 'party-001-1220bb' },
+    ]);
+    expect(sl.items('token', 'tokens')).toMatchObject([{ name: 'TOK1', chainUrn: 'urn:kld:chain=canton', standard: 'CIP-56', decimals: 10, assetUrn: 'TOK1' }]);
+    expect(sl.items('token', 'coins')).toMatchObject([{ tokenUrn: 'TOK1', name: stateName(H1), locator: H1, holder: ALICE, amount: units(100) }]);
+    expect(sl.items('token', 'transfers')).toMatchObject([{
+      tokenUrn: 'TOK1', name: '1220aa01', timestamp: '2026-11-03T10:00:00Z', balanceChanges: [{ holder: ALICE, amount: units(100) }],
+    }]);
   });
 
-  it('skips events without Holding interface view and no TI data', async () => {
-    const event = makeEvent({ arguments: { owner: 'alice::fp', amount: '500' } });
-    await indexer.processBatch(ctx, wrapEvents([event]));
-    expect(am.bulkUpsert).not.toHaveBeenCalled();
+  it('two-step transfer: the offer locks (no transfer), the accept moves the balance', async () => {
+    await indexer.processBatch(ctx, wrapEvents(mint()));
+    const n = sl.bodies.length;
+    await indexer.processBatch(ctx, wrapEvents(offer()));
+    // H1 was created in the earlier batch: found by its State, re-stated as a coin, then spent
+    const offerBodies = sl.bodies.slice(n);
+    expect(offerBodies).toHaveLength(2);
+    expect(offerBodies[1].token?.coinSpends?.[0]?.items).toMatchObject([{ coinUrn: stateName(H1) }]);
+    expect(offerBodies[1].blockchain?.stateArchivals?.[0]?.items).toMatchObject([{ stateUrn: stateName(H1) }]);
+    expect(offerBodies[0].token?.locks?.[0]?.items).toMatchObject([{ name: stateName(H2), holder: ALICE, amount: units(30), info: { lock } }]);
+    expect(offerBodies[0].token?.transfers).toBeUndefined(); // Alice: -100 +30 +70 = 0
+    expect(sl.items('registry', 'parties').map((p) => p.name)).toContain('party-002-1220cc'); // the receiver
+
+    const m = sl.bodies.length;
+    await indexer.processBatch(ctx, wrapEvents(accept()));
+    const [main, endings] = sl.bodies.slice(m);
+    expect(main.token?.transfers?.[0]?.items).toMatchObject([{
+      name: '1220aa03',
+      balanceChanges: [{ holder: ALICE, amount: `-${units(30)}` }, { holder: BOB, amount: units(30) }],
+      labels: { transferInstruction: TI },
+    }]);
+    expect(endings.token?.lockReleases?.[0]?.items).toMatchObject([{ lockUrn: stateName(H2) }]);
+    expect(endings.blockchain?.stateArchivals?.[0]?.items.map((a) => a.stateUrn)).toEqual([stateName(TI), stateName(H2)]);
   });
 
-  describe('failed commands', () => {
-    it('prints completion_failed and indexes nothing for it', async () => {
-      await indexer.processBatch(ctx, wrapEvents([makeCompletionFailed()]));
-      expect(am.bulkUpsert).not.toHaveBeenCalled();
-      expect(am.bulkQuery).not.toHaveBeenCalled();
-    });
-
-    it('still indexes the contract events of a mixed batch', async () => {
-      const holding = makeEvent({
-        interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '1', instrumentId: { id: 'TOK', admin: 'b::fp' } })],
-      });
-      await indexer.processBatch(ctx, wrapEvents([makeCompletionFailed(), holding]));
-      expect(am.bulkUpsert).toHaveBeenCalledTimes(1);
-      const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(call.fragments).toHaveLength(1);
-    });
+  it('direct transfer in one batch with the rest: archives of contracts created in the same batch', async () => {
+    await indexer.processBatch(ctx, wrapEvents([...mint(), ...offer(), ...accept(), ...direct()]));
+    expect(sl.bodies).toHaveLength(2);
+    const transfers = sl.items('token', 'transfers');
+    expect(transfers.map((t) => t.name)).toEqual(['1220aa01', '1220aa03', '1220aa04']);
+    expect(transfers[2].balanceChanges).toEqual([{ holder: ALICE, amount: `-${units(20)}` }, { holder: BOB, amount: units(20) }]);
+    expect(sl.items('token', 'coinSpends').map((s) => s.coinUrn)).toEqual([H1, H2, H3].map(stateName));
+    // Alice holds H6 (50); Bob H4 (30) + H5 (20); the coins in the subledger agree
+    const spent = new Set(sl.items('token', 'coinSpends').map((s) => s.coinUrn));
+    const live = sl.items('token', 'coins').filter((c) => !spent.has(c.name));
+    const sum = (h: string) => live.filter((c) => c.holder === h).reduce((a, c) => a + BigInt(c.amount), 0n);
+    expect(sum(ALICE).toString()).toBe(units(50));
+    expect(sum(BOB).toString()).toBe(units(50));
   });
 
-  describe('end-to-end Holding flow', () => {
-    it('upserts fragment, transfer, addresses, asset, pool via bulkUpsert', async () => {
-      const event = makeEvent({
-        interfaceViews: [holdingInterfaceView({
-          owner: 'alice::fp', amount: '1000',
-          instrumentId: { admin: 'bank::fp', id: 'TestInstId' },
-        })],
-      });
-
-      await indexer.processBatch(ctx, wrapEvents([event]));
-
-      expect(am.bulkUpsert).toHaveBeenCalledTimes(1);
-      const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(call.fragments).toHaveLength(1);
-      expect(call.transfers).toHaveLength(1);
-      expect(call.assets.length).toBeGreaterThan(0);
-      expect(call.pools.length).toBeGreaterThan(0);
-      expect(call.addresses.length).toBeGreaterThan(0);
-    });
+  it('an archive of a contract never seen gets a bare state and its archival, no coin spend', async () => {
+    const x = cid(99);
+    await indexer.processBatch(ctx, wrapEvents([archive(x, { offset: 5, transactionId: 't-x', updateId: '1220ff' })]));
+    expect(sl.items('blockchain', 'states')).toEqual([{ name: stateName(x), locator: x }]);
+    expect(sl.items('blockchain', 'stateArchivals')).toMatchObject([{ stateUrn: stateName(x) }]);
+    expect(sl.items('token', 'coinSpends')).toHaveLength(0);
   });
 
-  describe('mixed batch', () => {
-    it('handles multiple creates in a single batch', async () => {
-      const events = [
-        makeEvent({
-          contractId: 'c1', offset: 10,
-          interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '100', instrumentId: { admin: 'bank::fp', id: 'TOK' } })],
-        }),
-        makeEvent({
-          contractId: 'c2', offset: 11,
-          interfaceViews: [holdingInterfaceView({ owner: 'bob::fp', amount: '200', instrumentId: { admin: 'bank::fp', id: 'TOK' } })],
-        }),
-      ];
-
-      await indexer.processBatch(ctx, wrapEvents(events));
-
-      const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(call.fragments).toHaveLength(2);
-      expect(call.pools).toHaveLength(1);
-      expect(call.transfers).toHaveLength(2);
-    });
-
-    it('create + archive in same batch produces add and subtract transfers', async () => {
-      const events = [
-        makeEvent({
-          contractId: 'h1', offset: 10, transactionId: 'tx-create',
-          interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '500', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } })],
-        }),
-        makeEvent({ eventType: 'archived', contractId: 'h1', offset: 11, transactionId: 'tx-archive' }),
-      ];
-
-      await indexer.processBatch(ctx, wrapEvents(events));
-
-      const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(call.fragments).toHaveLength(1);
-      expect(call.fragments[0].labels).toMatchObject({ spent: 'true' });
-      expect(call.transfers).toHaveLength(2);
-      expect(call.transfers[0].protocolId).toContain('/created');
-      expect(call.transfers[1].protocolId).toContain('/archived');
-    });
+  it('a replay writes the same rows (all named from ledger ids, create_or_ignore)', async () => {
+    const run = async () => {
+      const s = new FakeSubledger();
+      const ix = new CantonCIP56Indexer(() => s);
+      for (const b of [mint(), offer(), accept(), direct()]) await ix.processBatch(ctx, wrapEvents(b));
+      return s.bodies;
+    };
+    expect(await run()).toEqual(await run());
+    expect(sl.bodies.length).toBe(0);
   });
 
-  describe('archive via AM query (cross-batch)', () => {
-    it('resolves contract from AM when archive is in a separate batch', async () => {
-      const createEvent = makeEvent({
-        interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '100', instrumentId: { admin: 'bank::fp', id: 'TOK' } })],
-      });
-      await indexer.processBatch(ctx, wrapEvents([createEvent]));
-
-      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        fragments: { items: [{ name: 'contract-1', address: 'alice::fp', value: '1000000000000', labels: { issuer: 'bank::fp', instrumentId: 'TOK' } }] },
-      });
-
-      const archiveEvent = makeEvent({ eventType: 'archived', contractId: 'contract-1', offset: 200, transactionId: 'tx-archive' });
-      await indexer.processBatch(ctx, wrapEvents([archiveEvent]));
-
-      const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[1][0];
-      expect(call.fragments[0]).toMatchObject({ name: 'contract-1', labels: { spent: 'true' } });
-      expect(call.transfers[0]).toMatchObject({ from: 'alice::fp', amount: '1000000000000' });
-    });
-
-    it('resolves owner via AM query when contract is fully unknown', async () => {
-      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        fragments: { items: [{ name: 'orphan-contract', address: 'recovered-owner::fp' }] },
-      });
-
-      const archiveEvent = makeEvent({ eventType: 'archived', contractId: 'orphan-contract', offset: 400 });
-      await indexer.processBatch(ctx, wrapEvents([archiveEvent]));
-
-      const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(call.fragments[0]).toMatchObject({ name: 'orphan-contract', address: 'recovered-owner::fp' });
-    });
-
-    it('skips archive when AM query returns nothing', async () => {
-      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ fragments: { items: [] } });
-      const archiveEvent = makeEvent({ eventType: 'archived', contractId: 'truly-unknown', offset: 500 });
-      await indexer.processBatch(ctx, wrapEvents([archiveEvent]));
-      expect(am.bulkUpsert).not.toHaveBeenCalled();
-    });
-
-    it('marks TI spent on archive via AM query (cross-batch)', async () => {
-      const createEvent = makeEvent({
-        contractId: 'to-2', entityName: 'TransferInstruction',
-        arguments: { transfer: { sender: 'alice::fp1', receiver: 'bob::fp2', amount: '5.0', instrumentId: { admin: 'bank::fp3', id: 'TestInstId' } } },
-      });
-      await indexer.processBatch(ctx, wrapEvents([createEvent]));
-
-      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        fragments: { items: [{ name: 'to-2', address: 'alice::fp1' }] },
-      });
-
-      const archiveEvent = makeEvent({ eventType: 'archived', contractId: 'to-2', offset: 200 });
-      await indexer.processBatch(ctx, wrapEvents([archiveEvent]));
-
-      const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[1][0];
-      expect(call.fragments[0]).toMatchObject({ name: 'to-2', labels: { spent: 'true' } });
-    });
+  it('a batch of failed commands writes nothing', async () => {
+    await indexer.processBatch(ctx, wrapEvents([makeCompletionFailed()]));
+    expect(sl.bodies).toHaveLength(0);
   });
 
-  describe('TransferInstruction enrichment', () => {
-    it('enriches Holding transfers with sender/receiver when TI exercised (AM fallback)', async () => {
-      const tiCreate = makeEvent({
-        contractId: 'ti-enrich', entityName: 'TransferInstruction', transactionId: 'tx-ti-create', offset: 1,
-        arguments: { transfer: { sender: 'alice::fp', receiver: 'bob::fp', amount: '100', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } } },
-      });
-      await indexer.processBatch(ctx, wrapEvents([tiCreate]));
+  it('waits out a 429 and retries', async () => {
+    sl.fail429 = 2;
+    await indexer.processBatch(ctx, wrapEvents(mint()));
+    expect(sl.bodies).toHaveLength(1);
+  });
 
-      const oldHolding = makeEvent({
-        contractId: 'old-holding', transactionId: 'tx-old', offset: 0,
-        interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '100', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } })],
-      });
-      await indexer.processBatch(ctx, wrapEvents([oldHolding]));
-
-      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        fragments: { items: [
-          { name: 'ti-enrich', address: 'alice::fp', labels: { sender: 'alice::fp', receiver: 'bob::fp', instrumentId: 'TestInstId', type: 'transfer_instruction' } },
-          { name: 'old-holding', address: 'alice::fp', value: '1000000000000', labels: { issuer: 'bank::fp', instrumentId: 'TestInstId', type: 'holding' } },
-        ] },
-      });
-
-      const tiExercise = makeEvent({ eventType: 'exercised', consuming: true, contractId: 'ti-enrich', transactionId: 'tx-accept', offset: 10 });
-      const holdingCreated = makeEvent({
-        contractId: 'new-holding', transactionId: 'tx-accept', offset: 11,
-        interfaceViews: [holdingInterfaceView({ owner: 'bob::fp', amount: '100', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } })],
-      });
-      const holdingArchived = makeEvent({ eventType: 'archived', contractId: 'old-holding', transactionId: 'tx-accept', offset: 12 });
-
-      await indexer.processBatch(ctx, wrapEvents([tiExercise, holdingCreated, holdingArchived]));
-
-      const calls = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls;
-      const enrichedCall = calls[calls.length - 1][0];
-
-      const addTransfer = enrichedCall.transfers.find((t: { protocolId: string }) => t.protocolId.includes('/created'));
-      expect(addTransfer).toMatchObject({ from: 'alice::fp', to: 'bob::fp', labels: { type: 'transfer' } });
-
-      const subTransfer = enrichedCall.transfers.find((t: { protocolId: string }) => t.protocolId.includes('/archived'));
-      expect(subTransfer).toMatchObject({ from: 'alice::fp', to: 'bob::fp', labels: { type: 'transfer' } });
-    });
-
-    it('falls back to AM fragment query when TI not in cache (restart scenario)', async () => {
-      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        fragments: { items: [{ name: 'ti-restart', address: 'alice::fp', labels: { sender: 'alice::fp', receiver: 'charlie::fp', instrumentId: 'TestInstId' } }] },
-      });
-
-      const tiExercise = makeEvent({ eventType: 'exercised', consuming: true, contractId: 'ti-restart', transactionId: 'tx-post-restart', offset: 19 });
-      const holdingCreated = makeEvent({
-        contractId: 'new-h', transactionId: 'tx-post-restart', offset: 20,
-        interfaceViews: [holdingInterfaceView({ owner: 'charlie::fp', amount: '50', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } })],
-      });
-
-      await indexer.processBatch(ctx, wrapEvents([tiExercise, holdingCreated]));
-
-      const calls = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls;
-      const call = calls[calls.length - 1][0];
-      const addTransfer = call.transfers.find((t: { protocolId: string }) => t.protocolId.includes('/created'));
-      expect(addTransfer).toMatchObject({ from: 'alice::fp', to: 'charlie::fp', labels: { type: 'transfer' } });
-    });
-
-    it('emits unenriched transfer when no TI context (mint)', async () => {
-      const holdingCreated = makeEvent({
-        contractId: 'mint-holding', transactionId: 'tx-mint', offset: 5,
-        interfaceViews: [holdingInterfaceView({ owner: 'alice::fp', amount: '200', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } })],
-      });
-      await indexer.processBatch(ctx, wrapEvents([holdingCreated]));
-
-      const call = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(call.transfers[0]).toMatchObject({ to: 'alice::fp', labels: { type: 'holding_created' } });
-      expect(call.transfers[0].from).toBeUndefined();
-    });
-
-    it('does not enrich holdings after TI is archived (not exercised)', async () => {
-      const tiCreate = makeEvent({
-        contractId: 'ti-cleanup', entityName: 'TransferInstruction', transactionId: 'tx-1', offset: 1,
-        arguments: { transfer: { sender: 'alice::fp', receiver: 'bob::fp', amount: '10', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } } },
-      });
-      await indexer.processBatch(ctx, wrapEvents([tiCreate]));
-
-      (am.bulkQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        fragments: { items: [{ name: 'ti-cleanup', address: 'alice::fp' }] },
-      });
-      const tiArchive = makeEvent({ eventType: 'archived', contractId: 'ti-cleanup', transactionId: 'tx-2', offset: 2 });
-      await indexer.processBatch(ctx, wrapEvents([tiArchive]));
-
-      const holdingCreated = makeEvent({
-        contractId: 'late-holding', transactionId: 'tx-2', offset: 3,
-        interfaceViews: [holdingInterfaceView({ owner: 'bob::fp', amount: '10', instrumentId: { admin: 'bank::fp', id: 'TestInstId' } })],
-      });
-      await indexer.processBatch(ctx, wrapEvents([holdingCreated]));
-
-      const calls = (am.bulkUpsert as ReturnType<typeof vi.fn>).mock.calls;
-      const lastCall = calls[calls.length - 1][0];
-      expect(lastCall.transfers[0].labels.type).toBe('holding_created');
-      expect(lastCall.transfers[0].from).toBeUndefined();
-    });
+  it('uses the configured chain and source', async () => {
+    const c = mockEventProcessorContext({ subledger: { chain: 'demo', source: 'me' } });
+    await indexer.processBatch(c, wrapEvents(mint()));
+    expect(sl.bodies[0].blockchain?.transactions?.[0]).toMatchObject({ chainUrn: 'demo', items: [{ source: 'me' }] });
+    expect(sl.items('token', 'tokens')[0].chainUrn).toBe('urn:kld:chain=demo');
   });
 });

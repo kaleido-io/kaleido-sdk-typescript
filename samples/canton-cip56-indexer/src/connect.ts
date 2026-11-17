@@ -17,6 +17,10 @@
 import { WorkflowEngineClient, fatalError } from '@kaleido-io/workflow-engine-sdk';
 import { CantonCIP56Indexer } from './canton/indexer.js';
 
+// Default config locations (the README's): the platform / Dockerfile set these when hosted.
+process.env.KALEIDO_CONFIG_FILE ||= './config/config.yaml';
+process.env.CONFIG_FILE ||= './config/provider-config.yaml';
+
 WorkflowEngineClient.fromConfigFile()
     .eventProcessor('canton-cip56-indexer', new CantonCIP56Indexer())
     .start()

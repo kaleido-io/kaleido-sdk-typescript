@@ -2,3 +2,6 @@ package-lock.json
 node_modules/
 dist/
 .env
+config/config.yaml
+config/provider-config.yaml
+config/provider-config.json

@@ -17,7 +17,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   shortPartyName,
-  normalizeAddr,
   toBaseUnits,
   isCreate,
   isArchive,
@@ -25,7 +24,6 @@ import {
   extractTransferData,
   extractInstrumentId,
   extractIssuer,
-  baseLabels,
   formatCompletionFailure,
 } from './helpers.js';
 import { makeEvent, holdingInterfaceView, makeCompletionFailed } from './test-helpers.js';
@@ -44,12 +42,6 @@ describe('helpers', () => {
 
     it('returns full string when no :: separator', () => {
       expect(shortPartyName('alice')).toBe('alice');
-    });
-  });
-
-  describe('normalizeAddr', () => {
-    it('lowercases addresses', () => {
-      expect(normalizeAddr('Alice::1220ABCDEF')).toBe('alice::1220abcdef');
     });
   });
 
@@ -157,18 +149,6 @@ describe('helpers', () => {
     it('defaults issuer to empty string', () => {
       const view: HoldingView = { owner: 'a', amount: '1' };
       expect(extractIssuer(view)).toBe('');
-    });
-  });
-
-  describe('baseLabels', () => {
-    it('builds standard label set', () => {
-      expect(baseLabels('CIP-56', 'holding')).toEqual({
-        chain: 'canton', standard: 'CIP-56', type: 'holding', spent: 'false',
-      });
-    });
-
-    it('merges extra labels', () => {
-      expect(baseLabels('CIP-56', 'holding', { owner: 'x' })).toMatchObject({ owner: 'x' });
     });
   });
 

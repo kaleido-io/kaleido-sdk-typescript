@@ -1,8 +1,7 @@
 # canton-cip56-indexer
 
 A sample Kaleido Workflow Engine provider that indexes Canton CIP-56 token
-holding and transfer events into the
-[Kaleido Asset Manager](https://docs.kaleido.io/platform/digital-assets/overview/).
+holding and transfer events into the Kaleido **Token Subledger**.
 
 ## What it does
 
@@ -12,9 +11,25 @@ holding and transfer events into the
    `contractEvents`-compatible stream filtered on the CIP-56
    `HoldingV1` and `TransferInstructionV1` interface IDs. Failed commands
    (`completion_failed`) are logged and not indexed.
-3. Maps **Holding** creates/archives to Asset Manager fragments, transfers,
-   balance changes, and the pool/asset definitions they belong to; and maps
-   **TransferInstruction** creates to pending-transfer fragments.
+3. Writes each update to the Token Subledger (`src/subledger/mapping.ts`):
+
+   | Canton | Subledger |
+   |--------|-----------|
+   | update | blockchain **Transaction** (name = update id, sequence = offset) |
+   | contract event | blockchain **Event** (sequence = offset/index) |
+   | every created contract | blockchain **State** (locator = contract id; labels = template + its CIP-56 facts) |
+   | archive / consuming exercise | blockchain **StateArchival** |
+   | party (owner, admin, sender, receiver) | registry **Party** + **Wallet** + wallet identifier `canton:<party id>` |
+   | instrument | registry **Asset** + **Token** (standard CIP-56, 10 decimals) |
+   | Holding create / archive | **Coin** (holder = owner) / **CoinSpend**; a locked holding also a **Lock** / **LockRelease** |
+   | update, per instrument | **Transfer**: the net change per holder (none for a lock, split or merge) |
+
+   The wallet identifier's value is the party id, which is each coin's `holder`, so coins,
+   locks and balances are counted per wallet.
+
+   Every row is named from ledger ids and written `create_or_ignore`, so redelivery and replay
+   are harmless. There is no cache: an archive of a contract created in an earlier batch reads
+   that contract's State labels (one query per batch).
 
 ## Minimum Prerequisites
 
@@ -22,7 +37,7 @@ holding and transfer events into the
   - A **Workflow engine** service
   - A **Canton connector** stack connected to your Canton network
   - A CIP-56 compliant token deployed on your Canton network
-  - An **Asset manager** service
+  - A **Token Subledger** service
 
 ## Quick start
 
@@ -43,7 +58,28 @@ cp config/provider-config.sample.yaml config/provider-config.yaml
 npm run start:dev
 ```
 
-The event stream is created automatically on first run via the stream auto-creation settings in `provider-config.yaml`.
+The event stream is created automatically on first run via the stream auto-creation settings in `provider-config.yaml`,
+and the subledger Chain (`subledger.chain`, default `canton`) on every start if missing.
+
+### Running from this repository
+
+Inside the SDK monorepo the `@kaleido-io/*` packages are workspace links to `packages/*`, so build
+them once before the first run:
+
+```bash
+# from the repository root
+npm install
+npm run build:packages
+
+cd samples/canton-cip56-indexer
+cp config/config.sample.yaml config/config.yaml
+cp config/provider-config.sample.yaml config/provider-config.yaml
+# Edit both files: endpoints and credentials, and stream.eventSourceConfig.filters.parties
+npm run start:dev
+```
+
+To replay the ledger into the subledger from the start, give the stream a new `stream.name`
+(with `fromOffset: 0`).
 
 ## Configuration
 
@@ -59,7 +95,7 @@ Set `KALEIDO_CONFIG_FILE` env var to point to this file (default: `./config/conf
 | `workflow-engine.providerName` | Must match the provider name registered in `src/connect.ts` |
 | `workflow-engine.url` | Workflow Engine REST endpoint URL |
 | `workflow-engine.auth` | API key name and value (used as HTTP Basic auth) |
-| `service-bindings.asset-manager` | Asset Manager service endpoint and auth |
+| `service-bindings.subledger` | Token Subledger service endpoint and auth |
 | `service-bindings.canton-connector` | Canton Connector service endpoint and auth |
 
 ### `config/provider-config.yaml`
@@ -71,6 +107,9 @@ Set `CONFIG_FILE` env var to point to this file (default: `./config/provider-con
 
 | Key | Description |
 |-----|-------------|
+| `subledger.bindingName` | The Token Subledger service binding in `config.yaml` (default `subledger`) |
+| `subledger.chain` | The blockchain Chain rows are written under (default `canton`) |
+| `subledger.source` | The `source` of each chain transaction (default `canton-cip56-indexer`) |
 | `stream.connectorBindingName` | Must match the `canton-connector` service binding name in `config.yaml` |
 | `stream.factory` | Must be `contractEvents` |
 | `stream.eventSourceConfig.filters.parties` | Canton parties to subscribe to (empty = all) |
@@ -81,7 +120,7 @@ Set `CONFIG_FILE` env var to point to this file (default: `./config/provider-con
 This sample is yours to fork. Common customizations:
 
 - **Additional interface filters** — edit `interfaceIds` in `config/provider-config.yaml` to subscribe to more Canton contract interfaces.
-- **Custom handler logic** — extend `processBatch` in `src/canton/indexer.ts` to process additional contract types.
+- **Custom mapping** — extend `mapBatch` in `src/subledger/mapping.ts` (e.g. more facts as State labels, or rows for other templates).
 - **Multiple processors** — create additional classes and register them via `.eventProcessor(...)` in `src/connect.ts`.
 
 ## Hosting on the Kaleido platform
@@ -161,7 +200,7 @@ Then update the provider in the Kaleido platform UI by editing the service setti
    - Ensure the Provider is running and connected to the Workflow Engine via the Provider proxy service
    - Use the Provider proxy Swagger UI to `PUT /providers/{name}/reconnect` to force a reconnect
 
-2. **Asset Manager is not receiving transfers**:
-   - Check Provider logs for errors calling the Asset Manager APIs
+2. **The subledger is not receiving rows**:
+   - Check Provider logs for errors calling the subledger (`PUT /api/v1/bulk`); a 429 is retried after its `Retry-After`
    - Common causes: bad API key credentials, or a misconfigured stream
    - If indexing large batches, decrease `batchSize` in the stream configuration

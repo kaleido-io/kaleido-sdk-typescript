@@ -7,7 +7,7 @@ workflow-engine:
   providerName: canton-cip56-indexer
   providerMetadata:
     displayName: Canton CIP-56 Indexer
-    description: Indexes Canton CIP-56 token holding and transfer events into the Kaleido Asset Manager
+    description: Indexes Canton CIP-56 token holding and transfer events into the Kaleido Token Subledger
   url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-canton-env/s:workflow-engine/rest
   auth:
     type: basic
@@ -15,9 +15,9 @@ workflow-engine:
     password: my-api-key
 
 service-bindings:
-  asset-manager:
+  subledger:
     bindingType: non-hosted
-    url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-canton-env/s:my-asset-manager/rest
+    url: https://myaccount.myinstance.kaleido.io/endpoint/e:my-canton-env/s:my-subledger/rest
     auth:
       type: basic
       username: myuser

@@ -35,42 +35,6 @@ export function shortPartyName(partyId: string | undefined | null): string {
   return partyId.split('::')[0] ?? partyId;
 }
 
-/** Asset Manager lowercases all addresses — normalize to match. */
-export function normalizeAddr(addr: string): string {
-  return addr.toLowerCase();
-}
-
-/**
- * Common contract metadata block included in every fragment's `info`.
- * Handlers can spread this and add extra fields on top.
- */
-export function contractInfoBlock(ce: CantonContractEvent): Record<string, unknown> {
-  return {
-    contractId: ce.contractId,
-    templateId: ce.templateId,
-    transactionId: ce.transactionId,
-    offset: ce.offset,
-    effectiveAt: ce.effectiveAt,
-    entityName: ce.entityName,
-    moduleName: ce.moduleName,
-    arguments: ce.arguments,
-    signatories: ce.signatories,
-    observers: ce.observers,
-  };
-}
-
-/**
- * Build fragment labels with chain=canton, the given standard/type,
- * spent=false, and any extra labels.
- */
-export function baseLabels(
-  standard: string,
-  type: string,
-  extra?: Record<string, string>,
-): Record<string, string> {
-  return { chain: 'canton', standard, type, spent: 'false', ...extra };
-}
-
 // ── CIP-56 view parsing ────────────────────────────────────────────
 
 /**
@@ -142,7 +106,7 @@ export function extractIssuer(view: HoldingView): string {
  * Convert a Daml Decimal string to integer base units.
  *
  * Daml's Decimal type is Numeric 10 (38 total digits, 10 fractional).
- * We multiply by 10^10 so the Asset Manager can store amounts as integers,
+ * We multiply by 10^10 so amounts are stored as integers,
  * similar to how BTC amounts are stored in satoshis (x 10^8).
  *
  * Examples:

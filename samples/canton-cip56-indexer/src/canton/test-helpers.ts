@@ -14,45 +14,78 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { vi } from 'vitest';
+import { BulkUpsertBuilder } from '@kaleido-io/subledger-sdk';
+import type { BulkQueryInput, BulkQueryOutput, BulkUpsertInput, BulkUpsertOutput } from '@kaleido-io/subledger-sdk';
 import type {
   CantonContractEvent,
   CantonCompletionFailedEvent,
   CantonStreamEvent,
   CantonUpdateEvent,
-  BatchContext,
-  TransferContext,
-  ContractInfo,
 } from './types.js';
-import type {
-  EventProcessorEvent,
-  EventProcessorContext,
-} from '@kaleido-io/workflow-engine-sdk';
-import type {
-  IDataModelClient,
-  AddressBulkInput as Address,
-  AssetBulkInput as Asset,
-  FragmentBulkInput as Fragment,
-  PoolBulkInput as Pool,
-  TransferBulkInput as Transfer,
-} from '@kaleido-io/asset-manager-sdk';
-import { AssetManagerClient, BulkUpsertBuilder } from '@kaleido-io/asset-manager-sdk';
+import type { EventProcessorEvent, EventProcessorContext } from '@kaleido-io/workflow-engine-sdk';
 import type { CantonConfig } from '../config.js';
+import type { Subledger } from '../subledger/client.js';
 
-export function mockEventProcessorContext(am: IDataModelClient): EventProcessorContext<CantonConfig> {
-  const amWithBuilder = {
-    ...am,
-    getNewBulkUpsertBuilder: (opts?: unknown) => new BulkUpsertBuilder(am, opts as never),
-  };
-  vi.mocked(AssetManagerClient).mockImplementation(function() { return amWithBuilder as unknown as AssetManagerClient; } as never);
+export const ADMIN = 'issuer-001::1220aa';
+export const ALICE = 'party-001::1220bb';
+export const BOB = 'party-002::1220cc';
+
+export function mockEventProcessorContext(config: CantonConfig = {}): EventProcessorContext<CantonConfig> {
   return {
-    config: {},
+    config,
     providerName: 'test-provider',
     handlerName: 'canton-cip56-indexer',
     signal: new AbortController().signal,
     requestId: 'test-request-id',
-    getServiceClientOptions: vi.fn(),
-  };
+    getServiceClientOptions: () => { throw new Error('not used: tests inject a fake subledger'); },
+  } as unknown as EventProcessorContext<CantonConfig>;
+}
+
+type Row = Record<string, any>;
+
+/**
+ * An in-memory subledger: records every bulk body, keeps the States it was sent
+ * (create_or_ignore) and answers the indexer's two queries (chain, states by locator).
+ */
+export class FakeSubledger implements Subledger {
+  readonly bodies: BulkUpsertInput[] = [];
+  readonly states = new Map<string, Row>(); // locator -> state
+  chainLevels = { transactionSequenceLevels: 1, eventSequenceLevels: 2 };
+  fail429 = 0;
+
+  async bulkUpsert(input: BulkUpsertInput): Promise<BulkUpsertOutput> {
+    if (this.fail429 > 0) {
+      this.fail429--;
+      throw Object.assign(new Error('rate limited'), { response: { status: 429, headers: { 'retry-after': '0.001' } } });
+    }
+    this.bodies.push(JSON.parse(JSON.stringify(input)));
+    for (const sec of (input.blockchain?.states ?? []) as Row[]) {
+      for (const st of sec.items) if (!this.states.has(st.locator)) this.states.set(st.locator, st);
+    }
+    return {};
+  }
+
+  async bulkQuery(input: BulkQueryInput): Promise<BulkQueryOutput> {
+    if (input.blockchain?.chains) return { blockchain: { chains: { items: [this.chainLevels as never] } } };
+    const q = input.blockchain?.states?.[0];
+    const wanted = new Set(q?.in?.[0]?.values ?? []);
+    const items = [...this.states.values()].filter((s) => wanted.has(s.locator));
+    return { blockchain: { states: [{ items: items as never }] } };
+  }
+
+  getNewBulkUpsertBuilder(options: ConstructorParameters<typeof BulkUpsertBuilder>[1]): BulkUpsertBuilder {
+    return new BulkUpsertBuilder(this, options);
+  }
+
+  /** Every item written to `module.section`, across all bodies (scoped sections flattened). */
+  items(module: keyof BulkUpsertInput, section: string): Row[] {
+    const out: Row[] = [];
+    for (const b of this.bodies) {
+      const v = (b[module] as Row | undefined)?.[section];
+      for (const e of Array.isArray(v) ? v : v ? [v] : []) out.push(...e.items.map((i: Row) => ({ ...i, ...(e.tokenUrn ? { tokenUrn: e.tokenUrn } : {}) })));
+    }
+    return out;
+  }
 }
 
 export function holdingInterfaceView(viewValue: Record<string, unknown>) {
@@ -80,6 +113,7 @@ export function makeEvent(
     transactionId: 'tx-1',
     workflowId: 'wf-1',
     updateId: 'upd-1',
+    effectiveAt: '2026-11-03T10:00:00Z',
     ...overrides,
   };
 }
@@ -144,29 +178,31 @@ export function wrapEvents(
   return out;
 }
 
-export function mockAmClient(): IDataModelClient {
+export function tiInterfaceView(transfer: Record<string, unknown>) {
   return {
-    bulkUpsert: vi.fn().mockResolvedValue({}),
-    bulkQuery: vi.fn().mockResolvedValue({}),
-  } as unknown as IDataModelClient;
+    interfaceId: '55ba4deb0ad4:Splice.Api.Token.TransferInstructionV1:TransferInstruction',
+    packageId: '55ba4deb0ad4',
+    packageName: 'splice-api-token-transfer-instruction-v1',
+    moduleName: 'Splice.Api.Token.TransferInstructionV1',
+    entityName: 'TransferInstruction',
+    viewValue: { transfer, status: { tag: 'TransferPendingReceiverAcceptance' }, meta: { values: {} } },
+  };
 }
 
-export function makeBatchContext(overrides?: Partial<BatchContext>): BatchContext {
-  const addressMap = new Map<string, Address>();
-  return {
-    fragmentMap: new Map<string, Fragment>(),
-    transfers: [] as Transfer[],
-    addressMap,
-    assetMap: new Map<string, Asset>(),
-    poolMap: new Map<string, Pool>(),
-    addressSet: new Set<string>(),
-    txContext: new Map<string, TransferContext>(),
-    contracts: new Map<string, ContractInfo>(),
-    addAddress: (addr: Address) => {
-      const role = (addr.info as Record<string, unknown>)?.role ?? '';
-      const key = `${addr.address}:${role}`;
-      if (!addressMap.has(key)) addressMap.set(key, addr);
-    },
-    ...overrides,
-  };
+/** A created SimpleHolding. */
+export function holding(cid: string, owner: string, amount: string, ex: Partial<CantonContractEvent> & { id?: string; lock?: unknown } = {}): CantonContractEvent {
+  const { id = 'TOK1', lock = null, ...rest } = ex;
+  return makeEvent({
+    contractId: cid,
+    templateId: 'pkg:SimpleToken:SimpleHolding',
+    moduleName: 'SimpleToken',
+    entityName: 'SimpleHolding',
+    interfaceViews: [holdingInterfaceView({ owner, amount, instrumentId: { admin: ADMIN, id }, lock, meta: { values: {} } })],
+    ...rest,
+  });
+}
+
+/** The archive of a contract (as a consuming exercise when `choice` is given). */
+export function archive(cid: string, ex: Partial<CantonContractEvent> = {}): CantonContractEvent {
+  return makeEvent({ contractId: cid, eventType: ex.choice ? 'exercised' : 'archived', consuming: ex.choice ? true : undefined, ...ex });
 }
