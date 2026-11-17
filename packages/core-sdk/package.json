@@ -28,23 +28,28 @@
   "exports": {
     ".": {
       "import": "./dist/src/index.js",
-      "types": "./dist/src/index.d.ts"
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
     },
     "./http": {
       "import": "./dist/src/http/index.js",
-      "types": "./dist/src/http/index.d.ts"
+      "types": "./dist/src/http/index.d.ts",
+      "default": "./dist/src/http/index.js"
     },
     "./log": {
       "import": "./dist/src/log/index.js",
-      "types": "./dist/src/log/index.d.ts"
+      "types": "./dist/src/log/index.d.ts",
+      "default": "./dist/src/log/index.js"
     },
     "./context": {
       "import": "./dist/src/context/index.js",
-      "types": "./dist/src/context/index.d.ts"
+      "types": "./dist/src/context/index.d.ts",
+      "default": "./dist/src/context/index.js"
     },
     "./kurn": {
       "import": "./dist/src/kurn/index.js",
-      "types": "./dist/src/kurn/index.d.ts"
+      "types": "./dist/src/kurn/index.d.ts",
+      "default": "./dist/src/kurn/index.js"
     }
   },
   "scripts": {
