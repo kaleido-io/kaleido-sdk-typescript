@@ -808,6 +808,155 @@ describe("handleEvents", () => {
     expect(c.bulkUpsert).not.toHaveBeenCalled();
   });
 
+  describe("with concurrency", () => {
+    const tx = (n: string) => `${TYPE}:transaction=${n}`;
+    const on = (n: string): LifecycleEvent => ({
+      ...event("transaction-accepted"),
+      urn: `${tx(n)}:event=transaction-accepted`,
+      transactionUrn: tx(n),
+    });
+    // reads each event's own transaction, named after it
+    const bulkQuery = jest.fn(async (q: BulkQueryInput): Promise<BulkQueryOutput> => {
+      const urn = q.lifecycle?.transactions?.[0].equal?.[0].value as string;
+      return read(record({ urn, name: urn.split("=").pop() }));
+    });
+    const nameOf = (body: BulkUpsertInput) =>
+      body.lifecycle?.transactions?.[0].items[0].name as string;
+    /**
+     * A client whose writes wait until the test releases them. `order` records each
+     * write's start, and `max` how many were in flight at once.
+     */
+    const gated = () => {
+      const order: string[] = [];
+      const gates: { tx: string; release: () => void }[] = [];
+      let active = 0;
+      let max = 0;
+      const c = {
+        bulkQuery,
+        bulkUpsert: jest.fn(async (body: BulkUpsertInput) => {
+          order.push(nameOf(body));
+          max = Math.max(max, ++active);
+          await new Promise<void>((release) => gates.push({ tx: nameOf(body), release }));
+          active--;
+          return {};
+        }),
+      };
+      const waitFor = async (n: number) => {
+        while (gates.length < n) {
+          await new Promise((r) => setImmediate(r));
+        }
+      };
+      const release = (name: string) => gates.find((g) => g.tx === name)?.release();
+      const releaseAll = () => gates.forEach((g) => g.release());
+      return { c, order, gates, waitFor, release, releaseAll, max: () => max };
+    };
+    // stays in "start" and writes on every event
+    const echo = stateMachine({
+      initial: "start",
+      final: ["done"],
+      states: {
+        start: {
+          steps: ["s"],
+          on: {
+            "transaction-accepted": {
+              to: [],
+              run: (c, { transaction }) => {
+                startStep(c, transaction, "s");
+                return stay();
+              },
+            },
+          },
+        },
+      },
+    });
+
+    it("handles different transactions at once", async () => {
+      const g = gated();
+      const done = handleEvents({ config: {}, subledger: g.c }, [echo], [on("a"), on("b")], {
+        concurrency: 4,
+      });
+      await g.waitFor(2);
+      expect([...g.order].sort()).toEqual(["a", "b"]);
+      g.releaseAll();
+      await done;
+    });
+
+    it("handles one transaction's events in order, one at a time", async () => {
+      const g = gated();
+      const done = handleEvents(
+        { config: {}, subledger: g.c },
+        [echo],
+        [on("a"), on("b"), on("a")],
+        {
+          concurrency: 4,
+        },
+      );
+      await g.waitFor(2);
+      // a's second event waits for its first
+      expect([...g.order].sort()).toEqual(["a", "b"]);
+      g.release("a");
+      await g.waitFor(3);
+      expect(g.order[2]).toBe("a");
+      g.releaseAll();
+      await done;
+    });
+
+    it("handles events that share a lock key one at a time", async () => {
+      const g = gated();
+      const lockKeys = jest.fn((t: Transaction, _: LifecycleEvent) =>
+        t.name === "c" ? [] : ["acct-1"],
+      );
+      const done = handleEvents(
+        { config: {}, subledger: g.c },
+        [echo],
+        [on("a"), on("b"), on("c")],
+        { concurrency: 4, lockKeys },
+      );
+      await g.waitFor(2);
+      // a holds acct-1, so b waits. c needs no lock
+      expect([...g.order].sort()).toEqual(["a", "c"]);
+      g.release("a");
+      await g.waitFor(3);
+      expect(g.order[2]).toBe("b");
+      g.releaseAll();
+      await done;
+      expect(lockKeys).toHaveBeenCalledWith(expect.objectContaining({ name: "a" }), on("a"));
+    });
+
+    it("handles no more than `concurrency` transactions at once", async () => {
+      const g = gated();
+      const names = ["a", "b", "c", "d", "e"];
+      const done = handleEvents({ config: {}, subledger: g.c }, [echo], names.map(on), {
+        concurrency: 2,
+      });
+      for (let i = 0; i < names.length; i++) {
+        await g.waitFor(i + 1);
+        g.gates[i].release();
+      }
+      await done;
+      expect(g.max()).toBe(2);
+      expect(g.c.bulkUpsert).toHaveBeenCalledTimes(5);
+    });
+
+    it("stops a failed transaction's events, finishes the others, then throws", async () => {
+      const c = {
+        bulkQuery,
+        bulkUpsert: jest.fn(async (body: BulkUpsertInput) => {
+          if (nameOf(body) === "a") {
+            throw new Error("503 unavailable");
+          }
+          return {};
+        }),
+      };
+      await expect(
+        handleEvents({ config: {}, subledger: c }, [echo], [on("a"), on("b"), on("a")], {
+          concurrency: 4,
+        }),
+      ).rejects.toThrow("503");
+      expect(c.bulkUpsert.mock.calls.map(([body]) => nameOf(body)).sort()).toEqual(["a", "b"]);
+    });
+  });
+
   it("reads one event's transaction with readTransaction", async () => {
     const c = client(read(record()));
     expect(await readTransaction(c, event("transaction-accepted"))).toMatchObject({ urn: TX });

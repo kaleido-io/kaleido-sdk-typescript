@@ -36,6 +36,7 @@ export type {
   EvaluationContext,
   Go,
   EvaluationResult,
+  HandleEventsOptions,
   LifecycleEvent,
   Next,
   StepDef,

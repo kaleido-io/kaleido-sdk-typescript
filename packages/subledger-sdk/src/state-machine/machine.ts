@@ -589,38 +589,137 @@ export class StateMachine<Config = unknown> {
 // ---------------------------------------------------------------------------
 // Event handling
 
+/** Options for how `handleEvents` runs a batch. */
+export interface HandleEventsOptions {
+  /**
+   * How many transactions' events are handled at once. Defaults to 1: every
+   * event in batch order. A transaction's own events are always handled in
+   * order, one at a time.
+   */
+  concurrency?: number;
+  /**
+   * The keys an event holds while it is evaluated and written. Events that
+   * share a key are handled one at a time. Use it for a transition that reads
+   * what other transactions write and writes on that read, such as a funds
+   * check on an account. Called once the event's transaction is read. Only
+   * used when `concurrency` is above 1.
+   */
+  lockKeys?: (transaction: Transaction, event: LifecycleEvent) => string[];
+}
+
+type HandleContext<Config> = EvaluationContext<Config> & { subledger: SubledgerWriter };
+
 /**
- * For each event in order that one of the machines handles, read its
- * transaction, evaluate it with the first machine whose transaction filter
- * accepts the transaction, and write the result. An event whose transaction
- * is not found, or that no machine's filter accepts, is skipped.
+ * For each event that one of the machines handles, read its transaction,
+ * evaluate it with the first machine whose transaction filter accepts the
+ * transaction, and write the result. An event whose transaction is not found,
+ * or that no machine's filter accepts, is skipped.
+ *
+ * With `concurrency` above 1, the events of up to that many transactions are
+ * handled at once. A failed event stops its transaction's later events, and
+ * no more transactions are started. The others finish, then the first error
+ * is thrown.
  */
 export async function handleEvents<Config>(
-  ctx: EvaluationContext<Config> & { subledger: SubledgerWriter },
+  ctx: HandleContext<Config>,
   machines: StateMachine<Config>[],
   events: LifecycleEvent[],
+  options: HandleEventsOptions = {},
 ): Promise<void> {
-  for (const event of events) {
-    if (!machines.some((m) => m.handles(event))) {
-      continue;
+  const handled = events.filter((event) => machines.some((m) => m.handles(event)));
+  const concurrency = options.concurrency ?? 1;
+  if (concurrency <= 1) {
+    for (const event of handled) {
+      await handleEvent(ctx, machines, event);
     }
-    const transaction = await readTransaction(ctx.subledger, event);
-    if (!transaction) {
-      log.warn(`${event.transactionUrn} not found; skipping ${event.name}`);
-      continue;
+    return;
+  }
+
+  const byTransaction = new Map<string, LifecycleEvent[]>();
+  for (const event of handled) {
+    byTransaction.set(event.transactionUrn, [
+      ...(byTransaction.get(event.transactionUrn) ?? []),
+      event,
+    ]);
+  }
+  const queue = [...byTransaction.values()];
+  const locks = new KeyedLock();
+  const errors: unknown[] = [];
+  const worker = async () => {
+    for (let group = queue.shift(); group && errors.length === 0; group = queue.shift()) {
+      try {
+        for (const event of group) {
+          await handleEvent(ctx, machines, event, (transaction) =>
+            locks.acquire(options.lockKeys?.(transaction, event) ?? []),
+          );
+        }
+      } catch (err) {
+        errors.push(err);
+      }
     }
-    const machine = machines.find(
-      (m) => m.def.transactionFilter === undefined || m.def.transactionFilter(transaction),
-    );
-    if (!machine) {
-      log.warn(`No state machine drives ${transaction.urn}; skipping ${event.name}`);
-      continue;
-    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker));
+  if (errors.length > 0) {
+    throw errors[0];
+  }
+}
+
+/** Handle one event. `lock`, given the event's transaction, is held while it is evaluated and written. */
+async function handleEvent<Config>(
+  ctx: HandleContext<Config>,
+  machines: StateMachine<Config>[],
+  event: LifecycleEvent,
+  lock?: (transaction: Transaction) => Promise<() => void>,
+): Promise<void> {
+  const transaction = await readTransaction(ctx.subledger, event);
+  if (!transaction) {
+    log.warn(`${event.transactionUrn} not found; skipping ${event.name}`);
+    return;
+  }
+  const machine = machines.find(
+    (m) => m.def.transactionFilter === undefined || m.def.transactionFilter(transaction),
+  );
+  if (!machine) {
+    log.warn(`No state machine drives ${transaction.urn}; skipping ${event.name}`);
+    return;
+  }
+  const release = await lock?.(transaction);
+  try {
     const result = await machine.evaluate(ctx, transaction, event);
     if (result) {
       log.info(`${transaction.name} ${event.name}: ${result.from} -> ${result.to}`);
       await ctx.subledger.bulkUpsert(result.body);
     }
+  } finally {
+    release?.();
+  }
+}
+
+/**
+ * In-process locks by key, granted in the order they are asked for. Keys are
+ * taken in sorted order, so two holders of overlapping keys cannot deadlock.
+ */
+class KeyedLock {
+  private readonly tails = new Map<string, Promise<void>>();
+
+  /** Wait for every key, and return the function that releases them. */
+  async acquire(keys: string[]): Promise<() => void> {
+    const releases: (() => void)[] = [];
+    for (const key of [...new Set(keys)].sort()) {
+      const previous = this.tails.get(key) ?? Promise.resolve();
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      const tail = previous.then(() => held);
+      this.tails.set(key, tail);
+      await previous;
+      releases.push(() => {
+        release();
+        if (this.tails.get(key) === tail) {
+          this.tails.delete(key);
+        }
+      });
+    }
+    return () => releases.forEach((r) => r());
   }
 }
 
