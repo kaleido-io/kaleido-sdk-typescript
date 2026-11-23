@@ -820,35 +820,35 @@ describe("handleEvents", () => {
       const urn = q.lifecycle?.transactions?.[0].equal?.[0].value as string;
       return read(record({ urn, name: urn.split("=").pop() }));
     });
-    const nameOf = (body: BulkUpsertInput) =>
-      body.lifecycle?.transactions?.[0].items[0].name as string;
+    const namesOf = (body: BulkUpsertInput) =>
+      (body.lifecycle?.transactions ?? []).flatMap((g) => g.items.map((i) => i.name as string));
     /**
-     * A client whose writes wait until the test releases them. `order` records each
-     * write's start, and `max` how many were in flight at once.
+     * A client whose writes take a turn of the event loop, so other events can queue
+     * behind one. `flushes` records the transactions of every bulkUpsert call, `written`
+     * those of the calls that succeeded, and `max` how many calls were in flight at once.
+     * `fail` makes a call fail, given its transactions.
      */
-    const gated = () => {
-      const order: string[] = [];
-      const gates: { tx: string; release: () => void }[] = [];
+    const recording = (fail?: (names: string[]) => boolean) => {
+      const flushes: string[][] = [];
+      const written: string[][] = [];
       let active = 0;
       let max = 0;
       const c = {
         bulkQuery,
         bulkUpsert: jest.fn(async (body: BulkUpsertInput) => {
-          order.push(nameOf(body));
+          const names = namesOf(body);
+          flushes.push(names);
           max = Math.max(max, ++active);
-          await new Promise<void>((release) => gates.push({ tx: nameOf(body), release }));
+          await new Promise((r) => setImmediate(r));
           active--;
+          if (fail?.(names)) {
+            throw new Error("503 unavailable");
+          }
+          written.push(names);
           return {};
         }),
       };
-      const waitFor = async (n: number) => {
-        while (gates.length < n) {
-          await new Promise((r) => setImmediate(r));
-        }
-      };
-      const release = (name: string) => gates.find((g) => g.tx === name)?.release();
-      const releaseAll = () => gates.forEach((g) => g.release());
-      return { c, order, gates, waitFor, release, releaseAll, max: () => max };
+      return { c, flushes, written, max: () => max };
     };
     // stays in "start" and writes on every event
     const echo = stateMachine({
@@ -870,90 +870,73 @@ describe("handleEvents", () => {
       },
     });
 
-    it("handles different transactions at once", async () => {
-      const g = gated();
-      const done = handleEvents({ config: {}, subledger: g.c }, [echo], [on("a"), on("b")], {
+    const flushOf = (flushes: string[][], name: string, nth = 0) =>
+      flushes.map((names, i) => (names.includes(name) ? i : -1)).filter((i) => i >= 0)[nth];
+
+    it("combines the writes of different transactions that queue behind a write in flight", async () => {
+      const r = recording();
+      await handleEvents({ config: {}, subledger: r.c }, [echo], [on("a"), on("b"), on("c")], {
         concurrency: 4,
       });
-      await g.waitFor(2);
-      expect([...g.order].sort()).toEqual(["a", "b"]);
-      g.releaseAll();
-      await done;
+      // a's write goes out alone, b and c queue behind it and go out together
+      expect(r.flushes).toEqual([["a"], ["b", "c"]]);
     });
 
-    it("handles one transaction's events in order, one at a time", async () => {
-      const g = gated();
-      const done = handleEvents(
-        { config: {}, subledger: g.c },
-        [echo],
-        [on("a"), on("b"), on("a")],
-        {
-          concurrency: 4,
-        },
-      );
-      await g.waitFor(2);
-      // a's second event waits for its first
-      expect([...g.order].sort()).toEqual(["a", "b"]);
-      g.release("a");
-      await g.waitFor(3);
-      expect(g.order[2]).toBe("a");
-      g.releaseAll();
-      await done;
+    it("keeps one write in flight at a time", async () => {
+      const r = recording();
+      const names = ["a", "b", "c", "d", "e"];
+      await handleEvents({ config: {}, subledger: r.c }, [echo], names.map(on), {
+        concurrency: 4,
+      });
+      expect(r.max()).toBe(1);
+      expect(r.written.flat().sort()).toEqual(names);
     });
 
-    it("handles events that share a lock key one at a time", async () => {
-      const g = gated();
+    it("handles one transaction's events in order, each in its own write", async () => {
+      const r = recording();
+      await handleEvents({ config: {}, subledger: r.c }, [echo], [on("a"), on("b"), on("a")], {
+        concurrency: 4,
+      });
+      expect(r.flushes.flat().sort()).toEqual(["a", "a", "b"]);
+      // a's second event is read after its first is written
+      expect(flushOf(r.flushes, "a", 1)).toBeGreaterThan(flushOf(r.flushes, "a", 0));
+    });
+
+    it("handles events that share a lock key one at a time, each in its own write", async () => {
+      const r = recording();
       const lockKeys = jest.fn((t: Transaction, _: LifecycleEvent) =>
         t.name === "c" ? [] : ["acct-1"],
       );
-      const done = handleEvents(
-        { config: {}, subledger: g.c },
-        [echo],
-        [on("a"), on("b"), on("c")],
-        { concurrency: 4, lockKeys },
-      );
-      await g.waitFor(2);
-      // a holds acct-1, so b waits. c needs no lock
-      expect([...g.order].sort()).toEqual(["a", "c"]);
-      g.release("a");
-      await g.waitFor(3);
-      expect(g.order[2]).toBe("b");
-      g.releaseAll();
-      await done;
+      await handleEvents({ config: {}, subledger: r.c }, [echo], [on("a"), on("b"), on("c")], {
+        concurrency: 4,
+        lockKeys,
+      });
+      // b waits for a's lock, which a holds until its write is done
+      expect(flushOf(r.flushes, "b")).toBeGreaterThan(flushOf(r.flushes, "a"));
       expect(lockKeys).toHaveBeenCalledWith(expect.objectContaining({ name: "a" }), on("a"));
     });
 
-    it("handles no more than `concurrency` transactions at once", async () => {
-      const g = gated();
+    it("combines no more than `concurrency` events in one write", async () => {
+      const r = recording();
       const names = ["a", "b", "c", "d", "e"];
-      const done = handleEvents({ config: {}, subledger: g.c }, [echo], names.map(on), {
+      await handleEvents({ config: {}, subledger: r.c }, [echo], names.map(on), {
         concurrency: 2,
       });
-      for (let i = 0; i < names.length; i++) {
-        await g.waitFor(i + 1);
-        g.gates[i].release();
-      }
-      await done;
-      expect(g.max()).toBe(2);
-      expect(g.c.bulkUpsert).toHaveBeenCalledTimes(5);
+      expect(Math.max(...r.flushes.map((f) => f.length))).toBeLessThanOrEqual(2);
+      expect(r.written.flat().sort()).toEqual(names);
     });
 
-    it("stops a failed transaction's events, finishes the others, then throws", async () => {
-      const c = {
-        bulkQuery,
-        bulkUpsert: jest.fn(async (body: BulkUpsertInput) => {
-          if (nameOf(body) === "a") {
-            throw new Error("503 unavailable");
-          }
-          return {};
-        }),
-      };
+    it("writes each body alone when a combined write fails, so only the failed transaction stops", async () => {
+      const r = recording((names) => names.includes("a"));
       await expect(
-        handleEvents({ config: {}, subledger: c }, [echo], [on("a"), on("b"), on("a")], {
+        handleEvents({ config: {}, subledger: r.c }, [echo], [on("c"), on("a"), on("b"), on("a")], {
           concurrency: 4,
         }),
       ).rejects.toThrow("503");
-      expect(c.bulkUpsert.mock.calls.map(([body]) => nameOf(body)).sort()).toEqual(["a", "b"]);
+      // c alone, then a and b together, which fails, then each alone
+      expect(r.flushes).toEqual([["c"], ["a", "b"], ["a"], ["b"]]);
+      // a's second event is not handled
+      expect(r.written).toEqual([["c"], ["b"]]);
     });
   });
 

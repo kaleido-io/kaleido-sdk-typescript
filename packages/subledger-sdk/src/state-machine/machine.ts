@@ -619,6 +619,12 @@ type HandleContext<Config> = EvaluationContext<Config> & { subledger: SubledgerW
  * handled at once. A failed event stops its transaction's later events, and
  * no more transactions are started. The others finish, then the first error
  * is thrown.
+ *
+ * Their writes go out one bulkUpsert at a time. Bodies that are ready while a
+ * write is in flight are combined into the next one, so a busy batch takes the
+ * subledger's per-type lock once per write rather than once per event. If a
+ * combined write fails, each of its bodies is written alone, so only the event
+ * whose body fails is failed.
  */
 export async function handleEvents<Config>(
   ctx: HandleContext<Config>,
@@ -644,13 +650,18 @@ export async function handleEvents<Config>(
   }
   const queue = [...byTransaction.values()];
   const locks = new KeyedLock();
+  const writer = new CombinedWriter(ctx.subledger);
   const errors: unknown[] = [];
   const worker = async () => {
     for (let group = queue.shift(); group && errors.length === 0; group = queue.shift()) {
       try {
         for (const event of group) {
-          await handleEvent(ctx, machines, event, (transaction) =>
-            locks.acquire(options.lockKeys?.(transaction, event) ?? []),
+          await handleEvent(
+            ctx,
+            machines,
+            event,
+            (transaction) => locks.acquire(options.lockKeys?.(transaction, event) ?? []),
+            (body) => writer.write(body),
           );
         }
       } catch (err) {
@@ -664,12 +675,16 @@ export async function handleEvents<Config>(
   }
 }
 
-/** Handle one event. `lock`, given the event's transaction, is held while it is evaluated and written. */
+/**
+ * Handle one event. `lock`, given the event's transaction, is held while it is
+ * evaluated and written. `write` writes the body, by default with its own bulkUpsert.
+ */
 async function handleEvent<Config>(
   ctx: HandleContext<Config>,
   machines: StateMachine<Config>[],
   event: LifecycleEvent,
   lock?: (transaction: Transaction) => Promise<() => void>,
+  write: (body: BulkUpsertInput) => Promise<unknown> = (body) => ctx.subledger.bulkUpsert(body),
 ): Promise<void> {
   const transaction = await readTransaction(ctx.subledger, event);
   if (!transaction) {
@@ -688,11 +703,77 @@ async function handleEvent<Config>(
     const result = await machine.evaluate(ctx, transaction, event);
     if (result) {
       log.info(`${transaction.name} ${event.name}: ${result.from} -> ${result.to}`);
-      await ctx.subledger.bulkUpsert(result.body);
+      await write(result.body);
     }
   } finally {
     release?.();
   }
+}
+
+/**
+ * Writes bodies one bulkUpsert at a time. A body that comes while a write is in
+ * flight waits, and the waiting bodies go out together in the next write.
+ */
+class CombinedWriter {
+  private pending: {
+    body: BulkUpsertInput;
+    resolve: () => void;
+    reject: (err: unknown) => void;
+  }[] = [];
+  private draining = false;
+
+  constructor(private readonly client: SubledgerWriter) {}
+
+  /** Write the body, resolving once the write that carries it is done. */
+  write(body: BulkUpsertInput): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.pending.push({ body, resolve, reject });
+      if (!this.draining) {
+        void this.drain();
+      }
+    });
+  }
+
+  private async drain(): Promise<void> {
+    this.draining = true;
+    while (this.pending.length > 0) {
+      await this.flush(this.pending.splice(0));
+    }
+    this.draining = false;
+  }
+
+  private async flush(batch: CombinedWriter["pending"]): Promise<void> {
+    if (batch.length > 1) {
+      try {
+        await this.client.bulkUpsert(mergeBodies(batch.map((w) => w.body)));
+        batch.forEach((w) => w.resolve());
+        return;
+      } catch (err) {
+        log.warn(`Combined write of ${batch.length} bodies failed, writing each alone: ${err}`);
+      }
+    }
+    for (const w of batch) {
+      try {
+        await this.client.bulkUpsert(w.body);
+        w.resolve();
+      } catch (err) {
+        w.reject(err);
+      }
+    }
+  }
+}
+
+/** One bulkUpsert body with every section's groups of the given bodies, in order. */
+function mergeBodies(bodies: BulkUpsertInput[]): BulkUpsertInput {
+  const merged: Record<string, Record<string, unknown[]>> = {};
+  for (const body of bodies) {
+    for (const [module, sections] of Object.entries(body)) {
+      for (const [section, groups] of Object.entries(sections ?? {})) {
+        ((merged[module] ??= {})[section] ??= []).push(...(groups as unknown[]));
+      }
+    }
+  }
+  return merged as BulkUpsertInput;
 }
 
 /**
