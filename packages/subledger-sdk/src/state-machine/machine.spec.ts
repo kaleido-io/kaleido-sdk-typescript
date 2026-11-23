@@ -23,24 +23,23 @@ import type {
   Transaction,
 } from "../schema.js";
 import {
-  stateMachine,
-  go,
-  pass,
-  stay,
-  stepUrn,
-  addSteps,
+  canComplete,
   concludeStep,
-  concludeTransaction,
   conditionOf,
+  findExpectedStates,
+  go,
   handleEvents,
   ifCompleted,
   ifFailed,
-  startNextStep,
-  startStep,
+  pass,
+  reachableStates,
+  stateMachine,
+  stay,
   type LifecycleEvent,
-  type TransitionContext,
+  type Next,
+  type StateMachineDef,
   type TransitionEntry,
-  type TransitionFn,
+  type WhenInput,
 } from "./index.js";
 import { BulkUpsertBuilder } from "../bulk-upsert-builder.js";
 import { matchesKey, readTransaction } from "./machine.js";
@@ -60,6 +59,8 @@ const record = (extra: Partial<Transaction> = {}): Transaction => ({
   steps: [],
   ...extra,
 });
+const inState = (state: string, extra: Partial<Transaction> = {}) =>
+  record({ labels: { state }, ...extra });
 const event = (name: string, subject = TX): LifecycleEvent => ({
   ...assigned,
   urn: `${TX}:event=${name}`,
@@ -68,25 +69,22 @@ const event = (name: string, subject = TX): LifecycleEvent => ({
   transactionUrn: TX,
   subjectUrn: subject,
 });
-
-const startSettle: TransitionFn = ({ builder }, { transaction, event }) => {
-  builder.lifecycle.add({
-    stepStarts: [
-      {
-        transactionTypeUrn: transaction.transactionTypeUrn,
-        items: [{ stepUrn: stepUrn(transaction, "settle"), causationUrn: event.urn }],
-      },
-    ],
-  });
-  return go("settling");
-};
-
-const label = (state: string) => ({
-  transactionTypeUrn: TYPE,
-  updateStrategy: "create_or_ignore",
-  labelStrategy: "create_or_update",
-  items: [{ name: "tx1", labels: { state } }],
+const step = (name: string, state: string, status: Step["status"] = "started"): Step => ({
+  ...assigned,
+  urn: `${TX}:step=${name}`,
+  name,
+  transactionUrn: TX,
+  status,
+  labels: { state },
 });
+const outcome = (name: string) => event(`step-outcome.${name}`, `${TX}:step=${name}`);
+
+type Body = { body: BulkUpsertInput } | undefined;
+const labelsOf = (result: Body) => result?.body.lifecycle?.transactions?.[0].items[0].labels;
+const stepsOf = (result: Body) =>
+  (result?.body.lifecycle?.steps ?? []).flatMap((s) => s.items.map((i) => i.name));
+const outcomesOf = (result: Body) =>
+  (result?.body.lifecycle?.transactionOutcomes ?? []).flatMap((s) => s.items);
 
 describe("event keys", () => {
   it("match part by part, * standing for any whole part", () => {
@@ -113,7 +111,10 @@ describe("event keys", () => {
 
   it("refuse a key that can match no event", () => {
     const machine = (key: string) =>
-      stateMachine({ initial: "a", final: [], states: { a: { on: { [key]: go("a") } as never } } });
+      stateMachine({
+        initial: go("a"),
+        states: { a: { on: { [key]: go("a") } as never } },
+      });
     for (const key of [
       "step-outcomes.*",
       "condition-signaled.mint",
@@ -129,220 +130,765 @@ describe("event keys", () => {
   it("order the state's matches, then the machine's own, except in a final state", async () => {
     const tried: string[] = [];
     const entry = (key: string): TransitionEntry => ({
-      to: [],
       run: () => {
         tried.push(key);
         return pass();
       },
+      to: [],
     });
     const machine = stateMachine({
-      initial: "a",
-      final: ["done", "failed"],
+      initial: go("a"),
       states: {
         a: { on: { "step-outcome.*": entry("a *"), "step-outcome.x": entry("a x") } },
         b: {},
+        done: { type: "final", outcome: "completed" },
+        failed: { type: "final", outcome: "failed" },
       },
       on: { "step-outcome.*": entry("any *"), "transaction-outcome": entry("any end") },
     });
     const keys = async (state: string, name: string) => {
       tried.length = 0;
-      await machine.evaluate(ctx, record({ labels: { state } }), event(name));
+      await machine.evaluate(ctx, inState(state), event(name));
       return [...tried];
     };
     expect(await keys("a", "step-outcome.x")).toEqual(["a *", "a x", "any *"]);
     expect(await keys("b", "transaction-outcome")).toEqual(["any end"]);
     expect(await keys("failed", "transaction-outcome")).toEqual([]);
-    expect(machine.handles(event("step-added.x"))).toBe(false);
   });
 
   it("pass the event to the next match on pass(), discarding what the transition added", async () => {
     const machine = stateMachine({
-      initial: "a",
-      final: ["done", "failed"],
+      initial: go("a"),
       states: {
         a: {
           on: {
             "step-outcome.x": {
-              to: [],
               run: ({ builder }) => {
                 builder.lifecycle.add({
-                  stepStarts: [
-                    { transactionTypeUrn: TYPE, items: [{ stepUrn: `${TX}:step=discarded` }] },
-                  ],
+                  legs: [{ transactionTypeUrn: TYPE, items: [{ name: "discarded" } as never] }],
                 });
                 return pass();
               },
+              to: [],
             },
           },
         },
+        failed: { type: "final", outcome: "failed" },
       },
-      on: { "step-outcome.*": { to: ["failed"], run: () => go("failed") } },
+      on: { "step-outcome.*": { run: () => go("failed"), to: ["failed"] } },
     });
-    const result = await machine.evaluate(ctx, record(), event("step-outcome.x"));
+    const result = await machine.evaluate(ctx, inState("a"), event("step-outcome.x"));
     expect(result).toMatchObject({ to: "failed" });
-    expect(result!.body.lifecycle?.stepStarts).toBeUndefined();
+    expect(result!.body.lifecycle?.legs).toBeUndefined();
   });
 });
 
 describe("ifCompleted and ifFailed", () => {
   const machine = stateMachine({
-    initial: "a",
-    final: ["done", "retrying", "failed"],
+    initial: go("a"),
     states: {
       a: {
         on: {
-          "step-outcome.x": ifCompleted({ to: ["done"], run: () => go("done") }),
+          "step-outcome.x": ifCompleted({ run: () => go("done"), to: ["done"] }),
           "step-outcome.y": ifFailed(go("retrying")),
         },
       },
+      done: { type: "final", outcome: "completed" },
+      retrying: { type: "final", outcome: "failed" },
+      failed: { type: "final", outcome: "failed" },
     },
     on: { "step-outcome.*": go("failed") },
   });
-  const outcome = (name: string, status: Step["status"]) =>
-    machine.evaluate(
-      ctx,
-      record({
-        steps: [{ ...assigned, urn: `${TX}:step=${name}`, name, transactionUrn: TX, status }],
-      }),
-      event(`step-outcome.${name}`, `${TX}:step=${name}`),
-    );
+  const result = (name: string, status: Step["status"]) =>
+    machine.evaluate(ctx, inState("a", { steps: [step(name, "a", status)] }), outcome(name));
 
   it("run an ifCompleted transition for a completed step", async () => {
-    expect(await outcome("x", "completed")).toMatchObject({
-      to: "done",
-    });
+    expect(await result("x", "completed")).toMatchObject({ to: "done" });
   });
 
   it("pass a failed step's outcome on from an ifCompleted transition", async () => {
-    expect(await outcome("x", "failed")).toMatchObject({
-      to: "failed",
-    });
+    expect(await result("x", "failed")).toMatchObject({ to: "failed" });
   });
 
   it("run an ifFailed transition for a failed step", async () => {
-    expect(await outcome("y", "failed")).toMatchObject({
-      to: "retrying",
-    });
+    expect(await result("y", "failed")).toMatchObject({ to: "retrying" });
   });
 
   it("pass a completed step's outcome on from an ifFailed transition", async () => {
-    expect(await outcome("y", "completed")).toMatchObject({
-      to: "failed",
-    });
+    expect(await result("y", "completed")).toMatchObject({ to: "failed" });
   });
 });
 
 describe("evaluate", () => {
   const machine = stateMachine({
-    initial: "start",
-    final: ["done", "failed"],
+    initial: go("received"),
     states: {
-      start: {
-        on: {
-          "transaction-accepted": { to: ["settling"], run: startSettle },
-          "step-added.*": { to: [], run: () => stay() },
+      received: {
+        steps: ["check"],
+        then: {
+          run: ({ builder }, { transaction }) => {
+            builder.lifecycle.add({
+              transactions: [
+                {
+                  transactionTypeUrn: TYPE,
+                  items: [{ name: transaction.name, labels: { amount: "10" } }],
+                },
+              ],
+            });
+            return go("accepted");
+          },
+          to: ["accepted"],
         },
+        on: { "condition-signaled.hold.*": stay() },
       },
-      settling: {},
+      accepted: {
+        steps: [
+          {
+            name: "fund",
+            when: ({ updatedTransaction }) => updatedTransaction.labels.amount === "10",
+          },
+          "move",
+          "report",
+        ],
+        then: go("completed"),
+      },
+      completed: { type: "final", outcome: "completed" },
+      failed: { type: "final", outcome: "failed" },
+    },
+    on: {
+      "step-outcome.*": ifFailed({
+        run: () => go("failed", { error: "E|boom" }),
+        to: ["failed"],
+      }),
     },
   });
+  const planned = (state: string, plannedSteps: string, steps: Step[], previousStates = "") =>
+    record({ labels: { state, plannedSteps, previousStates }, steps });
 
-  it("reads the state from the label, else the initial state", async () => {
-    const accepted = event("transaction-accepted");
-    const flip = stateMachine({
-      initial: "a",
-      final: [],
-      states: {
-        a: { on: { "transaction-accepted": go("b") } },
-        b: { on: { "transaction-accepted": go("a") } },
+  it("ignores the transaction-accepted event of a transaction that has concluded", async () => {
+    const concluded = record({ status: "completed" });
+    expect(await machine.evaluate(ctx, concluded, event("transaction-accepted"))).toBeUndefined();
+  });
+
+  it("enters the initial state on a transaction's first evaluation, adding its first step", async () => {
+    const result = await machine.evaluate(ctx, record(), event("transaction-accepted"));
+    expect(result).toMatchObject({ from: undefined, to: "received" });
+    expect(labelsOf(result)).toEqual({
+      state: "received",
+      previousStates: "",
+      expectedStates: "accepted,completed",
+      plannedSteps: "check",
+    });
+    expect(result!.body.lifecycle?.steps).toEqual([
+      {
+        transactionTypeUrn: TYPE,
+        updateStrategy: "create_or_ignore",
+        labelStrategy: "create_or_ignore",
+        items: [{ name: "check", transactionUrn: TX, labels: { state: "received" } }],
+      },
+    ]);
+    expect(result!.body.lifecycle?.stepStarts).toBeUndefined();
+  });
+
+  it("takes the initial transition on a transaction's first evaluation, with what it adds", async () => {
+    const started = stateMachine({
+      ...machine.def,
+      initial: {
+        run: ({ builder }, { transaction }) => {
+          builder.lifecycle.add({
+            legs: [{ transactionTypeUrn: TYPE, items: [{ name: transaction.name } as never] }],
+          });
+          return go("accepted");
+        },
+        to: ["received", "accepted"],
       },
     });
-    expect(await flip.evaluate(ctx, record(), accepted)).toMatchObject({ from: "a" });
-    expect(await flip.evaluate(ctx, record({ labels: { state: "b" } }), accepted)).toMatchObject({
-      from: "b",
+    const result = await started.evaluate(ctx, record(), event("transaction-accepted"));
+    expect(result).toMatchObject({ from: undefined, to: "accepted" });
+    expect(labelsOf(result)).toMatchObject({ state: "accepted", plannedSteps: "move,report" });
+    expect(result!.body.lifecycle?.legs?.[0].items).toEqual([{ name: "tx1" }]);
+    expect(stepsOf(result)).toEqual(["move"]);
+  });
+
+  it("refuses to add a step that another state already added", async () => {
+    const twice = stateMachine({
+      initial: go("a"),
+      states: {
+        a: { on: { "transaction-outcome": go("b") } },
+        b: { steps: ["x"], then: go("done") },
+        done: { type: "final", outcome: "completed" },
+      },
+    });
+    const tx = { ...inState("a"), steps: [step("x", "z", "completed")] };
+    await expect(twice.evaluate(ctx, tx, event("transaction-outcome"))).rejects.toThrow(
+      "Step x was added in state z; it cannot be added again in b",
+    );
+  });
+
+  it("runs a step given as an object with no when", async () => {
+    const named = stateMachine({
+      initial: go("a"),
+      states: {
+        a: { steps: [{ name: "x" }], then: go("done") },
+        done: { type: "final", outcome: "completed" },
+      },
+    });
+    const result = await named.evaluate(ctx, record(), event("transaction-accepted"));
+    expect(labelsOf(result)).toMatchObject({ state: "a", plannedSteps: "x" });
+  });
+
+  it("asks a when with the legs the initial transition wrote", async () => {
+    const funding = stateMachine({
+      initial: {
+        run: ({ builder }, { transaction }) => {
+          builder.lifecycle.add({
+            legs: [
+              {
+                transactionTypeUrn: TYPE,
+                items: [{ name: "fund", transactionUrn: transaction.urn } as never],
+              },
+            ],
+          });
+          return go("accepted");
+        },
+        to: ["accepted"],
+      },
+      states: {
+        accepted: {
+          steps: [
+            {
+              name: "mint",
+              when: ({ updatedTransaction }) => updatedTransaction.legs.includes("fund"),
+            },
+          ],
+          then: go("done"),
+        },
+        done: { type: "final", outcome: "completed" },
+      },
+    });
+    const result = await funding.evaluate(ctx, record(), event("transaction-accepted"));
+    expect(labelsOf(result)).toMatchObject({ state: "accepted", plannedSteps: "mint" });
+  });
+
+  it("refuses an initial transition that does not go to one of its states", async () => {
+    const stays = stateMachine({
+      ...machine.def,
+      initial: { run: () => stay() as never, to: ["received"] },
+    });
+    await expect(stays.evaluate(ctx, record(), event("transaction-accepted"))).rejects.toThrow(
+      "The initial transition must go to one of received",
+    );
+    const strays = stateMachine({
+      ...machine.def,
+      initial: { run: () => go("accepted"), to: ["received"] },
+    });
+    await expect(strays.evaluate(ctx, record(), event("transaction-accepted"))).rejects.toThrow(
+      "The initial transition must go to one of received",
+    );
+  });
+
+  it("ignores every other event for a transaction with no state", async () => {
+    expect(await machine.evaluate(ctx, record(), outcome("check"))).toBeUndefined();
+  });
+
+  it("ignores a transaction-accepted event once the transaction has a state", async () => {
+    expect(
+      await machine.evaluate(ctx, inState("received"), event("transaction-accepted")),
+    ).toBeUndefined();
+  });
+
+  it("adds the next chosen step when one completes, without relabelling the transaction", async () => {
+    const tx = planned("accepted", "fund,move,report", [step("fund", "accepted", "completed")]);
+    const result = await machine.evaluate(ctx, tx, outcome("fund"));
+    expect(result).toMatchObject({ from: "accepted", to: "accepted" });
+    expect(stepsOf(result)).toEqual(["move"]);
+    expect(result!.body.lifecycle?.transactions).toBeUndefined();
+  });
+
+  it("runs then after the last chosen step, appending the state it leaves to the states left before it", async () => {
+    const tx = planned("received", "check", [step("check", "received", "completed")], "start");
+    const result = await machine.evaluate(ctx, tx, outcome("check"));
+    expect(labelsOf(result)).toEqual({
+      amount: "10",
+      state: "accepted",
+      previousStates: "start,received",
+      expectedStates: "completed",
+      plannedSteps: "fund,move,report",
+    });
+    expect(result!.body.lifecycle?.steps?.[0].items).toEqual([
+      { name: "fund", transactionUrn: TX, labels: { state: "accepted" } },
+    ]);
+  });
+
+  it("asks each step's when once on entry, with the updated transaction, the state it left and the states left", async () => {
+    const seen: WhenInput[] = [];
+    const watched = stateMachine({
+      ...machine.def,
+      states: {
+        ...machine.def.states,
+        accepted: {
+          steps: [
+            {
+              name: "fund",
+              when: (input) => {
+                seen.push(input);
+                return false;
+              },
+            },
+            "move",
+          ],
+          then: go("completed"),
+        },
+      },
+    } as StateMachineDef);
+    const tx = planned("received", "check", [step("check", "received", "completed")]);
+    const result = await watched.evaluate(ctx, tx, outcome("check"));
+    expect(seen).toEqual([
+      {
+        transaction: tx,
+        updatedTransaction: { labels: { ...tx.labels, amount: "10" }, legs: [] },
+        from: "received",
+        previousStates: ["received"],
+      },
+    ]);
+    expect(labelsOf(result)).toMatchObject({ plannedSteps: "move" });
+    expect(stepsOf(result)).toEqual(["move"]);
+  });
+
+  it("passes through a state with no chosen step, running its then on entry and labelling once", async () => {
+    const result = await machine.evaluate(
+      ctx,
+      planned("received", "check", [step("check", "received", "completed")]),
+      outcome("check"),
+    );
+    expect(result).toMatchObject({ to: "accepted" });
+    const skipping = stateMachine({
+      ...machine.def,
+      states: {
+        ...machine.def.states,
+        accepted: { steps: [{ name: "fund", when: () => false }], then: go("completed") },
+      },
+    } as StateMachineDef);
+    const passed = await skipping.evaluate(
+      ctx,
+      planned("received", "check", [step("check", "received", "completed")]),
+      outcome("check"),
+    );
+    expect(passed).toMatchObject({ from: "received", to: "completed" });
+    expect(passed!.body.lifecycle?.transactions?.[0].items).toHaveLength(1);
+    expect(labelsOf(passed)).toEqual({
+      amount: "10",
+      state: "completed",
+      previousStates: "received,accepted",
+      expectedStates: "",
+      plannedSteps: "",
+    });
+    expect(outcomesOf(passed)).toMatchObject([{ status: "completed" }]);
+  });
+
+  it("refuses a run of states passed through that never stops", async () => {
+    const looping = stateMachine({
+      initial: go("a"),
+      states: {
+        a: { steps: [{ name: "x", when: () => false }], then: go("b") },
+        b: { steps: [{ name: "y", when: () => false }], then: go("a") },
+      },
+    });
+    await expect(looping.evaluate(ctx, record(), event("transaction-accepted"))).rejects.toThrow(
+      "passed through more states than the machine has",
+    );
+  });
+
+  it("advances only on the completed outcome of a step chosen in the current state", async () => {
+    const tx = (s: Step, plannedSteps = "fund,move,report") =>
+      planned("accepted", plannedSteps, [s]);
+    expect(
+      await machine.evaluate(ctx, tx(step("check", "received", "completed")), outcome("check")),
+    ).toBeUndefined();
+    expect(
+      await machine.evaluate(
+        ctx,
+        tx(step("fund", "accepted", "completed"), "move,report"),
+        outcome("fund"),
+      ),
+    ).toBeUndefined();
+    expect(
+      await machine.evaluate(ctx, tx(step("fund", "accepted", "failed")), outcome("fund")),
+    ).toMatchObject({ to: "failed" });
+  });
+
+  it("runs a state's transition on its own step's completion before advancing, unless it moves", async () => {
+    const reacting = (run: () => Next) =>
+      stateMachine({
+        initial: go("a"),
+        states: {
+          a: {
+            steps: ["x", "y"],
+            then: go("done"),
+            on: { "step-outcome.x": { to: ["other"], run } },
+          },
+          done: { type: "final", outcome: "completed" },
+          other: { type: "final", outcome: "failed" },
+        },
+      });
+    const tx = planned("a", "x,y", [step("x", "a", "completed")]);
+    expect(stepsOf(await reacting(() => stay()).evaluate(ctx, tx, outcome("x")))).toEqual(["y"]);
+    const moved = await reacting(() => go("other")).evaluate(ctx, tx, outcome("x"));
+    expect(moved).toMatchObject({ to: "other" });
+    expect(stepsOf(moved)).toEqual([]);
+  });
+
+  it("writes each step as prepareStep returns it", async () => {
+    const seen: unknown[] = [];
+    const prepared = stateMachine({
+      ...machine.def,
+      options: {
+        prepareStep: (step, input) => {
+          seen.push(input);
+          return { ...step, labels: { order: "1" } };
+        },
+      },
+    });
+    const tx = planned("accepted", "fund,move,report", [step("fund", "accepted", "completed")]);
+    const result = await prepared.evaluate(ctx, tx, outcome("fund"));
+    expect(seen).toEqual([
+      { transaction: tx, state: "accepted", updatedTransaction: { labels: tx.labels, legs: [] } },
+    ]);
+    expect(result!.body.lifecycle?.steps?.[0].items[0].labels).toEqual({
+      order: "1",
+      state: "accepted",
     });
   });
 
-  it("writes the transition's rows and the state label in one body, rows create_or_ignore and labels create_or_update", async () => {
-    const result = await machine.evaluate(ctx, record(), event("transaction-accepted"));
-    expect(result).toMatchObject({
-      from: "start",
-      to: "settling",
+  it("prepares a step when it is added, from earlier steps and reads, then applies prepareStep", async () => {
+    const bulkQuery = jest.fn(
+      async (): Promise<BulkQueryOutput> => ({ registry: { assets: { count: 3 } } }),
+    );
+    const prepared = stateMachine({
+      initial: go("accepted"),
+      states: {
+        accepted: {
+          steps: [
+            "fund",
+            {
+              name: "move",
+              prepare: async ({ subledger }, { transaction, event }) => {
+                const res = await subledger.bulkQuery({});
+                const fund = transaction.steps!.find((s) => s.urn === event.subjectUrn)!;
+                return {
+                  labels: { assets: String(res.registry?.assets?.count) },
+                  info: { from: fund.outcome?.info },
+                };
+              },
+            },
+          ],
+          then: go("done"),
+        },
+        done: { type: "final", outcome: "completed" },
+      },
+      options: { prepareStep: (step) => ({ ...step, labels: { ...step.labels, order: "2" } }) },
     });
-    expect(result!.body).toEqual({
-      lifecycle: {
-        stepStarts: [
-          {
-            transactionTypeUrn: TYPE,
-            updateStrategy: "create_or_ignore",
-            labelStrategy: "create_or_update",
-            items: [
-              { stepUrn: `${TX}:step=settle`, causationUrn: `${TX}:event=transaction-accepted` },
-            ],
+    const fund = { ...step("fund", "accepted", "completed"), outcome: { info: { wallet: "0x1" } } };
+    const tx = planned("accepted", "fund,move", [fund as Step]);
+    const result = await prepared.evaluate(
+      { config: {}, subledger: { bulkQuery } },
+      tx,
+      outcome("fund"),
+    );
+    expect(result!.body.lifecycle?.steps?.[0].items[0]).toEqual({
+      name: "move",
+      transactionUrn: TX,
+      labels: { assets: "3", order: "2", state: "accepted" },
+      info: { from: { wallet: "0x1" } },
+    });
+  });
+
+  it("refuses a prepareStep that renames the step", async () => {
+    const renamed = stateMachine({
+      ...machine.def,
+      options: { prepareStep: (step) => ({ ...step, name: "other" }) },
+    });
+    await expect(renamed.evaluate(ctx, record(), event("transaction-accepted"))).rejects.toThrow(
+      "prepareStep renamed step check to other",
+    );
+  });
+
+  it("concludes the transaction on entering a final state, failed with the move's error", async () => {
+    const done = await machine.evaluate(
+      ctx,
+      planned("accepted", "move,report", [step("report", "accepted", "completed")], "received"),
+      outcome("report"),
+    );
+    expect(labelsOf(done)).toEqual({
+      state: "completed",
+      previousStates: "received,accepted",
+      expectedStates: "",
+      plannedSteps: "",
+    });
+    expect(outcomesOf(done)).toEqual([
+      { transactionUrn: TX, status: "completed", causationUrn: `${TX}:event=step-outcome.report` },
+    ]);
+    const failed = await machine.evaluate(
+      ctx,
+      planned("accepted", "move,report", [step("move", "accepted", "failed")]),
+      outcome("move"),
+    );
+    expect(outcomesOf(failed)).toEqual([
+      {
+        transactionUrn: TX,
+        status: "failed",
+        causationUrn: `${TX}:event=step-outcome.move`,
+        error: "E|boom",
+      },
+    ]);
+  });
+
+  it("concludes the transaction with the outcome the move gives", async () => {
+    const caused = stateMachine({
+      initial: go("a"),
+      states: {
+        a: {
+          on: {
+            "transaction-outcome": go("done", { causationUrn: "urn:x", info: { n: 1 } }),
           },
-        ],
-        transactions: [label("settling")],
+        },
+        done: { type: "final", outcome: "completed" },
       },
     });
+    const result = await caused.evaluate(ctx, inState("a"), event("transaction-outcome"));
+    expect(outcomesOf(result)).toEqual([
+      { transactionUrn: TX, status: "completed", causationUrn: "urn:x", info: { n: 1 } },
+    ]);
+  });
+
+  it("gives the then of a state it passes through the labels written before it", async () => {
+    const passing = stateMachine({
+      initial: go("a"),
+      states: {
+        a: {
+          on: {
+            "transaction-outcome": {
+              run: ({ builder }, { transaction }) => {
+                builder.lifecycle.add({
+                  transactions: [
+                    {
+                      transactionTypeUrn: TYPE,
+                      items: [{ name: transaction.name, labels: { why: "E|why" } }],
+                    },
+                  ],
+                });
+                return go("b");
+              },
+              to: ["b"],
+            },
+          },
+        },
+        b: {
+          steps: [{ name: "x", when: () => false }],
+          then: {
+            run: (_ctx, { updatedTransaction }) =>
+              go("failed", { error: updatedTransaction.labels.why }),
+            to: ["failed"],
+          },
+        },
+        failed: { type: "final", outcome: "failed" },
+      },
+    });
+    const result = await passing.evaluate(ctx, inState("a"), event("transaction-outcome"));
+    expect(outcomesOf(result)).toEqual([
+      {
+        transactionUrn: TX,
+        status: "failed",
+        causationUrn: `${TX}:event=transaction-outcome`,
+        error: "E|why",
+      },
+    ]);
+  });
+
+  it("refuses an outcome on a move to a state that is not final", async () => {
+    const early = stateMachine({
+      initial: go("a"),
+      states: {
+        a: { on: { "transaction-outcome": go("b", { error: "E|early" }) } },
+        b: { on: { "transaction-outcome": go("done") } },
+        done: { type: "final", outcome: "completed" },
+      },
+    });
+    await expect(early.evaluate(ctx, inState("a"), event("transaction-outcome"))).rejects.toThrow(
+      "The move to b gives an outcome, and b is not a final state",
+    );
+  });
+
+  it("refuses a then that goes outside its to", async () => {
+    const strays = stateMachine({
+      initial: go("a"),
+      states: {
+        a: { steps: ["x"], then: { run: () => go("c"), to: ["b"] } },
+        b: { type: "final", outcome: "completed" },
+        c: { type: "final", outcome: "completed" },
+      },
+    });
+    await expect(
+      strays.evaluate(ctx, planned("a", "x", [step("x", "a", "completed")]), outcome("x")),
+    ).rejects.toThrow("Transition a on then: went to c, which is not in its to: b");
   });
 
   it("writes nothing for an unmatched event, or a stay that added nothing", async () => {
-    expect(await machine.evaluate(ctx, record(), event("leg-added.main"))).toBeUndefined();
-    expect(await machine.evaluate(ctx, record(), event("step-added.settle"))).toBeUndefined();
+    expect(
+      await machine.evaluate(ctx, inState("received"), event("leg-added.main")),
+    ).toBeUndefined();
+    expect(
+      await machine.evaluate(ctx, inState("received"), event("condition-signaled.hold.1")),
+    ).toBeUndefined();
+  });
+
+  it("does nothing for a transaction in a state the machine does not define", async () => {
+    expect(await machine.evaluate(ctx, inState("ready"), outcome("check"))).toBeUndefined();
+  });
+
+  it("uses the machine's expected states when it gives them", async () => {
+    const custom = stateMachine({
+      ...machine.def,
+      options: { expectedStates: ({ state }) => [`after-${state}`] },
+    } as StateMachineDef);
+    const result = await custom.evaluate(ctx, record(), event("transaction-accepted"));
+    expect(labelsOf(result)).toMatchObject({ state: "received", expectedStates: "after-received" });
+  });
+
+  it("handles every transaction's creation, its declared steps' outcomes, and the events its transitions match", () => {
+    expect(machine.handles(event("transaction-accepted"))).toBe(true);
+    expect(machine.handles(outcome("report"))).toBe(true);
+    expect(machine.handles(event("condition-signaled.hold.1"))).toBe(true);
+    expect(machine.handles(event("step-added.report"))).toBe(false);
   });
 });
 
-describe("declared targets", () => {
-  const machine = stateMachine({
-    initial: "start",
-    final: ["done", "failed"],
-    states: {
-      start: { on: { "transaction-accepted": { to: ["settling"], run: () => go("elsewhere") } } },
-      settling: {
-        steps: ["settle"],
-        on: {
-          "transaction-outcome": go("done"),
-          "condition-signaled.settle.*": { to: ["done"], run: () => go("done") },
-        },
+describe("concludeStep", () => {
+  it("writes the step's outcome, caused by the event unless the outcome names its cause", () => {
+    const builder = new BulkUpsertBuilder(
+      { bulkUpsert: async () => ({}) },
+      { defaults: { updateStrategy: "create_or_ignore" } },
+    );
+    const input = { transaction: inState("a"), state: "a", event: event("condition-signaled.x.1") };
+    const tctx = { ...ctx, builder, def: { initial: go("a"), states: { a: {} } } };
+    concludeStep(tctx, input, "x", { status: "completed", info: { hash: "0x1" } });
+    concludeStep(tctx, input, "y", { status: "failed", error: "E|bad", causationUrn: "urn:c" });
+    expect(builder.toBulkUpsert().lifecycle?.stepOutcomes?.flatMap((o) => o.items)).toEqual([
+      {
+        causationUrn: `${TX}:event=condition-signaled.x.1`,
+        status: "completed",
+        info: { hash: "0x1" },
+        stepUrn: `${TX}:step=x`,
       },
-    },
-    on: { "step-outcome.*": { to: ["failed"], run: () => pass() } },
+      { causationUrn: "urn:c", status: "failed", error: "E|bad", stepUrn: `${TX}:step=y` },
+    ]);
   });
+});
 
+describe("definitions", () => {
   it("refuse a target the machine does not define or list as final", () => {
     expect(() =>
       stateMachine({
-        initial: "a",
-        final: ["done"],
+        initial: go("a"),
         states: {
-          a: { on: { "step-outcome.x": { to: ["done", "nowhere"], run: () => go("done") } } },
+          a: { on: { "transaction-outcome": { run: () => go("done"), to: ["done", "nowhere"] } } },
+          done: { type: "final", outcome: "completed" },
         },
       }),
-    ).toThrow("Transition a on step-outcome.x: goes to unknown state nowhere");
+    ).toThrow("Transition a on transaction-outcome: goes to unknown state nowhere");
   });
 
-  it("refuse an initial state not in states, and a final state in states", () => {
-    expect(() => stateMachine({ initial: "a", final: [], states: { b: {} } })).toThrow(
-      "Initial state a is not in states",
+  it("refuse an initial transition to an unknown state or to none", () => {
+    expect(() => stateMachine({ initial: go("a"), states: { b: {} } })).toThrow(
+      "The initial transition goes to unknown state a",
     );
-    expect(() => stateMachine({ initial: "a", final: ["a"], states: { a: {} } })).toThrow(
-      "Final state a is also in states",
+    expect(() =>
+      stateMachine({ initial: { run: () => go("b"), to: [] }, states: { b: {} } }),
+    ).toThrow("The initial transition goes to no state");
+  });
+
+  it("refuse a final state that declares steps or transitions", () => {
+    expect(() =>
+      stateMachine({
+        initial: go("a"),
+        states: { a: {}, z: { type: "final", outcome: "failed", on: {} } as never },
+      }),
+    ).toThrow("Final state z declares steps or transitions");
+  });
+
+  it("refuse a transition on transaction-accepted, which the initial transition takes", () => {
+    expect(() =>
+      stateMachine({
+        initial: go("a"),
+        states: { a: { on: { "transaction-accepted": stay() } as never } },
+      }),
+    ).toThrow("Transition a on transaction-accepted: invalid event key");
+  });
+
+  it("refuse steps without a then, a then without steps, and a step declared twice", () => {
+    const machine = (a: object) => () =>
+      stateMachine({
+        initial: go("a"),
+        states: { a, done: { type: "final", outcome: "completed" } },
+      });
+    expect(machine({ steps: ["x"] })).toThrow("State a has steps and no then");
+    expect(machine({ then: go("done") })).toThrow("State a has a then and no steps");
+    expect(machine({ steps: ["x", { name: "x", when: () => true }], then: go("done") })).toThrow(
+      "State a declares a step twice",
     );
+  });
+
+  it("type a transition without to as one that cannot move the transaction", () => {
+    const staying: TransitionEntry = { run: () => stay() };
+    // @ts-expect-error a transition without `to` cannot go
+    const moving: TransitionEntry = { run: () => go("b") };
+    expect([staying, moving]).toHaveLength(2);
+  });
+
+  it("refuse a then to a state the machine does not define", () => {
+    expect(() =>
+      stateMachine({ initial: go("a"), states: { a: { steps: ["x"], then: go("nowhere") } } }),
+    ).toThrow("Transition a on then: goes to unknown state nowhere");
   });
 
   it("refuse a go to a state the entry does not declare", async () => {
-    await expect(machine.evaluate(ctx, record(), event("transaction-accepted"))).rejects.toThrow(
-      "went to elsewhere, which is not in its to: settling",
+    const machine = stateMachine({
+      initial: go("a"),
+      states: {
+        a: { on: { "transaction-outcome": { run: () => go("c"), to: ["b"] } } },
+        b: { type: "final", outcome: "completed" },
+        c: { type: "final", outcome: "completed" },
+      },
+    });
+    await expect(machine.evaluate(ctx, inState("a"), event("transaction-outcome"))).rejects.toThrow(
+      "went to c, which is not in its to: b",
     );
   });
 
-  it("draw one arrow per source and target, and the machine's own transitions from one node", () => {
+  it("draw one arrow per source and target, then among them, and the machine's own transitions from one node", () => {
+    const machine = stateMachine({
+      initial: go("start"),
+      states: {
+        start: { on: { "transaction-outcome": { run: () => go("settling"), to: ["settling"] } } },
+        settling: {
+          steps: ["settle"],
+          then: go("done"),
+          on: {
+            "condition-signaled.settle.*": { run: () => stay() },
+            "condition-signaled.cancelled.*": { run: () => go("done"), to: ["done"] },
+          },
+        },
+        done: { type: "final", outcome: "completed" },
+        failed: { type: "final", outcome: "failed" },
+      },
+      on: { "step-outcome.*": { run: () => pass(), to: ["failed"] } },
+    });
     expect(machine.mermaid().split("\n")).toEqual([
       "stateDiagram-v2",
       '    state "any state" as anyState',
       "    [*] --> start",
-      "    start --> settling: transaction-accepted",
-      "    settling --> done: transaction-outcome<br/>condition-signaled.settle.*",
+      "    start --> settling: transaction-outcome",
+      "    settling --> done: then<br/>condition-signaled.cancelled.*",
       "    anyState --> failed: step-outcome.*",
       "    done --> [*]",
       "    failed --> [*]",
@@ -351,367 +897,73 @@ describe("declared targets", () => {
   });
 });
 
-describe("steps", () => {
-  const step = (name: string, state: string, status: Step["status"] = "pending"): Step => ({
-    ...assigned,
-    urn: `${TX}:step=${name}`,
-    name,
-    transactionUrn: TX,
-    status,
-    labels: { state },
-  });
-  const outcome = (name: string) => event(`step-outcome.${name}`, `${TX}:step=${name}`);
-  const starts = (result?: { body: { lifecycle?: { stepStarts?: { items: unknown[] }[] } } }) =>
-    (result?.body.lifecycle?.stepStarts ?? []).flatMap((s) =>
-      s.items.map((i) => (i as { stepUrn: string }).stepUrn),
-    );
-  const machine = stateMachine({
-    initial: "received",
-    final: ["completed", "failed"],
-    options: { autoStartSteps: true },
+describe("expected states", () => {
+  const def: StateMachineDef = {
+    initial: go("proposed"),
     states: {
-      received: {
-        steps: ["reserve"],
+      proposed: { on: { "condition-signaled.agreed.*": go("agreed") } },
+      agreed: {
         on: {
-          "step-started.reserve": {
-            to: ["accepted"],
-            run: (ctx, { transaction }) => {
-              addSteps(
-                ctx,
-                transaction,
-                ["report", "move"].map((name) => ({ name, state: "accepted" })),
-              );
-              return go("accepted");
-            },
-          },
+          "condition-signaled.settled.*": go("settled"),
+          "condition-signaled.cancel.*": go("recalled"),
         },
       },
-      accepted: {
-        steps: ["report", "fund", "move"],
+      recalled: {
         on: {
-          "condition-signaled.move.*": go("settled"),
+          "condition-signaled.settled.*": go("settled"),
+          "condition-signaled.cancelled.*": go("refused"),
         },
       },
-      settled: {
-        steps: ["move", "notify"],
-        on: {
-          "step-outcome.notify": ifCompleted(go("completed")),
-        },
-      },
+      settled: { on: { "transaction-outcome": go("completed") } },
+      refused: { on: { "transaction-outcome": go("rejected") } },
+      completed: { type: "final", outcome: "completed" },
+      rejected: { type: "final", outcome: "failed" },
+      unresolved: { type: "final", outcome: "failed" },
     },
-    on: {
-      "step-outcome.*": ifFailed(go("failed")),
-    },
+    on: { "step-outcome.*": go("unresolved") },
+  };
+
+  it("list the reachable states that can complete, from a state that can", () => {
+    expect(findExpectedStates(def, "proposed")).toEqual([
+      "agreed",
+      "recalled",
+      "settled",
+      "completed",
+    ]);
+    expect(findExpectedStates(def, "proposed", { ignore: ["recalled"] })).toEqual([
+      "agreed",
+      "settled",
+      "completed",
+    ]);
   });
 
-  it("start the first of the steps a transition added for the state it goes to", async () => {
-    const entered = await machine.evaluate(
-      ctx,
-      record({ steps: [step("reserve", "received", "started")] }),
-      event("step-started.reserve"),
-    );
-    expect(entered).toMatchObject({ to: "accepted" });
-    expect(starts(entered)).toEqual([`${TX}:step=report`]);
+  it("list the reachable states that cannot complete, from a state that cannot", () => {
+    expect(findExpectedStates(def, "recalled", { ignore: ["recalled"] })).toEqual([
+      "refused",
+      "rejected",
+      "unresolved",
+    ]);
+    expect(findExpectedStates(def, "refused")).toEqual(["rejected", "unresolved"]);
+    expect(findExpectedStates(def, "completed")).toEqual([]);
   });
 
-  it("keep the record's status for a step a transition adds again", async () => {
-    const entered = await machine.evaluate(
-      ctx,
-      record({
-        steps: [step("reserve", "received", "started"), step("report", "accepted", "completed")],
-      }),
-      event("step-started.reserve"),
-    );
-    expect(starts(entered)).toEqual([`${TX}:step=move`]);
+  it("follow a state's then", () => {
+    const working: StateMachineDef = {
+      ...def,
+      states: { ...def.states, agreed: { steps: ["commit"], then: go("settled") } },
+    };
+    expect(findExpectedStates(working, "agreed")).toEqual(["settled", "completed"]);
   });
 
-  it("start the state's next pending step when a step completes, with no transition, skipping steps not added", async () => {
-    const tx = record({
-      labels: { state: "accepted" },
-      steps: [step("report", "accepted", "completed"), step("move", "accepted")],
-    });
-    const result = await machine.evaluate(ctx, tx, outcome("report"));
-    expect(result).toMatchObject({ to: "accepted" });
-    expect(starts(result)).toEqual([`${TX}:step=move`]);
-  });
-
-  it("start nothing after one of the state's steps failed", async () => {
-    const custom = stateMachine({
-      initial: "a",
-      final: [],
-      options: { autoStartSteps: true },
-      states: { a: { steps: ["x", "y"] } },
-    });
-    const tx = record({
-      labels: { state: "a" },
-      steps: [step("x", "a", "failed"), step("y", "a")],
-    });
-    expect(await custom.evaluate(ctx, tx, outcome("x"))).toBeUndefined();
-    const signaled = event("condition-signaled.c.1", `${TX}:condition=c`);
-    expect(await custom.evaluate(ctx, tx, signaled)).toBeUndefined();
-  });
-
-  it("start a state's pending step on any event while none runs or has failed", async () => {
-    const tx = record({
-      labels: { state: "settled" },
-      steps: [step("move", "accepted", "completed"), step("notify", "settled")],
-    });
-    const result = await machine.evaluate(ctx, tx, outcome("move"));
-    expect(result).toMatchObject({ to: "settled" });
-    expect(starts(result)).toEqual([`${TX}:step=notify`]);
-  });
-
-  it("start nothing while a step of the state runs", async () => {
-    const tx = record({
-      labels: { state: "accepted" },
-      steps: [step("report", "accepted", "completed"), step("move", "accepted", "started")],
-    });
-    expect(await machine.evaluate(ctx, tx, outcome("report"))).toBeUndefined();
-  });
-
-  it("start the first pending step of a state a transition goes to, by state label", async () => {
-    const tx = record({
-      labels: { state: "accepted" },
-      steps: [step("move", "accepted", "completed"), step("notify", "settled")],
-    });
-    const signaled = event("condition-signaled.move.7", `${TX}:condition=move`);
-    const result = await machine.evaluate(ctx, tx, signaled);
-    expect(result).toMatchObject({ to: "settled" });
-    expect(starts(result)).toEqual([`${TX}:step=notify`]);
-  });
-
-  it("start nothing once the last step completes", async () => {
-    const tx = record({
-      labels: { state: "settled" },
-      steps: [step("move", "accepted", "completed"), step("notify", "settled", "completed")],
-    });
-    const result = await machine.evaluate(ctx, tx, outcome("notify"));
-    expect(result).toMatchObject({ from: "settled", to: "completed" });
-    expect(starts(result)).toEqual([]);
-  });
-
-  it("start nothing more when the transition started one of the steps it added", async () => {
-    const custom = stateMachine({
-      initial: "received",
-      final: [],
-      options: { autoStartSteps: true },
-      states: {
-        received: {
-          on: {
-            "step-started.reserve": {
-              to: ["accepted"],
-              run: (ctx, { transaction, event }) => {
-                addSteps(ctx, transaction, [
-                  { name: "report", state: "accepted" },
-                  { name: "move", state: "accepted" },
-                ]);
-                startStep(ctx, transaction, "move", { causationUrn: event.urn });
-                return go("accepted");
-              },
-            },
-          },
-        },
-        accepted: { steps: ["report", "move"] },
-      },
-    });
-    const result = await custom.evaluate(
-      ctx,
-      record({ steps: [step("reserve", "received", "started")] }),
-      event("step-started.reserve"),
-    );
-    expect(starts(result)).toEqual([`${TX}:step=move`]);
-  });
-
-  it("leave a failed step's outcome to the * state", async () => {
-    const tx = record({
-      labels: { state: "settled" },
-      steps: [step("notify", "settled", "failed")],
-    });
-    const result = await machine.evaluate(ctx, tx, outcome("notify"));
-    expect(result).toMatchObject({ to: "failed" });
-  });
-
-  it("start a step the transition adds to the state it stays in", async () => {
-    const custom = stateMachine({
-      initial: "a",
-      final: [],
-      options: { autoStartSteps: true },
-      states: {
-        a: {
-          steps: ["x"],
-          on: {
-            "transaction-accepted": {
-              to: [],
-              run: (ctx, { transaction }) => {
-                addSteps(ctx, transaction, [{ name: "x", state: "a" }]);
-                return stay();
-              },
-            },
-          },
-        },
-      },
-    });
-    const result = await custom.evaluate(
-      ctx,
-      record({ labels: { state: "a" } }),
-      event("transaction-accepted"),
-    );
-    expect(result).toMatchObject({ from: "a", to: "a" });
-    expect(starts(result)).toEqual([`${TX}:step=x`]);
-  });
-
-  it("count only the transaction's own steps in the body", async () => {
-    const TX2 = `${TYPE}:transaction=tx2`;
-    const custom = stateMachine({
-      initial: "start",
-      final: [],
-      options: { autoStartSteps: true },
-      states: {
-        start: {
-          on: {
-            "transaction-accepted": {
-              to: ["a"],
-              run: ({ builder }) => {
-                builder.lifecycle.add({
-                  steps: [
-                    {
-                      transactionTypeUrn: TYPE,
-                      items: [{ name: "y", transactionUrn: TX2, labels: { state: "a" } }],
-                    },
-                  ],
-                });
-                return go("a");
-              },
-            },
-          },
-        },
-        a: { steps: ["y"] },
-      },
-    });
-    const result = await custom.evaluate(ctx, record(), event("transaction-accepted"));
-    expect(result).toMatchObject({ to: "a" });
-    expect(starts(result)).toEqual([]);
-  });
-
-  it("start nothing without autoStartSteps", async () => {
-    const manual = stateMachine({ ...machine.def, options: undefined });
-    const entered = await manual.evaluate(
-      ctx,
-      record({ steps: [step("reserve", "received", "started")] }),
-      event("step-started.reserve"),
-    );
-    expect(entered).toMatchObject({ to: "accepted" });
-    expect(starts(entered)).toEqual([]);
-  });
-
-  it("start the next step when a transition calls startNextStep", async () => {
-    const manual = stateMachine({
-      initial: "received",
-      final: [],
-      states: {
-        received: {
-          on: {
-            "step-started.reserve": {
-              to: ["accepted"],
-              run: (ctx, input) => {
-                addSteps(ctx, input.transaction, [
-                  { name: "report", state: "accepted" },
-                  { name: "move", state: "accepted" },
-                ]);
-                expect(startNextStep(ctx, input, "accepted")).toBe("report");
-                return go("accepted");
-              },
-            },
-          },
-        },
-        accepted: { steps: ["report", "move"] },
-      },
-    });
-    const result = await manual.evaluate(
-      ctx,
-      record({ steps: [step("reserve", "received", "started")] }),
-      event("step-started.reserve"),
-    );
-    expect(starts(result)).toEqual([`${TX}:step=report`]);
-  });
-
-  it("handle the outcomes of listed steps only with autoStartSteps", () => {
-    const def = { initial: "a", final: [], states: { a: { steps: ["x", "kyc.check"] } } };
-    const auto = stateMachine({ ...def, options: { autoStartSteps: true } });
-    expect(auto.handles(outcome("x"))).toBe(true);
-    expect(auto.handles(outcome("kyc.check"))).toBe(true);
-    expect(auto.handles(outcome("kyc"))).toBe(false);
-    expect(auto.handles(outcome("y"))).toBe(false);
-    expect(stateMachine(def).handles(outcome("x"))).toBe(false);
+  it("expose the reachable states and whether a state can complete", () => {
+    expect([...reachableStates(def, "settled")].sort()).toEqual(["completed", "unresolved"]);
+    expect(canComplete(def, "recalled")).toBe(true);
+    expect(canComplete(def, "recalled", { ignore: ["recalled"] })).toBe(false);
+    expect(canComplete(def, "agreed", { ignore: ["recalled"] })).toBe(true);
   });
 });
 
-describe("record writers", () => {
-  const machine = stateMachine({ initial: "a", final: [], states: { a: { steps: ["s1"] } } });
-  const writes = (write: (ctx: TransitionContext) => void) => {
-    const builder = new BulkUpsertBuilder(
-      { bulkUpsert: async () => ({}) },
-      { defaults: { updateStrategy: "create_or_ignore", labelStrategy: "create_or_update" } },
-    );
-    write({ config: {}, subledger: ctx.subledger, builder, def: machine.def });
-    return builder.toBulkUpsert().lifecycle;
-  };
-
-  it("add steps pending, each labelled with its state", () => {
-    const l = writes((c) =>
-      addSteps(c, record(), [
-        { name: "s1", state: "a", labels: { leg: "fund" }, info: { venue: "x" } },
-      ]),
-    );
-    expect(l?.steps?.[0].labelStrategy).toBe("create_or_ignore");
-    expect(l?.steps?.[0].items).toEqual([
-      { name: "s1", transactionUrn: TX, labels: { leg: "fund", state: "a" }, info: { venue: "x" } },
-    ]);
-  });
-
-  it("refuse a step its state does not list", () => {
-    expect(() => writes((c) => addSteps(c, record(), [{ name: "s2", state: "a" }]))).toThrow(
-      "Step s2 is not one of the steps of state a",
-    );
-  });
-
-  it("start and conclude a step, and conclude the transaction", () => {
-    const l = writes((c) => {
-      startStep(c, record(), "s1", { causationUrn: "urn:e", labels: { attempt: "2" } });
-      concludeStep(c, record(), "s1", {
-        causationUrn: "urn:e",
-        status: "failed",
-        error: "E|boom",
-        info: { code: 503 },
-      });
-      concludeTransaction(c, record(), {
-        causationUrn: "urn:e",
-        status: "completed",
-        labels: { result: "settled" },
-      });
-    });
-    expect(l?.stepStarts?.[0].items).toEqual([
-      { stepUrn: `${TX}:step=s1`, causationUrn: "urn:e", labels: { attempt: "2" } },
-    ]);
-    expect(l?.stepOutcomes?.[0].items).toEqual([
-      {
-        stepUrn: `${TX}:step=s1`,
-        causationUrn: "urn:e",
-        status: "failed",
-        error: "E|boom",
-        info: { code: 503 },
-      },
-    ]);
-    expect(l?.transactionOutcomes?.[0].items).toEqual([
-      {
-        transactionUrn: TX,
-        causationUrn: "urn:e",
-        status: "completed",
-        labels: { result: "settled" },
-      },
-    ]);
-  });
-
+describe("conditionOf", () => {
   it("find the condition a condition-signaled event names by its subject", () => {
     const condition = {
       ...assigned,
@@ -731,11 +983,10 @@ describe("record writers", () => {
 
 describe("handleEvents", () => {
   const machine = stateMachine({
-    initial: "start",
-    final: ["done", "failed"],
+    initial: go("start"),
     states: {
-      start: { on: { "transaction-accepted": { to: ["settling"], run: startSettle } } },
-      settling: {},
+      start: { on: { "transaction-outcome": go("done") } },
+      done: { type: "final", outcome: "completed" },
     },
   });
   const read = (...txs: Transaction[]): BulkQueryOutput => ({
@@ -747,6 +998,8 @@ describe("handleEvents", () => {
   });
   const handle = (c: ReturnType<typeof client>, events: LifecycleEvent[]) =>
     handleEvents({ config: {}, subledger: c }, [machine], events);
+  const written = (c: ReturnType<typeof client>) =>
+    c.bulkUpsert.mock.calls[0][0].lifecycle?.transactions?.[0].items;
 
   it("reads each event's transaction, and writes each event's body", async () => {
     const c = client(read(record()));
@@ -758,7 +1011,12 @@ describe("handleEvents", () => {
       },
       options: { includeChildren: true },
     });
-    expect(c.bulkUpsert.mock.calls[0][0].lifecycle?.transactions).toEqual([label("settling")]);
+    expect(written(c)).toEqual([
+      {
+        name: "tx1",
+        labels: { state: "start", previousStates: "", expectedStates: "done", plannedSteps: "" },
+      },
+    ]);
   });
 
   it("reads the transaction again for each event", async () => {
@@ -780,18 +1038,20 @@ describe("handleEvents", () => {
   });
 
   it("evaluates with the first machine whose transaction filter accepts the transaction", async () => {
-    const byRole = (role: string, to: string) =>
+    const byRole = (role: string, initialState: string) =>
       stateMachine({
-        initial: "start",
-        final: [to],
+        initial: go(initialState),
         transactionFilter: (tx) => tx.labels?.role === role,
-        states: { start: { on: { "transaction-accepted": go(to) } } },
+        states: { [initialState]: {} },
       });
-    const machines = [byRole("a", "a-done"), byRole("b", "b-done")];
+    const machines = [byRole("a", "a-start"), byRole("b", "b-start")];
     const c = client(read(record({ labels: { role: "b" } })));
     await handleEvents({ config: {}, subledger: c }, machines, [event("transaction-accepted")]);
-    expect(c.bulkUpsert.mock.calls[0][0].lifecycle?.transactions?.[0].items).toEqual([
-      { name: "tx1", labels: { state: "b-done" } },
+    expect(written(c)).toEqual([
+      {
+        name: "tx1",
+        labels: { state: "b-start", previousStates: "", expectedStates: "", plannedSteps: "" },
+      },
     ]);
   });
 

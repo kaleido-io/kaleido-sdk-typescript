@@ -12,7 +12,7 @@
     "start:dev": "tsx ./src/main.ts"
   },
   "dependencies": {
-    "@kaleido-io/subledger-sdk": "^1.0.0-rc.1",
+    "@kaleido-io/subledger-sdk": "^1.0.0-rc.3",
     "@kaleido-io/workflow-engine-sdk": "^1.1.0-rc.1"
   },
   "devDependencies": {
