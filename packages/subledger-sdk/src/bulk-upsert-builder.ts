@@ -247,7 +247,7 @@ export class BulkUpsertBuilder {
   }
 }
 
-function itemKey(module: BulkModule, section: string, item: Item): string {
+export function itemKey(module: BulkModule, section: string, item: Item): string {
   const fields = (IDENTITY[module] as Record<string, string[]>)[section];
   return JSON.stringify(fields.map((f) => item[f] ?? null));
 }

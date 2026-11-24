@@ -15,7 +15,8 @@
 // limitations under the License.
 import { root } from "@kaleido-io/core-sdk/kurn";
 import { newLogger } from "@kaleido-io/core-sdk/log";
-import { BulkUpsertBuilder, type IBulkUpsertClient } from "../bulk-upsert-builder.js";
+import { BulkUpsertBuilder, itemKey, type IBulkUpsertClient } from "../bulk-upsert-builder.js";
+import { ROOT_FIELD } from "../model.js";
 import type {
   BulkUpsertInput,
   Condition,
@@ -28,6 +29,7 @@ import type {
   TransactionOutcomeInput,
 } from "../schema.js";
 import { SubledgerClient } from "../subledger.js";
+import type { BulkModule } from "../types.js";
 
 const log = newLogger("subledger-state-machine");
 
@@ -743,9 +745,10 @@ class CombinedWriter {
   }
 
   private async flush(batch: CombinedWriter["pending"]): Promise<void> {
-    if (batch.length > 1) {
+    const merged = batch.length > 1 ? mergeBodies(batch.map((w) => w.body)) : undefined;
+    if (merged) {
       try {
-        await this.client.bulkUpsert(mergeBodies(batch.map((w) => w.body)));
+        await this.client.bulkUpsert(merged);
         batch.forEach((w) => w.resolve());
         return;
       } catch (err) {
@@ -763,13 +766,51 @@ class CombinedWriter {
   }
 }
 
-/** One bulkUpsert body with every section's groups of the given bodies, in order. */
-function mergeBodies(bodies: BulkUpsertInput[]): BulkUpsertInput {
-  const merged: Record<string, Record<string, unknown[]>> = {};
+/**
+ * One bulkUpsert body with the items of the given bodies, in order. The subledger
+ * takes one group per section and root, so groups that share both are joined.
+ * Returns undefined when the bodies can't share a write: a shared group's
+ * settings differ, or two bodies name the same row.
+ */
+function mergeBodies(bodies: BulkUpsertInput[]): BulkUpsertInput | undefined {
+  type Group = Record<string, unknown> & { items: Record<string, unknown>[] };
+  const merged: Record<string, Record<string, Group | Group[]>> = {};
+  const groups = new Map<string, { group: Group; rows: Set<string> }>();
   for (const body of bodies) {
-    for (const [module, sections] of Object.entries(body)) {
-      for (const [section, groups] of Object.entries(sections ?? {})) {
-        ((merged[module] ??= {})[section] ??= []).push(...(groups as unknown[]));
+    for (const [module, sections] of Object.entries(body) as [
+      BulkModule,
+      Record<string, Group | Group[]>,
+    ][]) {
+      for (const [section, value] of Object.entries(sections ?? {})) {
+        const rootField = ROOT_FIELD[module];
+        for (const g of Array.isArray(value) ? value : [value]) {
+          const id = JSON.stringify([module, section, rootField ? g[rootField] : null]);
+          let target = groups.get(id);
+          if (!target) {
+            target = { group: { ...g, items: [] }, rows: new Set() };
+            groups.set(id, target);
+            const moduleBody = (merged[module] ??= {});
+            if (rootField) {
+              ((moduleBody[section] ??= []) as Group[]).push(target.group);
+            } else {
+              moduleBody[section] = target.group;
+            }
+          } else if (
+            ["updateStrategy", "labelStrategy", "options"].some(
+              (f) => JSON.stringify(g[f]) !== JSON.stringify(target!.group[f]),
+            )
+          ) {
+            return undefined;
+          }
+          for (const item of g.items) {
+            const row = itemKey(module, section, item);
+            if (target.rows.has(row)) {
+              return undefined;
+            }
+            target.rows.add(row);
+            target.group.items.push(item);
+          }
+        }
       }
     }
   }

@@ -882,6 +882,55 @@ describe("handleEvents", () => {
       expect(r.flushes).toEqual([["a"], ["b", "c"]]);
     });
 
+    it("puts the combined items in one group per section and root, as the subledger requires", async () => {
+      const r = recording();
+      await handleEvents({ config: {}, subledger: r.c }, [echo], [on("a"), on("b"), on("c")], {
+        concurrency: 4,
+      });
+      const combined = r.c.bulkUpsert.mock.calls[1][0];
+      expect(combined.lifecycle?.transactions).toHaveLength(1);
+      expect(combined.lifecycle?.transactions?.[0].items.map((i) => i.name)).toEqual(["b", "c"]);
+    });
+
+    it("writes bodies that name the same row each alone, without a combined write", async () => {
+      const r = recording();
+      // every event also labels one shared transaction, "x"
+      const shared = stateMachine({
+        initial: "start",
+        final: ["done"],
+        states: {
+          start: {
+            steps: ["s"],
+            on: {
+              "transaction-accepted": {
+                to: [],
+                run: (c, { transaction }) => {
+                  startStep(c, transaction, "s");
+                  c.builder.lifecycle.add({
+                    transactions: [
+                      {
+                        transactionTypeUrn: transaction.transactionTypeUrn,
+                        items: [{ name: "x" }],
+                      },
+                    ],
+                  });
+                  return stay();
+                },
+              },
+            },
+          },
+        },
+      });
+      await handleEvents({ config: {}, subledger: r.c }, [shared], [on("a"), on("b"), on("c")], {
+        concurrency: 4,
+      });
+      expect(r.flushes.map((names) => [...names].sort())).toEqual([
+        ["a", "x"],
+        ["b", "x"],
+        ["c", "x"],
+      ]);
+    });
+
     it("keeps one write in flight at a time", async () => {
       const r = recording();
       const names = ["a", "b", "c", "d", "e"];
