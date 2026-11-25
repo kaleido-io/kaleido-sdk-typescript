@@ -15,64 +15,34 @@
 // limitations under the License.
 
 import {
-  addSteps,
-  concludeTransaction,
   go,
-  ifCompleted,
   ifFailed,
   stateMachine,
-  stay,
 } from "@kaleido-io/subledger-sdk/state-machine";
 
 /**
- * A simple payment lifecycle. Each state is a fact about the payment.
- * Once it is accepted, it plans its steps (reserve then settle), which the
- * machine starts in turn. A completed settle makes it settled, and any
- * failed step makes it failed.
+ * A simple payment lifecycle. Each state is a fact about the payment. In
+ * `accepted` the payment runs the reserve step, then the settle step, and
+ * then becomes settled. Any failed step makes it failed. Entering either
+ * final state concludes the payment.
  */
 export const payment = stateMachine({
-  initial: "accepted",
-  final: ["settled", "failed"],
-  options: { autoStartSteps: true },
+  initial: go("accepted"),
   states: {
     accepted: {
       steps: ["reserve", "settle"],
-      on: {
-        "transaction-accepted": {
-          to: [],
-          run: (ctx, { transaction }) => {
-            addSteps(ctx, transaction, [
-              { name: "reserve", state: "accepted" },
-              { name: "settle", state: "accepted" },
-            ]);
-            return stay();
-          },
-        },
-        "step-outcome.settle": ifCompleted({
-          to: ["settled"],
-          run: (ctx, { transaction, event }) => {
-            concludeTransaction(ctx, transaction, {
-              causationUrn: event.urn,
-              status: "completed",
-            });
-            return go("settled");
-          },
-        }),
-      },
+      then: go("settled"),
     },
+    settled: { type: "final", outcome: "completed" },
+    failed: { type: "final", outcome: "failed" },
   },
   on: {
     "step-outcome.*": ifFailed({
-      to: ["failed"],
-      run: (ctx, { transaction, event }) => {
+      run: (_ctx, { transaction, event }) => {
         const step = transaction.steps?.find((s) => s.urn === event.subjectUrn);
-        concludeTransaction(ctx, transaction, {
-          causationUrn: event.urn,
-          status: "failed",
-          error: `${step?.name} failed`,
-        });
-        return go("failed");
+        return go("failed", { error: `${step?.name} failed` });
       },
+      to: ["failed"],
     }),
   },
 });

@@ -164,29 +164,127 @@ Items for the same row are combined by `duplicates`: `MERGE` (default) deep-merg
 
 ## Lifecycle state machines
 
-The lifecycle module of the subledger is used to track transactions throughout their life, up to a final outcome. There are many ways to drive this tracking, including via updates written from a workflow, or from an off-platform service. For advanced transaction types that are driven by events from multiple sources, the `@kaleido-io/subledger-sdk/state-machine` package can be used to react to changes in the lifecycle and trigger the next piece of work.
+The lifecycle module of the subledger records each transaction through its life, up to its outcome: its steps, legs and conditions. A transaction type takes one of three shapes.
+
+| Shape    | Use when                                                                     | What runs                                                           |
+| -------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Record   | One process does the work in one call                                        | That process, writing the rows as it goes                           |
+| Dispatch | The work runs as separate steps, chosen by the transaction's data            | A processor that runs the state machine, and runners for its steps  |
+| React    | No single process sees everything that decides the transaction's next action | The processor and runners, and a stream for each source of evidence |
+
+**Record.** The process writes the transaction, its steps and its outcome directly, and decides everything itself. A Record that outgrows one call moves to Dispatch by moving its sequencing into a state machine; the work itself carries over.
+
+**Dispatch.** A state machine from `@kaleido-io/subledger-sdk/state-machine` decides the steps and their order, and dispatches each one by adding it to the transaction. A runner picks the step up from its `step-added` event, writes its start, does the work, and writes its outcome. A runner may hold the step open until its own work's effect lands, such as a chain transaction's receipt, and then write the outcome. A machine of one working state is enough:
+
+```typescript
+const transfer = stateMachine({
+  initial: go("accepted"),
+  states: {
+    accepted: {
+      steps: [
+        "debit",
+        { name: "notify", when: ({ updatedTransaction }) => !!updatedTransaction.labels.notify },
+      ],
+      then: go("completed"),
+    },
+    completed: { type: "final", outcome: "completed" },
+    failed: { type: "final", outcome: "failed" },
+  },
+  on: { "step-outcome.*": ifFailed({ run: () => go("failed"), to: ["failed"] }) },
+});
+```
+
+The machine also records what a user sees of the plan: the `state`, `plannedSteps` and `expectedStates` labels, and the diagram `mermaid()` draws.
+
+**React.** The machine adds states and transitions `on` events from sources the transaction does not control. A transaction type needs them when:
+
+- facts arrive unprompted, not as the effect of the step that is running, such as a counterparty's change to a shared smart contract;
+- a request applies to the whole transaction, such as a cancel;
+- the work is split across systems that do not call each other;
+- a deadline applies: the lifecycle has no timers, so a scheduler signals it as one more source;
+- several facts are waited on in no fixed order.
+
+A source, such as an indexer, writes its evidence and signals a condition's `waitKey`. A transition reads the evidence and decides. A step whose effect another source records, such as a chain transaction an indexer records, stays open until a transition on that evidence concludes it with `concludeStep`. Its runner opens a condition named for the fact it waits on, such as `mint-indexed`, and labelled with the step. In the Dispatch shape, a runner may instead hold the step open until its own effect lands.
 
 ### Definition
 
 A state machine is defined via `stateMachine(def: StateMachineDef)`. The state machine definition sets out the list of `states` for the transaction, along with the `steps` that may execute in each state and the transitions that run based on transaction events.
 
 - A **state** is something that has become true of the transaction. Where parties share a transaction, the states are agreed between them, and often mirror states from a shared smart contract.
-- A **step** is a unit of work to be done, with a start and an outcome on the record.
+- A **step** is a unit of work to be done. Its row asks for the work; its start records that a runner took it up, and its outcome that the work ended.
 - A **workflow** is the platform method for carrying out a step. A workflow has its own internal stages, but anything internal to a workflow is an operational detail and not a part of the lifecycle record.
 
 A definition is comprised of:
 
-| Field               | Description                                                                             |
-| ------------------- | --------------------------------------------------------------------------------------- |
-| `initial`           | The state of a transaction with no recorded state (must appear in `states`)             |
-| `states`            | Each state's `steps` and its transitions `on` each event key                            |
-| `final`             | Final states, which have no steps or transitions (and are not in `states`)              |
-| `on`                | Global transitions that apply in every non-final state, evaluated after the state's own |
-| `transactionFilter` | Optional filter to determine whether the machine drives a particular transaction        |
-| `options`           | Options to configure the state machine behavior                                         |
+| Field               | Description                                                                                     |
+| ------------------- | ----------------------------------------------------------------------------------------------- |
+| `initial`           | The initial transition a transaction takes on its first evaluation, or the move it makes        |
+| `states`            | Every state, simple and final, in display order                                                 |
+| `on`                | Global transitions that apply in every non-final state, evaluated after the state's own         |
+| `transactionFilter` | Optional filter to determine whether the machine drives a particular transaction                |
+| `options`           | Optional `expectedStates`, which lists the states expected to follow a state, and `prepareStep` |
 
-Event keys in `on` name lifecycle events, such as `transaction-accepted` or `step-outcome.settle`. `*` matches a whole segment, as in `step-outcome.*`. A transition is `{ to, run }`, where `to` records the possible transitions that could result, and `run` evaluates the current
-transaction state to determine if a transition occurs.
+A state has a `type`:
+
+| Type               | Fields                                                                            |
+| ------------------ | --------------------------------------------------------------------------------- |
+| `simple` (default) | Its `steps`, its `then`, and its transitions `on` each event key                  |
+| `final`            | Its `outcome`, `completed` or `failed`, the status the transaction concludes with |
+
+A simple state either works or waits. A state with `steps` runs them, then moves on through its `then`. A state without steps has no `then`, and waits for an event in `on`.
+
+The initial transition is `{ run, to }`, where `run` reads the transaction and its `transaction-accepted` event, adds any rows to write, and returns `go` to one of `to`. A result can stand in for it: `initial: go("received")` enters `received` with nothing added.
+
+Event keys in `on` name lifecycle events, such as `step-outcome.settle` or `condition-signaled.settled.*`. `*` matches a whole segment, as in `step-outcome.*`. A transition is `{ run, to }`, where `run` reads the transaction and returns a result, and `to` lists the states it can move to. A transition without `to` cannot move the transaction; its `run` returns `stay` or `pass`. A result can also stand in for a transition, as in `then: go("settled")`.
+
+A transition returns one of:
+
+| Result                | Effect                                                   |
+| --------------------- | -------------------------------------------------------- |
+| `go(state, outcome?)` | Moves to `state`, and for a final state writes `outcome` |
+| `stay()`              | Keeps the current state                                  |
+| `pass()`              | Passes the event to the next matching transition         |
+
+A transition receives a context and an input. The context is the environment: the handler's config, the subledger reader, the builder for the rows it writes, and the definition. The input is the transaction as read before the event, its state, the event, and `updatedTransaction`: the transaction's labels and leg names, including those written earlier in the event's evaluation. Hooks read labels and legs from `updatedTransaction`, and steps, their outcomes, conditions and info from `transaction`. For the transition that handles the event, `updatedTransaction` is the transaction as read. While the transaction passes through states in one evaluation, `updatedTransaction.labels` holds the `state`, `previousStates` and `plannedSteps` from before the event, since the machine writes them once at the end; `input.state` and a `when`'s `previousStates` are current. `prepareStep` and `expectedStates` also receive `updatedTransaction`.
+
+`ifCompleted` and `ifFailed` run a transition only for a completed or failed step outcome.
+
+### Steps
+
+A state's `steps` lists the steps it may run, in order. A step is a name, or `{ name, when?, prepare? }`, where the optional `when` decides whether the transaction runs it. Each `when` is asked once, on entering the state, with the transaction, the updated transaction, the state it came from and the states it has left. The chosen steps are recorded in the `plannedSteps` label.
+
+The chosen steps run one at a time. Entering the state adds the first. When one completes, the next is added; after the last, the state's `then` runs. With no step chosen, `then` runs on entry, so a transaction can pass through several states in one evaluation. A failed step does not complete, so nothing follows it: a transition on its outcome decides. The outcome of a step of a state the transaction has left does not advance anything.
+
+A step completes when its outcome is written. A step workflow writes it when the work is finished. Where the work has an effect that lands later, a transition on the evidence writes it with `concludeStep`, completed or failed.
+
+A transition on the completion of one of the state's own steps runs before the next step is added, and the sequence advances unless that transition moves the transaction.
+
+A step is named by its transaction and its name, and every row is written `create_or_ignore`, so a step runs once per transaction and a redelivered event writes nothing new. A step that another state already added cannot be added again; the evaluation throws.
+
+A step's `prepare(ctx, { transaction, state, event, updatedTransaction })` returns its labels and info, and runs each time the machine adds the step. The step is added on entering its state, or on the completion of the state's previous step, so `prepare` reads what earlier steps recorded. It may read evidence through `ctx.subledger`, under the rules in [Reading evidence](#reading-evidence). A runner can take its input from the labels and info `prepare` gives the step.
+
+`options.prepareStep(step, { transaction, state, updatedTransaction })` then adds labels or info to every step before the machine writes it. It cannot rename the step. `stepNameOf` gives the name of a step a state declares.
+
+### Entering a state
+
+An active transaction's first evaluation, on its `transaction-accepted` event, takes the initial transition and enters the state it goes to. Until then the transaction ignores every other event. A transaction that concluded without a state, such as one written before the machine, is ignored, so a stream replayed from its start does not restart it.
+
+Entering a state writes the `state`, `previousStates`, `expectedStates` and `plannedSteps` labels, once for the state the evaluation ends in, then adds the first chosen step. Entering a final state concludes the transaction with the state's `outcome` status and the move's `outcome`, such as its `error`. The outcome's `causationUrn` is the event, unless the move's outcome gives one. A move to a state that is not final cannot give an outcome.
+
+`previousStates` lists, comma-separated, the states the transaction has left, in order, including those passed through. `expectedStates` lists, comma-separated in declared order, the states expected to follow, through each state's `then` and transitions. From a state that can reach a completed final state, it lists the reachable states that can also complete; from one that cannot, the reachable states that cannot. `findExpectedStates(def, state, { ignore })` computes it, where `ignore` names states that do not count as a way to complete. `options.expectedStates` replaces the rule.
+
+A transaction in a state the definition lacks is logged and left unchanged.
+
+### Reading evidence
+
+A transition decides from its transaction, as read before the event, and from evidence it reads through the subledger reader. Other writers own that evidence and keep writing it while the machine runs, so a read can find more than the event reports. These rules keep such reads safe:
+
+- Evidence is written once and then fixed: a label written `create_or_ignore`, a data item, an indexed chain row. A later read finds at least what an earlier read found.
+- A source writes its evidence and the signal for it in one bulk upsert. A transition on the signal therefore finds the evidence.
+- A transition on a `condition-signaled` event acts on the fact its condition names. Evidence of later facts may already be visible; the signals for those facts act on them.
+- Data that changes, such as a position or its holds, can change between a transition's read and the landing of its rows. A condition the transition checked, such as funds being available, holds only where the write itself enforces it.
+
+Rows added earlier in the same evaluation are held in the builder until the evaluation's body is written. `updatedTransaction` includes the labels and legs among them; a transition reads any other row it depends on from the builder.
 
 ### Usage
 
@@ -200,6 +298,18 @@ processBatch: async (engineCtx, events) => {
 ```
 
 `handleEvents` evaluates each event against the first machine whose `transactionFilter` accepts its transaction.
+
+The processor and the runners consume separate streams. A step that waits for something only the processor writes never finishes when both share one ordered stream. A transaction type runs the processor, its runners, and a stream for each source of evidence. The processor needs only the subledger, so it can run in its own provider, apart from the runners and the credentials their work needs; one provider can also host all of them.
+
+The processor's host delivers each transaction's events in order, one at a time, at least once. It acknowledges an event only after its write has landed, so the next event's evaluation reads it.
+
+A runner is any consumer of `step-added` events that writes starts and outcomes through the subledger API, such as a workflow engine workflow or an external system. A step is `pending` until its runner writes its start, and `started` after. Delivery is at least once, so a runner's work is safe to repeat or keyed by its step, and it writes each step's start and outcome once. Several runners split the steps by name, with no step in two. A runner takes its input from the transaction and the step's row.
+
+The machine owns these parts of a transaction:
+
+- the labels `state`, `previousStates`, `plannedSteps` and `expectedStates` on the transaction, and `state` on each step;
+- the steps, each named in the definition and written once per transaction;
+- the transaction's outcome, written on entering a final state.
 
 The [lifecycle state machine sample](https://github.com/kaleido-io/kaleido-sdk-typescript/tree/main/samples/lifecycle-state-machine-sample) is a simple example of a complete state machine.
 
