@@ -20,6 +20,7 @@ import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { pathToFileURL } from 'url';
+import { defineProcessor, defineTransactionHandler } from '../handlers/define';
 import { extractActionMap, extractEventProcessorDef, extractEventSource } from './extract';
 import { packageImportCheck, resolvePackageEntry } from './imports';
 import { bundleHandler } from './load';
@@ -143,6 +144,20 @@ describe('extract', () => {
     const processBatch = () => undefined;
     expect(extractEventProcessorDef({ processBatch }, 'p', 'p.ts', '/p.ts')).toEqual({ processBatch });
     expect(() => extractActionMap({ other: 1 }, 'h', 'h.ts', '/h.ts')).toThrow('exports: other');
+  });
+
+  it("finds a handler a CommonJS module exports under any name, which arrives in the default export", () => {
+    const handler = defineTransactionHandler({ go: async () => ({}) });
+    expect(extractActionMap({ default: { go: handler } }, 'h', 'h.js', '/h.js')).toBe(handler);
+    const source = { name: 'ticker', eventSourcePoll: () => undefined };
+    expect(extractEventSource({ default: { ticker: source } }, 'ticker', 't.js', '/t.js')).toBe(source);
+    const processor = defineProcessor(async () => undefined);
+    expect(extractEventProcessorDef({ default: { settle: processor } }, 'p', 'p.js', '/p.js')).toEqual({ processBatch: processor.processBatch });
+    // The same handler under a name and in the default export is one handler.
+    expect(extractActionMap({ go: handler, default: { go: handler } }, 'h', 'h.ts', '/h.ts')).toBe(handler);
+    expect(() => extractActionMap({ default: { a: handler, b: defineTransactionHandler({}) } }, 'h', 'h.js', '/h.js')).toThrow(
+      'exports more than one transaction handler from defineTransactionHandler (a, b)',
+    );
   });
 
   it('registers an event source under the name it is given', () => {
