@@ -1,11 +1,10 @@
-# Vendored from kaleido-io/firefly-enterprise subledger/swagger.yaml at c957d089dd (PR #7070, subledger-required).
 components:
   schemas:
     Account:
       description: Items returned by the query
       properties:
         bookUrn:
-          description: Owning book reference — accepts full URN or name (required,
+          description: Owning book reference. Accepts full URN or name (required,
             immutable)
           type: string
         class:
@@ -41,7 +40,7 @@ components:
           description: Unique name of the account (URN segment)
           type: string
         ownerUrn:
-          description: Owning party reference — accepts full URN or name path (required,
+          description: Owning party reference. Accepts full URN or name path (required,
             immutable)
           type: string
         parentAccountUrn:
@@ -67,7 +66,7 @@ components:
       description: The items of this entity type to upsert
       properties:
         bookUrn:
-          description: Owning book reference — accepts full URN or name (required,
+          description: Owning book reference. Accepts full URN or name (required,
             immutable)
           type: string
         class:
@@ -96,7 +95,7 @@ components:
           description: Unique name of the account (URN segment)
           type: string
         ownerUrn:
-          description: Owning party reference — accepts full URN or name path (required,
+          description: Owning party reference. Accepts full URN or name path (required,
             immutable)
           type: string
         parentAccountUrn:
@@ -1089,7 +1088,7 @@ components:
           format: int64
           type: integer
         tokenUrn:
-          description: URN of the token (read-only)
+          description: The token the balance is in, read-only
           type: string
         updated:
           $ref: '#/components/schemas/FFTime'
@@ -1114,8 +1113,8 @@ components:
           $ref: '#/components/schemas/FFTime'
         holder:
           description: 'The chain''s own value for whoever holds the balance, verbatim:
-            an address, a party id, a token account. A raw value, not a reference
-            — no registered account or identifier need exist'
+            an address, a party id, a token account. A raw value, not a reference:
+            no registered account or identifier need exist'
           type: string
         id:
           description: Immutable integer primary key assigned by the database, providing
@@ -1125,8 +1124,8 @@ components:
         timestamp:
           $ref: '#/components/schemas/FFTime'
         tokenUrn:
-          description: The token whose balance the change moves, taken from the parent
-            transfer (populated on read)
+          description: The token the balance change is in, read-only and denormalized
+            from its transfer
           type: string
         transferUrn:
           description: URN-scoping parent transfer, immutable after create (populated
@@ -1160,8 +1159,8 @@ components:
           $ref: '#/components/schemas/Integer'
         holder:
           description: 'The chain''s own value for whoever holds the balance, verbatim:
-            an address, a party id, a token account. A raw value, not a reference
-            — no registered account or identifier need exist'
+            an address, a party id, a token account. A raw value, not a reference:
+            no registered account or identifier need exist'
           type: string
       required:
       - holder
@@ -1178,8 +1177,8 @@ components:
           $ref: '#/components/schemas/FFTime'
         holder:
           description: 'The chain''s own value for whoever holds the balance, verbatim:
-            an address, a party id, a token account. A raw value, not a reference
-            — no registered account or identifier need exist'
+            an address, a party id, a token account. A raw value, not a reference:
+            no registered account or identifier need exist'
           type: string
         id:
           description: Immutable integer primary key assigned by the database, providing
@@ -1189,8 +1188,8 @@ components:
         timestamp:
           $ref: '#/components/schemas/FFTime'
         tokenUrn:
-          description: The token whose balance the change moves, taken from the parent
-            transfer (populated on read)
+          description: The token the balance change is in, read-only and denormalized
+            from its transfer
           type: string
         transferUrn:
           description: URN-scoping parent transfer, immutable after create (populated
@@ -1229,7 +1228,7 @@ components:
       description: Items returned by the query
       properties:
         chainUrn:
-          description: URN-scoping parent chain — accepts full URN or name (required,
+          description: URN-scoping parent chain. Accepts full URN or name (required,
             immutable)
           type: string
         created:
@@ -1280,7 +1279,7 @@ components:
       description: The items of this entity type to upsert
       properties:
         chainUrn:
-          description: URN-scoping parent chain — accepts full URN or name (required,
+          description: URN-scoping parent chain. Accepts full URN or name (required,
             immutable)
           type: string
         info:
@@ -2314,6 +2313,8 @@ components:
           $ref: '#/components/schemas/AccountingQueryInput'
         blockchain:
           $ref: '#/components/schemas/BlockchainQueryInput'
+        data:
+          $ref: '#/components/schemas/DataQueryInput'
         lifecycle:
           $ref: '#/components/schemas/LifecycleQueryInput'
         options:
@@ -2341,6 +2342,8 @@ components:
           $ref: '#/components/schemas/AccountingQueryOutput'
         blockchain:
           $ref: '#/components/schemas/BlockchainQueryOutput'
+        data:
+          $ref: '#/components/schemas/DataQueryOutput'
         lifecycle:
           $ref: '#/components/schemas/LifecycleQueryOutput'
         registry:
@@ -2354,6 +2357,8 @@ components:
           $ref: '#/components/schemas/AccountingUpsertInput'
         blockchain:
           $ref: '#/components/schemas/BlockchainUpsertInput'
+        data:
+          $ref: '#/components/schemas/DataUpsertInput'
         lifecycle:
           $ref: '#/components/schemas/LifecycleUpsertInput'
         registry:
@@ -2367,6 +2372,8 @@ components:
           $ref: '#/components/schemas/AccountingUpsertOutput'
         blockchain:
           $ref: '#/components/schemas/BlockchainUpsertOutput'
+        data:
+          $ref: '#/components/schemas/DataUpsertOutput'
         lifecycle:
           $ref: '#/components/schemas/LifecycleUpsertOutput'
         registry:
@@ -2433,7 +2440,7 @@ components:
       description: Items returned by the query
       properties:
         chainUrn:
-          description: URN-scoping parent chain — accepts full URN or name (required,
+          description: URN-scoping parent chain. Accepts full URN or name (required,
             immutable)
           type: string
         created:
@@ -2481,7 +2488,7 @@ components:
       description: The items of this entity type to upsert
       properties:
         chainUrn:
-          description: URN-scoping parent chain — accepts full URN or name (required,
+          description: URN-scoping parent chain. Accepts full URN or name (required,
             immutable)
           type: string
         info:
@@ -2512,9 +2519,8 @@ components:
       description: Items returned by the query
       properties:
         chainUrn:
-          description: URN of the chain the event was reported on, read-only and denormalised
-            from the parent transaction. The shard key, so it is filterable and a
-            change stream scopes by it
+          description: The chain the event is in, read-only and denormalized from
+            its transaction
           type: string
         created:
           $ref: '#/components/schemas/FFTime'
@@ -2547,7 +2553,7 @@ components:
           description: The event's index within its transaction (URN segment)
           type: string
         transactionUrn:
-          description: URN-scoping parent transaction — accepts full URN or name path
+          description: URN-scoping parent transaction. Accepts full URN or name path
             (required, immutable). An event-shaped indexer create_or_ignores a skeleton
             transaction in the same bulk body
           type: string
@@ -2592,7 +2598,7 @@ components:
           description: The event's index within its transaction (URN segment)
           type: string
         transactionUrn:
-          description: URN-scoping parent transaction — accepts full URN or name path
+          description: URN-scoping parent transaction. Accepts full URN or name path
             (required, immutable). An event-shaped indexer create_or_ignores a skeleton
             transaction in the same bulk body
           type: string
@@ -2794,7 +2800,7 @@ components:
           nullable: true
           type: string
         chainUrn:
-          description: URN-scoping parent chain — accepts full URN or name (required,
+          description: URN-scoping parent chain. Accepts full URN or name (required,
             immutable)
           type: string
         created:
@@ -2855,7 +2861,7 @@ components:
           nullable: true
           type: string
         chainUrn:
-          description: URN-scoping parent chain — accepts full URN or name (required,
+          description: URN-scoping parent chain. Accepts full URN or name (required,
             immutable)
           type: string
         info:
@@ -2941,7 +2947,7 @@ components:
           - spent
           type: string
         tokenUrn:
-          description: URN-scoping parent token — accepts full URN or name (required,
+          description: URN-scoping parent token. Accepts full URN or name (required,
             immutable)
           type: string
         updated:
@@ -3000,7 +3006,7 @@ components:
           nullable: true
           type: string
         tokenUrn:
-          description: URN-scoping parent token — accepts full URN or name (required,
+          description: URN-scoping parent token. Accepts full URN or name (required,
             immutable)
           type: string
       required:
@@ -3011,7 +3017,7 @@ components:
       description: Items returned by the query
       properties:
         coinUrn:
-          description: The coin this spends — accepts full URN or name path (required,
+          description: The coin this spends. Accepts full URN or name path (required,
             immutable). A coin has at most one spend
           type: string
         created:
@@ -3038,6 +3044,10 @@ components:
             from (immutable). Recorded, never resolved
           nullable: true
           type: string
+        tokenUrn:
+          description: The token the spend is in, read-only and denormalized from
+            its coin
+          type: string
         updated:
           $ref: '#/components/schemas/FFTime'
         urn:
@@ -3048,13 +3058,14 @@ components:
       - urn
       - created
       - updated
+      - tokenUrn
       - coinUrn
       type: object
     CoinSpendInput:
       description: The items of this entity type to upsert
       properties:
         coinUrn:
-          description: The coin this spends — accepts full URN or name path (required,
+          description: The coin this spends. Accepts full URN or name path (required,
             immutable). A coin has at most one spend
           type: string
         info:
@@ -3175,6 +3186,10 @@ components:
         name:
           description: Unique name of the condition within its transaction (URN segment)
           type: string
+        transactionTypeUrn:
+          description: The transaction type the condition is in, read-only and denormalized
+            from its transaction
+          type: string
         transactionUrn:
           description: The transaction the condition belongs to - a reference or full
             URN (immutable)
@@ -3185,14 +3200,16 @@ components:
           description: Canonical URN of the resource
           type: string
         waitKey:
-          description: The key the transaction waits on (required, immutable). A condition-signaled
-            event is written for every signal reporting it
+          description: The key the transaction waits on (required, immutable), unique
+            to one awaited occurrence. A condition-signaled event is written for every
+            signal reporting it
           type: string
       required:
       - id
       - urn
       - created
       - updated
+      - transactionTypeUrn
       - transactionUrn
       - name
       - waitKey
@@ -3220,8 +3237,9 @@ components:
             URN (immutable)
           type: string
         waitKey:
-          description: The key the transaction waits on (required, immutable). A condition-signaled
-            event is written for every signal reporting it
+          description: The key the transaction waits on (required, immutable), unique
+            to one awaited occurrence. A condition-signaled event is written for every
+            signal reporting it
           type: string
       required:
       - name
@@ -3366,6 +3384,445 @@ components:
       required:
       - name
       type: object
+    DataItem:
+      description: Items returned by the query
+      properties:
+        contentType:
+          description: Media type of content. Adjusts the Content-Type header served
+            when downloading the payload directly
+          nullable: true
+          type: string
+        created:
+          $ref: '#/components/schemas/FFTime'
+        encoding:
+          description: Encoding and storage form for the data in the JSON payload
+            field (immutable)
+          enum:
+          - utf8
+          - json
+          - base64
+          nullable: true
+          type: string
+        folderUrn:
+          description: The folder holding the item, a name path or full URN under
+            the store; omitted for an item stored at the root of the store (immutable)
+          type: string
+        hash:
+          description: Hash of the payload bytes. Either computed or supplied according
+            to the store's hashScheme configuration (immutable)
+          nullable: true
+          type: string
+        id:
+          description: Immutable integer primary key assigned by the database, providing
+            stable ordering and paging cursors
+          format: int64
+          type: integer
+        info:
+          additionalProperties: true
+          description: Additional descriptive information, stored verbatim and never
+            interpreted by the service
+          nullable: true
+          type: object
+        labels:
+          additionalProperties:
+            description: Key-value labels attached to the resource. Indexed and filterable
+            type: string
+          description: Key-value labels attached to the resource. Indexed and filterable
+          type: object
+        name:
+          description: Name of the item within its folder or store (URN segment)
+          type: string
+        payload:
+          anyOf:
+          - type: string
+          - type: number
+          - type: integer
+          - type: boolean
+          - type: object
+          - items: {}
+            type: array
+          description: 'The data, inline, according to the encoding: JSON value for
+            json, a string for utf8 and base64. Limited by maxPayloadBytes on the
+            store. Exactly one of payload and uri is set (immutable)'
+          nullable: true
+        salt:
+          description: Unique salt for this item. Either unset, generated or supplied
+            according to the store's hashScheme configuration (immutable)
+          nullable: true
+          type: string
+        storeUrn:
+          description: Owning store reference. Accepts full URN or name (required,
+            immutable)
+          type: string
+        updated:
+          $ref: '#/components/schemas/FFTime'
+        uri:
+          description: A remote URI where the payload is stored. Exactly one of payload
+            and uri is set (immutable)
+          nullable: true
+          type: string
+        urn:
+          description: Canonical URN of the resource
+          type: string
+      required:
+      - id
+      - urn
+      - created
+      - updated
+      - storeUrn
+      - name
+      type: object
+    DataItemInput:
+      description: The items of this entity type to upsert
+      properties:
+        contentType:
+          description: Media type of content. Adjusts the Content-Type header served
+            when downloading the payload directly
+          nullable: true
+          type: string
+        encoding:
+          description: Encoding and storage form for the data in the JSON payload
+            field (immutable)
+          enum:
+          - utf8
+          - json
+          - base64
+          nullable: true
+          type: string
+        folderUrn:
+          description: The folder holding the item, a name path or full URN under
+            the store; omitted for an item stored at the root of the store (immutable)
+          type: string
+        hash:
+          description: Hash of the payload bytes. Either computed or supplied according
+            to the store's hashScheme configuration (immutable)
+          nullable: true
+          type: string
+        info:
+          additionalProperties: true
+          description: Additional descriptive information, stored verbatim and never
+            interpreted by the service
+          nullable: true
+          type: object
+        labels:
+          additionalProperties:
+            description: Key-value labels attached to the resource. Indexed and filterable
+            type: string
+          description: Key-value labels attached to the resource. Indexed and filterable
+          type: object
+        name:
+          description: Name of the item within its folder or store (URN segment)
+          type: string
+        payload:
+          anyOf:
+          - type: string
+          - type: number
+          - type: integer
+          - type: boolean
+          - type: object
+          - items: {}
+            type: array
+          description: 'The data, inline, according to the encoding: JSON value for
+            json, a string for utf8 and base64. Limited by maxPayloadBytes on the
+            store. Exactly one of payload and uri is set (immutable)'
+          nullable: true
+        salt:
+          description: Unique salt for this item. Either unset, generated or supplied
+            according to the store's hashScheme configuration (immutable)
+          nullable: true
+          type: string
+        storeUrn:
+          description: Owning store reference. Accepts full URN or name (required,
+            immutable)
+          type: string
+        uri:
+          description: A remote URI where the payload is stored. Exactly one of payload
+            and uri is set (immutable)
+          nullable: true
+          type: string
+      required:
+      - name
+      type: object
+    DataQueryInput:
+      description: Queries for data entities
+      properties:
+        folders:
+          description: Query for folders
+          items:
+            $ref: '#/components/schemas/StoreQuery'
+          type: array
+        items:
+          description: Query for items
+          items:
+            $ref: '#/components/schemas/StoreQuery'
+          type: array
+        stores:
+          $ref: '#/components/schemas/QueryJSON'
+      type: object
+    DataQueryOutput:
+      description: Results of the data queries
+      properties:
+        folders:
+          description: Results of folder query
+          items:
+            description: Results of folder query
+            properties:
+              allItems:
+                description: True if all matching items are included in the results
+                type: boolean
+              count:
+                description: Number of results returned
+                type: integer
+              items:
+                description: Items returned by the query
+                items:
+                  $ref: '#/components/schemas/Folder'
+                type: array
+              storeUrn:
+                description: The full URN of the store the query read
+                type: string
+            type: object
+          type: array
+        items:
+          description: Results of item query
+          items:
+            description: Results of item query
+            properties:
+              allItems:
+                description: True if all matching items are included in the results
+                type: boolean
+              count:
+                description: Number of results returned
+                type: integer
+              items:
+                description: Items returned by the query
+                items:
+                  $ref: '#/components/schemas/DataItem'
+                type: array
+              storeUrn:
+                description: The full URN of the store the query read
+                type: string
+            type: object
+          type: array
+        stores:
+          description: Results of store query
+          nullable: true
+          properties:
+            allItems:
+              description: True if all matching items are included in the results
+              type: boolean
+            count:
+              description: Number of results returned
+              type: integer
+            items:
+              description: Items returned by the query
+              items:
+                $ref: '#/components/schemas/Store'
+              type: array
+          type: object
+      type: object
+    DataUpsertInput:
+      description: Data entities to upsert
+      properties:
+        folders:
+          description: Folders to upsert, per store
+          items:
+            description: Folders to upsert, per store
+            properties:
+              items:
+                description: The items of this entity type to upsert
+                items:
+                  $ref: '#/components/schemas/FolderInput'
+                type: array
+              labelStrategy:
+                description: 'Label write strategy for this entity type: create_or_update
+                  or create_or_ignore. Required when any item in the section carries
+                  labels'
+                enum:
+                - create_or_update
+                - create_or_ignore
+                type: string
+              options:
+                $ref: '#/components/schemas/BulkEntityOptions'
+              storeUrn:
+                description: The store every item of this section is written under
+                  - a ref or full URN. Refs inside the items are read relative to
+                  it
+                type: string
+              updateStrategy:
+                description: 'Row write strategy for this entity type: create_only,
+                  create_or_ignore, or create_or_replace (required)'
+                enum:
+                - create_only
+                - create_or_ignore
+                - create_or_replace
+                type: string
+            required:
+            - storeUrn
+            - updateStrategy
+            - items
+            type: object
+          type: array
+        items:
+          description: Items to create, per store
+          items:
+            description: Items to create, per store
+            properties:
+              items:
+                description: The items of this entity type to upsert
+                items:
+                  $ref: '#/components/schemas/DataItemInput'
+                type: array
+              labelStrategy:
+                description: 'Label write strategy for this entity type: create_or_update
+                  or create_or_ignore. Required when any item in the section carries
+                  labels'
+                enum:
+                - create_or_update
+                - create_or_ignore
+                type: string
+              options:
+                $ref: '#/components/schemas/BulkEntityOptions'
+              storeUrn:
+                description: The store every item of this section is written under
+                  - a ref or full URN. Refs inside the items are read relative to
+                  it
+                type: string
+              updateStrategy:
+                description: 'Row write strategy for this entity type: create_only,
+                  create_or_ignore, or create_or_replace (required)'
+                enum:
+                - create_only
+                - create_or_ignore
+                - create_or_replace
+                type: string
+            required:
+            - storeUrn
+            - updateStrategy
+            - items
+            type: object
+          type: array
+        stores:
+          description: Stores to upsert
+          nullable: true
+          properties:
+            items:
+              description: The items of this entity type to upsert
+              items:
+                $ref: '#/components/schemas/StoreInput'
+              type: array
+            labelStrategy:
+              description: 'Label write strategy for this entity type: create_or_update
+                or create_or_ignore. Required when any item in the section carries
+                labels'
+              enum:
+              - create_or_update
+              - create_or_ignore
+              type: string
+            options:
+              $ref: '#/components/schemas/BulkEntityOptions'
+            updateStrategy:
+              description: 'Row write strategy for this entity type: create_only,
+                create_or_ignore, or create_or_replace (required)'
+              enum:
+              - create_only
+              - create_or_ignore
+              - create_or_replace
+              type: string
+          required:
+          - updateStrategy
+          - items
+          type: object
+      type: object
+    DataUpsertOutput:
+      description: Results of the data sections
+      properties:
+        folders:
+          description: Results of folder upserts
+          items:
+            description: Results of folder upserts
+            properties:
+              created:
+                description: URNs of rows that were created
+                items:
+                  $ref: '#/components/schemas/URN'
+                type: array
+              ignored:
+                description: URNs of rows that were ignored due to conflict
+                items:
+                  $ref: '#/components/schemas/URN'
+                type: array
+              rows:
+                description: Rows written to the database
+                items:
+                  $ref: '#/components/schemas/Folder'
+                type: array
+              storeUrn:
+                description: The full URN of the store the section was written under
+                type: string
+              updated:
+                description: URNs of rows that were updated
+                items:
+                  $ref: '#/components/schemas/URN'
+                type: array
+            type: object
+          type: array
+        items:
+          description: Results of item writes
+          items:
+            description: Results of item writes
+            properties:
+              created:
+                description: URNs of rows that were created
+                items:
+                  $ref: '#/components/schemas/URN'
+                type: array
+              ignored:
+                description: URNs of rows that were ignored due to conflict
+                items:
+                  $ref: '#/components/schemas/URN'
+                type: array
+              rows:
+                description: Rows written to the database
+                items:
+                  $ref: '#/components/schemas/DataItem'
+                type: array
+              storeUrn:
+                description: The full URN of the store the section was written under
+                type: string
+              updated:
+                description: URNs of rows that were updated
+                items:
+                  $ref: '#/components/schemas/URN'
+                type: array
+            type: object
+          type: array
+        stores:
+          description: Results of store upserts
+          nullable: true
+          properties:
+            created:
+              description: URNs of rows that were created
+              items:
+                $ref: '#/components/schemas/URN'
+              type: array
+            ignored:
+              description: URNs of rows that were ignored due to conflict
+              items:
+                $ref: '#/components/schemas/URN'
+              type: array
+            rows:
+              description: Rows written to the database
+              items:
+                $ref: '#/components/schemas/Store'
+              type: array
+            updated:
+              description: URNs of rows that were updated
+              items:
+                $ref: '#/components/schemas/URN'
+              type: array
+          type: object
+      type: object
     Decimal:
       description: The aggregated value as a decimal string. A JSON number would lose
         integer precision above 2^53
@@ -3375,12 +3832,12 @@ components:
       description: Items returned by the query
       properties:
         chainUrn:
-          description: URN-scoping parent chain — accepts full URN or name (required,
+          description: URN-scoping parent chain. Accepts full URN or name (required,
             immutable)
           type: string
         contractUrn:
-          description: 'The contract this is an instance of — accepts full URN or
-            name (required). Mutable: a PATCH re-points a proxy'
+          description: 'The contract this is an instance of. Accepts full URN or name
+            (required). Mutable: a PATCH re-points a proxy'
           type: string
         created:
           $ref: '#/components/schemas/FFTime'
@@ -3428,12 +3885,12 @@ components:
       description: The items of this entity type to upsert
       properties:
         chainUrn:
-          description: URN-scoping parent chain — accepts full URN or name (required,
+          description: URN-scoping parent chain. Accepts full URN or name (required,
             immutable)
           type: string
         contractUrn:
-          description: 'The contract this is an instance of — accepts full URN or
-            name (required). Mutable: a PATCH re-points a proxy'
+          description: 'The contract this is an instance of. Accepts full URN or name
+            (required). Mutable: a PATCH re-points a proxy'
           type: string
         info:
           additionalProperties: true
@@ -3517,6 +3974,10 @@ components:
           description: 'The subject the event is about: the transaction for a transaction
             event, or the step, leg or condition it names'
           type: string
+        transactionTypeUrn:
+          description: The transaction type the event is in, read-only and denormalized
+            from its transaction
+          type: string
         transactionUrn:
           description: The transaction the event belongs to
           type: string
@@ -3530,6 +3991,7 @@ components:
       - urn
       - created
       - updated
+      - transactionTypeUrn
       - name
       - transactionUrn
       - subjectUrn
@@ -3608,12 +4070,12 @@ components:
           description: Canonical URN of the resource
           type: string
         viewGroupUrn:
-          description: The ViewGroup this export belongs to — accepts full URN or
-            name (required, immutable)
+          description: The ViewGroup this export belongs to. Accepts full URN or name
+            (required, immutable)
           type: string
         viewUrn:
-          description: The View this export runs, which must be in the same view group
-            — accepts full URN or viewGroup:view name path (required, immutable)
+          description: The View this export runs, which must be in the same view group.
+            Accepts full URN or viewGroup:view name path (required, immutable)
           type: string
       required:
       - id
@@ -3664,12 +4126,12 @@ components:
           nullable: true
           type: integer
         viewGroupUrn:
-          description: The ViewGroup this export belongs to — accepts full URN or
-            name (required, immutable)
+          description: The ViewGroup this export belongs to. Accepts full URN or name
+            (required, immutable)
           type: string
         viewUrn:
-          description: The View this export runs, which must be in the same view group
-            — accepts full URN or viewGroup:view name path (required, immutable)
+          description: The View this export runs, which must be in the same view group.
+            Accepts full URN or viewGroup:view name path (required, immutable)
           type: string
       required:
       - name
@@ -4009,6 +4471,81 @@ components:
             type: string
           type: array
       type: object
+    Folder:
+      description: Items returned by the query
+      properties:
+        created:
+          $ref: '#/components/schemas/FFTime'
+        id:
+          description: Immutable integer primary key assigned by the database, providing
+            stable ordering and paging cursors
+          format: int64
+          type: integer
+        info:
+          additionalProperties: true
+          description: Additional descriptive information, stored verbatim and never
+            interpreted by the service
+          nullable: true
+          type: object
+        labels:
+          additionalProperties:
+            description: Key-value labels attached to the resource. Indexed and filterable
+            type: string
+          description: Key-value labels attached to the resource. Indexed and filterable
+          type: object
+        name:
+          description: Name of the folder within its parent (URN segment)
+          type: string
+        parentFolderUrn:
+          description: URN of the parent folder, for nested folders; omitted for a
+            folder directly under its store
+          type: string
+        storeUrn:
+          description: Owning store reference. Accepts full URN or name (required,
+            immutable)
+          type: string
+        updated:
+          $ref: '#/components/schemas/FFTime'
+        urn:
+          description: Canonical URN of the resource
+          type: string
+      required:
+      - id
+      - urn
+      - created
+      - updated
+      - storeUrn
+      - name
+      type: object
+    FolderInput:
+      description: The items of this entity type to upsert
+      properties:
+        info:
+          additionalProperties: true
+          description: Additional descriptive information, stored verbatim and never
+            interpreted by the service
+          nullable: true
+          type: object
+        labels:
+          additionalProperties:
+            description: Key-value labels attached to the resource. Indexed and filterable
+            type: string
+          description: Key-value labels attached to the resource. Indexed and filterable
+          type: object
+        name:
+          description: Name of the folder within its parent (URN segment)
+          type: string
+        parentFolderUrn:
+          description: URN of the parent folder, for nested folders; omitted for a
+            folder directly under its store
+          type: string
+        storeUrn:
+          description: Owning store reference. Accepts full URN or name (required,
+            immutable)
+          type: string
+      required:
+      - name
+      type: object
     Hold:
       description: Items returned by the query
       properties:
@@ -4025,8 +4562,8 @@ components:
           description: Book the hold is in - a reference or full URN
           type: string
         causationUrn:
-          description: URN of the reason the hold exists — a settlement leg, or an
-            operator's reference (immutable). Recorded, never resolved
+          description: URN of the reason the hold exists, such as a settlement leg
+            or an operator's reference (immutable). Recorded, never resolved
           nullable: true
           type: string
         correlationId:
@@ -4096,8 +4633,8 @@ components:
           description: Book the hold is in - a reference or full URN
           type: string
         causationUrn:
-          description: URN of the reason the hold exists — a settlement leg, or an
-            operator's reference (immutable). Recorded, never resolved
+          description: URN of the reason the hold exists, such as a settlement leg
+            or an operator's reference (immutable). Recorded, never resolved
           nullable: true
           type: string
         correlationId:
@@ -4129,6 +4666,10 @@ components:
     HoldRelease:
       description: Items returned by the query
       properties:
+        bookUrn:
+          description: The book the release is in, read-only and denormalized from
+            its hold
+          type: string
         causationUrn:
           description: URN of the reason for the release, such as the settling journal
             entry (immutable). Recorded, never resolved
@@ -4137,7 +4678,7 @@ components:
         created:
           $ref: '#/components/schemas/FFTime'
         holdUrn:
-          description: The hold this releases — accepts full URN or name path (required,
+          description: The hold this releases. Accepts full URN or name path (required,
             immutable). A hold has at most one release
           type: string
         id:
@@ -4167,6 +4708,7 @@ components:
       - urn
       - created
       - updated
+      - bookUrn
       - holdUrn
       type: object
     HoldReleaseInput:
@@ -4178,7 +4720,7 @@ components:
           nullable: true
           type: string
         holdUrn:
-          description: The hold this releases — accepts full URN or name path (required,
+          description: The hold this releases. Accepts full URN or name path (required,
             immutable). A hold has at most one release
           type: string
         info:
@@ -4227,7 +4769,7 @@ components:
           nullable: true
           type: string
         type:
-          description: The collection to query, as "<module>.<collection>" (e.g. accounting.holds)
+          description: The collection to query, as `<module>.<collection>` (e.g. `accounting.holds`)
           nullable: true
           type: string
       type: object
@@ -4250,18 +4792,18 @@ components:
           type: string
       type: object
     JSONataExpression:
-      description: JSONata expression computing this column from {item, page, <bound
-        aliases>}; wins over entityKey when set
+      description: JSONata expression computing this column from `{item, page, <bound
+        aliases>}`; wins over entityKey when set
       type: string
     JournalEntry:
       description: Items returned by the query
       properties:
         bookUrn:
-          description: URN-scoping parent book — accepts full URN or name path
+          description: URN-scoping parent book. Accepts full URN or name path
           type: string
         causationUrn:
-          description: URN of the occurrence that directly caused this entry — the
-            entry it reverses or corrects, say (immutable). Recorded, never resolved,
+          description: URN of the occurrence that directly caused this entry, such
+            as the entry it reverses or corrects (immutable). Recorded, never resolved,
             so it may name an occurrence in another instance
           nullable: true
           type: string
@@ -4321,11 +4863,11 @@ components:
       description: The items of this entity type to upsert
       properties:
         bookUrn:
-          description: URN-scoping parent book — accepts full URN or name path
+          description: URN-scoping parent book. Accepts full URN or name path
           type: string
         causationUrn:
-          description: URN of the occurrence that directly caused this entry — the
-            entry it reverses or corrects, say (immutable). Recorded, never resolved,
+          description: URN of the occurrence that directly caused this entry, such
+            as the entry it reverses or corrects (immutable). Recorded, never resolved,
             so it may name an occurrence in another instance
           nullable: true
           type: string
@@ -4404,6 +4946,10 @@ components:
           description: Canonical URN of where the amount moves to (required, immutable).
             Recorded, never resolved
           type: string
+        transactionTypeUrn:
+          description: The transaction type the leg is in, read-only and denormalized
+            from its transaction
+          type: string
         transactionUrn:
           description: The transaction the leg belongs to - a reference or full URN
             (immutable)
@@ -4418,6 +4964,7 @@ components:
       - urn
       - created
       - updated
+      - transactionTypeUrn
       - transactionUrn
       - name
       - fromUrn
@@ -5357,7 +5904,7 @@ components:
           - released
           type: string
         tokenUrn:
-          description: URN-scoping parent token — accepts full URN or name (required,
+          description: URN-scoping parent token. Accepts full URN or name (required,
             immutable)
           type: string
         updated:
@@ -5415,7 +5962,7 @@ components:
           nullable: true
           type: string
         tokenUrn:
-          description: URN-scoping parent token — accepts full URN or name (required,
+          description: URN-scoping parent token. Accepts full URN or name (required,
             immutable)
           type: string
       required:
@@ -5446,13 +5993,17 @@ components:
           description: Key-value labels attached to the resource. Indexed and filterable
           type: object
         lockUrn:
-          description: The lock this ends — accepts full URN or name path (required,
+          description: The lock this ends. Accepts full URN or name path (required,
             immutable). A lock has at most one release
           type: string
         originUrn:
           description: URN of the chain transaction or event this lock release was
             written from (immutable). Recorded, never resolved
           nullable: true
+          type: string
+        tokenUrn:
+          description: The token the release is in, read-only and denormalized from
+            its lock
           type: string
         updated:
           $ref: '#/components/schemas/FFTime'
@@ -5464,6 +6015,7 @@ components:
       - urn
       - created
       - updated
+      - tokenUrn
       - lockUrn
       type: object
     LockReleaseInput:
@@ -5482,7 +6034,7 @@ components:
           description: Key-value labels attached to the resource. Indexed and filterable
           type: object
         lockUrn:
-          description: The lock this ends — accepts full URN or name path (required,
+          description: The lock this ends. Accepts full URN or name path (required,
             immutable). A lock has at most one release
           type: string
         originUrn:
@@ -6041,7 +6593,7 @@ components:
         balance:
           $ref: '#/components/schemas/Integer'
         bookUrn:
-          description: URN of the book the account belongs to (read-only)
+          description: The book the position is in, read-only
           type: string
         class:
           description: Accounting classification of the account, copied when the position
@@ -6098,7 +6650,7 @@ components:
             path on write; the resolved asset URN on read
           type: string
         bookUrn:
-          description: The book the posting is in, read-only and denormalised from
+          description: The book the posting is in, read-only and denormalized from
             its entry
           type: string
         created:
@@ -6175,7 +6727,7 @@ components:
             path on write; the resolved asset URN on read
           type: string
         bookUrn:
-          description: The book the posting is in, read-only and denormalised from
+          description: The book the posting is in, read-only and denormalized from
             its entry
           type: string
         created:
@@ -7070,7 +7622,7 @@ components:
             carried it'
           type: string
         waitKey:
-          description: The key the signal reports (required)
+          description: The key the signal reports (required), unique to one occurrence
           type: string
       required:
       - id
@@ -7093,7 +7645,7 @@ components:
           nullable: true
           type: object
         waitKey:
-          description: The key the signal reports (required)
+          description: The key the signal reports (required), unique to one occurrence
           type: string
       required:
       - waitKey
@@ -7127,7 +7679,7 @@ components:
       description: Items returned by the query
       properties:
         chainUrn:
-          description: URN-scoping parent chain — accepts full URN or name (required,
+          description: URN-scoping parent chain. Accepts full URN or name (required,
             immutable)
           type: string
         created:
@@ -7186,6 +7738,10 @@ components:
     StateArchival:
       description: Items returned by the query
       properties:
+        chainUrn:
+          description: The chain the archival is in, read-only and denormalized from
+            its state
+          type: string
         created:
           $ref: '#/components/schemas/FFTime'
         id:
@@ -7211,7 +7767,7 @@ components:
           nullable: true
           type: string
         stateUrn:
-          description: The state this archives — accepts full URN or name path (required,
+          description: The state this archives. Accepts full URN or name path (required,
             immutable). A state has at most one archival
           type: string
         updated:
@@ -7224,6 +7780,7 @@ components:
       - urn
       - created
       - updated
+      - chainUrn
       - stateUrn
       type: object
     StateArchivalInput:
@@ -7247,7 +7804,7 @@ components:
           nullable: true
           type: string
         stateUrn:
-          description: The state this archives — accepts full URN or name path (required,
+          description: The state this archives. Accepts full URN or name path (required,
             immutable). A state has at most one archival
           type: string
       required:
@@ -7257,7 +7814,7 @@ components:
       description: The items of this entity type to upsert
       properties:
         chainUrn:
-          description: URN-scoping parent chain — accepts full URN or name (required,
+          description: URN-scoping parent chain. Accepts full URN or name (required,
             immutable)
           type: string
         info:
@@ -7326,6 +7883,10 @@ components:
           - completed
           - failed
           type: string
+        transactionTypeUrn:
+          description: The transaction type the step is in, read-only and denormalized
+            from its transaction
+          type: string
         transactionUrn:
           description: The transaction the step belongs to - a reference or full URN
             (immutable)
@@ -7340,6 +7901,7 @@ components:
       - urn
       - created
       - updated
+      - transactionTypeUrn
       - transactionUrn
       - name
       - status
@@ -7410,6 +7972,10 @@ components:
           description: The step this concludes - a reference or full URN (required,
             immutable). A step has at most one outcome
           type: string
+        transactionTypeUrn:
+          description: The transaction type the outcome is in, read-only and denormalized
+            from its step
+          type: string
         updated:
           $ref: '#/components/schemas/FFTime'
         urn:
@@ -7420,6 +7986,7 @@ components:
       - urn
       - created
       - updated
+      - transactionTypeUrn
       - stepUrn
       - status
       type: object
@@ -7492,6 +8059,10 @@ components:
           description: The step that began - a reference or full URN (required, immutable).
             A step has at most one start
           type: string
+        transactionTypeUrn:
+          description: The transaction type the start is in, read-only and denormalized
+            from its step
+          type: string
         updated:
           $ref: '#/components/schemas/FFTime'
         urn:
@@ -7502,6 +8073,7 @@ components:
       - urn
       - created
       - updated
+      - transactionTypeUrn
       - stepUrn
       type: object
     StepStartInput:
@@ -7531,6 +8103,260 @@ components:
       required:
       - stepUrn
       type: object
+    Store:
+      description: Items returned by the query
+      properties:
+        created:
+          $ref: '#/components/schemas/FFTime'
+        hashScheme:
+          description: Hashing rules for every item. 'unchecked' to allow external
+            control and URI references, or service generated via the 'sha256' hash
+            algorithm, or `hmac-sha256` salted hash algorithm (required, immutable)
+          enum:
+          - sha256
+          - hmac-sha256
+          - unchecked
+          type: string
+        id:
+          description: Immutable integer primary key assigned by the database, providing
+            stable ordering and paging cursors
+          format: int64
+          type: integer
+        info:
+          additionalProperties: true
+          description: Additional descriptive information, stored verbatim and never
+            interpreted by the service
+          nullable: true
+          type: object
+        jsonScheme:
+          description: How a JSON encoded data should be interpreted before hashing
+            and storage. 'unmodified', or 'rfc8785' canonicalized for deterministic
+            hashing (required, immutable)
+          enum:
+          - unmodified
+          - rfc8785
+          type: string
+        labels:
+          additionalProperties:
+            description: Key-value labels attached to the resource. Indexed and filterable
+            type: string
+          description: Key-value labels attached to the resource. Indexed and filterable
+          type: object
+        maxPayloadBytes:
+          description: Largest size payload for any item in the store. Cannot be limited
+            beyond the maximum for the service
+          format: int64
+          nullable: true
+          type: integer
+        name:
+          description: Unique name of the store (URN segment)
+          type: string
+        updated:
+          $ref: '#/components/schemas/FFTime'
+        urn:
+          description: Canonical URN of the resource
+          type: string
+      required:
+      - id
+      - urn
+      - created
+      - updated
+      - name
+      - jsonScheme
+      - hashScheme
+      type: object
+    StoreInput:
+      description: The items of this entity type to upsert
+      properties:
+        hashScheme:
+          description: Hashing rules for every item. 'unchecked' to allow external
+            control and URI references, or service generated via the 'sha256' hash
+            algorithm, or `hmac-sha256` salted hash algorithm (required, immutable)
+          enum:
+          - sha256
+          - hmac-sha256
+          - unchecked
+          type: string
+        info:
+          additionalProperties: true
+          description: Additional descriptive information, stored verbatim and never
+            interpreted by the service
+          nullable: true
+          type: object
+        jsonScheme:
+          description: How a JSON encoded data should be interpreted before hashing
+            and storage. 'unmodified', or 'rfc8785' canonicalized for deterministic
+            hashing (required, immutable)
+          enum:
+          - unmodified
+          - rfc8785
+          type: string
+        labels:
+          additionalProperties:
+            description: Key-value labels attached to the resource. Indexed and filterable
+            type: string
+          description: Key-value labels attached to the resource. Indexed and filterable
+          type: object
+        maxPayloadBytes:
+          description: Largest size payload for any item in the store. Cannot be limited
+            beyond the maximum for the service
+          format: int64
+          nullable: true
+          type: integer
+        name:
+          description: Unique name of the store (URN segment)
+          type: string
+      required:
+      - name
+      - jsonScheme
+      - hashScheme
+      type: object
+    StoreQuery:
+      description: Query for folders
+      properties:
+        and:
+          description: Array of sub-queries
+          items:
+            $ref: '#/components/schemas/FilterJSON'
+          type: array
+        contains:
+          description: Array of field + value combinations to apply as string-contains
+            filters - all filters must match
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        count:
+          description: If true, the total number of entries that could be returned
+            from the database will be calculated and returned as a 'total' (has a
+            performance cost)
+          nullable: true
+          type: boolean
+        endsWith:
+          description: Array of field + value combinations to apply as ends-with filters
+            - all filters must match
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        eq:
+          description: Shortname for equal
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        equal:
+          description: Array of field + value combinations to apply as equal filters
+            - all must match
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        fields:
+          description: Fields to return in the response
+          items:
+            description: Fields to return in the response
+            type: string
+          type: array
+        greaterThan:
+          description: Array of field + value combinations to apply as greater-than
+            filters - all filters must match
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        greaterThanOrEqual:
+          description: Array of field + value combinations to apply as greater-than
+            filters - all filters must match
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        gt:
+          description: Short name for greaterThan
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        gte:
+          description: Short name for greaterThanOrEqual
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        in:
+          description: Array of field + values-array combinations to apply as 'in'
+            filters (matching one of a set of values) - all filters must match
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValues'
+          type: array
+        lessThan:
+          description: Array of field + value combinations to apply as less-than-or-equal
+            filters - all filters must match
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        lessThanOrEqual:
+          description: Array of field + value combinations to apply as less-than-or-equal
+            filters - all filters must match
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        limit:
+          description: Limit on the results to return
+          maximum: 1.8446744073709552e+19
+          minimum: 0
+          nullable: true
+          type: integer
+        lt:
+          description: Short name for lessThan
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        lte:
+          description: Short name for lessThanOrEqual
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        neq:
+          description: Shortcut for equal with all conditions negated (the not property
+            of all children is overridden)
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        nin:
+          description: Shortcut for in with all conditions negated (the not property
+            of all children is overridden)
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValues'
+          type: array
+        "null":
+          description: Tests if the specified field is null (unset)
+          items:
+            $ref: '#/components/schemas/FilterJSONBase'
+          type: array
+        or:
+          description: Array of sub-queries
+          items:
+            $ref: '#/components/schemas/FilterJSON'
+          type: array
+        skip:
+          description: Number of results to skip before returning entries, for skip+limit
+            based pagination
+          maximum: 1.8446744073709552e+19
+          minimum: 0
+          nullable: true
+          type: integer
+        sort:
+          description: Array of fields to sort by. A '-' prefix on a field requests
+            that field is sorted in descending order
+          items:
+            description: Array of fields to sort by. A '-' prefix on a field requests
+              that field is sorted in descending order
+            type: string
+          type: array
+        startsWith:
+          description: Array of field + value combinations to apply as starts-with
+            filters - all filters must match
+          items:
+            $ref: '#/components/schemas/FilterJSONKeyValue'
+          type: array
+        storeUrn:
+          description: The store this query reads - a ref or full URN
+          type: string
+      type: object
     SubledgerStatus:
       properties:
         ready:
@@ -7542,7 +8368,7 @@ components:
       properties:
         assetUrn:
           description: 'The unit of account this token''s quantities are denominated
-            in — accepts full URN or name. Optional and mutable: a PATCH sets or re-links,
+            in. Accepts full URN or name. Optional and mutable: a PATCH sets or re-links,
             and a PUT omitting it clears the link'
           type: string
         chainUrn:
@@ -7574,8 +8400,9 @@ components:
           description: Key-value labels attached to the resource. Indexed and filterable
           type: object
         locator:
-          description: The rail's own way of naming this token — a contract address,
-            a mint, a coin type, an instrument id (required, immutable). Natives included
+          description: 'The rail''s own way of naming this token: a contract address,
+            a mint, a coin type or an instrument id (required, immutable). Natives
+            included'
           type: string
         name:
           description: Unique name of the token (URN segment)
@@ -7609,7 +8436,7 @@ components:
       properties:
         assetUrn:
           description: 'The unit of account this token''s quantities are denominated
-            in — accepts full URN or name. Optional and mutable: a PATCH sets or re-links,
+            in. Accepts full URN or name. Optional and mutable: a PATCH sets or re-links,
             and a PUT omitting it clears the link'
           type: string
         chainUrn:
@@ -7634,8 +8461,9 @@ components:
           description: Key-value labels attached to the resource. Indexed and filterable
           type: object
         locator:
-          description: The rail's own way of naming this token — a contract address,
-            a mint, a coin type, an instrument id (required, immutable). Natives included
+          description: 'The rail''s own way of naming this token: a contract address,
+            a mint, a coin type or an instrument id (required, immutable). Natives
+            included'
           type: string
         name:
           description: Unique name of the token (URN segment)
@@ -8560,6 +9388,10 @@ components:
           - completed
           - failed
           type: string
+        transactionTypeUrn:
+          description: The transaction type the outcome is in, read-only and denormalized
+            from its transaction
+          type: string
         transactionUrn:
           description: The transaction this concludes - a reference or full URN (required,
             immutable). A transaction has at most one outcome
@@ -8574,6 +9406,7 @@ components:
       - urn
       - created
       - updated
+      - transactionTypeUrn
       - transactionUrn
       - status
       type: object
@@ -8859,7 +9692,7 @@ components:
         timestamp:
           $ref: '#/components/schemas/FFTime'
         tokenUrn:
-          description: URN-scoping parent token — accepts full URN or name (required,
+          description: URN-scoping parent token. Accepts full URN or name (required,
             immutable)
           type: string
         updated:
@@ -8909,7 +9742,7 @@ components:
         timestamp:
           $ref: '#/components/schemas/FFTime'
         tokenUrn:
-          description: URN-scoping parent token — accepts full URN or name (required,
+          description: URN-scoping parent token. Accepts full URN or name (required,
             immutable)
           type: string
       required:
@@ -9008,18 +9841,18 @@ components:
           $ref: '#/components/schemas/ParameterizedJSONQuery'
         scopeParameter:
           description: Name of a declared parameter whose supplied value is the scopeUrn.
-            Required for views on scooped collections when scopeUrn is unset
+            Required for views on scoped collections when scopeUrn is unset
           nullable: true
           type: string
         scopeUrn:
           description: The full URN of the root (book, chain or token) a scoped collection
-            is read under. Required for views on scooped collections when scopeParameter
+            is read under. Required for views on scoped collections when scopeParameter
             is unset
           nullable: true
           type: string
         type:
-          description: The collection this view queries, as "<module>.<collection>"
-            (e.g. accounting.holds). Required
+          description: The collection this view queries, as `<module>.<collection>`
+            (e.g. `accounting.holds`). Required
           type: string
         updated:
           $ref: '#/components/schemas/FFTime'
@@ -9027,7 +9860,7 @@ components:
           description: Canonical URN of the resource
           type: string
         viewGroupUrn:
-          description: The ViewGroup this view belongs to — accepts full URN or name
+          description: The ViewGroup this view belongs to. Accepts full URN or name
             (required, immutable)
           type: string
       required:
@@ -9215,21 +10048,21 @@ components:
           $ref: '#/components/schemas/ParameterizedJSONQuery'
         scopeParameter:
           description: Name of a declared parameter whose supplied value is the scopeUrn.
-            Required for views on scooped collections when scopeUrn is unset
+            Required for views on scoped collections when scopeUrn is unset
           nullable: true
           type: string
         scopeUrn:
           description: The full URN of the root (book, chain or token) a scoped collection
-            is read under. Required for views on scooped collections when scopeParameter
+            is read under. Required for views on scoped collections when scopeParameter
             is unset
           nullable: true
           type: string
         type:
-          description: The collection this view queries, as "<module>.<collection>"
-            (e.g. accounting.holds). Required
+          description: The collection this view queries, as `<module>.<collection>`
+            (e.g. `accounting.holds`). Required
           type: string
         viewGroupUrn:
-          description: The ViewGroup this view belongs to — accepts full URN or name
+          description: The ViewGroup this view belongs to. Accepts full URN or name
             (required, immutable)
           type: string
       required:
@@ -9333,10 +10166,10 @@ components:
       properties:
         accountUrn:
           description: Account the holdings belong to, in this wallet assignment's
-            own book — accepts full URN or name path (required, immutable)
+            own book. Accepts full URN or name path (required, immutable)
           type: string
         bookUrn:
-          description: URN-scoping parent book — accepts full URN or name (required,
+          description: URN-scoping parent book. Accepts full URN or name (required,
             immutable)
           type: string
         created:
@@ -9374,7 +10207,7 @@ components:
           description: Canonical URN of the resource
           type: string
         walletUrn:
-          description: Wallet being assigned — accepts full URN or name path (required,
+          description: Wallet being assigned. Accepts full URN or name path (required,
             immutable)
           type: string
       required:
@@ -9393,10 +10226,10 @@ components:
       properties:
         accountUrn:
           description: Account the holdings belong to, in this wallet assignment's
-            own book — accepts full URN or name path (required, immutable)
+            own book. Accepts full URN or name path (required, immutable)
           type: string
         bookUrn:
-          description: URN-scoping parent book — accepts full URN or name (required,
+          description: URN-scoping parent book. Accepts full URN or name (required,
             immutable)
           type: string
         info:
@@ -9415,7 +10248,7 @@ components:
           description: Unique name of the wallet assignment within its book (URN segment)
           type: string
         walletUrn:
-          description: Wallet being assigned — accepts full URN or name path (required,
+          description: Wallet being assigned. Accepts full URN or name path (required,
             immutable)
           type: string
       required:
@@ -9531,6 +10364,10 @@ components:
     WalletUnassignment:
       description: Items returned by the query
       properties:
+        bookUrn:
+          description: The book the unassignment is in, read-only and denormalized
+            from its wallet assignment
+          type: string
         causationUrn:
           description: URN of the reason the assignment ended (immutable). Recorded,
             never resolved
@@ -9561,14 +10398,15 @@ components:
           description: Canonical URN of the resource
           type: string
         walletAssignmentUrn:
-          description: The wallet assignment this ends — accepts full URN or name
-            path (required, immutable). An assignment has at most one unassignment
+          description: The wallet assignment this ends. Accepts full URN or name path
+            (required, immutable). An assignment has at most one unassignment
           type: string
       required:
       - id
       - urn
       - created
       - updated
+      - bookUrn
       - walletAssignmentUrn
       type: object
     WalletUnassignmentInput:
@@ -9592,8 +10430,8 @@ components:
           description: Key-value labels attached to the resource. Indexed and filterable
           type: object
         walletAssignmentUrn:
-          description: The wallet assignment this ends — accepts full URN or name
-            path (required, immutable). An assignment has at most one unassignment
+          description: The wallet assignment this ends. Accepts full URN or name path
+            (required, immutable). An assignment has at most one unassignment
           type: string
       required:
       - walletAssignmentUrn
@@ -10260,6 +11098,11 @@ paths:
         name: Request-Timeout
         schema:
           default: 2m0s
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: bookUrn
+        schema:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
@@ -12381,6 +13224,11 @@ paths:
         name: Request-Timeout
         schema:
           default: 2m0s
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: bookUrn
+        schema:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
@@ -14568,6 +15416,11 @@ paths:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
+        name: chainUrn
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
         name: created
         schema:
           type: string
@@ -15769,6 +16622,1150 @@ paths:
           description: Success
       tags:
       - Bulk
+  /data/stores:
+    get:
+      description: List stores
+      operationId: listStore
+      parameters:
+      - in: query
+        name: label
+        schema:
+          items:
+            type: string
+          type: array
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: created
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: hashScheme
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: id
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: jsonScheme
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: maxPayloadBytes
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: name
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: updated
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: urn
+        schema:
+          type: string
+      - description: Sort field. For multi-field sort use comma separated values (or
+          multiple query values) with '-' prefix for descending
+        in: query
+        name: sort
+        schema:
+          type: string
+      - description: Ascending sort order (overrides all fields in a multi-field sort)
+        in: query
+        name: ascending
+        schema:
+          type: string
+      - description: Descending sort order (overrides all fields in a multi-field
+          sort)
+        in: query
+        name: descending
+        schema:
+          type: string
+      - description: 'The number of records to skip (max: 100,000). Unsuitable for
+          bulk operations'
+        in: query
+        name: skip
+        schema:
+          type: string
+      - description: 'The maximum number of records to return (max: 100)'
+        in: query
+        name: limit
+        schema:
+          example: "25"
+          type: string
+      - description: Return a total count as well as items (adds extra database processing)
+        in: query
+        name: count
+        schema:
+          type: string
+      - description: Comma separated list of fields to return
+        in: query
+        name: fields
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  allItems:
+                    description: True if all matching items are included in the results
+                    type: boolean
+                  count:
+                    description: Number of results returned
+                    type: integer
+                  items:
+                    description: Items returned by the query
+                    items:
+                      $ref: '#/components/schemas/Store'
+                    type: array
+                type: object
+          description: Success
+      tags:
+      - 'Data: Stores'
+    post:
+      description: Create a store
+      operationId: createStore
+      parameters:
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreInput'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+          description: Success
+      tags:
+      - 'Data: Stores'
+  /data/stores/{storeRef}:
+    delete:
+      description: Delete a store and everything in it
+      operationId: deleteStore
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      responses:
+        "204":
+          content:
+            application/json: {}
+          description: Success
+      tags:
+      - 'Data: Stores'
+    get:
+      description: Get a store
+      operationId: getStore
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+          description: Success
+      tags:
+      - 'Data: Stores'
+    patch:
+      description: Update a store
+      operationId: patchStore
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+          description: Success
+      tags:
+      - 'Data: Stores'
+    put:
+      description: Create or replace a store
+      operationId: replaceStore
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+          description: Success
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+          description: Success
+      tags:
+      - 'Data: Stores'
+  /data/stores/{storeRef}/folders:
+    get:
+      description: List folders
+      operationId: listFolder
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: label
+        schema:
+          items:
+            type: string
+          type: array
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: created
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: id
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: name
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: parentFolderUrn
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: storeUrn
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: updated
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: urn
+        schema:
+          type: string
+      - description: Sort field. For multi-field sort use comma separated values (or
+          multiple query values) with '-' prefix for descending
+        in: query
+        name: sort
+        schema:
+          type: string
+      - description: Ascending sort order (overrides all fields in a multi-field sort)
+        in: query
+        name: ascending
+        schema:
+          type: string
+      - description: Descending sort order (overrides all fields in a multi-field
+          sort)
+        in: query
+        name: descending
+        schema:
+          type: string
+      - description: 'The number of records to skip (max: 100,000). Unsuitable for
+          bulk operations'
+        in: query
+        name: skip
+        schema:
+          type: string
+      - description: 'The maximum number of records to return (max: 100)'
+        in: query
+        name: limit
+        schema:
+          example: "25"
+          type: string
+      - description: Return a total count as well as items (adds extra database processing)
+        in: query
+        name: count
+        schema:
+          type: string
+      - description: Comma separated list of fields to return
+        in: query
+        name: fields
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  allItems:
+                    description: True if all matching items are included in the results
+                    type: boolean
+                  count:
+                    description: Number of results returned
+                    type: integer
+                  items:
+                    description: Items returned by the query
+                    items:
+                      $ref: '#/components/schemas/Folder'
+                    type: array
+                type: object
+          description: Success
+      tags:
+      - 'Data: Folders'
+    post:
+      description: Create a folder
+      operationId: createFolder
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FolderInput'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Folder'
+          description: Success
+      tags:
+      - 'Data: Folders'
+  /data/stores/{storeRef}/folders/{folderRef}:
+    delete:
+      description: Delete a folder and everything in it
+      operationId: deleteFolder
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: 'Folder reference: name path (parent:child), or full URN'
+        in: path
+        name: folderRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      responses:
+        "204":
+          content:
+            application/json: {}
+          description: Success
+      tags:
+      - 'Data: Folders'
+    get:
+      description: Get a folder
+      operationId: getFolder
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: 'Folder reference: name path (parent:child), or full URN'
+        in: path
+        name: folderRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Folder'
+          description: Success
+      tags:
+      - 'Data: Folders'
+    patch:
+      description: Update a folder's info or labels
+      operationId: patchFolder
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: 'Folder reference: name path (parent:child), or full URN'
+        in: path
+        name: folderRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FolderInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Folder'
+          description: Success
+      tags:
+      - 'Data: Folders'
+    put:
+      description: Create or replace a folder
+      operationId: replaceFolder
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: 'Folder reference: name path (parent:child), or full URN'
+        in: path
+        name: folderRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FolderInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Folder'
+          description: Success
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Folder'
+          description: Success
+      tags:
+      - 'Data: Folders'
+  /data/stores/{storeRef}/folders/aggregate:
+    post:
+      description: Aggregate folders
+      operationId: aggregateFolder
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AggregateInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AggregateResult'
+          description: Success
+      tags:
+      - 'Data: Folders'
+  /data/stores/{storeRef}/folders/query:
+    post:
+      description: Query folders
+      operationId: queryFolder
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryJSON'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  allItems:
+                    description: True if all matching items are included in the results
+                    type: boolean
+                  count:
+                    description: Number of results returned
+                    type: integer
+                  items:
+                    description: Items returned by the query
+                    items:
+                      $ref: '#/components/schemas/Folder'
+                    type: array
+                type: object
+          description: Success
+      tags:
+      - 'Data: Folders'
+  /data/stores/{storeRef}/items:
+    get:
+      description: List items
+      operationId: listDataItem
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: label
+        schema:
+          items:
+            type: string
+          type: array
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: contentType
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: created
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: encoding
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: folderUrn
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: hash
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: id
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: name
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: storeUrn
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: updated
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: uri
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: urn
+        schema:
+          type: string
+      - description: Sort field. For multi-field sort use comma separated values (or
+          multiple query values) with '-' prefix for descending
+        in: query
+        name: sort
+        schema:
+          type: string
+      - description: Ascending sort order (overrides all fields in a multi-field sort)
+        in: query
+        name: ascending
+        schema:
+          type: string
+      - description: Descending sort order (overrides all fields in a multi-field
+          sort)
+        in: query
+        name: descending
+        schema:
+          type: string
+      - description: 'The number of records to skip (max: 100,000). Unsuitable for
+          bulk operations'
+        in: query
+        name: skip
+        schema:
+          type: string
+      - description: 'The maximum number of records to return (max: 100)'
+        in: query
+        name: limit
+        schema:
+          example: "25"
+          type: string
+      - description: Return a total count as well as items (adds extra database processing)
+        in: query
+        name: count
+        schema:
+          type: string
+      - description: Comma separated list of fields to return
+        in: query
+        name: fields
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  allItems:
+                    description: True if all matching items are included in the results
+                    type: boolean
+                  count:
+                    description: Number of results returned
+                    type: integer
+                  items:
+                    description: Items returned by the query
+                    items:
+                      $ref: '#/components/schemas/DataItem'
+                    type: array
+                type: object
+          description: Success
+      tags:
+      - 'Data: Items'
+    post:
+      description: Create an item
+      operationId: createDataItem
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataItemInput'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataItem'
+          description: Success
+      tags:
+      - 'Data: Items'
+  /data/stores/{storeRef}/items/{dataItemRef}:
+    delete:
+      description: Delete an item
+      operationId: deleteDataItem
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: 'Item reference: name, folder path and name (folder:item), or
+          full URN'
+        in: path
+        name: dataItemRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      responses:
+        "204":
+          content:
+            application/json: {}
+          description: Success
+      tags:
+      - 'Data: Items'
+    get:
+      description: Get an item
+      operationId: getDataItem
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: 'Item reference: name, folder path and name (folder:item), or
+          full URN'
+        in: path
+        name: dataItemRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataItem'
+          description: Success
+      tags:
+      - 'Data: Items'
+    patch:
+      description: Update an item
+      operationId: patchDataItem
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: 'Item reference: name, folder path and name (folder:item), or
+          full URN'
+        in: path
+        name: dataItemRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataItemInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataItem'
+          description: Success
+      tags:
+      - 'Data: Items'
+  /data/stores/{storeRef}/items/{dataItemRef}/payload:
+    get:
+      description: Get an item's decoded content, served as its contentType
+      operationId: getDataItemPayload
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: 'Item reference: name, folder path and name (folder:item), or
+          full URN'
+        in: path
+        name: dataItemRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      responses:
+        "200":
+          content:
+            application/json: {}
+          description: Success
+      tags:
+      - 'Data: Items'
+  /data/stores/{storeRef}/items/aggregate:
+    post:
+      description: Aggregate items
+      operationId: aggregateDataItem
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AggregateInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AggregateResult'
+          description: Success
+      tags:
+      - 'Data: Items'
+  /data/stores/{storeRef}/items/query:
+    post:
+      description: Query items
+      operationId: queryDataItem
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryJSON'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  allItems:
+                    description: True if all matching items are included in the results
+                    type: boolean
+                  count:
+                    description: Number of results returned
+                    type: integer
+                  items:
+                    description: Items returned by the query
+                    items:
+                      $ref: '#/components/schemas/DataItem'
+                    type: array
+                type: object
+          description: Success
+      tags:
+      - 'Data: Items'
+  /data/stores/{storeRef}/items/upload:
+    post:
+      description: 'Create an item from an uploaded file: the file is the payload,
+        its media type the item''s contentType'
+      operationId: postDataItemUpload
+      parameters:
+      - description: 'Store reference: name, or full URN'
+        in: path
+        name: storeRef
+        required: true
+        schema:
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json: {}
+          multipart/form-data:
+            schema:
+              properties:
+                filename.ext:
+                  format: binary
+                  type: string
+                folderUrn:
+                  description: Success
+                  type: string
+                hash:
+                  description: Success
+                  type: string
+                info:
+                  description: Success
+                  type: string
+                name:
+                  description: Success
+                  type: string
+                salt:
+                  description: Success
+                  type: string
+              type: object
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataItem'
+          description: Success
+      tags:
+      - 'Data: Items'
+  /data/stores/aggregate:
+    post:
+      description: Aggregate stores
+      operationId: aggregateStore
+      parameters:
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AggregateInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AggregateResult'
+          description: Success
+      tags:
+      - 'Data: Stores'
+  /data/stores/query:
+    post:
+      description: Query stores
+      operationId: queryStore
+      parameters:
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryJSON'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  allItems:
+                    description: True if all matching items are included in the results
+                    type: boolean
+                  count:
+                    description: Number of results returned
+                    type: integer
+                  items:
+                    description: Items returned by the query
+                    items:
+                      $ref: '#/components/schemas/Store'
+                    type: array
+                type: object
+          description: Success
+      tags:
+      - 'Data: Stores'
   /lifecycle/signals:
     get:
       description: List signals
@@ -16247,6 +18244,11 @@ paths:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
+        name: transactionTypeUrn
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
         name: transactionUrn
         schema:
           type: string
@@ -16595,6 +18597,11 @@ paths:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
+        name: transactionTypeUrn
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
         name: transactionUrn
         schema:
           type: string
@@ -16836,6 +18843,11 @@ paths:
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
         name: toUrn
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: transactionTypeUrn
         schema:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
@@ -17189,6 +19201,11 @@ paths:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
+        name: transactionTypeUrn
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
         name: updated
         schema:
           type: string
@@ -17524,6 +19541,11 @@ paths:
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
         name: stepUrn
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: transactionTypeUrn
         schema:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
@@ -17867,6 +19889,11 @@ paths:
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
         name: status
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: transactionTypeUrn
         schema:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
@@ -18219,6 +20246,11 @@ paths:
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
         name: status
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: transactionTypeUrn
         schema:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
@@ -22882,6 +24914,11 @@ paths:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
+        name: tokenUrn
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
         name: updated
         schema:
           type: string
@@ -23616,6 +25653,11 @@ paths:
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
         name: originUrn
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: tokenUrn
         schema:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'

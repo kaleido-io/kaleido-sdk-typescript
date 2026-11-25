@@ -1,6 +1,6 @@
 # Kaleido Subledger TypeScript SDK
 
-A TypeScript client for the Kaleido subledger service. Use it to read and write subledger records — parties, wallets and assets, books and journal entries, chain and token evidence, and the lifecycle of transactions — from standalone applications or from workflow engine providers.
+A TypeScript client for the Kaleido subledger service. Use it to read and write subledger records — parties, wallets and assets, books and journal entries, chain and token evidence, the lifecycle of transactions, and data items — from standalone applications or from workflow engine providers.
 
 This package is one of several Kaleido TypeScript SDK packages. For details of other SDK packages or general information about Kaleido SDKs see the [Kaleido TypeScript SDK README](https://github.com/kaleido-io/kaleido-sdk-typescript/blob/main/README.md)
 
@@ -81,7 +81,7 @@ When constructed from a `SetupContext`, `getNewBulkUpsertBuilder()` passes `ctx.
 
 ## Bulk query and bulk upsert
 
-A bulk body groups collections by module: `registry`, `accounting`, `blockchain`, `token` and `lifecycle`. Collections written under a root (`bookUrn`, `chainUrn`, `tokenUrn` or `transactionTypeUrn`) take one entry per root; the others take a single entry.
+A bulk body groups collections by module: `registry`, `accounting`, `blockchain`, `token`, `lifecycle` and `data`. Collections written under a root (`bookUrn`, `chainUrn`, `tokenUrn`, `transactionTypeUrn` or `storeUrn`) take one entry per root; the others take a single entry.
 
 ```typescript
 const out = await sl.bulkUpsert({
@@ -144,23 +144,55 @@ b.lifecycle.add({
 const out = await b.execute();
 ```
 
-The builder has one property per module: `registry`, `accounting`, `blockchain`, `token` and `lifecycle`. Each takes that module's upsert input: its part of the bulk body, without section settings.
+The builder has one property per module: `registry`, `accounting`, `blockchain`, `token`, `lifecycle` and `data`. Each takes that module's upsert input: its part of the bulk body, without section settings.
 
 ### Builder API
 
-| Method                             | Description                                                                                                                                                                  |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<module>.add(input, duplicates?)` | Adds the input's items. Collections written under a root (`bookUrn`, `chainUrn`, `tokenUrn` or `transactionTypeUrn`) take one entry per root; the others take a single entry |
-| `<module>.configure(settings)`     | Overrides the builder's `defaults` option for sections of the module, field by field                                                                                         |
-| `addFinalizer(fn)`                 | Runs `fn` after the next successful `execute()`                                                                                                                              |
-| `toBulkUpsert()`                   | The bulk body for the accumulated items                                                                                                                                      |
-| `execute()`                        | Sends the body and returns the `BulkUpsertOutput` (`undefined` if empty); items and finalizers are cleared whether it succeeds or throws                                     |
-| `autoFlush(n)`                     | A wrapper with the same module properties, whose `add` executes once `n` items are held                                                                                      |
-| `hasUpdates()`, `getCount()`       | Accumulated item state                                                                                                                                                       |
+| Method                             | Description                                                                                                                                                                              |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<module>.add(input, duplicates?)` | Adds the input's items. Collections written under a root (`bookUrn`, `chainUrn`, `tokenUrn`, `transactionTypeUrn` or `storeUrn`) take one entry per root; the others take a single entry |
+| `<module>.configure(settings)`     | Overrides the builder's `defaults` option for sections of the module, field by field                                                                                                     |
+| `addFinalizer(fn)`                 | Runs `fn` after the next successful `execute()`                                                                                                                                          |
+| `toBulkUpsert()`                   | The bulk body for the accumulated items                                                                                                                                                  |
+| `execute()`                        | Sends the body and returns the `BulkUpsertOutput` (`undefined` if empty); items and finalizers are cleared whether it succeeds or throws                                                 |
+| `autoFlush(n)`                     | A wrapper with the same module properties, whose `add` executes once `n` items are held                                                                                                  |
+| `hasUpdates()`, `getCount()`       | Accumulated item state                                                                                                                                                                   |
 
 `updateStrategy` is required; `labelStrategy` is required if any labels are provided.
 
 Items for the same row are combined by `duplicates`: `MERGE` (default) deep-merges, `SKIP` keeps the first, `REPLACE` keeps the last. Refs are compared as written: a name and a full URN for the same parent are not combined, and the service rejects the request with `KA240225` when both resolve to the same URN.
+
+## Data items
+
+The data module holds payloads that a record learns after its creation, such as a counterparty's declared terms. A store fixes how its items are kept: `jsonScheme` (`unmodified`, or `rfc8785` to canonicalise JSON) and `hashScheme` (`sha256`, `hmac-sha256` or `unchecked`). Folders nest within a store, and an item sits in a store or one of its folders.
+
+An item's payload, URI, encoding and hash are immutable; its labels and `info` are not. A reader finds an item by its labels in the same bulk query as the records it belongs to:
+
+```typescript
+b.data.add({
+  stores: { items: [{ name: "payments", jsonScheme: "rfc8785", hashScheme: "sha256" }] },
+  folders: [{ storeUrn: "payments", items: [{ name: "tx1" }] }],
+  items: [
+    {
+      storeUrn: "payments",
+      items: [
+        {
+          folderUrn: "tx1",
+          name: "terms",
+          payload: { amount: "100" },
+          labels: { uetr: "demo-uetr-tx1" },
+        },
+      ],
+    },
+  ],
+});
+
+const found = await sl.bulkQuery({
+  data: {
+    items: [{ storeUrn: "payments", equal: [{ field: "label.uetr", value: "demo-uetr-tx1" }] }],
+  },
+});
+```
 
 ## Lifecycle state machines
 

@@ -54,6 +54,7 @@ export class BulkUpsertAutoFlush {
   readonly blockchain = new AutoFlushModule(this.builder.blockchain, () => this.flushIfNeeded());
   readonly token = new AutoFlushModule(this.builder.token, () => this.flushIfNeeded());
   readonly lifecycle = new AutoFlushModule(this.builder.lifecycle, () => this.flushIfNeeded());
+  readonly data = new AutoFlushModule(this.builder.data, () => this.flushIfNeeded());
 
   constructor(
     private builder: BulkUpsertBuilder,

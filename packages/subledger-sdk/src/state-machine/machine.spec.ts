@@ -66,6 +66,7 @@ const event = (name: string, subject = TX): LifecycleEvent => ({
   urn: `${TX}:event=${name}`,
   name,
   eventType: name.split(".")[0] as LifecycleEvent["eventType"],
+  transactionTypeUrn: TYPE,
   transactionUrn: TX,
   subjectUrn: subject,
 });
@@ -73,6 +74,7 @@ const step = (name: string, state: string, status: Step["status"] = "started"): 
   ...assigned,
   urn: `${TX}:step=${name}`,
   name,
+  transactionTypeUrn: TYPE,
   transactionUrn: TX,
   status,
   labels: { state },
@@ -969,6 +971,7 @@ describe("conditionOf", () => {
       ...assigned,
       urn: `${TX}:condition=c`,
       name: "c",
+      transactionTypeUrn: TYPE,
       transactionUrn: TX,
       waitKey: "w1",
     };

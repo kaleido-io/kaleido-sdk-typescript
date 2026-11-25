@@ -103,6 +103,46 @@ describe("BulkUpsertBuilder", () => {
     });
   });
 
+  it("writes a store with its folders and items, identifying items by folder and name", () => {
+    const folder = { name: "u1", parentFolderUrn: "payments" };
+    const item = (name: string, folderUrn = "payments:u1") => ({
+      name,
+      folderUrn,
+      payload: { n: name },
+    });
+    b.data.add({
+      stores: { items: [{ name: "td", jsonScheme: "rfc8785", hashScheme: "sha256" }] },
+      folders: [{ storeUrn: "td", items: [{ name: "payments" }, folder, folder] }],
+      items: [
+        {
+          storeUrn: "td",
+          items: [item("refusal"), item("refusal"), item("refusal", "payments:u2")],
+        },
+      ],
+    });
+
+    expect(b.toBulkUpsert().data).toEqual({
+      stores: {
+        updateStrategy: "create_or_ignore",
+        items: [{ name: "td", jsonScheme: "rfc8785", hashScheme: "sha256" }],
+      },
+      folders: [
+        {
+          storeUrn: "td",
+          updateStrategy: "create_or_ignore",
+          items: [{ name: "payments" }, folder],
+        },
+      ],
+      items: [
+        {
+          storeUrn: "td",
+          updateStrategy: "create_or_ignore",
+          items: [item("refusal"), item("refusal", "payments:u2")],
+        },
+      ],
+    });
+  });
+
   it("resolves configured settings over the defaults when the body is built", () => {
     const party = { name: "p", type: "bank" };
     b.registry.add({ assets: { items: [usd] }, parties: { items: [party] } });

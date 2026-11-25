@@ -83,6 +83,7 @@ export class BulkUpsertBuilder {
   readonly blockchain = this.moduleBuilder("blockchain");
   readonly token = this.moduleBuilder("token");
   readonly lifecycle = this.moduleBuilder("lifecycle");
+  readonly data = this.moduleBuilder("data");
 
   private sections = new Map<string, Section>();
   private configured = new Map<string, Partial<SectionSettings>>();

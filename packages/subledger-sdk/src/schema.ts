@@ -1279,6 +1279,255 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/data/stores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List stores */
+        get: operations["listStore"];
+        put?: never;
+        /** @description Create a store */
+        post: operations["createStore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data/stores/{storeRef}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a store */
+        get: operations["getStore"];
+        /** @description Create or replace a store */
+        put: operations["replaceStore"];
+        post?: never;
+        /** @description Delete a store and everything in it */
+        delete: operations["deleteStore"];
+        options?: never;
+        head?: never;
+        /** @description Update a store */
+        patch: operations["patchStore"];
+        trace?: never;
+    };
+    "/data/stores/{storeRef}/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List folders */
+        get: operations["listFolder"];
+        put?: never;
+        /** @description Create a folder */
+        post: operations["createFolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data/stores/{storeRef}/folders/{folderRef}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a folder */
+        get: operations["getFolder"];
+        /** @description Create or replace a folder */
+        put: operations["replaceFolder"];
+        post?: never;
+        /** @description Delete a folder and everything in it */
+        delete: operations["deleteFolder"];
+        options?: never;
+        head?: never;
+        /** @description Update a folder's info or labels */
+        patch: operations["patchFolder"];
+        trace?: never;
+    };
+    "/data/stores/{storeRef}/folders/aggregate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Aggregate folders */
+        post: operations["aggregateFolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data/stores/{storeRef}/folders/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Query folders */
+        post: operations["queryFolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data/stores/{storeRef}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List items */
+        get: operations["listDataItem"];
+        put?: never;
+        /** @description Create an item */
+        post: operations["createDataItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data/stores/{storeRef}/items/{dataItemRef}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get an item */
+        get: operations["getDataItem"];
+        put?: never;
+        post?: never;
+        /** @description Delete an item */
+        delete: operations["deleteDataItem"];
+        options?: never;
+        head?: never;
+        /** @description Update an item */
+        patch: operations["patchDataItem"];
+        trace?: never;
+    };
+    "/data/stores/{storeRef}/items/{dataItemRef}/payload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get an item's decoded content, served as its contentType */
+        get: operations["getDataItemPayload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data/stores/{storeRef}/items/aggregate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Aggregate items */
+        post: operations["aggregateDataItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data/stores/{storeRef}/items/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Query items */
+        post: operations["queryDataItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data/stores/{storeRef}/items/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create an item from an uploaded file: the file is the payload, its media type the item's contentType */
+        post: operations["postDataItemUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data/stores/aggregate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Aggregate stores */
+        post: operations["aggregateStore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/data/stores/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Query stores */
+        post: operations["queryStore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/lifecycle/signals": {
         parameters: {
             query?: never;
@@ -3544,7 +3793,7 @@ export interface components {
     schemas: {
         /** @description Items returned by the query */
         Account: {
-            /** @description Owning book reference — accepts full URN or name (required, immutable) */
+            /** @description Owning book reference. Accepts full URN or name (required, immutable) */
             bookUrn: string;
             /**
              * @description Accounting classification: asset, liability, equity, income, expense
@@ -3565,7 +3814,7 @@ export interface components {
             };
             /** @description Unique name of the account (URN segment) */
             name: string;
-            /** @description Owning party reference — accepts full URN or name path (required, immutable) */
+            /** @description Owning party reference. Accepts full URN or name path (required, immutable) */
             ownerUrn: string;
             /** @description URN of the parent account, for account hierarchies (e.g. sub under omnibus); omitted for an account directly under its book */
             parentAccountUrn?: string;
@@ -3575,7 +3824,7 @@ export interface components {
         };
         /** @description The items of this entity type to upsert */
         AccountInput: {
-            /** @description Owning book reference — accepts full URN or name (required, immutable) */
+            /** @description Owning book reference. Accepts full URN or name (required, immutable) */
             bookUrn?: string;
             /**
              * @description Accounting classification: asset, liability, equity, income, expense
@@ -3590,7 +3839,7 @@ export interface components {
             };
             /** @description Unique name of the account (URN segment) */
             name: string;
-            /** @description Owning party reference — accepts full URN or name path (required, immutable) */
+            /** @description Owning party reference. Accepts full URN or name path (required, immutable) */
             ownerUrn: string;
             /** @description URN of the parent account, for account hierarchies (e.g. sub under omnibus); omitted for an account directly under its book */
             parentAccountUrn?: string;
@@ -4068,7 +4317,7 @@ export interface components {
              * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
              */
             id: number;
-            /** @description URN of the token (read-only) */
+            /** @description The token the balance is in, read-only */
             tokenUrn: string;
             updated: components["schemas"]["FFTime"];
             /** @description The wallet the holder's wallet identifier names, at the time of the read; absent for an unregistered holder (read-only) */
@@ -4078,7 +4327,7 @@ export interface components {
         BalanceChange: {
             amount: components["schemas"]["Integer"];
             created: components["schemas"]["FFTime"];
-            /** @description The chain's own value for whoever holds the balance, verbatim: an address, a party id, a token account. A raw value, not a reference — no registered account or identifier need exist */
+            /** @description The chain's own value for whoever holds the balance, verbatim: an address, a party id, a token account. A raw value, not a reference: no registered account or identifier need exist */
             holder: string;
             /**
              * Format: int64
@@ -4086,7 +4335,7 @@ export interface components {
              */
             id: number;
             timestamp: components["schemas"]["FFTime"];
-            /** @description The token whose balance the change moves, taken from the parent transfer (populated on read) */
+            /** @description The token the balance change is in, read-only and denormalized from its transfer */
             tokenUrn: string;
             /** @description URN-scoping parent transfer, immutable after create (populated on read) */
             transferUrn: string;
@@ -4099,7 +4348,7 @@ export interface components {
         /** @description The per-holder effects of this transfer, at least one. Written only through the transfer and never revised */
         BalanceChangeInput: {
             amount: components["schemas"]["Integer"];
-            /** @description The chain's own value for whoever holds the balance, verbatim: an address, a party id, a token account. A raw value, not a reference — no registered account or identifier need exist */
+            /** @description The chain's own value for whoever holds the balance, verbatim: an address, a party id, a token account. A raw value, not a reference: no registered account or identifier need exist */
             holder: string;
         };
         /** @description Items returned by the query */
@@ -4107,7 +4356,7 @@ export interface components {
             after: components["schemas"]["BalanceTotals"];
             amount: components["schemas"]["Integer"];
             created: components["schemas"]["FFTime"];
-            /** @description The chain's own value for whoever holds the balance, verbatim: an address, a party id, a token account. A raw value, not a reference — no registered account or identifier need exist */
+            /** @description The chain's own value for whoever holds the balance, verbatim: an address, a party id, a token account. A raw value, not a reference: no registered account or identifier need exist */
             holder: string;
             /**
              * Format: int64
@@ -4115,7 +4364,7 @@ export interface components {
              */
             id: number;
             timestamp: components["schemas"]["FFTime"];
-            /** @description The token whose balance the change moves, taken from the parent transfer (populated on read) */
+            /** @description The token the balance change is in, read-only and denormalized from its transfer */
             tokenUrn: string;
             /** @description URN-scoping parent transfer, immutable after create (populated on read) */
             transferUrn: string;
@@ -4131,7 +4380,7 @@ export interface components {
         };
         /** @description Items returned by the query */
         Block: {
-            /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent chain. Accepts full URN or name (required, immutable) */
             chainUrn: string;
             created: components["schemas"]["FFTime"];
             /**
@@ -4159,7 +4408,7 @@ export interface components {
         };
         /** @description The items of this entity type to upsert */
         BlockInput: {
-            /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent chain. Accepts full URN or name (required, immutable) */
             chainUrn?: string;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
@@ -4640,6 +4889,7 @@ export interface components {
         BulkQueryInput: {
             accounting?: components["schemas"]["AccountingQueryInput"];
             blockchain?: components["schemas"]["BlockchainQueryInput"];
+            data?: components["schemas"]["DataQueryInput"];
             lifecycle?: components["schemas"]["LifecycleQueryInput"];
             options?: components["schemas"]["BulkQueryOptions"];
             registry?: components["schemas"]["RegistryQueryInput"];
@@ -4655,6 +4905,7 @@ export interface components {
         BulkQueryOutput: {
             accounting?: components["schemas"]["AccountingQueryOutput"];
             blockchain?: components["schemas"]["BlockchainQueryOutput"];
+            data?: components["schemas"]["DataQueryOutput"];
             lifecycle?: components["schemas"]["LifecycleQueryOutput"];
             registry?: components["schemas"]["RegistryQueryOutput"];
             token?: components["schemas"]["TokenQueryOutput"];
@@ -4662,6 +4913,7 @@ export interface components {
         BulkUpsertInput: {
             accounting?: components["schemas"]["AccountingUpsertInput"];
             blockchain?: components["schemas"]["BlockchainUpsertInput"];
+            data?: components["schemas"]["DataUpsertInput"];
             lifecycle?: components["schemas"]["LifecycleUpsertInput"];
             registry?: components["schemas"]["RegistryUpsertInput"];
             token?: components["schemas"]["TokenUpsertInput"];
@@ -4669,6 +4921,7 @@ export interface components {
         BulkUpsertOutput: {
             accounting?: components["schemas"]["AccountingUpsertOutput"];
             blockchain?: components["schemas"]["BlockchainUpsertOutput"];
+            data?: components["schemas"]["DataUpsertOutput"];
             lifecycle?: components["schemas"]["LifecycleUpsertOutput"];
             registry?: components["schemas"]["RegistryUpsertOutput"];
             token?: components["schemas"]["TokenUpsertOutput"];
@@ -4701,7 +4954,7 @@ export interface components {
         };
         /** @description Items returned by the query */
         ChainAccount: {
-            /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent chain. Accepts full URN or name (required, immutable) */
             chainUrn: string;
             created: components["schemas"]["FFTime"];
             /**
@@ -4725,7 +4978,7 @@ export interface components {
         };
         /** @description The items of this entity type to upsert */
         ChainAccountInput: {
-            /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent chain. Accepts full URN or name (required, immutable) */
             chainUrn?: string;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
@@ -4740,7 +4993,7 @@ export interface components {
         };
         /** @description Items returned by the query */
         ChainEvent: {
-            /** @description URN of the chain the event was reported on, read-only and denormalised from the parent transaction. The shard key, so it is filterable and a change stream scopes by it */
+            /** @description The chain the event is in, read-only and denormalized from its transaction */
             chainUrn: string;
             created: components["schemas"]["FFTime"];
             /**
@@ -4761,7 +5014,7 @@ export interface components {
             ledgerSequence?: string;
             /** @description The event's index within its transaction (URN segment) */
             name: string;
-            /** @description URN-scoping parent transaction — accepts full URN or name path (required, immutable). An event-shaped indexer create_or_ignores a skeleton transaction in the same bulk body */
+            /** @description URN-scoping parent transaction. Accepts full URN or name path (required, immutable). An event-shaped indexer create_or_ignores a skeleton transaction in the same bulk body */
             transactionUrn: string;
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
@@ -4782,7 +5035,7 @@ export interface components {
             ledgerSequence?: string;
             /** @description The event's index within its transaction (URN segment) */
             name: string;
-            /** @description URN-scoping parent transaction — accepts full URN or name path (required, immutable). An event-shaped indexer create_or_ignores a skeleton transaction in the same bulk body */
+            /** @description URN-scoping parent transaction. Accepts full URN or name path (required, immutable). An event-shaped indexer create_or_ignores a skeleton transaction in the same bulk body */
             transactionUrn: string;
         };
         /** @description The items of this entity type to upsert */
@@ -4859,7 +5112,7 @@ export interface components {
         ChainTransaction: {
             /** @description URN of the block that carries this transaction. Recorded, never resolved. Mutable, because re-mining moves a transaction to another block */
             blockUrn?: string | null;
-            /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent chain. Accepts full URN or name (required, immutable) */
             chainUrn: string;
             created: components["schemas"]["FFTime"];
             /**
@@ -4890,7 +5143,7 @@ export interface components {
         ChainTransactionInput: {
             /** @description URN of the block that carries this transaction. Recorded, never resolved. Mutable, because re-mining moves a transaction to another block */
             blockUrn?: string | null;
-            /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent chain. Accepts full URN or name (required, immutable) */
             chainUrn?: string;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
@@ -4936,7 +5189,7 @@ export interface components {
              * @enum {string}
              */
             status: "active" | "spent";
-            /** @description URN-scoping parent token — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent token. Accepts full URN or name (required, immutable) */
             tokenUrn: string;
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
@@ -4961,12 +5214,12 @@ export interface components {
             name: string;
             /** @description URN of the chain state, transaction or event this coin was written from (immutable). Recorded, never resolved */
             originUrn?: string | null;
-            /** @description URN-scoping parent token — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent token. Accepts full URN or name (required, immutable) */
             tokenUrn?: string;
         };
         /** @description Items returned by the query */
         CoinSpend: {
-            /** @description The coin this spends — accepts full URN or name path (required, immutable). A coin has at most one spend */
+            /** @description The coin this spends. Accepts full URN or name path (required, immutable). A coin has at most one spend */
             coinUrn: string;
             created: components["schemas"]["FFTime"];
             /**
@@ -4982,13 +5235,15 @@ export interface components {
             };
             /** @description URN of the chain transaction or event this coin spend was written from (immutable). Recorded, never resolved */
             originUrn?: string | null;
+            /** @description The token the spend is in, read-only and denormalized from its coin */
+            tokenUrn: string;
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
             urn: string;
         };
         /** @description The items of this entity type to upsert */
         CoinSpendInput: {
-            /** @description The coin this spends — accepts full URN or name path (required, immutable). A coin has at most one spend */
+            /** @description The coin this spends. Accepts full URN or name path (required, immutable). A coin has at most one spend */
             coinUrn: string;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
@@ -5057,12 +5312,14 @@ export interface components {
             };
             /** @description Unique name of the condition within its transaction (URN segment) */
             name: string;
+            /** @description The transaction type the condition is in, read-only and denormalized from its transaction */
+            transactionTypeUrn: string;
             /** @description The transaction the condition belongs to - a reference or full URN (immutable) */
             transactionUrn: string;
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
             urn: string;
-            /** @description The key the transaction waits on (required, immutable). A condition-signaled event is written for every signal reporting it */
+            /** @description The key the transaction waits on (required, immutable), unique to one awaited occurrence. A condition-signaled event is written for every signal reporting it */
             waitKey: string;
         };
         /** @description The items of this entity type to upsert */
@@ -5077,7 +5334,7 @@ export interface components {
             name: string;
             /** @description The transaction the condition belongs to - a reference or full URN (immutable) */
             transactionUrn?: string;
-            /** @description The key the transaction waits on (required, immutable). A condition-signaled event is written for every signal reporting it */
+            /** @description The key the transaction waits on (required, immutable), unique to one awaited occurrence. A condition-signaled event is written for every signal reporting it */
             waitKey: string;
         };
         /** @description The contract this value names. Present only when the read sets includeSubject */
@@ -5149,6 +5406,212 @@ export interface components {
             /** @description Unique name of the contract (URN segment) */
             name: string;
         };
+        /** @description Items returned by the query */
+        DataItem: {
+            /** @description Media type of content. Adjusts the Content-Type header served when downloading the payload directly */
+            contentType?: string | null;
+            created: components["schemas"]["FFTime"];
+            /**
+             * @description Encoding and storage form for the data in the JSON payload field (immutable)
+             * @enum {string|null}
+             */
+            encoding?: "utf8" | "json" | "base64" | null;
+            /** @description The folder holding the item, a name path or full URN under the store; omitted for an item stored at the root of the store (immutable) */
+            folderUrn?: string;
+            /** @description Hash of the payload bytes. Either computed or supplied according to the store's hashScheme configuration (immutable) */
+            hash?: string | null;
+            /**
+             * Format: int64
+             * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
+             */
+            id: number;
+            /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
+            info?: any;
+            /** @description Key-value labels attached to the resource. Indexed and filterable */
+            labels?: {
+                [key: string]: string;
+            };
+            /** @description Name of the item within its folder or store (URN segment) */
+            name: string;
+            /** @description The data, inline, according to the encoding: JSON value for json, a string for utf8 and base64. Limited by maxPayloadBytes on the store. Exactly one of payload and uri is set (immutable) */
+            payload?: any;
+            /** @description Unique salt for this item. Either unset, generated or supplied according to the store's hashScheme configuration (immutable) */
+            salt?: string | null;
+            /** @description Owning store reference. Accepts full URN or name (required, immutable) */
+            storeUrn: string;
+            updated: components["schemas"]["FFTime"];
+            /** @description A remote URI where the payload is stored. Exactly one of payload and uri is set (immutable) */
+            uri?: string | null;
+            /** @description Canonical URN of the resource */
+            urn: string;
+        };
+        /** @description The items of this entity type to upsert */
+        DataItemInput: {
+            /** @description Media type of content. Adjusts the Content-Type header served when downloading the payload directly */
+            contentType?: string | null;
+            /**
+             * @description Encoding and storage form for the data in the JSON payload field (immutable)
+             * @enum {string|null}
+             */
+            encoding?: "utf8" | "json" | "base64" | null;
+            /** @description The folder holding the item, a name path or full URN under the store; omitted for an item stored at the root of the store (immutable) */
+            folderUrn?: string;
+            /** @description Hash of the payload bytes. Either computed or supplied according to the store's hashScheme configuration (immutable) */
+            hash?: string | null;
+            /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
+            info?: any;
+            /** @description Key-value labels attached to the resource. Indexed and filterable */
+            labels?: {
+                [key: string]: string;
+            };
+            /** @description Name of the item within its folder or store (URN segment) */
+            name: string;
+            /** @description The data, inline, according to the encoding: JSON value for json, a string for utf8 and base64. Limited by maxPayloadBytes on the store. Exactly one of payload and uri is set (immutable) */
+            payload?: any;
+            /** @description Unique salt for this item. Either unset, generated or supplied according to the store's hashScheme configuration (immutable) */
+            salt?: string | null;
+            /** @description Owning store reference. Accepts full URN or name (required, immutable) */
+            storeUrn?: string;
+            /** @description A remote URI where the payload is stored. Exactly one of payload and uri is set (immutable) */
+            uri?: string | null;
+        };
+        /** @description Queries for data entities */
+        DataQueryInput: {
+            /** @description Query for folders */
+            folders?: components["schemas"]["StoreQuery"][];
+            /** @description Query for items */
+            items?: components["schemas"]["StoreQuery"][];
+            stores?: components["schemas"]["QueryJSON"];
+        };
+        /** @description Results of the data queries */
+        DataQueryOutput: {
+            /** @description Results of folder query */
+            folders?: {
+                /** @description True if all matching items are included in the results */
+                allItems?: boolean;
+                /** @description Number of results returned */
+                count?: number;
+                /** @description Items returned by the query */
+                items?: components["schemas"]["Folder"][];
+                /** @description The full URN of the store the query read */
+                storeUrn?: string;
+            }[];
+            /** @description Results of item query */
+            items?: {
+                /** @description True if all matching items are included in the results */
+                allItems?: boolean;
+                /** @description Number of results returned */
+                count?: number;
+                /** @description Items returned by the query */
+                items?: components["schemas"]["DataItem"][];
+                /** @description The full URN of the store the query read */
+                storeUrn?: string;
+            }[];
+            /** @description Results of store query */
+            stores?: {
+                /** @description True if all matching items are included in the results */
+                allItems?: boolean;
+                /** @description Number of results returned */
+                count?: number;
+                /** @description Items returned by the query */
+                items?: components["schemas"]["Store"][];
+            } | null;
+        };
+        /** @description Data entities to upsert */
+        DataUpsertInput: {
+            /** @description Folders to upsert, per store */
+            folders?: {
+                /** @description The items of this entity type to upsert */
+                items: components["schemas"]["FolderInput"][];
+                /**
+                 * @description Label write strategy for this entity type: create_or_update or create_or_ignore. Required when any item in the section carries labels
+                 * @enum {string}
+                 */
+                labelStrategy?: "create_or_update" | "create_or_ignore";
+                options?: components["schemas"]["BulkEntityOptions"];
+                /** @description The store every item of this section is written under - a ref or full URN. Refs inside the items are read relative to it */
+                storeUrn: string;
+                /**
+                 * @description Row write strategy for this entity type: create_only, create_or_ignore, or create_or_replace (required)
+                 * @enum {string}
+                 */
+                updateStrategy: "create_only" | "create_or_ignore" | "create_or_replace";
+            }[];
+            /** @description Items to create, per store */
+            items?: {
+                /** @description The items of this entity type to upsert */
+                items: components["schemas"]["DataItemInput"][];
+                /**
+                 * @description Label write strategy for this entity type: create_or_update or create_or_ignore. Required when any item in the section carries labels
+                 * @enum {string}
+                 */
+                labelStrategy?: "create_or_update" | "create_or_ignore";
+                options?: components["schemas"]["BulkEntityOptions"];
+                /** @description The store every item of this section is written under - a ref or full URN. Refs inside the items are read relative to it */
+                storeUrn: string;
+                /**
+                 * @description Row write strategy for this entity type: create_only, create_or_ignore, or create_or_replace (required)
+                 * @enum {string}
+                 */
+                updateStrategy: "create_only" | "create_or_ignore" | "create_or_replace";
+            }[];
+            /** @description Stores to upsert */
+            stores?: {
+                /** @description The items of this entity type to upsert */
+                items: components["schemas"]["StoreInput"][];
+                /**
+                 * @description Label write strategy for this entity type: create_or_update or create_or_ignore. Required when any item in the section carries labels
+                 * @enum {string}
+                 */
+                labelStrategy?: "create_or_update" | "create_or_ignore";
+                options?: components["schemas"]["BulkEntityOptions"];
+                /**
+                 * @description Row write strategy for this entity type: create_only, create_or_ignore, or create_or_replace (required)
+                 * @enum {string}
+                 */
+                updateStrategy: "create_only" | "create_or_ignore" | "create_or_replace";
+            } | null;
+        };
+        /** @description Results of the data sections */
+        DataUpsertOutput: {
+            /** @description Results of folder upserts */
+            folders?: {
+                /** @description URNs of rows that were created */
+                created?: components["schemas"]["URN"][];
+                /** @description URNs of rows that were ignored due to conflict */
+                ignored?: components["schemas"]["URN"][];
+                /** @description Rows written to the database */
+                rows?: components["schemas"]["Folder"][];
+                /** @description The full URN of the store the section was written under */
+                storeUrn?: string;
+                /** @description URNs of rows that were updated */
+                updated?: components["schemas"]["URN"][];
+            }[];
+            /** @description Results of item writes */
+            items?: {
+                /** @description URNs of rows that were created */
+                created?: components["schemas"]["URN"][];
+                /** @description URNs of rows that were ignored due to conflict */
+                ignored?: components["schemas"]["URN"][];
+                /** @description Rows written to the database */
+                rows?: components["schemas"]["DataItem"][];
+                /** @description The full URN of the store the section was written under */
+                storeUrn?: string;
+                /** @description URNs of rows that were updated */
+                updated?: components["schemas"]["URN"][];
+            }[];
+            /** @description Results of store upserts */
+            stores?: {
+                /** @description URNs of rows that were created */
+                created?: components["schemas"]["URN"][];
+                /** @description URNs of rows that were ignored due to conflict */
+                ignored?: components["schemas"]["URN"][];
+                /** @description Rows written to the database */
+                rows?: components["schemas"]["Store"][];
+                /** @description URNs of rows that were updated */
+                updated?: components["schemas"]["URN"][];
+            } | null;
+        };
         /**
          * Format: decimal
          * @description The aggregated value as a decimal string. A JSON number would lose integer precision above 2^53
@@ -5156,9 +5619,9 @@ export interface components {
         Decimal: string;
         /** @description Items returned by the query */
         Deployment: {
-            /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent chain. Accepts full URN or name (required, immutable) */
             chainUrn: string;
-            /** @description The contract this is an instance of — accepts full URN or name (required). Mutable: a PATCH re-points a proxy */
+            /** @description The contract this is an instance of. Accepts full URN or name (required). Mutable: a PATCH re-points a proxy */
             contractUrn: string;
             created: components["schemas"]["FFTime"];
             /**
@@ -5182,9 +5645,9 @@ export interface components {
         };
         /** @description The items of this entity type to upsert */
         DeploymentInput: {
-            /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent chain. Accepts full URN or name (required, immutable) */
             chainUrn?: string;
-            /** @description The contract this is an instance of — accepts full URN or name (required). Mutable: a PATCH re-points a proxy */
+            /** @description The contract this is an instance of. Accepts full URN or name (required). Mutable: a PATCH re-points a proxy */
             contractUrn: string;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
@@ -5228,6 +5691,8 @@ export interface components {
             name: string;
             /** @description The subject the event is about: the transaction for a transaction event, or the step, leg or condition it names */
             subjectUrn: string;
+            /** @description The transaction type the event is in, read-only and denormalized from its transaction */
+            transactionTypeUrn: string;
             /** @description The transaction the event belongs to */
             transactionUrn: string;
             updated: components["schemas"]["FFTime"];
@@ -5280,9 +5745,9 @@ export interface components {
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
             urn: string;
-            /** @description The ViewGroup this export belongs to — accepts full URN or name (required, immutable) */
+            /** @description The ViewGroup this export belongs to. Accepts full URN or name (required, immutable) */
             viewGroupUrn: string;
-            /** @description The View this export runs, which must be in the same view group — accepts full URN or viewGroup:view name path (required, immutable) */
+            /** @description The View this export runs, which must be in the same view group. Accepts full URN or viewGroup:view name path (required, immutable) */
             viewUrn: string;
         };
         ExportInput: {
@@ -5305,9 +5770,9 @@ export interface components {
             };
             /** @description Milliseconds to wait between pages while the export executes (default 50) */
             throttleMs?: number | null;
-            /** @description The ViewGroup this export belongs to — accepts full URN or name (required, immutable) */
+            /** @description The ViewGroup this export belongs to. Accepts full URN or name (required, immutable) */
             viewGroupUrn: string;
-            /** @description The View this export runs, which must be in the same view group — accepts full URN or viewGroup:view name path (required, immutable) */
+            /** @description The View this export runs, which must be in the same view group. Accepts full URN or viewGroup:view name path (required, immutable) */
             viewUrn: string;
         };
         /**
@@ -5472,6 +5937,45 @@ export interface components {
             values?: string[];
         };
         /** @description Items returned by the query */
+        Folder: {
+            created: components["schemas"]["FFTime"];
+            /**
+             * Format: int64
+             * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
+             */
+            id: number;
+            /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
+            info?: any;
+            /** @description Key-value labels attached to the resource. Indexed and filterable */
+            labels?: {
+                [key: string]: string;
+            };
+            /** @description Name of the folder within its parent (URN segment) */
+            name: string;
+            /** @description URN of the parent folder, for nested folders; omitted for a folder directly under its store */
+            parentFolderUrn?: string;
+            /** @description Owning store reference. Accepts full URN or name (required, immutable) */
+            storeUrn: string;
+            updated: components["schemas"]["FFTime"];
+            /** @description Canonical URN of the resource */
+            urn: string;
+        };
+        /** @description The items of this entity type to upsert */
+        FolderInput: {
+            /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
+            info?: any;
+            /** @description Key-value labels attached to the resource. Indexed and filterable */
+            labels?: {
+                [key: string]: string;
+            };
+            /** @description Name of the folder within its parent (URN segment) */
+            name: string;
+            /** @description URN of the parent folder, for nested folders; omitted for a folder directly under its store */
+            parentFolderUrn?: string;
+            /** @description Owning store reference. Accepts full URN or name (required, immutable) */
+            storeUrn?: string;
+        };
+        /** @description Items returned by the query */
         Hold: {
             /** @description Account whose position is reserved - must be in the hold's book */
             accountUrn: string;
@@ -5480,7 +5984,7 @@ export interface components {
             assetUrn: string;
             /** @description Book the hold is in - a reference or full URN */
             bookUrn: string;
-            /** @description URN of the reason the hold exists — a settlement leg, or an operator's reference (immutable). Recorded, never resolved */
+            /** @description URN of the reason the hold exists, such as a settlement leg or an operator's reference (immutable). Recorded, never resolved */
             causationUrn?: string | null;
             /** @description External id of what the hold tracks, such as an unspent output or an instruction id (immutable) */
             correlationId?: string | null;
@@ -5516,7 +6020,7 @@ export interface components {
             assetUrn: string;
             /** @description Book the hold is in - a reference or full URN */
             bookUrn?: string;
-            /** @description URN of the reason the hold exists — a settlement leg, or an operator's reference (immutable). Recorded, never resolved */
+            /** @description URN of the reason the hold exists, such as a settlement leg or an operator's reference (immutable). Recorded, never resolved */
             causationUrn?: string | null;
             /** @description External id of what the hold tracks, such as an unspent output or an instruction id (immutable) */
             correlationId?: string | null;
@@ -5531,10 +6035,12 @@ export interface components {
         };
         /** @description Items returned by the query */
         HoldRelease: {
+            /** @description The book the release is in, read-only and denormalized from its hold */
+            bookUrn: string;
             /** @description URN of the reason for the release, such as the settling journal entry (immutable). Recorded, never resolved */
             causationUrn?: string | null;
             created: components["schemas"]["FFTime"];
-            /** @description The hold this releases — accepts full URN or name path (required, immutable). A hold has at most one release */
+            /** @description The hold this releases. Accepts full URN or name path (required, immutable). A hold has at most one release */
             holdUrn: string;
             /**
              * Format: int64
@@ -5555,7 +6061,7 @@ export interface components {
         HoldReleaseInput: {
             /** @description URN of the reason for the release, such as the settling journal entry (immutable). Recorded, never resolved */
             causationUrn?: string | null;
-            /** @description The hold this releases — accepts full URN or name path (required, immutable). A hold has at most one release */
+            /** @description The hold this releases. Accepts full URN or name path (required, immutable). A hold has at most one release */
             holdUrn: string;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
@@ -5578,7 +6084,7 @@ export interface components {
             scopeParameter?: string | null;
             /** @description The full URN of the root (book, chain or token) a scoped collection is read under, same meaning as View.scopeUrn */
             scopeUrn?: string | null;
-            /** @description The collection to query, as "<module>.<collection>" (e.g. accounting.holds) */
+            /** @description The collection to query, as `<module>.<collection>` (e.g. `accounting.holds`) */
             type?: string | null;
         };
         /**
@@ -5594,13 +6100,13 @@ export interface components {
             /** @description JSON type of the elements */
             type?: string;
         };
-        /** @description JSONata expression computing this column from {item, page, <bound aliases>}; wins over entityKey when set */
+        /** @description JSONata expression computing this column from `{item, page, <bound aliases>}`; wins over entityKey when set */
         JSONataExpression: string;
         /** @description Items returned by the query */
         JournalEntry: {
-            /** @description URN-scoping parent book — accepts full URN or name path */
+            /** @description URN-scoping parent book. Accepts full URN or name path */
             bookUrn: string;
-            /** @description URN of the occurrence that directly caused this entry — the entry it reverses or corrects, say (immutable). Recorded, never resolved, so it may name an occurrence in another instance */
+            /** @description URN of the occurrence that directly caused this entry, such as the entry it reverses or corrects (immutable). Recorded, never resolved, so it may name an occurrence in another instance */
             causationUrn?: string | null;
             /** @description Economic-event id shared by every entry arising from one operation (e.g. an on-ramp); enables per-event reconciliation */
             correlationId?: string | null;
@@ -5628,9 +6134,9 @@ export interface components {
         };
         /** @description The items of this entity type to upsert */
         JournalEntryInput: {
-            /** @description URN-scoping parent book — accepts full URN or name path */
+            /** @description URN-scoping parent book. Accepts full URN or name path */
             bookUrn?: string;
-            /** @description URN of the occurrence that directly caused this entry — the entry it reverses or corrects, say (immutable). Recorded, never resolved, so it may name an occurrence in another instance */
+            /** @description URN of the occurrence that directly caused this entry, such as the entry it reverses or corrects (immutable). Recorded, never resolved, so it may name an occurrence in another instance */
             causationUrn?: string | null;
             /** @description Economic-event id shared by every entry arising from one operation (e.g. an on-ramp); enables per-event reconciliation */
             correlationId?: string | null;
@@ -5670,6 +6176,8 @@ export interface components {
             name: string;
             /** @description Canonical URN of where the amount moves to (required, immutable). Recorded, never resolved */
             toUrn: string;
+            /** @description The transaction type the leg is in, read-only and denormalized from its transaction */
+            transactionTypeUrn: string;
             /** @description The transaction the leg belongs to - a reference or full URN (immutable) */
             transactionUrn: string;
             updated: components["schemas"]["FFTime"];
@@ -6121,7 +6629,7 @@ export interface components {
              * @enum {string}
              */
             status: "active" | "released";
-            /** @description URN-scoping parent token — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent token. Accepts full URN or name (required, immutable) */
             tokenUrn: string;
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
@@ -6146,7 +6654,7 @@ export interface components {
             name: string;
             /** @description URN of the chain state, transaction or event this lock was written from (immutable). Recorded, never resolved */
             originUrn?: string | null;
-            /** @description URN-scoping parent token — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent token. Accepts full URN or name (required, immutable) */
             tokenUrn?: string;
         };
         /** @description Items returned by the query */
@@ -6163,10 +6671,12 @@ export interface components {
             labels?: {
                 [key: string]: string;
             };
-            /** @description The lock this ends — accepts full URN or name path (required, immutable). A lock has at most one release */
+            /** @description The lock this ends. Accepts full URN or name path (required, immutable). A lock has at most one release */
             lockUrn: string;
             /** @description URN of the chain transaction or event this lock release was written from (immutable). Recorded, never resolved */
             originUrn?: string | null;
+            /** @description The token the release is in, read-only and denormalized from its lock */
+            tokenUrn: string;
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
             urn: string;
@@ -6179,7 +6689,7 @@ export interface components {
             labels?: {
                 [key: string]: string;
             };
-            /** @description The lock this ends — accepts full URN or name path (required, immutable). A lock has at most one release */
+            /** @description The lock this ends. Accepts full URN or name path (required, immutable). A lock has at most one release */
             lockUrn: string;
             /** @description URN of the chain transaction or event this lock release was written from (immutable). Recorded, never resolved */
             originUrn?: string | null;
@@ -6426,7 +6936,7 @@ export interface components {
             /** @description Name/URN of the asset */
             assetUrn: string;
             balance: components["schemas"]["Integer"];
-            /** @description URN of the book the account belongs to (read-only) */
+            /** @description The book the position is in, read-only */
             bookUrn: string;
             /**
              * @description Accounting classification of the account, copied when the position is first written (read-only)
@@ -6452,7 +6962,7 @@ export interface components {
             amount: components["schemas"]["Integer"];
             /** @description The asset the posting is denominated in, named by URN or name path on write; the resolved asset URN on read */
             assetUrn: string;
-            /** @description The book the posting is in, read-only and denormalised from its entry */
+            /** @description The book the posting is in, read-only and denormalized from its entry */
             bookUrn: string;
             created: components["schemas"]["FFTime"];
             /**
@@ -6487,7 +6997,7 @@ export interface components {
             amount: components["schemas"]["Integer"];
             /** @description The asset the posting is denominated in, named by URN or name path on write; the resolved asset URN on read */
             assetUrn: string;
-            /** @description The book the posting is in, read-only and denormalised from its entry */
+            /** @description The book the posting is in, read-only and denormalized from its entry */
             bookUrn: string;
             created: components["schemas"]["FFTime"];
             /**
@@ -6914,7 +7424,7 @@ export interface components {
             info?: any;
             /** @description Where the signal came from: api, bulk, or the stream that carried it */
             source: string;
-            /** @description The key the signal reports (required) */
+            /** @description The key the signal reports (required), unique to one occurrence */
             waitKey: string;
         };
         /** @description The items of this entity type to upsert */
@@ -6923,7 +7433,7 @@ export interface components {
             idempotencyKey: string;
             /** @description What the signal reports, stored verbatim for the workflows judging conditions on its key */
             info?: any;
-            /** @description The key the signal reports (required) */
+            /** @description The key the signal reports (required), unique to one occurrence */
             waitKey: string;
         };
         /** @description Result of the signals section */
@@ -6937,7 +7447,7 @@ export interface components {
         };
         /** @description Items returned by the query */
         State: {
-            /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent chain. Accepts full URN or name (required, immutable) */
             chainUrn: string;
             created: components["schemas"]["FFTime"];
             /**
@@ -6968,6 +7478,8 @@ export interface components {
         };
         /** @description Items returned by the query */
         StateArchival: {
+            /** @description The chain the archival is in, read-only and denormalized from its state */
+            chainUrn: string;
             created: components["schemas"]["FFTime"];
             /**
              * Format: int64
@@ -6982,7 +7494,7 @@ export interface components {
             };
             /** @description URN of the chain transaction or event this state archival was written from (immutable). Recorded, never resolved */
             originUrn?: string | null;
-            /** @description The state this archives — accepts full URN or name path (required, immutable). A state has at most one archival */
+            /** @description The state this archives. Accepts full URN or name path (required, immutable). A state has at most one archival */
             stateUrn: string;
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
@@ -6998,12 +7510,12 @@ export interface components {
             };
             /** @description URN of the chain transaction or event this state archival was written from (immutable). Recorded, never resolved */
             originUrn?: string | null;
-            /** @description The state this archives — accepts full URN or name path (required, immutable). A state has at most one archival */
+            /** @description The state this archives. Accepts full URN or name path (required, immutable). A state has at most one archival */
             stateUrn: string;
         };
         /** @description The items of this entity type to upsert */
         StateInput: {
-            /** @description URN-scoping parent chain — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent chain. Accepts full URN or name (required, immutable) */
             chainUrn?: string;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
@@ -7041,6 +7553,8 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "started" | "completed" | "failed";
+            /** @description The transaction type the step is in, read-only and denormalized from its transaction */
+            transactionTypeUrn: string;
             /** @description The transaction the step belongs to - a reference or full URN (immutable) */
             transactionUrn: string;
             updated: components["schemas"]["FFTime"];
@@ -7085,6 +7599,8 @@ export interface components {
             status: "completed" | "failed";
             /** @description The step this concludes - a reference or full URN (required, immutable). A step has at most one outcome */
             stepUrn: string;
+            /** @description The transaction type the outcome is in, read-only and denormalized from its step */
+            transactionTypeUrn: string;
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
             urn: string;
@@ -7127,6 +7643,8 @@ export interface components {
             };
             /** @description The step that began - a reference or full URN (required, immutable). A step has at most one start */
             stepUrn: string;
+            /** @description The transaction type the start is in, read-only and denormalized from its step */
+            transactionTypeUrn: string;
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
             urn: string;
@@ -7144,13 +7662,127 @@ export interface components {
             /** @description The step that began - a reference or full URN (required, immutable). A step has at most one start */
             stepUrn: string;
         };
+        /** @description Items returned by the query */
+        Store: {
+            created: components["schemas"]["FFTime"];
+            /**
+             * @description Hashing rules for every item. 'unchecked' to allow external control and URI references, or service generated via the 'sha256' hash algorithm, or `hmac-sha256` salted hash algorithm (required, immutable)
+             * @enum {string}
+             */
+            hashScheme: "sha256" | "hmac-sha256" | "unchecked";
+            /**
+             * Format: int64
+             * @description Immutable integer primary key assigned by the database, providing stable ordering and paging cursors
+             */
+            id: number;
+            /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
+            info?: any;
+            /**
+             * @description How a JSON encoded data should be interpreted before hashing and storage. 'unmodified', or 'rfc8785' canonicalized for deterministic hashing (required, immutable)
+             * @enum {string}
+             */
+            jsonScheme: "unmodified" | "rfc8785";
+            /** @description Key-value labels attached to the resource. Indexed and filterable */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Format: int64
+             * @description Largest size payload for any item in the store. Cannot be limited beyond the maximum for the service
+             */
+            maxPayloadBytes?: number | null;
+            /** @description Unique name of the store (URN segment) */
+            name: string;
+            updated: components["schemas"]["FFTime"];
+            /** @description Canonical URN of the resource */
+            urn: string;
+        };
+        /** @description The items of this entity type to upsert */
+        StoreInput: {
+            /**
+             * @description Hashing rules for every item. 'unchecked' to allow external control and URI references, or service generated via the 'sha256' hash algorithm, or `hmac-sha256` salted hash algorithm (required, immutable)
+             * @enum {string}
+             */
+            hashScheme: "sha256" | "hmac-sha256" | "unchecked";
+            /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
+            info?: any;
+            /**
+             * @description How a JSON encoded data should be interpreted before hashing and storage. 'unmodified', or 'rfc8785' canonicalized for deterministic hashing (required, immutable)
+             * @enum {string}
+             */
+            jsonScheme: "unmodified" | "rfc8785";
+            /** @description Key-value labels attached to the resource. Indexed and filterable */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Format: int64
+             * @description Largest size payload for any item in the store. Cannot be limited beyond the maximum for the service
+             */
+            maxPayloadBytes?: number | null;
+            /** @description Unique name of the store (URN segment) */
+            name: string;
+        };
+        /** @description Query for folders */
+        StoreQuery: {
+            /** @description Array of sub-queries */
+            and?: components["schemas"]["FilterJSON"][];
+            /** @description Array of field + value combinations to apply as string-contains filters - all filters must match */
+            contains?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description If true, the total number of entries that could be returned from the database will be calculated and returned as a 'total' (has a performance cost) */
+            count?: boolean | null;
+            /** @description Array of field + value combinations to apply as ends-with filters - all filters must match */
+            endsWith?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description Shortname for equal */
+            eq?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description Array of field + value combinations to apply as equal filters - all must match */
+            equal?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description Fields to return in the response */
+            fields?: string[];
+            /** @description Array of field + value combinations to apply as greater-than filters - all filters must match */
+            greaterThan?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description Array of field + value combinations to apply as greater-than filters - all filters must match */
+            greaterThanOrEqual?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description Short name for greaterThan */
+            gt?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description Short name for greaterThanOrEqual */
+            gte?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description Array of field + values-array combinations to apply as 'in' filters (matching one of a set of values) - all filters must match */
+            in?: components["schemas"]["FilterJSONKeyValues"][];
+            /** @description Array of field + value combinations to apply as less-than-or-equal filters - all filters must match */
+            lessThan?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description Array of field + value combinations to apply as less-than-or-equal filters - all filters must match */
+            lessThanOrEqual?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description Limit on the results to return */
+            limit?: number | null;
+            /** @description Short name for lessThan */
+            lt?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description Short name for lessThanOrEqual */
+            lte?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description Shortcut for equal with all conditions negated (the not property of all children is overridden) */
+            neq?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description Shortcut for in with all conditions negated (the not property of all children is overridden) */
+            nin?: components["schemas"]["FilterJSONKeyValues"][];
+            /** @description Tests if the specified field is null (unset) */
+            null?: components["schemas"]["FilterJSONBase"][];
+            /** @description Array of sub-queries */
+            or?: components["schemas"]["FilterJSON"][];
+            /** @description Number of results to skip before returning entries, for skip+limit based pagination */
+            skip?: number | null;
+            /** @description Array of fields to sort by. A '-' prefix on a field requests that field is sorted in descending order */
+            sort?: string[];
+            /** @description Array of field + value combinations to apply as starts-with filters - all filters must match */
+            startsWith?: components["schemas"]["FilterJSONKeyValue"][];
+            /** @description The store this query reads - a ref or full URN */
+            storeUrn?: string;
+        };
         SubledgerStatus: {
             /** @description True if the server is ready */
             ready?: boolean;
         };
         /** @description Items returned by the query */
         Token: {
-            /** @description The unit of account this token's quantities are denominated in — accepts full URN or name. Optional and mutable: a PATCH sets or re-links, and a PUT omitting it clears the link */
+            /** @description The unit of account this token's quantities are denominated in. Accepts full URN or name. Optional and mutable: a PATCH sets or re-links, and a PUT omitting it clears the link */
             assetUrn?: string;
             /** @description URN of the chain this token lives on (required, immutable). Recorded, never resolved */
             chainUrn: string;
@@ -7168,7 +7800,7 @@ export interface components {
             labels?: {
                 [key: string]: string;
             };
-            /** @description The rail's own way of naming this token — a contract address, a mint, a coin type, an instrument id (required, immutable). Natives included */
+            /** @description The rail's own way of naming this token: a contract address, a mint, a coin type or an instrument id (required, immutable). Natives included */
             locator: string;
             /** @description Unique name of the token (URN segment) */
             name: string;
@@ -7182,7 +7814,7 @@ export interface components {
         };
         /** @description The items of this entity type to upsert */
         TokenInput: {
-            /** @description The unit of account this token's quantities are denominated in — accepts full URN or name. Optional and mutable: a PATCH sets or re-links, and a PUT omitting it clears the link */
+            /** @description The unit of account this token's quantities are denominated in. Accepts full URN or name. Optional and mutable: a PATCH sets or re-links, and a PUT omitting it clears the link */
             assetUrn?: string;
             /** @description URN of the chain this token lives on (required, immutable). Recorded, never resolved */
             chainUrn: string;
@@ -7194,7 +7826,7 @@ export interface components {
             labels?: {
                 [key: string]: string;
             };
-            /** @description The rail's own way of naming this token — a contract address, a mint, a coin type, an instrument id (required, immutable). Natives included */
+            /** @description The rail's own way of naming this token: a contract address, a mint, a coin type or an instrument id (required, immutable). Natives included */
             locator: string;
             /** @description Unique name of the token (URN segment) */
             name: string;
@@ -7625,6 +8257,8 @@ export interface components {
              * @enum {string}
              */
             status: "completed" | "failed";
+            /** @description The transaction type the outcome is in, read-only and denormalized from its transaction */
+            transactionTypeUrn: string;
             /** @description The transaction this concludes - a reference or full URN (required, immutable). A transaction has at most one outcome */
             transactionUrn: string;
             updated: components["schemas"]["FFTime"];
@@ -7756,7 +8390,7 @@ export interface components {
             /** @description URN of the chain transaction or event this transfer was written from (immutable). Recorded, never resolved */
             originUrn?: string | null;
             timestamp: components["schemas"]["FFTime"];
-            /** @description URN-scoping parent token — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent token. Accepts full URN or name (required, immutable) */
             tokenUrn: string;
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
@@ -7777,7 +8411,7 @@ export interface components {
             /** @description URN of the chain transaction or event this transfer was written from (immutable). Recorded, never resolved */
             originUrn?: string | null;
             timestamp: components["schemas"]["FFTime"];
-            /** @description URN-scoping parent token — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent token. Accepts full URN or name (required, immutable) */
             tokenUrn?: string;
         };
         /**
@@ -7831,16 +8465,16 @@ export interface components {
             /** @description Which field points at this row's parent, for a self-nesting collection (e.g. "parentAccountUrn"); unset when rows don't nest */
             parentField?: string | null;
             query?: components["schemas"]["ParameterizedJSONQuery"];
-            /** @description Name of a declared parameter whose supplied value is the scopeUrn. Required for views on scooped collections when scopeUrn is unset */
+            /** @description Name of a declared parameter whose supplied value is the scopeUrn. Required for views on scoped collections when scopeUrn is unset */
             scopeParameter?: string | null;
-            /** @description The full URN of the root (book, chain or token) a scoped collection is read under. Required for views on scooped collections when scopeParameter is unset */
+            /** @description The full URN of the root (book, chain or token) a scoped collection is read under. Required for views on scoped collections when scopeParameter is unset */
             scopeUrn?: string | null;
-            /** @description The collection this view queries, as "<module>.<collection>" (e.g. accounting.holds). Required */
+            /** @description The collection this view queries, as `<module>.<collection>` (e.g. `accounting.holds`). Required */
             type: string;
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
             urn: string;
-            /** @description The ViewGroup this view belongs to — accepts full URN or name (required, immutable) */
+            /** @description The ViewGroup this view belongs to. Accepts full URN or name (required, immutable) */
             viewGroupUrn: string;
         };
         ViewAggregateInput: {
@@ -7926,13 +8560,13 @@ export interface components {
             /** @description Which field points at this row's parent, for a self-nesting collection (e.g. "parentAccountUrn"); unset when rows don't nest */
             parentField?: string | null;
             query?: components["schemas"]["ParameterizedJSONQuery"];
-            /** @description Name of a declared parameter whose supplied value is the scopeUrn. Required for views on scooped collections when scopeUrn is unset */
+            /** @description Name of a declared parameter whose supplied value is the scopeUrn. Required for views on scoped collections when scopeUrn is unset */
             scopeParameter?: string | null;
-            /** @description The full URN of the root (book, chain or token) a scoped collection is read under. Required for views on scooped collections when scopeParameter is unset */
+            /** @description The full URN of the root (book, chain or token) a scoped collection is read under. Required for views on scoped collections when scopeParameter is unset */
             scopeUrn?: string | null;
-            /** @description The collection this view queries, as "<module>.<collection>" (e.g. accounting.holds). Required */
+            /** @description The collection this view queries, as `<module>.<collection>` (e.g. `accounting.holds`). Required */
             type: string;
-            /** @description The ViewGroup this view belongs to — accepts full URN or name (required, immutable) */
+            /** @description The ViewGroup this view belongs to. Accepts full URN or name (required, immutable) */
             viewGroupUrn: string;
         };
         /** @description What to aggregate within each group */
@@ -7986,9 +8620,9 @@ export interface components {
         };
         /** @description Items returned by the query */
         WalletAssignment: {
-            /** @description Account the holdings belong to, in this wallet assignment's own book — accepts full URN or name path (required, immutable) */
+            /** @description Account the holdings belong to, in this wallet assignment's own book. Accepts full URN or name path (required, immutable) */
             accountUrn: string;
-            /** @description URN-scoping parent book — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent book. Accepts full URN or name (required, immutable) */
             bookUrn: string;
             created: components["schemas"]["FFTime"];
             /**
@@ -8012,14 +8646,14 @@ export interface components {
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
             urn: string;
-            /** @description Wallet being assigned — accepts full URN or name path (required, immutable) */
+            /** @description Wallet being assigned. Accepts full URN or name path (required, immutable) */
             walletUrn: string;
         };
         /** @description The items of this entity type to upsert */
         WalletAssignmentInput: {
-            /** @description Account the holdings belong to, in this wallet assignment's own book — accepts full URN or name path (required, immutable) */
+            /** @description Account the holdings belong to, in this wallet assignment's own book. Accepts full URN or name path (required, immutable) */
             accountUrn: string;
-            /** @description URN-scoping parent book — accepts full URN or name (required, immutable) */
+            /** @description URN-scoping parent book. Accepts full URN or name (required, immutable) */
             bookUrn?: string;
             /** @description Additional descriptive information, stored verbatim and never interpreted by the service */
             info?: any;
@@ -8029,7 +8663,7 @@ export interface components {
             };
             /** @description Unique name of the wallet assignment within its book (URN segment) */
             name: string;
-            /** @description Wallet being assigned — accepts full URN or name path (required, immutable) */
+            /** @description Wallet being assigned. Accepts full URN or name path (required, immutable) */
             walletUrn: string;
         };
         /** @description Items returned by the query */
@@ -8085,6 +8719,8 @@ export interface components {
         };
         /** @description Items returned by the query */
         WalletUnassignment: {
+            /** @description The book the unassignment is in, read-only and denormalized from its wallet assignment */
+            bookUrn: string;
             /** @description URN of the reason the assignment ended (immutable). Recorded, never resolved */
             causationUrn?: string | null;
             created: components["schemas"]["FFTime"];
@@ -8102,7 +8738,7 @@ export interface components {
             updated: components["schemas"]["FFTime"];
             /** @description Canonical URN of the resource */
             urn: string;
-            /** @description The wallet assignment this ends — accepts full URN or name path (required, immutable). An assignment has at most one unassignment */
+            /** @description The wallet assignment this ends. Accepts full URN or name path (required, immutable). An assignment has at most one unassignment */
             walletAssignmentUrn: string;
         };
         /** @description The items of this entity type to upsert */
@@ -8115,7 +8751,7 @@ export interface components {
             labels?: {
                 [key: string]: string;
             };
-            /** @description The wallet assignment this ends — accepts full URN or name path (required, immutable). An assignment has at most one unassignment */
+            /** @description The wallet assignment this ends. Accepts full URN or name path (required, immutable). An assignment has at most one unassignment */
             walletAssignmentUrn: string;
         };
     };
@@ -8628,6 +9264,8 @@ export interface operations {
         parameters: {
             query?: {
                 label?: string[];
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                bookUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 causationUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
@@ -10134,6 +10772,8 @@ export interface operations {
         parameters: {
             query?: {
                 label?: string[];
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                bookUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 causationUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
@@ -11827,6 +12467,8 @@ export interface operations {
             query?: {
                 label?: string[];
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                chainUrn?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 created?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 id?: string;
@@ -12782,6 +13424,894 @@ export interface operations {
             };
         };
     };
+    listStore: {
+        parameters: {
+            query?: {
+                label?: string[];
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                created?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                hashScheme?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                id?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                jsonScheme?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                maxPayloadBytes?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                name?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                updated?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                urn?: string;
+                /** @description Sort field. For multi-field sort use comma separated values (or multiple query values) with '-' prefix for descending */
+                sort?: string;
+                /** @description Ascending sort order (overrides all fields in a multi-field sort) */
+                ascending?: string;
+                /** @description Descending sort order (overrides all fields in a multi-field sort) */
+                descending?: string;
+                /** @description The number of records to skip (max: 100,000). Unsuitable for bulk operations */
+                skip?: string;
+                /** @description The maximum number of records to return (max: 100) */
+                limit?: string;
+                /** @description Return a total count as well as items (adds extra database processing) */
+                count?: string;
+                /** @description Comma separated list of fields to return */
+                fields?: string;
+            };
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description True if all matching items are included in the results */
+                        allItems?: boolean;
+                        /** @description Number of results returned */
+                        count?: number;
+                        /** @description Items returned by the query */
+                        items?: components["schemas"]["Store"][];
+                    };
+                };
+            };
+        };
+    };
+    createStore: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoreInput"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Store"];
+                };
+            };
+        };
+    };
+    getStore: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Store"];
+                };
+            };
+        };
+    };
+    replaceStore: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoreInput"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Store"];
+                };
+            };
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Store"];
+                };
+            };
+        };
+    };
+    deleteStore: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    patchStore: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoreInput"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Store"];
+                };
+            };
+        };
+    };
+    listFolder: {
+        parameters: {
+            query?: {
+                label?: string[];
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                created?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                id?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                name?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                parentFolderUrn?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                storeUrn?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                updated?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                urn?: string;
+                /** @description Sort field. For multi-field sort use comma separated values (or multiple query values) with '-' prefix for descending */
+                sort?: string;
+                /** @description Ascending sort order (overrides all fields in a multi-field sort) */
+                ascending?: string;
+                /** @description Descending sort order (overrides all fields in a multi-field sort) */
+                descending?: string;
+                /** @description The number of records to skip (max: 100,000). Unsuitable for bulk operations */
+                skip?: string;
+                /** @description The maximum number of records to return (max: 100) */
+                limit?: string;
+                /** @description Return a total count as well as items (adds extra database processing) */
+                count?: string;
+                /** @description Comma separated list of fields to return */
+                fields?: string;
+            };
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description True if all matching items are included in the results */
+                        allItems?: boolean;
+                        /** @description Number of results returned */
+                        count?: number;
+                        /** @description Items returned by the query */
+                        items?: components["schemas"]["Folder"][];
+                    };
+                };
+            };
+        };
+    };
+    createFolder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderInput"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Folder"];
+                };
+            };
+        };
+    };
+    getFolder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+                /** @description Folder reference: name path (parent:child), or full URN */
+                folderRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Folder"];
+                };
+            };
+        };
+    };
+    replaceFolder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+                /** @description Folder reference: name path (parent:child), or full URN */
+                folderRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderInput"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Folder"];
+                };
+            };
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Folder"];
+                };
+            };
+        };
+    };
+    deleteFolder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+                /** @description Folder reference: name path (parent:child), or full URN */
+                folderRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    patchFolder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+                /** @description Folder reference: name path (parent:child), or full URN */
+                folderRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderInput"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Folder"];
+                };
+            };
+        };
+    };
+    aggregateFolder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AggregateInput"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AggregateResult"];
+                };
+            };
+        };
+    };
+    queryFolder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QueryJSON"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description True if all matching items are included in the results */
+                        allItems?: boolean;
+                        /** @description Number of results returned */
+                        count?: number;
+                        /** @description Items returned by the query */
+                        items?: components["schemas"]["Folder"][];
+                    };
+                };
+            };
+        };
+    };
+    listDataItem: {
+        parameters: {
+            query?: {
+                label?: string[];
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                contentType?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                created?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                encoding?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                folderUrn?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                hash?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                id?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                name?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                storeUrn?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                updated?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                uri?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                urn?: string;
+                /** @description Sort field. For multi-field sort use comma separated values (or multiple query values) with '-' prefix for descending */
+                sort?: string;
+                /** @description Ascending sort order (overrides all fields in a multi-field sort) */
+                ascending?: string;
+                /** @description Descending sort order (overrides all fields in a multi-field sort) */
+                descending?: string;
+                /** @description The number of records to skip (max: 100,000). Unsuitable for bulk operations */
+                skip?: string;
+                /** @description The maximum number of records to return (max: 100) */
+                limit?: string;
+                /** @description Return a total count as well as items (adds extra database processing) */
+                count?: string;
+                /** @description Comma separated list of fields to return */
+                fields?: string;
+            };
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description True if all matching items are included in the results */
+                        allItems?: boolean;
+                        /** @description Number of results returned */
+                        count?: number;
+                        /** @description Items returned by the query */
+                        items?: components["schemas"]["DataItem"][];
+                    };
+                };
+            };
+        };
+    };
+    createDataItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataItemInput"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataItem"];
+                };
+            };
+        };
+    };
+    getDataItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+                /** @description Item reference: name, folder path and name (folder:item), or full URN */
+                dataItemRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataItem"];
+                };
+            };
+        };
+    };
+    deleteDataItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+                /** @description Item reference: name, folder path and name (folder:item), or full URN */
+                dataItemRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    patchDataItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+                /** @description Item reference: name, folder path and name (folder:item), or full URN */
+                dataItemRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataItemInput"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataItem"];
+                };
+            };
+        };
+    };
+    getDataItemPayload: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+                /** @description Item reference: name, folder path and name (folder:item), or full URN */
+                dataItemRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    aggregateDataItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AggregateInput"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AggregateResult"];
+                };
+            };
+        };
+    };
+    queryDataItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QueryJSON"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description True if all matching items are included in the results */
+                        allItems?: boolean;
+                        /** @description Number of results returned */
+                        count?: number;
+                        /** @description Items returned by the query */
+                        items?: components["schemas"]["DataItem"][];
+                    };
+                };
+            };
+        };
+    };
+    postDataItemUpload: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path: {
+                /** @description Store reference: name, or full URN */
+                storeRef: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+                "multipart/form-data": {
+                    /** Format: binary */
+                    "filename.ext"?: string;
+                    /** @description Success */
+                    folderUrn?: string;
+                    /** @description Success */
+                    hash?: string;
+                    /** @description Success */
+                    info?: string;
+                    /** @description Success */
+                    name?: string;
+                    /** @description Success */
+                    salt?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataItem"];
+                };
+            };
+        };
+    };
+    aggregateStore: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AggregateInput"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AggregateResult"];
+                };
+            };
+        };
+    };
+    queryStore: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Server-side request timeout (milliseconds, or set a custom suffix like 10s) */
+                "Request-Timeout"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QueryJSON"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description True if all matching items are included in the results */
+                        allItems?: boolean;
+                        /** @description Number of results returned */
+                        count?: number;
+                        /** @description Items returned by the query */
+                        items?: components["schemas"]["Store"][];
+                    };
+                };
+            };
+        };
+    };
     listSignal: {
         parameters: {
             query?: {
@@ -13140,6 +14670,8 @@ export interface operations {
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 name?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                transactionTypeUrn?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 transactionUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 updated?: string;
@@ -13404,6 +14936,8 @@ export interface operations {
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 subjectUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                transactionTypeUrn?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 transactionUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 updated?: string;
@@ -13567,6 +15101,8 @@ export interface operations {
                 name?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 toUrn?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                transactionTypeUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 transactionUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
@@ -13831,6 +15367,8 @@ export interface operations {
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 stepUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                transactionTypeUrn?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 updated?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 urn?: string;
@@ -14089,6 +15627,8 @@ export interface operations {
                 id?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 stepUrn?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                transactionTypeUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 updated?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
@@ -14349,6 +15889,8 @@ export interface operations {
                 name?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 status?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                transactionTypeUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 transactionUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
@@ -14614,6 +16156,8 @@ export interface operations {
                 id?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 status?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                transactionTypeUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 transactionUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
@@ -18151,6 +19695,8 @@ export interface operations {
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 originUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                tokenUrn?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 updated?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 urn?: string;
@@ -18708,6 +20254,8 @@ export interface operations {
                 lockUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 originUrn?: string;
+                /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
+                tokenUrn?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
                 updated?: string;
                 /** @description Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^ */
@@ -20489,6 +22037,12 @@ export type Contract = components["schemas"]["Contract"];
 export type ContractIdentifier = components["schemas"]["ContractIdentifier"];
 export type ContractIdentifierInput = components["schemas"]["ContractIdentifierInput"];
 export type ContractInput = components["schemas"]["ContractInput"];
+export type DataItem = components["schemas"]["DataItem"];
+export type DataItemInput = components["schemas"]["DataItemInput"];
+export type DataQueryInput = components["schemas"]["DataQueryInput"];
+export type DataQueryOutput = components["schemas"]["DataQueryOutput"];
+export type DataUpsertInput = components["schemas"]["DataUpsertInput"];
+export type DataUpsertOutput = components["schemas"]["DataUpsertOutput"];
 export type Decimal = components["schemas"]["Decimal"];
 export type Deployment = components["schemas"]["Deployment"];
 export type DeploymentInput = components["schemas"]["DeploymentInput"];
@@ -20506,6 +22060,8 @@ export type FilterJSON = components["schemas"]["FilterJSON"];
 export type FilterJSONBase = components["schemas"]["FilterJSONBase"];
 export type FilterJSONKeyValue = components["schemas"]["FilterJSONKeyValue"];
 export type FilterJSONKeyValues = components["schemas"]["FilterJSONKeyValues"];
+export type Folder = components["schemas"]["Folder"];
+export type FolderInput = components["schemas"]["FolderInput"];
 export type Hold = components["schemas"]["Hold"];
 export type HoldInput = components["schemas"]["HoldInput"];
 export type HoldRelease = components["schemas"]["HoldRelease"];
@@ -20563,6 +22119,9 @@ export type StepOutcome = components["schemas"]["StepOutcome"];
 export type StepOutcomeInput = components["schemas"]["StepOutcomeInput"];
 export type StepStart = components["schemas"]["StepStart"];
 export type StepStartInput = components["schemas"]["StepStartInput"];
+export type Store = components["schemas"]["Store"];
+export type StoreInput = components["schemas"]["StoreInput"];
+export type StoreQuery = components["schemas"]["StoreQuery"];
 export type SubledgerStatus = components["schemas"]["SubledgerStatus"];
 export type Token = components["schemas"]["Token"];
 export type TokenInput = components["schemas"]["TokenInput"];
