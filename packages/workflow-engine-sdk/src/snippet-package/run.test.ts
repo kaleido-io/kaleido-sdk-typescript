@@ -15,6 +15,7 @@
 // limitations under the License.
 
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { execFileSync } from 'child_process';
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -39,6 +40,16 @@ const bundle = (dir: string, entry: string, supplied = ['zod']) =>
     workingDir: dir,
   });
 
+// Runs a bundle in a separate Node.js process, as the provider runs it, and
+// returns the `paths` it exports. Jest's own module loader can't import ES
+// modules without an experimental flag.
+const runBundle = async (code: string): Promise<unknown> => {
+  const file = join(mkdtempSync(join(tmpdir(), 'bundle-')), 'handler.mjs');
+  writeFileSync(file, code);
+  const script = `const m = await import(${JSON.stringify(pathToFileURL(file).href)}); console.log(JSON.stringify(m.paths ?? m.default.paths));`;
+  return JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], { encoding: 'utf8' }));
+};
+
 describe('resolvePackageEntry', () => {
   it('finds an entry in the package and refuses one outside it or missing', () => {
     const dir = project({ 'src/a.ts': 'export {}' });
@@ -59,6 +70,34 @@ describe('bundleHandler', () => {
     const code = await bundle(dir, 'src/a.ts');
     expect(code).toContain('exports.z = "zod"');
     expect(code).toContain(JSON.stringify(pathToFileURL(join(realpathSync(dir), '/')).href));
+  });
+
+  it("gives a CommonJS handler, its files and the packages it uses their own __dirname and __filename", async () => {
+    const dir = project({
+      'node_modules/zod/package.json': '{"name":"zod","main":"index.js"}',
+      'node_modules/zod/index.js': 'exports.dir = __dirname;',
+      'src/lib/helper.cts': 'exports.dir = __dirname;',
+      'src/lib/own.ts': "const __dirname = 'its own';\nexport const dir = __dirname;",
+      'src/a.cts': [
+        "const helper = require('./lib/helper.cts');",
+        "const own = require('./lib/own');",
+        "const zod = require('zod');",
+        'module.exports = { paths: { dir: __dirname, file: __filename, helper: helper.dir, own: own.dir, zod: zod.dir } };',
+      ].join('\n'),
+    });
+    const root = realpathSync(dir);
+    expect(await runBundle(await bundle(dir, 'src/a.cts'))).toEqual({
+      dir: join(root, 'src'),
+      file: join(root, 'src/a.cts'),
+      helper: join(root, 'src/lib'),
+      own: 'its own',
+      zod: join(root, 'node_modules/zod'),
+    });
+  });
+
+  it('runs a handler whose entry starts with a hashbang', async () => {
+    const dir = project({ 'src/a.ts': '#!/usr/bin/env node\nexport const paths = { file: __filename };' });
+    expect(await runBundle(await bundle(dir, 'src/a.ts'))).toEqual({ file: join(realpathSync(dir), 'src/a.ts') });
   });
 
   it("copies a shared module into each handler's bundle, so state kept in it is each handler's own", async () => {
