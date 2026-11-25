@@ -22,6 +22,7 @@ export const ROOT_FIELD: Record<BulkModule, string | undefined> = {
   blockchain: "chainUrn",
   token: "tokenUrn",
   lifecycle: "transactionTypeUrn",
+  data: "storeUrn",
 };
 
 /**
@@ -80,5 +81,10 @@ export const IDENTITY: {
     transactions: ["name"],
     transactionOutcomes: ["transactionUrn"],
     transactionTypes: ["name"],
+  },
+  data: {
+    stores: ["name"],
+    folders: ["parentFolderUrn", "name"],
+    items: ["folderUrn", "name"],
   },
 };
