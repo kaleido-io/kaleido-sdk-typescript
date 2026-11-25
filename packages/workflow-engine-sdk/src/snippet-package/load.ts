@@ -15,8 +15,9 @@
 // limitations under the License.
 
 import { statSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { builtinModules } from 'module';
-import { join } from 'path';
+import { dirname, extname, join } from 'path';
 import { pathToFileURL } from 'url';
 import type * as esbuild from 'esbuild';
 import type { PackageImportCheck } from './imports';
@@ -86,6 +87,61 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: s
   }
 }
 
+const sourceLoaders: Record<string, esbuild.Loader> = {
+  '.ts': 'ts',
+  '.mts': 'ts',
+  '.cts': 'ts',
+  '.tsx': 'tsx',
+  '.js': 'js',
+  '.mjs': 'js',
+  '.cjs': 'js',
+  '.jsx': 'jsx',
+};
+
+// The names of the directory and file name variables Node.js gives a CommonJS
+// module. They're assembled because the build's tsc-esm-fix step rewrites
+// every literal occurrence of them in compiled code, strings included.
+const DIRNAME = '__' + 'dirname';
+const FILENAME = '__' + 'filename';
+
+/**
+ * Gives each bundled file that uses the directory or file name variables of
+ * a CommonJS module its own values, as Node.js does. A bundle runs as one ES
+ * module, where neither exists, so without this a CommonJS handler, or a
+ * CommonJS package it uses, fails when it reads them. A file that declares
+ * either name itself keeps its own.
+ */
+const modulePathsPlugin: esbuild.Plugin = {
+  name: 'module-paths',
+  setup(build) {
+    build.onLoad({ filter: /\.[cm]?[jt]sx?$/ }, async (args) => {
+      const source = await readFile(args.path, 'utf8');
+      if (!source.includes(DIRNAME) && !source.includes(FILENAME)) {
+        return undefined;
+      }
+      const declarations: string[] = [];
+      for (const [name, value] of [
+        [DIRNAME, dirname(args.path)],
+        [FILENAME, args.path],
+      ]) {
+        const used = new RegExp(`\\b${name}\\b`).test(source);
+        const declared = new RegExp(`\\b(?:var|let|const|function|class)\\s+${name}\\b`).test(source);
+        if (used && !declared) {
+          declarations.push(`${name} = ${JSON.stringify(value)}`);
+        }
+      }
+      if (declarations.length === 0) {
+        return undefined;
+      }
+      // On the first line, so esbuild's error positions still match the
+      // source, but after a hashbang, which must come first.
+      const preamble = `var ${declarations.join(', ')};`;
+      const hashbang = /^#![^\n]*\n/.exec(source)?.[0] ?? '';
+      return { contents: hashbang + preamble + source.slice(hashbang.length), loader: sourceLoaders[extname(args.path)] };
+    });
+  },
+};
+
 async function loadEsbuild(): Promise<typeof esbuild> {
   try {
     return await import('esbuild');
@@ -129,7 +185,7 @@ export async function bundleHandler(entryPath: string, options: BundleHandlerOpt
         packages: 'bundle',
         external: nodeBuiltinExternals,
         alias: options.alias ?? {},
-        plugins: importCheck ? [importCheck.plugin] : [],
+        plugins: importCheck ? [importCheck.plugin, modulePathsPlugin] : [modulePathsPlugin],
         logLevel: 'silent',
       }),
       limits.timeoutMs,
@@ -144,7 +200,9 @@ export async function bundleHandler(entryPath: string, options: BundleHandlerOpt
     throw new Error(`Failed to bundle handler at ${entryPath}: ${options.explainError ? options.explainError(message) : message}`, { cause: error });
   }
 
-  const bundled = result.outputFiles?.[0]?.text;
+  // esbuild keeps an entry's hashbang as the bundle's first line, where it
+  // would land after the require line added below and fail to parse.
+  const bundled = result.outputFiles?.[0]?.text.replace(/^#![^\n]*\n/, '');
   if (!bundled) {
     throw new Error(`Failed to bundle handler at ${entryPath}: esbuild produced no output`);
   }

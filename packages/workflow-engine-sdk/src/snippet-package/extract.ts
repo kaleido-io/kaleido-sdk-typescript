@@ -26,6 +26,24 @@ import type { WithStageDirector } from '../types/core';
 
 const log = newLogger('snippet-package');
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+/**
+ * The exports a handler module names. A CommonJS module's exports arrive as
+ * the bundle's default export, so the names of a plain object exported as
+ * default count too: `exports.hello = handler` is found as `hello`.
+ */
+function namedExports(loaded: Record<string, unknown>): [string, unknown][] {
+  const named = Object.entries(loaded).filter(([name]) => name !== 'default');
+  return isPlainObject(loaded.default) ? [...named, ...Object.entries(loaded.default)] : named;
+}
+
 /**
  * A snippet can export its handler under any name. Used only when none of the
  * established export names (`actionMap`, `eventSource`, `eventProcessorDef`,
@@ -39,8 +57,9 @@ function soleNamedExport<T>(
   handlerFile: string,
 ): T | undefined {
   const found: [string, T][] = [];
-  for (const [name, value] of Object.entries(loaded)) {
-    if (name !== 'default' && matches(value)) {
+  for (const [name, value] of namedExports(loaded)) {
+    // A module can export the same handler under a name and in its default.
+    if (matches(value) && !found.some(([, seen]) => seen === value)) {
       found.push([name, value]);
     }
   }
@@ -63,7 +82,9 @@ function toActionMap(value: unknown): Map<string, ActionConfig<WithStageDirector
   }
 
   const entries = Object.entries(value as Record<string, unknown>);
-  if (entries.length === 0) {
+  // An action's config is never a Map, but a transaction handler is one: an
+  // object holding handlers is a module's exports, not an action map.
+  if (entries.length === 0 || entries.some(([, action]) => action instanceof Map)) {
     return undefined;
   }
 

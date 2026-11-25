@@ -6,11 +6,13 @@ These tests protect existing consumers of the SDK. They were recorded against th
 |---|---|---|
 | Public API reports | The public declarations of `core-sdk` (every entry point) and `workflow-engine-sdk`, in each package's `api/` folder. CI fails when the declarations differ from the report. | `npm run api:check` (after `npm run build:packages`) |
 | `npm run backwards-compatibility:types` | Code written against `1.0.1`, in `fixtures/`, type-checked against the built packages. | `npm run backwards-compatibility:types` (after `npm run build:packages`) |
+| `npm run backwards-compatibility:commonjs` | Every entry of every package loads by name with `require()`, as a CommonJS application loads it, and returns the same objects as `import()`. | `npm run backwards-compatibility:commonjs` (after `npm run build:packages`) |
 | Expected messages | Replies a real `WorkflowEngineClient` sends to a fake workflow engine, in `packages/workflow-engine-sdk/tests/backwards-compatibility/`. Every reply must match `data/expected-messages-*.json` there. | `npm test -w packages/workflow-engine-sdk` |
 
 ## Layout
 
 - `fixtures/` in this directory holds code written against `1.0.1`, which is type-checked only. `fixtures/handler-api/` also holds code written with the handler API (`define*`), with and without handler names, so both forms keep compiling.
+- `commonjs/require-entries.cjs` is the `require()` check. It reads each package's `exports`, so a new entry is checked without changing it.
 - `packages/workflow-engine-sdk/tests/backwards-compatibility/` holds the message tests:
   - `fixtures/fake-engine.ts` is the fake workflow engine. It depends only on `ws` and Node built-ins, so other test suites can copy it unchanged; keep it that way.
   - `data/` holds the messages the tests expect, one `expected-messages-<type>.json` file per kind of message.
